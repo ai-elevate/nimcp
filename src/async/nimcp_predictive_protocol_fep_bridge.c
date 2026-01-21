@@ -161,7 +161,6 @@ int predictive_protocol_fep_observe_prefetch(
 ) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_fep_observe_prefetch: NULL bridge");
-        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -224,7 +223,6 @@ int predictive_protocol_fep_predict_pattern(
 ) {
     if (!bridge || !current_msg || !predicted_msg || !confidence) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_fep_predict_pattern: NULL parameter");
-        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -251,7 +249,6 @@ int predictive_protocol_fep_learn_pattern(
 ) {
     if (!bridge || !pattern_id) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_fep_learn_pattern: NULL bridge or pattern_id");
-        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -278,7 +275,6 @@ int predictive_protocol_fep_learn_pattern(
 int predictive_protocol_fep_connect_bio_async(predictive_protocol_fep_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_fep_connect_bio_async: NULL bridge");
-        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (bridge->base.bio_async_enabled) {
@@ -295,7 +291,6 @@ int predictive_protocol_fep_connect_bio_async(predictive_protocol_fep_bridge_t* 
 int predictive_protocol_fep_disconnect_bio_async(predictive_protocol_fep_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_fep_disconnect_bio_async: NULL bridge");
-        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (!bridge->base.bio_async_enabled) {
@@ -325,7 +320,6 @@ int predictive_protocol_fep_get_effects(
 ) {
     if (!bridge || !effects) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_fep_get_effects: NULL bridge or effects");
-        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -341,7 +335,6 @@ int predictive_protocol_fep_get_protocol_effects(
 ) {
     if (!bridge || !effects) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_fep_get_protocol_effects: NULL bridge or effects");
-        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -357,7 +350,6 @@ int predictive_protocol_fep_get_stats(
 ) {
     if (!bridge || !stats) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_fep_get_stats: NULL bridge or stats");
-        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -370,7 +362,6 @@ int predictive_protocol_fep_get_stats(
 int predictive_protocol_fep_reset_stats(predictive_protocol_fep_bridge_t* bridge) {
     if (!bridge) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_fep_reset_stats: NULL bridge");
-        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);

@@ -42,13 +42,13 @@ nimcp_result_t nimcp_cond_init(nimcp_cond_t* cond)
 {
     if (!cond) {
         set_thread_error(NIMCP_ERROR_INVALID_PARAM, "Invalid cond pointer");
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "invalid parameter");
     }
 
     int result = nimcp_platform_cond_init(cond);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Cond initialization failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     return NIMCP_SUCCESS;
@@ -77,7 +77,7 @@ nimcp_result_t nimcp_cond_destroy(nimcp_cond_t* cond)
     int result = nimcp_platform_cond_destroy(cond);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Cond destruction failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     return NIMCP_SUCCESS;
@@ -119,7 +119,7 @@ nimcp_result_t nimcp_cond_wait(nimcp_cond_t* cond, nimcp_mutex_t* mutex)
     int result = nimcp_platform_cond_wait(cond, mutex);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Cond wait failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     return NIMCP_SUCCESS;
@@ -163,7 +163,7 @@ nimcp_result_t nimcp_cond_timedwait(nimcp_cond_t* cond, nimcp_mutex_t* mutex, ui
         return NIMCP_BUSY;  // Consistent with trylock semantics
     } else if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Cond timedwait failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     return NIMCP_SUCCESS;
@@ -206,7 +206,7 @@ nimcp_result_t nimcp_cond_signal(nimcp_cond_t* cond)
     int result = nimcp_platform_cond_signal(cond);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Cond signal failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     return NIMCP_SUCCESS;
@@ -250,7 +250,7 @@ nimcp_result_t nimcp_cond_broadcast(nimcp_cond_t* cond)
     int result = nimcp_platform_cond_broadcast(cond);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Cond broadcast failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     return NIMCP_SUCCESS;

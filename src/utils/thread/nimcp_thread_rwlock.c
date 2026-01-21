@@ -44,13 +44,13 @@ nimcp_result_t nimcp_rwlock_init(nimcp_rwlock_t* lock)
 {
     if (!lock) {
         set_thread_error(NIMCP_ERROR_INVALID_PARAM, "Invalid rwlock pointer");
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "invalid parameter");
     }
 
     int result = pthread_rwlock_init(lock, NULL);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "RWlock initialization failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     return NIMCP_SUCCESS;
@@ -71,13 +71,13 @@ nimcp_result_t nimcp_rwlock_init(nimcp_rwlock_t* lock)
 nimcp_result_t nimcp_rwlock_destroy(nimcp_rwlock_t* lock)
 {
     if (!lock) {
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "invalid parameter");
     }
 
     int result = pthread_rwlock_destroy(lock);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "RWlock destruction failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     return NIMCP_SUCCESS;
@@ -100,13 +100,13 @@ nimcp_result_t nimcp_rwlock_destroy(nimcp_rwlock_t* lock)
 nimcp_result_t nimcp_rwlock_rdlock(nimcp_rwlock_t* lock)
 {
     if (!lock) {
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "invalid parameter");
     }
 
     int result = pthread_rwlock_rdlock(lock);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "RWlock rdlock failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     return NIMCP_SUCCESS;
@@ -129,13 +129,13 @@ nimcp_result_t nimcp_rwlock_rdlock(nimcp_rwlock_t* lock)
 nimcp_result_t nimcp_rwlock_wrlock(nimcp_rwlock_t* lock)
 {
     if (!lock) {
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "invalid parameter");
     }
 
     int result = pthread_rwlock_wrlock(lock);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "RWlock wrlock failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     return NIMCP_SUCCESS;
@@ -158,13 +158,13 @@ nimcp_result_t nimcp_rwlock_wrlock(nimcp_rwlock_t* lock)
 nimcp_result_t nimcp_rwlock_unlock(nimcp_rwlock_t* lock)
 {
     if (!lock) {
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "invalid parameter");
     }
 
     int result = pthread_rwlock_unlock(lock);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "RWlock unlock failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     return NIMCP_SUCCESS;
@@ -187,7 +187,7 @@ nimcp_result_t nimcp_rwlock_unlock(nimcp_rwlock_t* lock)
 nimcp_result_t nimcp_rwlock_tryrdlock(nimcp_rwlock_t* lock)
 {
     if (!lock) {
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "invalid parameter");
     }
 
     int result = pthread_rwlock_tryrdlock(lock);
@@ -197,7 +197,7 @@ nimcp_result_t nimcp_rwlock_tryrdlock(nimcp_rwlock_t* lock)
         return NIMCP_BUSY;
     } else if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "RWlock tryrdlock failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     return NIMCP_SUCCESS;
@@ -220,7 +220,7 @@ nimcp_result_t nimcp_rwlock_tryrdlock(nimcp_rwlock_t* lock)
 nimcp_result_t nimcp_rwlock_trywrlock(nimcp_rwlock_t* lock)
 {
     if (!lock) {
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "invalid parameter");
     }
 
     int result = pthread_rwlock_trywrlock(lock);
@@ -230,7 +230,7 @@ nimcp_result_t nimcp_rwlock_trywrlock(nimcp_rwlock_t* lock)
         return NIMCP_BUSY;
     } else if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "RWlock trywrlock failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     return NIMCP_SUCCESS;
@@ -254,14 +254,14 @@ nimcp_result_t nimcp_rwlock_trywrlock(nimcp_rwlock_t* lock)
 nimcp_result_t nimcp_rwlock_timedrdlock(nimcp_rwlock_t* lock, uint32_t timeout_ms)
 {
     if (!lock) {
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "invalid parameter");
     }
 
     // Calculate absolute timeout (CLOCK_REALTIME)
     struct timespec abstime;
     if (clock_gettime(CLOCK_REALTIME, &abstime) != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "clock_gettime failed: %s", strerror(errno));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     // Add timeout milliseconds to current time
@@ -281,7 +281,7 @@ nimcp_result_t nimcp_rwlock_timedrdlock(nimcp_rwlock_t* lock, uint32_t timeout_m
         return NIMCP_BUSY;  // Consistent with trylock semantics
     } else if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "RWlock timedrdlock failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     return NIMCP_SUCCESS;
@@ -305,14 +305,14 @@ nimcp_result_t nimcp_rwlock_timedrdlock(nimcp_rwlock_t* lock, uint32_t timeout_m
 nimcp_result_t nimcp_rwlock_timedwrlock(nimcp_rwlock_t* lock, uint32_t timeout_ms)
 {
     if (!lock) {
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "invalid parameter");
     }
 
     // Calculate absolute timeout (CLOCK_REALTIME)
     struct timespec abstime;
     if (clock_gettime(CLOCK_REALTIME, &abstime) != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "clock_gettime failed: %s", strerror(errno));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     // Add timeout milliseconds to current time
@@ -332,7 +332,7 @@ nimcp_result_t nimcp_rwlock_timedwrlock(nimcp_rwlock_t* lock, uint32_t timeout_m
         return NIMCP_BUSY;  // Consistent with trylock semantics
     } else if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "RWlock timedwrlock failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     return NIMCP_SUCCESS;

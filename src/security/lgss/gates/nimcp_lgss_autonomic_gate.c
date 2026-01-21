@@ -460,22 +460,14 @@ nimcp_result_t autonomic_gate_set_hormone_limits(
     autonomic_hormone_t hormone,
     const autonomic_hormone_limits_t* limits
 ) {
-    if (!validate_gate(gate)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (!validate_hormone(hormone)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (limits == NULL) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(validate_gate(gate), NIMCP_ERROR_INVALID_PARAM, "invalid autonomic gate");
+    NIMCP_CHECK_THROW(validate_hormone(hormone), NIMCP_ERROR_INVALID_PARAM, "invalid hormone type");
+    NIMCP_CHECK_THROW(limits, NIMCP_ERROR_NULL_POINTER, "limits is NULL");
 
     /* Validate limit values */
-    if (limits->min_level > limits->max_level ||
-        limits->max_release_rate < 0 ||
-        limits->max_absorption_rate < 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(limits->min_level <= limits->max_level &&
+                      limits->max_release_rate >= 0 &&
+                      limits->max_absorption_rate >= 0, NIMCP_ERROR_INVALID_PARAM, "invalid limit values");
 
     memcpy(&gate->hormone_limits[hormone], limits, sizeof(autonomic_hormone_limits_t));
     return NIMCP_SUCCESS;
@@ -486,15 +478,9 @@ nimcp_result_t autonomic_gate_get_hormone_limits(
     autonomic_hormone_t hormone,
     autonomic_hormone_limits_t* limits
 ) {
-    if (!validate_gate(gate)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (!validate_hormone(hormone)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (limits == NULL) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(validate_gate(gate), NIMCP_ERROR_INVALID_PARAM, "invalid autonomic gate");
+    NIMCP_CHECK_THROW(validate_hormone(hormone), NIMCP_ERROR_INVALID_PARAM, "invalid hormone type");
+    NIMCP_CHECK_THROW(limits, NIMCP_ERROR_NULL_POINTER, "limits is NULL");
 
     memcpy(limits, &gate->hormone_limits[hormone], sizeof(autonomic_hormone_limits_t));
     return NIMCP_SUCCESS;
@@ -505,22 +491,14 @@ nimcp_result_t autonomic_gate_set_vital_bounds(
     autonomic_vital_t vital,
     const autonomic_vital_bounds_t* bounds
 ) {
-    if (!validate_gate(gate)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (!validate_vital(vital)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (bounds == NULL) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(validate_gate(gate), NIMCP_ERROR_INVALID_PARAM, "invalid autonomic gate");
+    NIMCP_CHECK_THROW(validate_vital(vital), NIMCP_ERROR_INVALID_PARAM, "invalid vital type");
+    NIMCP_CHECK_THROW(bounds, NIMCP_ERROR_NULL_POINTER, "bounds is NULL");
 
     /* Validate bound values */
-    if (bounds->critical_min > bounds->normal_min ||
-        bounds->normal_min > bounds->normal_max ||
-        bounds->normal_max > bounds->critical_max) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bounds->critical_min <= bounds->normal_min &&
+                      bounds->normal_min <= bounds->normal_max &&
+                      bounds->normal_max <= bounds->critical_max, NIMCP_ERROR_INVALID_PARAM, "invalid bound ordering");
 
     memcpy(&gate->vital_bounds[vital], bounds, sizeof(autonomic_vital_bounds_t));
     return NIMCP_SUCCESS;
@@ -531,15 +509,9 @@ nimcp_result_t autonomic_gate_get_vital_bounds(
     autonomic_vital_t vital,
     autonomic_vital_bounds_t* bounds
 ) {
-    if (!validate_gate(gate)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (!validate_vital(vital)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (bounds == NULL) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(validate_gate(gate), NIMCP_ERROR_INVALID_PARAM, "invalid autonomic gate");
+    NIMCP_CHECK_THROW(validate_vital(vital), NIMCP_ERROR_INVALID_PARAM, "invalid vital type");
+    NIMCP_CHECK_THROW(bounds, NIMCP_ERROR_NULL_POINTER, "bounds is NULL");
 
     memcpy(bounds, &gate->vital_bounds[vital], sizeof(autonomic_vital_bounds_t));
     return NIMCP_SUCCESS;
@@ -549,12 +521,8 @@ nimcp_result_t autonomic_gate_get_hormone_state(
     const autonomic_gate_t* gate,
     autonomic_hormone_state_t* state
 ) {
-    if (!validate_gate(gate)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (state == NULL) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(validate_gate(gate), NIMCP_ERROR_INVALID_PARAM, "invalid autonomic gate");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL");
 
     memcpy(state->levels, gate->hormone_levels, sizeof(state->levels));
     memcpy(state->rates, gate->hormone_rates, sizeof(state->rates));
@@ -568,12 +536,8 @@ nimcp_result_t autonomic_gate_read_vitals(
     autonomic_gate_t* gate,
     autonomic_vitals_reading_t* reading
 ) {
-    if (!validate_gate(gate)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (reading == NULL) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(validate_gate(gate), NIMCP_ERROR_INVALID_PARAM, "invalid autonomic gate");
+    NIMCP_CHECK_THROW(reading, NIMCP_ERROR_NULL_POINTER, "reading is NULL");
 
     gate->stats.vital_readings++;
 
@@ -616,12 +580,8 @@ nimcp_result_t autonomic_gate_update_vital(
     autonomic_vital_t vital,
     float value
 ) {
-    if (!validate_gate(gate)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (!validate_vital(vital)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(validate_gate(gate), NIMCP_ERROR_INVALID_PARAM, "invalid autonomic gate");
+    NIMCP_CHECK_THROW(validate_vital(vital), NIMCP_ERROR_INVALID_PARAM, "invalid vital type");
 
     const autonomic_vital_bounds_t* bounds = &gate->vital_bounds[vital];
     if (!bounds->monitoring_enabled) {
@@ -659,12 +619,8 @@ nimcp_result_t autonomic_gate_lock_hormone(
     autonomic_gate_t* gate,
     autonomic_hormone_t hormone
 ) {
-    if (!validate_gate(gate)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (!validate_hormone(hormone)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(validate_gate(gate), NIMCP_ERROR_INVALID_PARAM, "invalid autonomic gate");
+    NIMCP_CHECK_THROW(validate_hormone(hormone), NIMCP_ERROR_INVALID_PARAM, "invalid hormone type");
 
     gate->hormone_locked[hormone] = true;
     return NIMCP_SUCCESS;
@@ -674,21 +630,15 @@ nimcp_result_t autonomic_gate_unlock_hormone(
     autonomic_gate_t* gate,
     autonomic_hormone_t hormone
 ) {
-    if (!validate_gate(gate)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (!validate_hormone(hormone)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(validate_gate(gate), NIMCP_ERROR_INVALID_PARAM, "invalid autonomic gate");
+    NIMCP_CHECK_THROW(validate_hormone(hormone), NIMCP_ERROR_INVALID_PARAM, "invalid hormone type");
 
     gate->hormone_locked[hormone] = false;
     return NIMCP_SUCCESS;
 }
 
 nimcp_result_t autonomic_gate_trigger_homeostasis(autonomic_gate_t* gate) {
-    if (!validate_gate(gate)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(validate_gate(gate), NIMCP_ERROR_INVALID_PARAM, "invalid autonomic gate");
 
     if (!gate->config.enable_homeostasis) {
         return NIMCP_SUCCESS;  /* Homeostasis not enabled */
@@ -740,9 +690,7 @@ nimcp_result_t autonomic_gate_trigger_homeostasis(autonomic_gate_t* gate) {
 }
 
 nimcp_result_t autonomic_gate_reset_to_baseline(autonomic_gate_t* gate) {
-    if (!validate_gate(gate)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(validate_gate(gate), NIMCP_ERROR_INVALID_PARAM, "invalid autonomic gate");
 
     for (int i = 0; i < NIMCP_AUTONOMIC_HORMONE_COUNT; i++) {
         float old_level = gate->hormone_levels[i];
@@ -767,21 +715,15 @@ nimcp_result_t autonomic_gate_get_stats(
     const autonomic_gate_t* gate,
     autonomic_gate_stats_t* stats
 ) {
-    if (!validate_gate(gate)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (stats == NULL) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(validate_gate(gate), NIMCP_ERROR_INVALID_PARAM, "invalid autonomic gate");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     memcpy(stats, &gate->stats, sizeof(autonomic_gate_stats_t));
     return NIMCP_SUCCESS;
 }
 
 nimcp_result_t autonomic_gate_reset_stats(autonomic_gate_t* gate) {
-    if (!validate_gate(gate)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(validate_gate(gate), NIMCP_ERROR_INVALID_PARAM, "invalid autonomic gate");
 
     memset(&gate->stats, 0, sizeof(autonomic_gate_stats_t));
     return NIMCP_SUCCESS;

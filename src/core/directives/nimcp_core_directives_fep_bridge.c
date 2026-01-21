@@ -47,7 +47,7 @@
  */
 int directive_fep_bridge_default_config(directive_fep_config_t* config) {
     if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     config->prediction_error_weight = DIRECTIVE_FEP_PREDICTION_ERROR_WEIGHT_DEFAULT;
@@ -145,7 +145,7 @@ void directive_fep_bridge_destroy(directive_fep_bridge_t* bridge) {
  */
 int directive_fep_bridge_update(directive_fep_bridge_t* bridge) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -183,7 +183,7 @@ int directive_fep_bridge_compute_free_energy(
     float* free_energy_out
 ) {
     if (!bridge || !free_energy_out) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -217,7 +217,7 @@ int directive_fep_bridge_compute_expected_outcome(
     bool* expected_blocked
 ) {
     if (!bridge || !expected_blocked) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -250,7 +250,7 @@ int directive_fep_bridge_update_precision(
     float precision
 ) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Clamp precision to valid range */
@@ -281,7 +281,7 @@ int directive_fep_bridge_on_action_blocked(
     uint32_t reason
 ) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -339,7 +339,7 @@ int directive_fep_bridge_on_action_allowed(
     uint32_t action
 ) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -383,7 +383,7 @@ int directive_fep_bridge_get_state(
     directive_fep_state_t* state
 ) {
     if (!bridge || !state) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -405,7 +405,7 @@ int directive_fep_bridge_get_stats(
     directive_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -428,7 +428,7 @@ int directive_fep_bridge_get_stats(
  */
 int directive_fep_bridge_connect_bio_async(directive_fep_bridge_t* bridge) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     if (bridge->base.bio_async_enabled) {
@@ -450,7 +450,7 @@ int directive_fep_bridge_connect_bio_async(directive_fep_bridge_t* bridge) {
     }
 
     NIMCP_LOGGING_WARN(LOG_MODULE_DIRECTIVE_FEP " Failed to connect bio-async");
-    return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_STATE, "invalid state");
 }
 
 /**
@@ -462,7 +462,7 @@ int directive_fep_bridge_connect_bio_async(directive_fep_bridge_t* bridge) {
  */
 int directive_fep_bridge_disconnect_bio_async(directive_fep_bridge_t* bridge) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     if (!bridge->base.bio_async_enabled) {

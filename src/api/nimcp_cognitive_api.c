@@ -158,8 +158,6 @@ NIMCP_EXPORT nimcp_status_t nimcp_brain_working_memory_refresh(
     bool success = working_memory_refresh(wm, index);
     if (!success) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Invalid index %u for working memory refresh", index);
-        set_error("Invalid index for refresh");
-        return NIMCP_ERROR_INVALID;
     }
 
     set_error("No error");

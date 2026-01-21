@@ -298,29 +298,19 @@ nimcp_result_t nimcp_brain_training_validate_config(
     const nimcp_brain_training_config_t* config)
 {
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
-
-    if (config->default_loss_type < 0 ||
-        config->default_loss_type >= NIMCP_LOSS_TYPE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (config->default_optimizer < 0 ||
-        config->default_optimizer >= NIMCP_OPTIMIZER_TYPE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (config->default_learning_rate <= 0.0F ||
-        config->default_learning_rate > 10.0F) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (config->convergence_threshold <= 0.0F) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (config->divergence_threshold <= 0.0F) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config->default_loss_type >= 0 &&
+                      config->default_loss_type < NIMCP_LOSS_TYPE_COUNT,
+                      NIMCP_ERROR_INVALID_PARAM, "invalid default_loss_type");
+    NIMCP_CHECK_THROW(config->default_optimizer >= 0 &&
+                      config->default_optimizer < NIMCP_OPTIMIZER_TYPE_COUNT,
+                      NIMCP_ERROR_INVALID_PARAM, "invalid default_optimizer");
+    NIMCP_CHECK_THROW(config->default_learning_rate > 0.0F &&
+                      config->default_learning_rate <= 10.0F,
+                      NIMCP_ERROR_INVALID_PARAM, "invalid default_learning_rate");
+    NIMCP_CHECK_THROW(config->convergence_threshold > 0.0F,
+                      NIMCP_ERROR_INVALID_PARAM, "invalid convergence_threshold");
+    NIMCP_CHECK_THROW(config->divergence_threshold > 0.0F,
+                      NIMCP_ERROR_INVALID_PARAM, "invalid divergence_threshold");
 
     return NIMCP_SUCCESS;
 }
@@ -660,19 +650,14 @@ nimcp_result_t nimcp_brain_training_create_loss(
     NIMCP_CHECK_THROW(loss_id, NIMCP_ERROR_INVALID_PARAM, "loss_id is NULL");
 
     int slot = find_free_loss_slot(ctx);
-    if (slot < 0) {
-        LOG_ERROR("No free loss context slots available");
-        return NIMCP_ERROR_MEMORY;
-    }
+    NIMCP_CHECK_THROW(slot >= 0, NIMCP_ERROR_MEMORY, "No free loss context slots available");
 
     nimcp_loss_context_t* loss_ctx = nimcp_loss_create(
         config,
         ctx->security_ctx,
         ctx->memory_mgr
     );
-    if (!loss_ctx) {
-        return NIMCP_ERROR_MEMORY;
-    }
+    NIMCP_CHECK_THROW(loss_ctx, NIMCP_ERROR_MEMORY, "Failed to create loss context");
 
     nimcp_result_t res = nimcp_loss_init(loss_ctx);
     if (res != NIMCP_SUCCESS) {
@@ -768,19 +753,14 @@ nimcp_result_t nimcp_brain_training_create_optimizer(
     NIMCP_CHECK_THROW(optimizer_id, NIMCP_ERROR_INVALID_PARAM, "optimizer_id is NULL");
 
     int slot = find_free_optimizer_slot(ctx);
-    if (slot < 0) {
-        LOG_ERROR("No free optimizer context slots available");
-        return NIMCP_ERROR_MEMORY;
-    }
+    NIMCP_CHECK_THROW(slot >= 0, NIMCP_ERROR_MEMORY, "No free optimizer context slots available");
 
     nimcp_optimizer_context_t* opt_ctx = nimcp_optimizer_create(
         config,
         ctx->security_ctx,
         ctx->memory_mgr
     );
-    if (!opt_ctx) {
-        return NIMCP_ERROR_MEMORY;
-    }
+    NIMCP_CHECK_THROW(opt_ctx, NIMCP_ERROR_MEMORY, "Failed to create optimizer context");
 
     ctx->optimizer_slots[slot].ctx = opt_ctx;
     ctx->optimizer_slots[slot].id = ctx->next_optimizer_id++;
@@ -1072,9 +1052,7 @@ nimcp_result_t nimcp_brain_training_step(
     /* Fallback to malloc if unified memory not available or failed */
     if (!gradients) {
         gradients = (float*)malloc(gradient_size);
-        if (!gradients) {
-            return NIMCP_ERROR_MEMORY;
-        }
+        NIMCP_CHECK_THROW(gradients, NIMCP_ERROR_MEMORY, "Failed to allocate gradient buffer");
     }
 
     /* Zero the gradient buffer */
@@ -1276,15 +1254,10 @@ nimcp_result_t nimcp_brain_training_create_scheduler(
     NIMCP_CHECK_THROW(scheduler_id, NIMCP_ERROR_INVALID_PARAM, "scheduler_id is NULL");
 
     int slot = find_free_scheduler_slot(ctx);
-    if (slot < 0) {
-        LOG_ERROR("No free scheduler slots available");
-        return NIMCP_ERROR_MEMORY;
-    }
+    NIMCP_CHECK_THROW(slot >= 0, NIMCP_ERROR_MEMORY, "No free scheduler slots available");
 
     nimcp_lr_scheduler_ctx_t* sched_ctx = nimcp_lr_scheduler_create(config);
-    if (!sched_ctx) {
-        return NIMCP_ERROR_MEMORY;
-    }
+    NIMCP_CHECK_THROW(sched_ctx, NIMCP_ERROR_MEMORY, "Failed to create scheduler context");
 
     ctx->scheduler_slots[slot].ctx = sched_ctx;
     ctx->scheduler_slots[slot].id = ctx->next_scheduler_id++;
@@ -1439,15 +1412,10 @@ nimcp_result_t nimcp_brain_training_create_gradient_manager(
     NIMCP_CHECK_THROW(gradmgr_id, NIMCP_ERROR_INVALID_PARAM, "gradmgr_id is NULL");
 
     int slot = find_free_gradmgr_slot(ctx);
-    if (slot < 0) {
-        LOG_ERROR("No free gradient manager slots available");
-        return NIMCP_ERROR_MEMORY;
-    }
+    NIMCP_CHECK_THROW(slot >= 0, NIMCP_ERROR_MEMORY, "No free gradient manager slots available");
 
     nimcp_gradient_manager_ctx_t* gm_ctx = nimcp_gradient_manager_create(config);
-    if (!gm_ctx) {
-        return NIMCP_ERROR_MEMORY;
-    }
+    NIMCP_CHECK_THROW(gm_ctx, NIMCP_ERROR_MEMORY, "Failed to create gradient manager context");
 
     ctx->gradmgr_slots[slot].ctx = gm_ctx;
     ctx->gradmgr_slots[slot].id = ctx->next_gradmgr_id++;
@@ -1503,9 +1471,8 @@ nimcp_result_t nimcp_brain_training_accumulate_gradients(
     const float* gradients,
     size_t count)
 {
-    if (!ctx || !gradients || count == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx && gradients && count > 0, NIMCP_ERROR_INVALID_PARAM,
+                      "nimcp_brain_training_accumulate_gradients: invalid arguments");
 
     nimcp_gradient_manager_ctx_t* gm = nimcp_brain_training_get_gradient_manager(ctx, gradmgr_id);
     if (!gm) {
@@ -1550,9 +1517,8 @@ nimcp_result_t nimcp_brain_training_get_accumulated_gradients(
     float* output,
     size_t count)
 {
-    if (!ctx || !output || count == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx && output && count > 0, NIMCP_ERROR_INVALID_PARAM,
+                      "nimcp_brain_training_get_and_reset_gradients: invalid arguments");
 
     nimcp_gradient_manager_ctx_t* gm = nimcp_brain_training_get_gradient_manager(ctx, gradmgr_id);
     if (!gm) {
@@ -1808,20 +1774,18 @@ nimcp_result_t nimcp_brain_training_step_full(
     size_t param_count,
     float* loss_value)
 {
-    if (!ctx || !params || !predictions || !targets || !loss_value) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (batch_size == 0 || output_size == 0 || param_count == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx && params && predictions && targets && loss_value,
+                      NIMCP_ERROR_INVALID_PARAM,
+                      "nimcp_brain_training_step_full: NULL argument");
+    NIMCP_CHECK_THROW(batch_size > 0 && output_size > 0 && param_count > 0,
+                      NIMCP_ERROR_INVALID_PARAM,
+                      "nimcp_brain_training_step_full: size is 0");
 
     /* Allocate gradient buffer */
     size_t gradient_count = batch_size * output_size;
     float* gradients = (float*)malloc(gradient_count * sizeof(float));
-    if (!gradients) {
-        return NIMCP_ERROR_MEMORY;
-    }
+    NIMCP_CHECK_THROW(gradients, NIMCP_ERROR_MEMORY,
+                      "nimcp_brain_training_step_full: failed to allocate gradients");
     memset(gradients, 0, gradient_count * sizeof(float));
 
     /* Step 1: Compute loss and gradients */
@@ -1960,9 +1924,8 @@ nimcp_result_t nimcp_brain_training_connect_plasticity_bridge(
     nimcp_brain_training_ctx_t* ctx,
     tpb_context_t* bridge)
 {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM,
+                      "nimcp_brain_training_connect_plasticity_bridge: ctx is NULL");
 
     ctx->plasticity_bridge = bridge;
 
@@ -1995,9 +1958,8 @@ nimcp_result_t nimcp_brain_training_set_biological_modulation(
     nimcp_brain_training_ctx_t* ctx,
     float strength)
 {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM,
+                      "nimcp_brain_training_set_biological_modulation: ctx is NULL");
 
     if (strength < 0.0F) strength = 0.0F;
     if (strength > 1.0F) strength = 1.0F;
@@ -2030,13 +1992,12 @@ nimcp_result_t nimcp_brain_training_step_biological(
     uint32_t region_id,
     float* loss_value)
 {
-    if (!ctx || !params || !predictions || !targets || !loss_value) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (batch_size == 0 || output_size == 0 || param_count == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx && params && predictions && targets && loss_value,
+                      NIMCP_ERROR_INVALID_PARAM,
+                      "nimcp_brain_training_step_biological: NULL argument");
+    NIMCP_CHECK_THROW(batch_size > 0 && output_size > 0 && param_count > 0,
+                      NIMCP_ERROR_INVALID_PARAM,
+                      "nimcp_brain_training_step_biological: size is 0");
 
     /* If no plasticity bridge or biological modulation is zero, fallback to regular step */
     if (!ctx->plasticity_bridge || ctx->biological_modulation_strength <= 0.0F) {
@@ -2050,9 +2011,8 @@ nimcp_result_t nimcp_brain_training_step_biological(
     /* Allocate gradient buffer */
     size_t gradient_count = batch_size * output_size;
     float* gradients = (float*)malloc(gradient_count * sizeof(float));
-    if (!gradients) {
-        return NIMCP_ERROR_MEMORY;
-    }
+    NIMCP_CHECK_THROW(gradients, NIMCP_ERROR_MEMORY,
+                      "nimcp_brain_training_step_biological: failed to allocate gradients");
     memset(gradients, 0, gradient_count * sizeof(float));
 
     /* Step 1: Compute loss and gradients */
@@ -2239,9 +2199,8 @@ nimcp_result_t nimcp_brain_training_step_biological(
 
 nimcp_result_t nimcp_brain_training_create_callbacks(nimcp_brain_training_ctx_t* ctx)
 {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM,
+                      "nimcp_brain_training_create_callbacks: ctx is NULL");
 
     if (ctx->callbacks) {
         LOG_WARNING("Callbacks already created");
@@ -2250,10 +2209,8 @@ nimcp_result_t nimcp_brain_training_create_callbacks(nimcp_brain_training_ctx_t*
 
     /* Create callbacks context */
     ctx->callbacks = tcb_create(NULL);
-    if (!ctx->callbacks) {
-        LOG_ERROR("Failed to create callbacks context");
-        return NIMCP_ERROR_MEMORY;
-    }
+    NIMCP_CHECK_THROW(ctx->callbacks, NIMCP_ERROR_MEMORY,
+                      "nimcp_brain_training_create_callbacks: failed to create callbacks");
 
     /* If plasticity bridge is connected, wire it up */
     if (ctx->plasticity_bridge) {
@@ -2281,9 +2238,8 @@ nimcp_result_t nimcp_brain_training_connect_second_messengers(
     nimcp_brain_training_ctx_t* ctx,
     void* second_messengers)
 {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM,
+                      "nimcp_brain_training_connect_second_messengers: ctx is NULL");
 
     /* Guard: NULL is allowed for disconnection */
     ctx->second_messengers = (second_messenger_system_t*)second_messengers;
@@ -2375,10 +2331,8 @@ nimcp_result_t nimcp_brain_training_connect_portia(
     nimcp_brain_training_ctx_t* ctx,
     void* portia_ctx)
 {
-    /* Guard: Validate context */
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM,
+                      "nimcp_brain_training_connect_portia: ctx is NULL");
 
     /* Allow NULL to disconnect */
     ctx->portia_context = portia_ctx;
@@ -2412,10 +2366,8 @@ nimcp_result_t nimcp_brain_training_on_tier_change(
     nimcp_brain_training_ctx_t* ctx,
     platform_tier_t new_tier)
 {
-    /* Guard: Validate context */
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM,
+                      "nimcp_brain_training_on_tier_change: ctx is NULL");
 
     /* Guard: Check if resource-aware training enabled */
     if (!ctx->resource_aware_training) {
@@ -2462,10 +2414,8 @@ nimcp_result_t nimcp_brain_training_on_degradation_event(
     nimcp_brain_training_ctx_t* ctx,
     uint32_t degradation_level)
 {
-    /* Guard: Validate context */
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM,
+                      "nimcp_brain_training_on_degradation_change: ctx is NULL");
 
     /* Guard: Check if resource-aware training enabled */
     if (!ctx->resource_aware_training) {
@@ -2518,10 +2468,8 @@ bool nimcp_brain_training_is_paused(
 nimcp_result_t nimcp_brain_training_resume(
     nimcp_brain_training_ctx_t* ctx)
 {
-    /* Guard: Validate context */
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM,
+                      "nimcp_brain_training_resume: ctx is NULL");
 
     if (ctx->training_paused) {
         ctx->training_paused = false;
@@ -2581,10 +2529,8 @@ nimcp_result_t nimcp_brain_training_request_resources(
     size_t batch_size,
     size_t param_count)
 {
-    /* Guard: Validate context */
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM,
+                      "nimcp_brain_training_request_resources: ctx is NULL");
 
     /* Guard: Check if bio-async enabled */
     if (!ctx->bio_async_enabled) {

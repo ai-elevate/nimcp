@@ -71,28 +71,18 @@ static nimcp_error_t verify_ed25519_signature(
 
     /* Read public key */
     FILE* key_file = fopen(public_key_path, "rb");
-    if (!key_file) {
-        LOG_ERROR("Cannot open public key file %s", public_key_path);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Cannot open public key file for Ed25519 verification");
-        return NIMCP_ERROR_IO;
-    }
+    NIMCP_CHECK_THROW_MSG(key_file, NIMCP_ERROR_IO, "cannot open public key file %s", public_key_path);
 
     EVP_PKEY* pkey = PEM_read_PUBKEY(key_file, NULL, NULL, NULL);
     fclose(key_file);
 
-    if (!pkey) {
-        LOG_ERROR("Failed to parse Ed25519 public key");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to parse Ed25519 public key");
-        return NIMCP_ERROR_CRYPTO;
-    }
+    NIMCP_CHECK_THROW_MSG(pkey, NIMCP_ERROR_CRYPTO, "failed to parse Ed25519 public key");
 
     /* Read signature */
     FILE* sig_file = fopen(signature_path, "rb");
     if (!sig_file) {
         EVP_PKEY_free(pkey);
-        LOG_ERROR("Cannot open signature file %s", signature_path);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Cannot open signature file");
-        return NIMCP_ERROR_IO;
+        NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_IO, "cannot open signature file %s", signature_path);
     }
 
     uint8_t signature[128];
@@ -103,9 +93,7 @@ static nimcp_error_t verify_ed25519_signature(
     FILE* msg_file = fopen(filepath, "rb");
     if (!msg_file) {
         EVP_PKEY_free(pkey);
-        LOG_ERROR("Cannot open file %s", filepath);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Cannot open file for signature verification");
-        return NIMCP_ERROR_IO;
+        NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_IO, "cannot open file %s for signature verification", filepath);
     }
 
     /* Read file into memory (simplified - production would stream) */
@@ -117,8 +105,7 @@ static nimcp_error_t verify_ed25519_signature(
     if (!message) {
         fclose(msg_file);
         EVP_PKEY_free(pkey);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Memory allocation failed for signature verification");
-        return NIMCP_ERROR_NO_MEMORY;
+        NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_NO_MEMORY, "memory allocation failed for signature verification");
     }
 
     size_t bytes_read = fread(message, 1, file_size, msg_file);
@@ -129,8 +116,7 @@ static nimcp_error_t verify_ed25519_signature(
     if (!ctx) {
         free(message);
         EVP_PKEY_free(pkey);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to create verification context");
-        return NIMCP_ERROR_NO_MEMORY;
+        NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_NO_MEMORY, "failed to create verification context");
     }
 
     int result = EVP_DigestVerifyInit(ctx, NULL, NULL, NULL, pkey);
@@ -142,11 +128,7 @@ static nimcp_error_t verify_ed25519_signature(
     free(message);
     EVP_PKEY_free(pkey);
 
-    if (result != 1) {
-        LOG_ERROR("Ed25519 signature verification failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_PERMISSION_DENIED, "Ed25519 signature verification failed - invalid signature");
-        return NIMCP_ERROR_INVALID_SIGNATURE;
-    }
+    NIMCP_CHECK_THROW_MSG(result == 1, NIMCP_ERROR_INVALID_SIGNATURE, "Ed25519 signature verification failed");
 
     LOG_INFO("Ed25519 signature verified successfully");
     return NIMCP_OK;
@@ -163,25 +145,18 @@ static nimcp_error_t verify_rsa_signature(
 
     /* Simplified RSA verification - production would use full OpenSSL */
     FILE* key_file = fopen(public_key_path, "rb");
-    if (!key_file) {
-        LOG_ERROR("Cannot open RSA public key file %s", public_key_path);
-        return NIMCP_ERROR_IO;
-    }
+    NIMCP_CHECK_THROW_MSG(key_file, NIMCP_ERROR_IO, "cannot open RSA public key file %s", public_key_path);
 
     EVP_PKEY* pkey = PEM_read_PUBKEY(key_file, NULL, NULL, NULL);
     fclose(key_file);
 
-    if (!pkey) {
-        LOG_ERROR("Failed to parse RSA public key");
-        return NIMCP_ERROR_CRYPTO;
-    }
+    NIMCP_CHECK_THROW_MSG(pkey, NIMCP_ERROR_CRYPTO, "failed to parse RSA public key");
 
     /* Read signature */
     FILE* sig_file = fopen(signature_path, "rb");
     if (!sig_file) {
         EVP_PKEY_free(pkey);
-        LOG_ERROR("Cannot open signature file %s", signature_path);
-        return NIMCP_ERROR_IO;
+        NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_IO, "cannot open signature file %s", signature_path);
     }
 
     uint8_t signature[512];
@@ -192,7 +167,7 @@ static nimcp_error_t verify_rsa_signature(
     FILE* msg_file = fopen(filepath, "rb");
     if (!msg_file) {
         EVP_PKEY_free(pkey);
-        return NIMCP_ERROR_IO;
+        NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_IO, "cannot open file %s for RSA verification", filepath);
     }
 
     fseek(msg_file, 0, SEEK_END);
@@ -203,7 +178,7 @@ static nimcp_error_t verify_rsa_signature(
     if (!message) {
         fclose(msg_file);
         EVP_PKEY_free(pkey);
-        return NIMCP_ERROR_NO_MEMORY;
+        NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_NO_MEMORY, "memory allocation failed for RSA verification");
     }
 
     size_t bytes_read = fread(message, 1, file_size, msg_file);
@@ -214,7 +189,7 @@ static nimcp_error_t verify_rsa_signature(
     if (!ctx) {
         free(message);
         EVP_PKEY_free(pkey);
-        return NIMCP_ERROR_NO_MEMORY;
+        NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_NO_MEMORY, "failed to create EVP_MD_CTX for RSA verification");
     }
 
     int result = EVP_DigestVerifyInit(ctx, NULL, EVP_sha256(), NULL, pkey);
@@ -226,10 +201,7 @@ static nimcp_error_t verify_rsa_signature(
     free(message);
     EVP_PKEY_free(pkey);
 
-    if (result != 1) {
-        LOG_ERROR("RSA signature verification failed");
-        return NIMCP_ERROR_INVALID_SIGNATURE;
-    }
+    NIMCP_CHECK_THROW_MSG(result == 1, NIMCP_ERROR_INVALID_SIGNATURE, "RSA signature verification failed");
 
     LOG_INFO("RSA signature verified successfully");
     return NIMCP_OK;
@@ -248,10 +220,7 @@ static nimcp_error_t verify_dilithium_signature(
 
     /* Read public key */
     FILE* key_file = fopen(public_key_path, "rb");
-    if (!key_file) {
-        LOG_ERROR("Cannot open Dilithium public key file %s", public_key_path);
-        return NIMCP_ERROR_IO;
-    }
+    NIMCP_CHECK_THROW_MSG(key_file, NIMCP_ERROR_IO, "cannot open Dilithium public key file %s", public_key_path);
 
     size_t pk_len, sk_len, sig_len;
     nimcp_dilithium_get_sizes(variant, &pk_len, &sk_len, &sig_len);
@@ -259,7 +228,7 @@ static nimcp_error_t verify_dilithium_signature(
     uint8_t* public_key = (uint8_t*)malloc(pk_len);
     if (!public_key) {
         fclose(key_file);
-        return NIMCP_ERROR_NO_MEMORY;
+        NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_NO_MEMORY, "memory allocation failed for Dilithium public key");
     }
 
     size_t bytes_read = fread(public_key, 1, pk_len, key_file);
@@ -267,23 +236,21 @@ static nimcp_error_t verify_dilithium_signature(
 
     if (bytes_read != pk_len) {
         free(public_key);
-        LOG_ERROR("Invalid Dilithium public key size");
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_INVALID_PARAM, "invalid Dilithium public key size");
     }
 
     /* Read signature */
     FILE* sig_file = fopen(signature_path, "rb");
     if (!sig_file) {
         free(public_key);
-        LOG_ERROR("Cannot open signature file %s", signature_path);
-        return NIMCP_ERROR_IO;
+        NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_IO, "cannot open signature file %s", signature_path);
     }
 
     uint8_t* signature = (uint8_t*)malloc(sig_len);
     if (!signature) {
         free(public_key);
         fclose(sig_file);
-        return NIMCP_ERROR_NO_MEMORY;
+        NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_NO_MEMORY, "memory allocation failed for Dilithium signature");
     }
 
     bytes_read = fread(signature, 1, sig_len, sig_file);
@@ -292,8 +259,7 @@ static nimcp_error_t verify_dilithium_signature(
     if (bytes_read != sig_len) {
         free(signature);
         free(public_key);
-        LOG_ERROR("Invalid Dilithium signature size");
-        return NIMCP_ERROR_INVALID_SIGNATURE;
+        NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_INVALID_SIGNATURE, "invalid Dilithium signature size");
     }
 
     /* Read message */
@@ -301,7 +267,7 @@ static nimcp_error_t verify_dilithium_signature(
     if (!msg_file) {
         free(signature);
         free(public_key);
-        return NIMCP_ERROR_IO;
+        NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_IO, "cannot open file %s for Dilithium verification", filepath);
     }
 
     fseek(msg_file, 0, SEEK_END);
@@ -313,7 +279,7 @@ static nimcp_error_t verify_dilithium_signature(
         fclose(msg_file);
         free(signature);
         free(public_key);
-        return NIMCP_ERROR_NO_MEMORY;
+        NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_NO_MEMORY, "memory allocation failed for Dilithium message");
     }
 
     bytes_read = fread(message, 1, file_size, msg_file);
@@ -327,10 +293,7 @@ static nimcp_error_t verify_dilithium_signature(
     free(signature);
     free(public_key);
 
-    if (err != NIMCP_OK) {
-        LOG_ERROR("Dilithium signature verification failed");
-        return err;
-    }
+    NIMCP_CHECK_THROW_MSG(err == NIMCP_OK, err, "Dilithium signature verification failed");
 
     LOG_INFO("Dilithium signature verified successfully");
     return NIMCP_OK;
@@ -380,8 +343,7 @@ nimcp_error_t nimcp_artifact_verify_signature(
         break;
 
     default:
-        LOG_ERROR("Unsupported signature algorithm %d", algo);
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_INVALID_PARAM, "unsupported signature algorithm %d", algo);
     }
 
     if (err != NIMCP_OK) {
@@ -514,8 +476,7 @@ nimcp_error_t nimcp_supply_chain_revoke_source(nimcp_supply_chain_t sc,
 
     pthread_mutex_unlock(&sc->lock);
 
-    LOG_WARN("Source not found: %s", source_url);
-    return NIMCP_ERROR_NOT_FOUND;
+    NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_NOT_FOUND, "source not found: %s", source_url);
 }
 
 nimcp_error_t nimcp_supply_chain_list_sources(nimcp_supply_chain_t sc,
@@ -538,7 +499,7 @@ nimcp_error_t nimcp_supply_chain_list_sources(nimcp_supply_chain_t sc,
     *sources = (nimcp_trusted_source_t*)malloc(sc->source_count * sizeof(nimcp_trusted_source_t));
     if (!*sources) {
         pthread_mutex_unlock(&sc->lock);
-        return NIMCP_ERROR_NO_MEMORY;
+        NIMCP_CHECK_THROW_MSG(false, NIMCP_ERROR_NO_MEMORY, "memory allocation failed for sources list");
     }
 
     memcpy(*sources, sc->sources, sc->source_count * sizeof(nimcp_trusted_source_t));
@@ -636,9 +597,7 @@ nimcp_error_t nimcp_supply_chain_export_report(nimcp_supply_chain_t sc,
     /* Generate simple report */
     size_t report_size = 4096;
     char* report = (char*)malloc(report_size);
-    if (!report) {
-        return NIMCP_ERROR_NO_MEMORY;
-    }
+    NIMCP_CHECK_THROW_MSG(report, NIMCP_ERROR_NO_MEMORY, "memory allocation failed for report");
 
     nimcp_supply_chain_stats_t stats;
     nimcp_supply_chain_get_stats(sc, &stats);

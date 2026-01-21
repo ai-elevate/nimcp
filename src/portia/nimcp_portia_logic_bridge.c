@@ -98,9 +98,8 @@ struct portia_logic_bridge {
  * HOW:  Queries Portia status, updates condition flags
  */
 static int update_conditions_internal(portia_logic_bridge_t* bridge) {
-    if (!bridge || !bridge->portia) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL && bridge->portia != NULL,
+                      NIMCP_ERROR_NULL_POINTER, "bridge or portia is NULL");
 
     portia_status_t status;
     nimcp_error_t err = portia_get_status(&status);
@@ -153,9 +152,8 @@ static int update_conditions_internal(portia_logic_bridge_t* bridge) {
  * HOW:  Creates AND/OR/IMPLIES gates for common scenarios
  */
 static int init_decision_gates(portia_logic_bridge_t* bridge) {
-    if (!bridge || !bridge->logic_network) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL && bridge->logic_network != NULL,
+                      NIMCP_ERROR_NULL_POINTER, "bridge or logic_network is NULL");
 
     /* Tier upgrade gate: memory_ok AND thermal_ok AND battery_ok */
     bridge->tier_upgrade_gate = neural_logic_create_gate(
@@ -345,9 +343,7 @@ void portia_logic_bridge_destroy(portia_logic_bridge_t* bridge) {
 }
 
 int portia_logic_bridge_start(portia_logic_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -372,9 +368,7 @@ int portia_logic_bridge_start(portia_logic_bridge_t* bridge) {
 }
 
 int portia_logic_bridge_stop(portia_logic_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -395,9 +389,7 @@ int portia_logic_bridge_stop(portia_logic_bridge_t* bridge) {
  *============================================================================*/
 
 int portia_logic_connect_brain(portia_logic_bridge_t* bridge, brain_t brain) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -415,9 +407,7 @@ int portia_logic_connect_brain(portia_logic_bridge_t* bridge, brain_t brain) {
 }
 
 int portia_logic_connect_immune(portia_logic_bridge_t* bridge, void* immune_system) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -430,9 +420,7 @@ int portia_logic_connect_immune(portia_logic_bridge_t* bridge, void* immune_syst
 }
 
 int portia_logic_connect_umm(portia_logic_bridge_t* bridge, void* umm) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -593,9 +581,8 @@ int portia_logic_add_custom_gate(
     const char* expression,
     uint32_t* gate_id_out)
 {
-    if (!bridge || !expression || !gate_id_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL && expression != NULL && gate_id_out != NULL,
+                      NIMCP_ERROR_NULL_POINTER, "NULL parameter in add_custom_gate");
 
     if (bridge->custom_gate_count >= bridge->config.max_custom_rules) {
         NIMCP_LOGGING_ERROR("Maximum custom gates reached");
@@ -690,9 +677,8 @@ int portia_logic_get_gate_decision(
     uint32_t gate_id,
     portia_logic_decision_t* decision)
 {
-    if (!bridge || !decision) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL && decision != NULL,
+                      NIMCP_ERROR_NULL_POINTER, "NULL parameter in get_gate_decision");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -738,9 +724,7 @@ int portia_logic_get_gate_decision(
  *============================================================================*/
 
 int portia_logic_update_conditions(portia_logic_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     int result = update_conditions_internal(bridge);
@@ -753,9 +737,8 @@ int portia_logic_get_conditions(
     const portia_logic_bridge_t* bridge,
     portia_resource_condition_t* conditions)
 {
-    if (!bridge || !conditions) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL && conditions != NULL,
+                      NIMCP_ERROR_NULL_POINTER, "NULL parameter in get_conditions");
 
     memcpy(conditions, &bridge->conditions, sizeof(portia_resource_condition_t));
 
@@ -767,9 +750,8 @@ int portia_logic_set_condition(
     const char* condition_name,
     bool value)
 {
-    if (!bridge || !condition_name) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL && condition_name != NULL,
+                      NIMCP_ERROR_NULL_POINTER, "NULL parameter in set_condition");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -809,9 +791,7 @@ int portia_logic_set_condition(
  *============================================================================*/
 
 int portia_logic_connect_bio_async(portia_logic_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  /* Already connected */
@@ -836,9 +816,7 @@ int portia_logic_connect_bio_async(portia_logic_bridge_t* bridge) {
 }
 
 int portia_logic_disconnect_bio_async(portia_logic_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  /* Already disconnected */
@@ -864,9 +842,7 @@ bool portia_logic_is_bio_async_connected(const portia_logic_bridge_t* bridge) {
 }
 
 int portia_logic_process_inbox(portia_logic_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->base.bio_async_enabled || !bridge->base.bio_ctx) {
         return 0;  /* No messages to process */
@@ -879,9 +855,8 @@ int portia_logic_broadcast_decision(
     portia_logic_bridge_t* bridge,
     const portia_logic_decision_t* decision)
 {
-    if (!bridge || !decision) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL && decision != NULL,
+                      NIMCP_ERROR_NULL_POINTER, "NULL parameter in broadcast_decision");
 
     if (!bridge->base.bio_async_enabled || !bridge->base.bio_ctx) {
         return NIMCP_ERROR_INVALID_STATE;  /* Bio-async not connected */
@@ -916,9 +891,8 @@ int portia_logic_get_stats(
     const portia_logic_bridge_t* bridge,
     portia_logic_stats_t* stats)
 {
-    if (!bridge || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL && stats != NULL,
+                      NIMCP_ERROR_NULL_POINTER, "NULL parameter in get_stats");
 
     memcpy(stats, &bridge->stats, sizeof(portia_logic_stats_t));
 
@@ -932,9 +906,7 @@ int portia_logic_get_stats(
 }
 
 int portia_logic_reset_stats(portia_logic_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 

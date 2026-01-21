@@ -251,7 +251,7 @@ static void update_bridge_active_state(security_perception_input_bridge_t* bridg
  * ============================================================================ */
 
 int security_perception_input_default_config(sec_percept_input_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(sec_percept_input_config_t));
 
@@ -361,8 +361,8 @@ int security_perception_input_connect_cochlea(
     security_perception_input_bridge_t* bridge,
     cochlea_t* cochlea
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!cochlea) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(cochlea, NIMCP_ERROR_NULL_POINTER, "cochlea is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -383,8 +383,8 @@ int security_perception_input_connect_visual_cortex(
     security_perception_input_bridge_t* bridge,
     visual_cortex_t* visual_cortex
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!visual_cortex) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(visual_cortex, NIMCP_ERROR_NULL_POINTER, "visual_cortex is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -405,8 +405,8 @@ int security_perception_input_connect_bbb(
     security_perception_input_bridge_t* bridge,
     bbb_system_t bbb
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bbb) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bbb, NIMCP_ERROR_NULL_POINTER, "bbb is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -426,8 +426,8 @@ int security_perception_input_connect_anomaly_detector(
     security_perception_input_bridge_t* bridge,
     nimcp_anomaly_detector_t detector
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!detector) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(detector, NIMCP_ERROR_NULL_POINTER, "detector is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -454,10 +454,10 @@ int security_perception_validate_audio_input(
     uint32_t sample_rate,
     sec_input_validation_result_t* result
 ) {
-    if (!bridge || !samples || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && samples && result, NIMCP_ERROR_NULL_POINTER, "bridge, samples, or result is NULL");
     if (num_samples == 0 || num_samples > SEC_PERCEPT_INPUT_MAX_AUDIO_SAMPLES) {
         *result = SEC_INPUT_MALFORMED;
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAMETER, "invalid num_samples");
     }
 
     BRIDGE_LOCK(bridge);
@@ -548,8 +548,8 @@ int security_perception_detect_audio_anomaly(
     float* anomaly_score,
     float* confidence
 ) {
-    if (!bridge || !samples || !anomaly_score || !confidence) return NIMCP_ERROR_NULL_POINTER;
-    if (num_samples == 0) return NIMCP_ERROR_INVALID_PARAMETER;
+    NIMCP_CHECK_THROW(bridge && samples && anomaly_score && confidence, NIMCP_ERROR_NULL_POINTER, "bridge, samples, anomaly_score, or confidence is NULL");
+    NIMCP_CHECK_THROW(num_samples > 0, NIMCP_ERROR_INVALID_PARAMETER, "num_samples is zero");
 
     *anomaly_score = 0.0f;
     *confidence = 0.5f;
@@ -606,19 +606,19 @@ int security_perception_validate_visual_input(
     uint32_t channels,
     sec_input_validation_result_t* result
 ) {
-    if (!bridge || !pixels || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && pixels && result, NIMCP_ERROR_NULL_POINTER, "bridge, pixels, or result is NULL");
     if (width == 0 || height == 0 || channels == 0) {
         *result = SEC_INPUT_MALFORMED;
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAMETER, "width, height, or channels is zero");
     }
     if (width > SEC_PERCEPT_INPUT_MAX_IMAGE_WIDTH ||
         height > SEC_PERCEPT_INPUT_MAX_IMAGE_HEIGHT) {
         *result = SEC_INPUT_MALFORMED;
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAMETER, "image dimensions exceed maximum");
     }
     if (channels > 4) {
         *result = SEC_INPUT_MALFORMED;
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAMETER, "channels exceeds 4");
     }
 
     BRIDGE_LOCK(bridge);
@@ -693,8 +693,8 @@ int security_perception_detect_visual_anomaly(
     float* anomaly_score,
     float* confidence
 ) {
-    if (!bridge || !pixels || !anomaly_score || !confidence) return NIMCP_ERROR_NULL_POINTER;
-    if (width == 0 || height == 0 || channels == 0) return NIMCP_ERROR_INVALID_PARAMETER;
+    NIMCP_CHECK_THROW(bridge && pixels && anomaly_score && confidence, NIMCP_ERROR_NULL_POINTER, "bridge, pixels, anomaly_score, or confidence is NULL");
+    NIMCP_CHECK_THROW(width > 0 && height > 0 && channels > 0, NIMCP_ERROR_INVALID_PARAMETER, "width, height, or channels is zero");
 
     *anomaly_score = 0.0f;
     *confidence = 0.5f;
@@ -792,7 +792,7 @@ int security_perception_gate_input(
     sec_input_gate_action_t* action,
     float* attenuation
 ) {
-    if (!bridge || !action || !attenuation) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && action && attenuation, NIMCP_ERROR_NULL_POINTER, "bridge, action, or attenuation is NULL");
 
     BRIDGE_LOCK(bridge);
     security_perception_gate_input_unlocked(bridge, threat_score, action, attenuation);
@@ -805,7 +805,7 @@ int security_perception_apply_audio_gating(
     float* samples,
     size_t num_samples
 ) {
-    if (!bridge || !samples) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && samples, NIMCP_ERROR_NULL_POINTER, "bridge or samples is NULL");
     if (num_samples == 0) return 0;
 
     BRIDGE_LOCK(bridge);
@@ -834,7 +834,7 @@ int security_perception_apply_visual_gating(
     uint32_t height,
     uint32_t channels
 ) {
-    if (!bridge || !pixels) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && pixels, NIMCP_ERROR_NULL_POINTER, "bridge or pixels is NULL");
     if (width == 0 || height == 0 || channels == 0) return 0;
 
     BRIDGE_LOCK(bridge);
@@ -864,7 +864,7 @@ int security_perception_apply_visual_gating(
 int security_perception_input_update_sec_to_percept(
     security_perception_input_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -911,7 +911,7 @@ int security_perception_input_update_sec_to_percept(
 int security_perception_input_update_percept_to_sec(
     security_perception_input_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -933,7 +933,7 @@ int security_perception_input_update_percept_to_sec(
 int security_perception_input_update(
     security_perception_input_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     int ret = security_perception_input_update_percept_to_sec(bridge);
     if (ret != 0) return ret;
@@ -949,7 +949,7 @@ int security_perception_input_get_sec_to_percept_effects(
     const security_perception_input_bridge_t* bridge,
     sec_to_percept_input_effects_t* effects
 ) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_NULL_POINTER, "bridge or effects is NULL");
 
     /* Note: cast away const for mutex lock, safe as we only read */
     security_perception_input_bridge_t* mutable_bridge =
@@ -966,7 +966,7 @@ int security_perception_input_get_percept_to_sec_effects(
     const security_perception_input_bridge_t* bridge,
     percept_to_sec_input_effects_t* effects
 ) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_NULL_POINTER, "bridge or effects is NULL");
 
     security_perception_input_bridge_t* mutable_bridge =
         (security_perception_input_bridge_t*)bridge;
@@ -982,7 +982,7 @@ int security_perception_input_get_state(
     const security_perception_input_bridge_t* bridge,
     sec_percept_input_state_t* state
 ) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     security_perception_input_bridge_t* mutable_bridge =
         (security_perception_input_bridge_t*)bridge;
@@ -998,7 +998,7 @@ int security_perception_input_get_stats(
     const security_perception_input_bridge_t* bridge,
     sec_percept_input_stats_t* stats
 ) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     security_perception_input_bridge_t* mutable_bridge =
         (security_perception_input_bridge_t*)bridge;
@@ -1054,7 +1054,7 @@ const char* security_perception_input_state_name(
 int security_perception_input_report_false_positive(
     security_perception_input_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 

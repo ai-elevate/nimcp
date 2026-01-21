@@ -55,9 +55,7 @@ static inline float ema_update(float avg, float value, float alpha) {
 //=============================================================================
 
 int ensemble_pink_default_config(ensemble_pink_config_t* config) {
-    if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config != NULL, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(ensemble_pink_config_t));
 
@@ -174,13 +172,8 @@ int ensemble_pink_connect_ensemble(
     ensemble_pink_bridge_t* bridge,
     ensemble_context_t ensemble)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (!ensemble) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(ensemble != NULL, NIMCP_ERROR_NULL_POINTER, "ensemble is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -261,9 +254,7 @@ int ensemble_pink_connect_ensemble(
 }
 
 int ensemble_pink_disconnect_ensemble(ensemble_pink_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -305,13 +296,9 @@ bool ensemble_pink_is_connected(const ensemble_pink_bridge_t* bridge) {
 //=============================================================================
 
 int ensemble_pink_generate_noise(ensemble_pink_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (!bridge->ensemble || !bridge->generators) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->ensemble != NULL && bridge->generators != NULL,
+                      NIMCP_ERROR_INVALID_STATE, "ensemble or generators not connected");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -373,13 +360,8 @@ int ensemble_pink_inject_noise(
     ensemble_prediction_t* predictions,
     uint32_t num_predictions)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (!predictions) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(predictions != NULL, NIMCP_ERROR_NULL_POINTER, "predictions is NULL");
 
     if (!bridge->config.enable_noise_injection) {
         return NIMCP_SUCCESS;  // Noise disabled, no-op
@@ -439,13 +421,8 @@ int ensemble_pink_inject_feature_noise(
     float* features,
     uint32_t num_features)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (!features) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(features != NULL, NIMCP_ERROR_NULL_POINTER, "features is NULL");
 
     if (!bridge->config.enable_noise_injection) {
         return NIMCP_SUCCESS;
@@ -478,13 +455,8 @@ int ensemble_pink_update_uncertainty(
     ensemble_pink_bridge_t* bridge,
     const ensemble_uncertainty_result_t* uncertainty)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (!uncertainty) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(uncertainty != NULL, NIMCP_ERROR_NULL_POINTER, "uncertainty is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -534,9 +506,7 @@ int ensemble_pink_update_uncertainty(
 }
 
 int ensemble_pink_adapt_noise(ensemble_pink_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->config.enable_adaptation) {
         return NIMCP_SUCCESS;  // Adaptation disabled
@@ -648,9 +618,7 @@ int ensemble_pink_update(
     ensemble_pink_bridge_t* bridge,
     uint64_t delta_ms)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     // Adapt noise parameters based on uncertainty
     int ret = ensemble_pink_adapt_noise(bridge);
@@ -700,9 +668,8 @@ int ensemble_pink_get_stats(
     const ensemble_pink_bridge_t* bridge,
     ensemble_pink_stats_t* stats)
 {
-    if (!bridge || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL && stats != NULL,
+                      NIMCP_ERROR_NULL_POINTER, "NULL parameter in get_stats");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -715,9 +682,8 @@ int ensemble_pink_get_uncertainty(
     const ensemble_pink_bridge_t* bridge,
     ensemble_pink_uncertainty_t* uncertainty)
 {
-    if (!bridge || !uncertainty) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL && uncertainty != NULL,
+                      NIMCP_ERROR_NULL_POINTER, "NULL parameter in get_uncertainty");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *uncertainty = bridge->uncertainty;
@@ -734,9 +700,7 @@ int ensemble_pink_set_enabled(
     ensemble_pink_bridge_t* bridge,
     bool enable)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.enable_noise_injection = enable;
@@ -751,9 +715,7 @@ int ensemble_pink_set_adaptation_enabled(
     ensemble_pink_bridge_t* bridge,
     bool enable)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.enable_adaptation = enable;
@@ -765,9 +727,7 @@ int ensemble_pink_set_adaptation_enabled(
 }
 
 int ensemble_pink_reset(ensemble_pink_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -813,9 +773,7 @@ int ensemble_pink_reset(ensemble_pink_bridge_t* bridge) {
 //=============================================================================
 
 int ensemble_pink_connect_bio_async(ensemble_pink_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  // Already connected
@@ -844,9 +802,7 @@ int ensemble_pink_connect_bio_async(ensemble_pink_bridge_t* bridge) {
 }
 
 int ensemble_pink_disconnect_bio_async(ensemble_pink_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  // Not connected

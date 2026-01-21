@@ -205,9 +205,7 @@ static float soft_threshold(float x, float lambda) {
 
 int cortical_sparse_default_config(sparse_coding_config_t* config) {
     /* Guard clause: validate parameters */
-    if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config != NULL, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Sparsity constraints */
     config->sparsity_type = SPARSITY_BOTH;
@@ -389,12 +387,10 @@ int cortical_sparse_enforce_sparsity(
     float* output_activations
 ) {
     /* Guard clause: validate parameters */
-    if (!system || !activations || !output_activations) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (num_activations != system->num_columns) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system != NULL && activations != NULL && output_activations != NULL,
+                      NIMCP_ERROR_NULL_POINTER, "NULL parameter in enforce_sparsity");
+    NIMCP_CHECK_THROW(num_activations == system->num_columns,
+                      NIMCP_ERROR_INVALID_PARAM, "num_activations mismatch");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -417,7 +413,7 @@ int cortical_sparse_enforce_sparsity(
             uint32_t* winner_indices = (uint32_t*)nimcp_malloc(k * sizeof(uint32_t));
             if (!winner_indices) {
                 nimcp_platform_mutex_unlock(system->mutex);
-                return NIMCP_ERROR_MEMORY;
+                NIMCP_CHECK_THROW(false, NIMCP_ERROR_MEMORY, "Failed to allocate winner_indices");
             }
 
             find_k_largest_indices(activations, num_activations, k, winner_indices);
@@ -453,7 +449,7 @@ int cortical_sparse_enforce_sparsity(
 
         default:
             nimcp_platform_mutex_unlock(system->mutex);
-            return NIMCP_ERROR_INVALID_PARAM;
+            NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "Unknown sparsity method");
     }
 
     /* Update population sparsity */
@@ -488,12 +484,10 @@ int cortical_sparse_apply_lateral_inhibition(
     uint32_t num_activations
 ) {
     /* Guard clause: validate parameters */
-    if (!system || !activations) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (num_activations != system->num_columns) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system != NULL && activations != NULL,
+                      NIMCP_ERROR_NULL_POINTER, "NULL parameter in lateral_inhibition");
+    NIMCP_CHECK_THROW(num_activations == system->num_columns,
+                      NIMCP_ERROR_INVALID_PARAM, "num_activations mismatch");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -505,7 +499,7 @@ int cortical_sparse_apply_lateral_inhibition(
     float* inhibition = (float*)nimcp_calloc(num_activations, sizeof(float));
     if (!inhibition) {
         nimcp_platform_mutex_unlock(system->mutex);
-        return NIMCP_ERROR_MEMORY;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_MEMORY, "Failed to allocate inhibition array");
     }
 
     /* Simplified: assume 1D columnar arrangement */
@@ -625,9 +619,7 @@ int cortical_sparse_update_thresholds(
     float current_sparsity
 ) {
     /* Guard clause: validate parameters */
-    if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(system != NULL, NIMCP_ERROR_NULL_POINTER, "system is NULL");
 
     if (!system->config.enable_homeostasis) {
         return NIMCP_SUCCESS;  /* Homeostasis disabled */
@@ -675,12 +667,9 @@ int cortical_sparse_set_column_threshold(
     float threshold
 ) {
     /* Guard clause: validate parameters */
-    if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (column_id >= system->num_columns) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system != NULL, NIMCP_ERROR_NULL_POINTER, "system is NULL");
+    NIMCP_CHECK_THROW(column_id < system->num_columns,
+                      NIMCP_ERROR_INVALID_PARAM, "column_id out of range");
 
     nimcp_platform_mutex_lock(system->mutex);
     system->column_states[column_id].activation_threshold = threshold;
@@ -770,12 +759,10 @@ int cortical_sparse_get_active_set(
     uint32_t* num_active
 ) {
     /* Guard clause: validate parameters */
-    if (!system || !activations || !active_indices || !num_active) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (num_activations != system->num_columns) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system != NULL && activations != NULL && active_indices != NULL && num_active != NULL,
+                      NIMCP_ERROR_NULL_POINTER, "NULL parameter in get_active_set");
+    NIMCP_CHECK_THROW(num_activations == system->num_columns,
+                      NIMCP_ERROR_INVALID_PARAM, "num_activations mismatch");
 
     uint32_t count = 0;
     for (uint32_t i = 0; i < num_activations && count < max_active; i++) {
@@ -797,12 +784,10 @@ int cortical_sparse_get_active_values(
     uint32_t* num_active
 ) {
     /* Guard clause: validate parameters */
-    if (!system || !activations || !active_values || !num_active) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (num_activations != system->num_columns) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system != NULL && activations != NULL && active_values != NULL && num_active != NULL,
+                      NIMCP_ERROR_NULL_POINTER, "NULL parameter in get_active_values");
+    NIMCP_CHECK_THROW(num_activations == system->num_columns,
+                      NIMCP_ERROR_INVALID_PARAM, "num_activations mismatch");
 
     uint32_t count = 0;
     for (uint32_t i = 0; i < num_activations && count < max_active; i++) {
@@ -824,9 +809,8 @@ int cortical_sparse_get_stats(
     sparse_coding_stats_t* stats
 ) {
     /* Guard clause: validate parameters */
-    if (!system || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(system != NULL && stats != NULL,
+                      NIMCP_ERROR_NULL_POINTER, "NULL parameter in get_stats");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -859,9 +843,8 @@ int cortical_sparse_get_state(
     sparse_coding_state_t* state
 ) {
     /* Guard clause: validate parameters */
-    if (!system || !state) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(system != NULL && state != NULL,
+                      NIMCP_ERROR_NULL_POINTER, "NULL parameter in get_state");
 
     nimcp_platform_mutex_lock(system->mutex);
     memcpy(state, &system->state, sizeof(sparse_coding_state_t));
@@ -876,12 +859,10 @@ int cortical_sparse_get_column_state(
     column_sparse_state_t* state
 ) {
     /* Guard clause: validate parameters */
-    if (!system || !state) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (column_id >= system->num_columns) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system != NULL && state != NULL,
+                      NIMCP_ERROR_NULL_POINTER, "NULL parameter in get_column_state");
+    NIMCP_CHECK_THROW(column_id < system->num_columns,
+                      NIMCP_ERROR_INVALID_PARAM, "column_id out of range");
 
     nimcp_platform_mutex_lock(system->mutex);
     memcpy(state, &system->column_states[column_id], sizeof(column_sparse_state_t));
@@ -898,12 +879,9 @@ int cortical_sparse_connect_bio_async(
     cortical_sparse_coding_system_t* system
 ) {
     /* Guard clause: validate parameters */
-    if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (system->bio_async_enabled) {
-        return NIMCP_ERROR_INVALID_TYPE;
-    }
+    NIMCP_CHECK_THROW(system != NULL, NIMCP_ERROR_NULL_POINTER, "system is NULL");
+    NIMCP_CHECK_THROW(!system->bio_async_enabled,
+                      NIMCP_ERROR_INVALID_TYPE, "bio_async already enabled");
 
     /* Register with bio-async router */
     bio_module_info_t info = {
@@ -918,19 +896,17 @@ int cortical_sparse_connect_bio_async(
         system->bio_async_enabled = true;
         NIMCP_LOGGING_INFO("Connected to bio-async router");
         return NIMCP_SUCCESS;
-    } else {
-        NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
-        return NIMCP_ERROR_NOT_SUPPORTED;
     }
+
+    NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
+    NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_SUPPORTED, "Bio-async router not available");
 }
 
 int cortical_sparse_disconnect_bio_async(
     cortical_sparse_coding_system_t* system
 ) {
     /* Guard clause: validate parameters */
-    if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(system != NULL, NIMCP_ERROR_NULL_POINTER, "system is NULL");
     if (!system->bio_async_enabled) {
         return NIMCP_SUCCESS;  /* Already disconnected */
     }
@@ -972,12 +948,10 @@ int cortical_sparse_quantize_to_ternary(
     trit_t* ternary_output
 ) {
     /* Guard clause: validate parameters */
-    if (!system || !activations || !ternary_output) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (num_activations == 0) {
-        return NIMCP_ERROR_INVALID;
-    }
+    NIMCP_CHECK_THROW(system != NULL && activations != NULL && ternary_output != NULL,
+                      NIMCP_ERROR_NULL_POINTER, "NULL parameter in quantize_to_ternary");
+    NIMCP_CHECK_THROW(num_activations > 0,
+                      NIMCP_ERROR_INVALID, "num_activations is zero");
 
     float pos_thresh = system->config.ternary_positive_threshold;
     float neg_thresh = system->config.ternary_negative_threshold;
@@ -1007,12 +981,10 @@ int cortical_sparse_dequantize_from_ternary(
     float* continuous_output
 ) {
     /* Guard clause: validate parameters */
-    if (!system || !ternary_input || !continuous_output) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (num_activations == 0) {
-        return NIMCP_ERROR_INVALID;
-    }
+    NIMCP_CHECK_THROW(system != NULL && ternary_input != NULL && continuous_output != NULL,
+                      NIMCP_ERROR_NULL_POINTER, "NULL parameter in dequantize_from_ternary");
+    NIMCP_CHECK_THROW(num_activations > 0,
+                      NIMCP_ERROR_INVALID, "num_activations is zero");
 
     /* Dequantize each ternary value to continuous */
     for (uint32_t i = 0; i < num_activations; i++) {
@@ -1032,18 +1004,15 @@ int cortical_sparse_enforce_sparsity_ternary(
     trit_t* ternary_output
 ) {
     /* Guard clause: validate parameters */
-    if (!system || !activations || !ternary_output) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (num_activations == 0) {
-        return NIMCP_ERROR_INVALID;
-    }
+    NIMCP_CHECK_THROW(system != NULL && activations != NULL && ternary_output != NULL,
+                      NIMCP_ERROR_NULL_POINTER, "NULL parameter in enforce_sparsity_ternary");
+    NIMCP_CHECK_THROW(num_activations > 0,
+                      NIMCP_ERROR_INVALID, "num_activations is zero");
 
     /* First apply sparsity enforcement to get sparse continuous activations */
     float* sparse_activations = nimcp_malloc(num_activations * sizeof(float));
-    if (!sparse_activations) {
-        return NIMCP_ERROR_MEMORY;
-    }
+    NIMCP_CHECK_THROW(sparse_activations != NULL, NIMCP_ERROR_MEMORY,
+                      "Failed to allocate sparse_activations");
 
     /* Copy activations for modification */
     memcpy(sparse_activations, activations, num_activations * sizeof(float));
@@ -1115,9 +1084,8 @@ int cortical_sparse_get_ternary_active_set(
     uint32_t* num_active
 ) {
     /* Guard clause: validate parameters */
-    if (!ternary_activations || !active_indices || !num_active) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(ternary_activations != NULL && active_indices != NULL && num_active != NULL,
+                      NIMCP_ERROR_NULL_POINTER, "NULL parameter in get_ternary_active_set");
 
     uint32_t count = 0;
     for (uint32_t i = 0; i < num_activations && count < max_active; i++) {
@@ -1254,9 +1222,7 @@ int cortical_sparse_enable_ternary_mode(
     float negative_threshold,
     ternary_pack_mode_t pack_mode
 ) {
-    if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(system != NULL, NIMCP_ERROR_NULL_POINTER, "system is NULL");
 
     system->config.enable_ternary_coefficients = true;
     system->config.ternary_positive_threshold = positive_threshold;
@@ -1275,9 +1241,7 @@ int cortical_sparse_enable_ternary_mode(
 int cortical_sparse_disable_ternary_mode(
     cortical_sparse_coding_system_t* system
 ) {
-    if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(system != NULL, NIMCP_ERROR_NULL_POINTER, "system is NULL");
 
     system->config.enable_ternary_coefficients = false;
 

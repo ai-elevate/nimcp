@@ -394,6 +394,43 @@ set_tests_properties(regression_exception_macro_regression
 )
 
 # =============================================================================
+# Exception Module API Stability Tests (NEW)
+# Comprehensive regression tests for exception API stability across modules:
+# - Swarm module exception API consistency
+# - Security module exception API stability
+# - Training module exception interface
+# - Perception module exception contracts
+# - Memory module exception behavior
+# - Bio-async exception routing API
+# =============================================================================
+
+add_executable(regression_exception_module_api_stability
+    test_exception_module_api_stability.cpp
+)
+
+target_link_libraries(regression_exception_module_api_stability
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        pthread
+        m
+)
+
+target_compile_features(regression_exception_module_api_stability PRIVATE cxx_std_17)
+
+add_test(
+    NAME regression_exception_module_api_stability
+    COMMAND regression_exception_module_api_stability
+)
+
+set_tests_properties(regression_exception_module_api_stability
+    PROPERTIES
+    LABELS "regression;exception;stability;api;module"
+    TIMEOUT 180
+)
+
+# =============================================================================
 # Custom Target: Run All Exception Regression Tests
 # =============================================================================
 add_custom_target(test_exception_regression
@@ -411,6 +448,7 @@ add_custom_target(test_exception_regression
         regression_exception_performance_regression
         regression_exception_typed_regression
         regression_exception_macro_regression
+        regression_exception_module_api_stability
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "Running all exception regression tests"
 )
@@ -424,6 +462,7 @@ add_custom_target(test_exception_stability
         regression_exception_api_stability
         regression_exception_error_codes
         regression_exception_error_code_stability
+        regression_exception_module_api_stability
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "Running exception stability tests"
 )

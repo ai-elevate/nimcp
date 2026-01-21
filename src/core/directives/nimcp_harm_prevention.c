@@ -155,7 +155,7 @@ int harm_prevention_default_config(harm_prevention_config_t* config)
     /* Guard clause */
     if (!config) {
         NIMCP_LOGGING_ERROR("Null config pointer");
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Set defaults */
@@ -269,10 +269,10 @@ int harm_prevention_evaluate_action(
 {
     /* Guard clauses */
     if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
     if (!action_desc || !result) {
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "invalid parameter");
     }
 
     /* Initialize result */
@@ -290,7 +290,7 @@ int harm_prevention_evaluate_action(
     /* Check for classifier error */
     if (harm_score < 0.0f) {
         NIMCP_LOGGING_ERROR("Harm classifier failed");
-        return NIMCP_ERROR_INVALID_STATE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_STATE, "invalid state");
     }
 
     /* Clamp harm score to [0.0, 1.0] */
@@ -362,10 +362,10 @@ int harm_prevention_evaluate_inaction(
 {
     /* Guard clauses */
     if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
     if (!context_desc || !required_action || !result) {
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "invalid parameter");
     }
 
     /* Check if inaction detection enabled */
@@ -410,10 +410,10 @@ int harm_prevention_block_action(
 {
     /* Guard clauses */
     if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
     if (!reason) {
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "invalid parameter");
     }
 
     /* Create synthetic result */
@@ -453,7 +453,7 @@ int harm_prevention_register_escalation_callback(
 {
     /* Guard clause */
     if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     system->config.escalation_callback = callback;
@@ -477,15 +477,15 @@ int harm_prevention_update_thresholds(
 {
     /* Guard clauses */
     if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
     if (block_threshold < 0.0f || block_threshold > 1.0f ||
         warn_threshold < 0.0f || warn_threshold > 1.0f) {
-        return NIMCP_ERROR_OUT_OF_RANGE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_OUT_OF_RANGE, "out of range");
     }
     if (warn_threshold > block_threshold) {
         NIMCP_LOGGING_ERROR("Warn threshold must be <= block threshold");
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "invalid parameter");
     }
 
     system->config.block_threshold = block_threshold;
@@ -509,7 +509,7 @@ int harm_prevention_enable_inaction_detection(
 {
     /* Guard clause */
     if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     system->config.enable_inaction_detection = enable;
@@ -553,7 +553,7 @@ int harm_prevention_get_stats(
 {
     /* Guard clauses */
     if (!system || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     *stats = system->stats;
@@ -610,7 +610,7 @@ int harm_prevention_connect_bio_async(
 {
     /* Guard clause */
     if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Check if already connected */
@@ -648,7 +648,7 @@ int harm_prevention_disconnect_bio_async(
 {
     /* Guard clause */
     if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Check if connected */

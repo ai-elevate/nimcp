@@ -95,7 +95,7 @@ static void create_threat_signature(const char* action, const char* reason,
 
 int directive_immune_bridge_default_config(directive_immune_config_t* config) {
     if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     config->enable_immune_modulation = true;
@@ -200,7 +200,7 @@ void directive_immune_bridge_destroy(directive_immune_bridge_t* bridge) {
 
 int directive_immune_bridge_update(directive_immune_bridge_t* bridge) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -244,7 +244,7 @@ int directive_immune_bridge_update(directive_immune_bridge_t* bridge) {
 
 int directive_immune_bridge_apply_modulation(directive_immune_bridge_t* bridge) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -270,7 +270,7 @@ int directive_immune_bridge_get_effects(
     cytokine_directive_effects_t* effects)
 {
     if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -289,7 +289,7 @@ int directive_immune_bridge_on_threat_detected(
     float threat_level)
 {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -325,7 +325,7 @@ int directive_immune_bridge_report_blocked_action(
     const char* reason)
 {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -363,7 +363,7 @@ int directive_immune_bridge_get_stats(
     directive_immune_stats_t* stats)
 {
     if (!bridge || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -423,7 +423,7 @@ float directive_immune_bridge_get_threshold_modifier(const directive_immune_brid
 
 int directive_immune_bridge_connect_bio_async(directive_immune_bridge_t* bridge) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -455,7 +455,7 @@ int directive_immune_bridge_connect_bio_async(directive_immune_bridge_t* bridge)
 
 int directive_immune_bridge_disconnect_bio_async(directive_immune_bridge_t* bridge) {
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);

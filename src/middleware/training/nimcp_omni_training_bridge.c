@@ -49,7 +49,8 @@ static float get_lr_scale_for_difficulty(omni_difficulty_t difficulty,
  * ============================================================================ */
 
 int omni_training_default_config(omni_training_config_t* config) {
-    if (!config) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM,
+                      "omni_training_default_config: config is NULL");
 
     memset(config, 0, sizeof(omni_training_config_t));
 
@@ -128,7 +129,8 @@ void omni_training_bridge_destroy(omni_training_bridge_t* bridge) {
 
 int omni_training_connect_jepa(omni_training_bridge_t* bridge,
                                 jepa_bidirectional_t* jepa) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM,
+                      "omni_training_connect: bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->jepa = jepa;
     nimcp_mutex_unlock(bridge->mutex);
@@ -137,7 +139,8 @@ int omni_training_connect_jepa(omni_training_bridge_t* bridge,
 
 int omni_training_connect_hopfield(omni_training_bridge_t* bridge,
                                     hopfield_memory_t* hopfield) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM,
+                      "omni_training_connect_hopfield: bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->hopfield = hopfield;
     nimcp_mutex_unlock(bridge->mutex);
@@ -146,7 +149,8 @@ int omni_training_connect_hopfield(omni_training_bridge_t* bridge,
 
 int omni_training_connect_pred_hier(omni_training_bridge_t* bridge,
                                      predictive_hierarchy_t* pred_hier) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM,
+                      "omni_training_connect_pred_hier: bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->pred_hier = pred_hier;
     nimcp_mutex_unlock(bridge->mutex);
@@ -155,7 +159,8 @@ int omni_training_connect_pred_hier(omni_training_bridge_t* bridge,
 
 int omni_training_connect_replay(omni_training_bridge_t* bridge,
                                   temporal_replay_t* replay) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM,
+                      "omni_training_connect_replay: bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->replay = replay;
     nimcp_mutex_unlock(bridge->mutex);
@@ -164,7 +169,8 @@ int omni_training_connect_replay(omni_training_bridge_t* bridge,
 
 int omni_training_connect_gradient_manager(omni_training_bridge_t* bridge,
                                             gradient_manager_t* grad_mgr) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM,
+                      "omni_training_connect_gradient_manager: bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->grad_mgr = grad_mgr;
     nimcp_mutex_unlock(bridge->mutex);
@@ -173,7 +179,8 @@ int omni_training_connect_gradient_manager(omni_training_bridge_t* bridge,
 
 int omni_training_connect_training_ctx(omni_training_bridge_t* bridge,
                                         nimcp_brain_training_ctx_t* train_ctx) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM,
+                      "omni_training_connect_training_ctx: bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->train_ctx = train_ctx;
     nimcp_mutex_unlock(bridge->mutex);
@@ -185,7 +192,8 @@ int omni_training_connect_training_ctx(omni_training_bridge_t* bridge,
  * ============================================================================ */
 
 int omni_training_update(omni_training_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM,
+                      "omni_training_update: bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -233,7 +241,8 @@ int omni_training_update(omni_training_bridge_t* bridge) {
 }
 
 int omni_training_step(omni_training_bridge_t* bridge, float* loss) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM,
+                      "omni_training_step: bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -254,8 +263,10 @@ int omni_training_step(omni_training_bridge_t* bridge, float* loss) {
 }
 
 int omni_training_replay_step(omni_training_bridge_t* bridge, float* loss) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
-    if (!bridge->replay) return NIMCP_ERROR_NOT_INITIALIZED;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM,
+                      "omni_training_replay_step: bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->replay, NIMCP_ERROR_NOT_INITIALIZED,
+                      "omni_training_replay_step: replay not initialized");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -295,8 +306,10 @@ int omni_training_replay_step(omni_training_bridge_t* bridge, float* loss) {
 }
 
 int omni_training_contrastive_step(omni_training_bridge_t* bridge, float* loss) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
-    if (!bridge->hopfield) return NIMCP_ERROR_NOT_INITIALIZED;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM,
+                      "omni_training_contrastive_step: bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->hopfield, NIMCP_ERROR_NOT_INITIALIZED,
+                      "omni_training_contrastive_step: hopfield not initialized");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -326,7 +339,8 @@ int omni_training_contrastive_step(omni_training_bridge_t* bridge, float* loss) 
 int omni_training_get_pe_gradients(const omni_training_bridge_t* bridge,
                                     uint32_t level,
                                     float* gradients) {
-    if (!bridge || !gradients) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && gradients, NIMCP_ERROR_INVALID_PARAM,
+                      "omni_training_get_pe_gradients: NULL argument");
 
     nimcp_mutex_lock(((omni_training_bridge_t*)bridge)->mutex);
 
@@ -339,19 +353,22 @@ int omni_training_get_pe_gradients(const omni_training_bridge_t* bridge,
 }
 
 int omni_training_accumulate_gradients(omni_training_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM,
+                      "omni_training_accumulate_gradients: bridge is NULL");
     /* Gradient accumulation would be implemented here */
     return NIMCP_SUCCESS;
 }
 
 int omni_training_apply_gradients(omni_training_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM,
+                      "omni_training_apply_gradients: bridge is NULL");
     /* Gradient application would be implemented here */
     return NIMCP_SUCCESS;
 }
 
 int omni_training_zero_gradients(omni_training_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM,
+                      "omni_training_zero_gradients: bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     if (bridge->gradient_buffer && bridge->gradient_buffer_size > 0) {
@@ -374,7 +391,8 @@ omni_difficulty_t omni_training_get_difficulty(
 
 int omni_training_set_difficulty(omni_training_bridge_t* bridge,
                                   omni_difficulty_t difficulty) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM,
+                      "omni_training_set_difficulty: bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->omni_effects.difficulty = difficulty;
@@ -396,7 +414,8 @@ float omni_training_get_lr_scale(const omni_training_bridge_t* bridge) {
 
 int omni_training_get_omni_effects(const omni_training_bridge_t* bridge,
                                     omni_to_training_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_INVALID_PARAM,
+                      "omni_training_get_omni_effects: NULL argument");
     nimcp_mutex_lock(((omni_training_bridge_t*)bridge)->mutex);
     memcpy(effects, &bridge->omni_effects, sizeof(omni_to_training_effects_t));
     nimcp_mutex_unlock(((omni_training_bridge_t*)bridge)->mutex);
@@ -405,7 +424,8 @@ int omni_training_get_omni_effects(const omni_training_bridge_t* bridge,
 
 int omni_training_get_training_effects(const omni_training_bridge_t* bridge,
                                         training_to_omni_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_INVALID_PARAM,
+                      "omni_training_get_training_effects: NULL argument");
     nimcp_mutex_lock(((omni_training_bridge_t*)bridge)->mutex);
     memcpy(effects, &bridge->training_effects, sizeof(training_to_omni_effects_t));
     nimcp_mutex_unlock(((omni_training_bridge_t*)bridge)->mutex);
@@ -414,7 +434,8 @@ int omni_training_get_training_effects(const omni_training_bridge_t* bridge,
 
 int omni_training_get_stats(const omni_training_bridge_t* bridge,
                              omni_training_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_INVALID_PARAM,
+                      "omni_training_get_stats: NULL argument");
     nimcp_mutex_lock(((omni_training_bridge_t*)bridge)->mutex);
     memcpy(stats, &bridge->stats, sizeof(omni_training_stats_t));
     nimcp_mutex_unlock(((omni_training_bridge_t*)bridge)->mutex);
@@ -422,7 +443,8 @@ int omni_training_get_stats(const omni_training_bridge_t* bridge,
 }
 
 int omni_training_reset_stats(omni_training_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM,
+                      "omni_training_reset_stats: bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     memset(&bridge->stats, 0, sizeof(omni_training_stats_t));
     nimcp_mutex_unlock(bridge->mutex);
@@ -440,7 +462,8 @@ static nimcp_error_t handle_training_gradient_ready(
     void* user_data)
 {
     omni_training_bridge_t* bridge = (omni_training_bridge_t*)user_data;
-    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && msg, NIMCP_ERROR_INVALID_PARAM,
+                      "handle_training_gradient_ready: NULL argument");
 
     /* Apply gradients when ready */
     omni_training_apply_gradients(bridge);
@@ -457,7 +480,8 @@ static nimcp_error_t handle_training_replay_trigger(
     void* user_data)
 {
     omni_training_bridge_t* bridge = (omni_training_bridge_t*)user_data;
-    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && msg, NIMCP_ERROR_INVALID_PARAM,
+                      "handle_training_replay_trigger: NULL argument");
 
     /* Trigger replay step */
     float loss = 0.0f;
@@ -473,7 +497,8 @@ static nimcp_error_t handle_training_replay_trigger(
  * ============================================================================ */
 
 int omni_training_connect_bio_async(omni_training_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM,
+                      "omni_training_connect_bio_async: bridge is NULL");
     if (bridge->bio_async_connected) return NIMCP_SUCCESS;
 
     bio_module_info_t info = {
@@ -484,9 +509,8 @@ int omni_training_connect_bio_async(omni_training_bridge_t* bridge) {
     };
 
     bio_module_context_t ctx = bio_router_register_module(&info);
-    if (!ctx) {
-        return NIMCP_ERROR_OPERATION_FAILED;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_OPERATION_FAILED,
+                      "omni_training_connect_bio_async: failed to register module");
 
     bridge->bio_context = ctx;
 
@@ -500,7 +524,8 @@ int omni_training_connect_bio_async(omni_training_bridge_t* bridge) {
 }
 
 int omni_training_disconnect_bio_async(omni_training_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM,
+                      "omni_training_disconnect_bio_async: bridge is NULL");
     if (!bridge->bio_async_connected) return NIMCP_SUCCESS;
 
     if (bridge->bio_context) {

@@ -188,7 +188,7 @@ void astro_network_bridge_destroy(astro_network_bridge_t* bridge) {
 int astro_network_apply_cytokine_effects(astro_network_bridge_t* bridge) {
     /* Guard: validate parameters */
     if (!bridge || !bridge->immune_system || !bridge->astrocyte_network) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     if (!bridge->enable_cytokine_reactivity) {
@@ -254,7 +254,7 @@ int astro_network_apply_cytokine_effects(astro_network_bridge_t* bridge) {
 int astro_network_apply_inflammation_effects(astro_network_bridge_t* bridge) {
     /* Guard: validate parameters */
     if (!bridge || !bridge->immune_system || !bridge->astrocyte_network) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     if (!bridge->enable_inflammation_astrogliosis) {
@@ -337,7 +337,7 @@ float astro_network_compute_glutamate_clearance(const astro_network_bridge_t* br
 int astro_network_release_cytokines_from_reactive(astro_network_bridge_t* bridge) {
     /* Guard: validate parameters */
     if (!bridge || !bridge->immune_system || !bridge->astrocyte_network) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     if (!bridge->enable_reactive_cytokine_production) {
@@ -399,7 +399,7 @@ int astro_network_release_cytokines_from_reactive(astro_network_bridge_t* bridge
 int astro_network_trigger_calcium_immune_alert(astro_network_bridge_t* bridge) {
     /* Guard: validate parameters */
     if (!bridge || !bridge->immune_system || !bridge->astrocyte_network) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     if (!bridge->enable_calcium_immune_signaling) {
@@ -451,7 +451,7 @@ int astro_network_trigger_calcium_immune_alert(astro_network_bridge_t* bridge) {
 int astro_network_modulate_bbb_permeability(astro_network_bridge_t* bridge) {
     /* Guard: validate parameters */
     if (!bridge || !bridge->immune_system) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     if (!bridge->enable_bbb_inflammation_coupling) {
@@ -481,7 +481,7 @@ int astro_network_modulate_bbb_permeability(astro_network_bridge_t* bridge) {
 int astro_network_release_il10_homeostatic(astro_network_bridge_t* bridge) {
     /* Guard: validate parameters */
     if (!bridge || !bridge->immune_system || !bridge->astrocyte_network) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     float reactivity = astro_network_compute_reactivity(bridge);
@@ -522,7 +522,7 @@ int astro_network_bridge_update(
 ) {
     /* Guard: validate parameters */
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Apply immune → astrocyte effects */
@@ -552,7 +552,7 @@ int astro_network_get_cytokine_effects(
 ) {
     /* Guard: validate parameters */
     if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_astro_network_effects_t));
@@ -565,7 +565,7 @@ int astro_network_get_inflammation_state(
 ) {
     /* Guard: validate parameters */
     if (!bridge || !state) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_astro_network_state_t));
@@ -601,7 +601,7 @@ float astro_network_get_bbb_permeability(const astro_network_bridge_t* bridge) {
 int astro_network_connect_bio_async(astro_network_bridge_t* bridge) {
     /* Guard: validate parameters */
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     if (bridge->base.bio_async_enabled) {
@@ -630,7 +630,7 @@ int astro_network_connect_bio_async(astro_network_bridge_t* bridge) {
 int astro_network_disconnect_bio_async(astro_network_bridge_t* bridge) {
     /* Guard: validate parameters */
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     if (!bridge->base.bio_async_enabled) {

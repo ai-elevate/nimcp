@@ -196,7 +196,6 @@ nimcp_status_t nimcp_brain_configure_training(
     if (!state) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(training_pipeline_state_t),
             "Failed to allocate training state");
-        return NIMCP_ERROR_MEMORY;
     }
 
     // Map public loss type to internal loss type
@@ -389,7 +388,6 @@ nimcp_status_t nimcp_brain_train_step(
     if (!network) {
         NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "training",
             "Brain has no neural network");
-        return NIMCP_ERROR_INVALID;
     }
 
     // Get base network for backpropagation
@@ -397,7 +395,6 @@ nimcp_status_t nimcp_brain_train_step(
     if (!base_net) {
         NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "training",
             "Failed to get base network");
-        return NIMCP_ERROR;
     }
 
     // Create backprop context if not exists
@@ -406,7 +403,6 @@ nimcp_status_t nimcp_brain_train_step(
         if (!state->backprop) {
             NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(backprop_ctx_t),
                 "Failed to create backprop context");
-            return NIMCP_ERROR_MEMORY;
         }
     }
 
@@ -415,7 +411,6 @@ nimcp_status_t nimcp_brain_train_step(
     if (!predictions) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_targets * sizeof(float),
             "Failed to allocate predictions buffer");
-        return NIMCP_ERROR_MEMORY;
     }
 
     if (!backprop_forward(state->backprop, features, num_features, predictions, num_targets)) {
@@ -431,7 +426,6 @@ nimcp_status_t nimcp_brain_train_step(
         nimcp_free(predictions);
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_targets * sizeof(float),
             "Failed to allocate output gradients");
-        return NIMCP_ERROR_MEMORY;
     }
 
     // Compute loss and gradients using training context
@@ -458,8 +452,8 @@ nimcp_status_t nimcp_brain_train_step(
         if (!weight_gradients) {
             nimcp_free(predictions);
             nimcp_free(output_gradients);
-            set_error("Failed to allocate weight gradients");
-            return NIMCP_ERROR_MEMORY;
+            NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, total_weights * sizeof(float),
+                "Failed to allocate weight gradients");
         }
 
         // Perform backpropagation
@@ -482,8 +476,8 @@ nimcp_status_t nimcp_brain_train_step(
     if (!params) {
         nimcp_free(predictions);
         if (weight_gradients) nimcp_free(weight_gradients);
-        set_error("Failed to allocate params buffer");
-        return NIMCP_ERROR_MEMORY;
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, total_weights * sizeof(float),
+            "Failed to allocate params buffer");
     }
 
     size_t weight_idx = 0;
@@ -757,7 +751,6 @@ nimcp_status_t nimcp_brain_enable_callbacks(
     if (!state) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(training_pipeline_state_t),
             "Failed to get training state");
-        return NIMCP_ERROR_MEMORY;
     }
 
     // Destroy existing callbacks if present
@@ -786,7 +779,6 @@ nimcp_status_t nimcp_brain_enable_callbacks(
     state->callbacks = tcb_create(&internal_config);
     if (!state->callbacks) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, 0, "Failed to create callback manager");
-        return NIMCP_ERROR_MEMORY;
     }
 
     state->callbacks_enabled = true;

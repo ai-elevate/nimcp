@@ -120,7 +120,7 @@ nimcp_result_t nimcp_get_resource_lock(const char* resource_id, nimcp_mutex_t** 
     // Validate parameters
     if (!resource_id || !mutex) {
         set_thread_error(NIMCP_ERROR_INVALID_PARAM, "Invalid resource lock parameters");
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "Invalid resource lock parameters");
     }
 
     // Lazy initialization: Ensure table is initialized
@@ -154,7 +154,7 @@ nimcp_result_t nimcp_get_resource_lock(const char* resource_id, nimcp_mutex_t** 
     if (!entry) {
         nimcp_platform_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
         set_thread_error(NIMCP_ERROR_MEMORY, "Failed to allocate resource entry");
-        return NIMCP_ERROR_MEMORY;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_MEMORY, "Failed to allocate resource entry");
     }
 
     // Duplicate resource_id string (use nimcp_malloc to match nimcp_free below)
@@ -176,7 +176,7 @@ nimcp_result_t nimcp_get_resource_lock(const char* resource_id, nimcp_mutex_t** 
         nimcp_free(entry);
         nimcp_platform_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
         set_thread_error(NIMCP_ERROR_MEMORY, "Failed to allocate resource lock");
-        return NIMCP_ERROR_MEMORY;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_MEMORY, "Failed to allocate resource lock");
     }
 
     // Initialize mutex using platform abstraction
@@ -187,7 +187,7 @@ nimcp_result_t nimcp_get_resource_lock(const char* resource_id, nimcp_mutex_t** 
         nimcp_free(entry);
         nimcp_platform_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
         set_thread_error(NIMCP_ERROR_SYSTEM, "Failed to initialize resource mutex");
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "Failed to initialize resource mutex");
     }
 
     // Set initial reference count
@@ -248,9 +248,7 @@ nimcp_result_t nimcp_get_resource_lock(const char* resource_id, nimcp_mutex_t** 
  */
 nimcp_result_t nimcp_release_resource_lock(const char* resource_id)
 {
-    if (!resource_id) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(resource_id, NIMCP_ERROR_INVALID_PARAM, "resource_id is NULL");
 
     // Compute hash bucket
     unsigned int bucket = hash_string(resource_id);
@@ -299,5 +297,5 @@ nimcp_result_t nimcp_release_resource_lock(const char* resource_id)
 
     // NOT FOUND: Resource doesn't exist
     nimcp_platform_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
-    return NIMCP_ERROR_NOT_FOUND;
+    NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "Resource lock not found");
 }

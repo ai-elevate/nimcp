@@ -2562,10 +2562,8 @@ void cnn_dataloader_reset(cnn_dataloader_t* loader) {
  */
 nimcp_error_t cnn_augment_batch(nimcp_tensor_t* batch,
                                  const cnn_augmentation_config_t* config) {
-    /* Guard clauses */
-    if (!batch || !config) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(batch && config, NIMCP_ERROR_NULL_POINTER,
+                      "cnn_augment_batch: NULL argument");
 
     nimcp_tensor_shape_t shape;
     nimcp_tensor_get_shape(batch, &shape);
@@ -2837,10 +2835,8 @@ nimcp_error_t cnn_to_snn_convert(cnn_to_snn_converter_t* converter,
                                   const cnn_trainer_t* trainer,
                                   const nimcp_tensor_t* calibration_data,
                                   cnn_to_snn_result_t* result) {
-    /* Guard clauses */
-    if (!converter || !trainer || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(converter && trainer && result, NIMCP_ERROR_NULL_POINTER,
+                      "cnn_to_snn_convert: NULL argument");
 
     /* Initialize result */
     memset(result, 0, sizeof(cnn_to_snn_result_t));
@@ -2857,9 +2853,9 @@ nimcp_error_t cnn_to_snn_convert(cnn_to_snn_converter_t* converter,
     /* Step 2: Compute per-layer firing rate scales */
     converter->firing_rate_scales = (float*)nimcp_malloc(sizeof(float) * trainer->num_layers);
     converter->threshold_values = (float*)nimcp_malloc(sizeof(float) * trainer->num_layers);
-    if (!converter->firing_rate_scales || !converter->threshold_values) {
-        return NIMCP_ERROR_NO_MEMORY;
-    }
+    NIMCP_CHECK_THROW(converter->firing_rate_scales && converter->threshold_values,
+                      NIMCP_ERROR_NO_MEMORY,
+                      "cnn_to_snn_convert: failed to allocate rate/threshold arrays");
 
     for (uint32_t i = 0; i < trainer->num_layers; i++) {
         float max_activation = 1.0f;
@@ -2928,10 +2924,8 @@ nimcp_error_t cnn_to_snn_convert(cnn_to_snn_converter_t* converter,
 nimcp_error_t cnn_to_snn_finetune_stdp(cnn_to_snn_result_t* result,
                                         const nimcp_tensor_t* train_data,
                                         uint32_t epochs) {
-    /* Guard clauses */
-    if (!result || !train_data) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(result && train_data, NIMCP_ERROR_NULL_POINTER,
+                      "cnn_to_snn_finetune_stdp: NULL argument");
 
     if (!result->snn) {
         NIMCP_LOGGING_WARN("cnn_to_snn_finetune_stdp: No SNN network to fine-tune");
@@ -2981,10 +2975,8 @@ nimcp_error_t cnn_to_snn_finetune_stdp(cnn_to_snn_result_t* result,
  */
 nimcp_error_t cnn_connect_visual_cortex(cnn_trainer_t* trainer,
                                          void* visual_cortex) {
-    /* Guard: Null pointer check */
-    if (!trainer || !visual_cortex) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(trainer && visual_cortex, NIMCP_ERROR_NULL_POINTER,
+                      "cnn_connect_visual_cortex: NULL argument");
 
     /* Cast to proper type */
     visual_cortex_t* vc = (visual_cortex_t*)visual_cortex;
@@ -2995,9 +2987,9 @@ nimcp_error_t cnn_connect_visual_cortex(cnn_trainer_t* trainer,
     /* Get visual feature dimensions */
     trainer->visual_feature_dim = visual_cortex_get_feature_dim(vc);
     if (trainer->visual_feature_dim == 0) {
-        NIMCP_LOGGING_ERROR("Visual cortex has zero feature dimension");
         trainer->visual_cortex = NULL;
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM,
+                          "cnn_connect_visual_cortex: visual cortex has zero feature dimension");
     }
 
     /* Enable cortex input mode */
@@ -3028,10 +3020,8 @@ nimcp_error_t cnn_connect_visual_cortex(cnn_trainer_t* trainer,
  */
 nimcp_error_t cnn_connect_audio_cortex(cnn_trainer_t* trainer,
                                         void* audio_cortex) {
-    /* Guard: Null pointer check */
-    if (!trainer || !audio_cortex) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(trainer && audio_cortex, NIMCP_ERROR_NULL_POINTER,
+                      "cnn_connect_audio_cortex: NULL argument");
 
     /* Cast to proper type */
     audio_cortex_t* ac = (audio_cortex_t*)audio_cortex;
@@ -3042,9 +3032,9 @@ nimcp_error_t cnn_connect_audio_cortex(cnn_trainer_t* trainer,
     /* Get audio feature dimensions */
     trainer->audio_feature_dim = audio_cortex_get_feature_dim(ac);
     if (trainer->audio_feature_dim == 0) {
-        NIMCP_LOGGING_ERROR("Audio cortex has zero feature dimension");
         trainer->audio_cortex = NULL;
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM,
+                          "cnn_connect_audio_cortex: audio cortex has zero feature dimension");
     }
 
     /* Enable cortex input mode */
@@ -3060,9 +3050,8 @@ nimcp_error_t cnn_connect_audio_cortex(cnn_trainer_t* trainer,
 }
 
 nimcp_error_t cnn_connect_bio_async(cnn_trainer_t* trainer) {
-    if (!trainer) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(trainer, NIMCP_ERROR_NULL_POINTER,
+                      "cnn_connect_bio_async: trainer is NULL");
 
     /* Guard clause: already connected */
     if (trainer->bio_async_enabled) {
@@ -3084,8 +3073,8 @@ nimcp_error_t cnn_connect_bio_async(cnn_trainer_t* trainer) {
         return NIMCP_SUCCESS;
     }
 
-    NIMCP_LOGGING_WARN("Bio-async router not available");
-    return NIMCP_ERROR_NOT_FOUND;
+    NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND,
+                      "cnn_connect_bio_async: bio-async router not available");
 }
 
 void cnn_disconnect_bio_async(cnn_trainer_t* trainer) {
@@ -3117,17 +3106,16 @@ nimcp_error_t cnn_get_output_shape(cnn_layer_type_t layer_type,
                                     const nimcp_tensor_shape_t* input_shape,
                                     const void* config,
                                     nimcp_tensor_shape_t* output_shape) {
-    /* Guard clauses */
-    if (!input_shape || !output_shape) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(input_shape && output_shape, NIMCP_ERROR_NULL_POINTER,
+                      "cnn_get_output_shape: NULL argument");
 
     /* Copy input shape as starting point */
     memcpy(output_shape, input_shape, sizeof(nimcp_tensor_shape_t));
 
     switch (layer_type) {
         case CNN_LAYER_CONV2D: {
-            if (!config) return NIMCP_ERROR_NULL_POINTER;
+            NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER,
+                              "cnn_get_output_shape: config required for CONV2D");
             const cnn_conv_config_t* conv = (const cnn_conv_config_t*)config;
 
             /* Output shape: (batch, out_channels, out_h, out_w) */
@@ -3151,7 +3139,8 @@ nimcp_error_t cnn_get_output_shape(cnn_layer_type_t layer_type,
         }
 
         case CNN_LAYER_POOLING: {
-            if (!config) return NIMCP_ERROR_NULL_POINTER;
+            NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER,
+                              "cnn_get_output_shape: config required for POOLING");
             const cnn_pool_config_t* pool = (const cnn_pool_config_t*)config;
 
             /* Handle global pooling */
@@ -3181,7 +3170,8 @@ nimcp_error_t cnn_get_output_shape(cnn_layer_type_t layer_type,
             break;
 
         case CNN_LAYER_DENSE: {
-            if (!config) return NIMCP_ERROR_NULL_POINTER;
+            NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER,
+                              "cnn_get_output_shape: config required for DENSE");
             const cnn_dense_config_t* dense = (const cnn_dense_config_t*)config;
 
             /* Output shape: (batch, out_features) */
@@ -3207,8 +3197,8 @@ nimcp_error_t cnn_get_output_shape(cnn_layer_type_t layer_type,
         }
 
         default:
-            NIMCP_LOGGING_WARN("cnn_get_output_shape: Unknown layer type %d", layer_type);
-            return NIMCP_ERROR_INVALID_PARAM;
+            NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM,
+                              "cnn_get_output_shape: Unknown layer type %d", layer_type);
     }
 
     /* Recompute numel */
@@ -3263,17 +3253,15 @@ nimcp_error_t cnn_get_layer_weight_grad(const cnn_trainer_t* trainer,
                                          uint32_t layer_idx,
                                          float** out_grad,
                                          size_t* out_size) {
-    if (!trainer || !out_grad || !out_size) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(trainer && out_grad && out_size, NIMCP_ERROR_NULL_POINTER,
+                      "cnn_get_layer_weight_grad: NULL argument");
 
     *out_grad = NULL;
     *out_size = 0;
 
     cnn_layer_t* layer = cnn_get_layer(trainer, layer_idx);
-    if (!layer) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(layer, NIMCP_ERROR_INVALID_PARAM,
+                      "cnn_get_layer_weight_grad: invalid layer_idx");
 
     if (!layer->weight_grad) {
         return NIMCP_SUCCESS;  /* No gradients available */
@@ -3281,9 +3269,8 @@ nimcp_error_t cnn_get_layer_weight_grad(const cnn_trainer_t* trainer,
 
     size_t numel = nimcp_tensor_numel(layer->weight_grad);
     float* grad_copy = (float*)nimcp_malloc(numel * sizeof(float));
-    if (!grad_copy) {
-        return NIMCP_ERROR_NO_MEMORY;
-    }
+    NIMCP_CHECK_THROW(grad_copy, NIMCP_ERROR_NO_MEMORY,
+                      "cnn_get_layer_weight_grad: failed to allocate gradient copy");
 
     const float* src = (const float*)nimcp_tensor_data_const(layer->weight_grad);
     memcpy(grad_copy, src, numel * sizeof(float));

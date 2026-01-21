@@ -400,8 +400,7 @@ nimcp_status_t nimcp_brain_predict(
         // Validate features array (external input data)
         if (!bbb_validate_input(brain->internal_brain->bbb_system,
                                features, num_features * sizeof(float), &result)) {
-            set_error("BBB rejected features: %s", result.reason);
-            return NIMCP_ERROR_INVALID;
+            NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID, "BBB rejected features: %s", result.reason);
         }
     }
 
@@ -409,8 +408,7 @@ nimcp_status_t nimcp_brain_predict(
     brain_decision_t* decision = brain_decide(brain->internal_brain, features, num_features);
 
     if (!decision) {
-        set_error("Brain prediction failed");
-        return NIMCP_ERROR;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_OPERATION_FAILED, "Brain prediction failed");
     }
 
     // Copy results
@@ -470,8 +468,7 @@ nimcp_status_t nimcp_brain_save(nimcp_brain_t brain, const char* filepath) {
     bool success = brain_save(brain->internal_brain, filepath);
 
     if (!success) {
-        set_error("Failed to save brain");
-        return NIMCP_ERROR_IO;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_IO, "Failed to save brain");
     }
 
     set_error("No error");
@@ -479,10 +476,7 @@ nimcp_status_t nimcp_brain_save(nimcp_brain_t brain, const char* filepath) {
 }
 
 nimcp_brain_t nimcp_brain_load(const char* filepath) {
-    if (!filepath) {
-        set_error("Filepath is NULL");
-        return NULL;
-    }
+    NIMCP_CHECK_THROW(filepath, NIMCP_ERROR_NULL_ARG, "Filepath is NULL");
 
     // Allocate handle
     nimcp_brain_t handle = (nimcp_brain_t)nimcp_malloc(sizeof(struct nimcp_brain_handle));
@@ -2265,31 +2259,27 @@ nimcp_status_t nimcp_brain_train_step(
     // Get the adaptive network
     adaptive_network_t network = internal->network;
     if (!network) {
-        set_error("Brain has no neural network");
-        return NIMCP_ERROR_INVALID;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID, "Brain has no neural network");
     }
 
     // Get base neural network
     neural_network_t base_net = adaptive_network_get_base_network(network);
     if (!base_net) {
-        set_error("Failed to get base network");
-        return NIMCP_ERROR;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_OPERATION_FAILED, "Failed to get base network");
     }
 
     // === STEP 1: Create or get backprop context ===
     if (!state->backprop) {
         state->backprop = backprop_create(base_net);
         if (!state->backprop) {
-            set_error("Failed to create backprop context");
-            return NIMCP_ERROR_MEMORY;
+            NIMCP_CHECK_THROW(false, NIMCP_ERROR_MEMORY, "Failed to create backprop context");
         }
     }
 
     // Allocate predictions buffer
     float* predictions = nimcp_malloc(num_targets * sizeof(float));
     if (!predictions) {
-        set_error("Failed to allocate predictions buffer");
-        return NIMCP_ERROR_MEMORY;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_MEMORY, "Failed to allocate predictions buffer");
     }
 
     // === STEP 2: Forward pass with activation recording ===
@@ -2307,8 +2297,7 @@ nimcp_status_t nimcp_brain_train_step(
     float* output_gradients = nimcp_malloc(num_targets * sizeof(float));
     if (!output_gradients) {
         nimcp_free(predictions);
-        set_error("Failed to allocate output gradients");
-        return NIMCP_ERROR_MEMORY;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_MEMORY, "Failed to allocate output gradients");
     }
 
     // Compute loss (MSE or cross-entropy)
@@ -2360,8 +2349,7 @@ nimcp_status_t nimcp_brain_train_step(
     if (!weight_gradients) {
         nimcp_free(predictions);
         nimcp_free(output_gradients);
-        set_error("Failed to allocate weight gradients");
-        return NIMCP_ERROR_MEMORY;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_MEMORY, "Failed to allocate weight gradients");
     }
 
     size_t grad_count = backprop_get_weight_gradients(state->backprop, weight_gradients, total_weights);
@@ -2385,8 +2373,7 @@ nimcp_status_t nimcp_brain_train_step(
         nimcp_free(predictions);
         nimcp_free(output_gradients);
         nimcp_free(weight_gradients);
-        set_error("Failed to allocate params buffer");
-        return NIMCP_ERROR_MEMORY;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_MEMORY, "Failed to allocate params buffer");
     }
 
     size_t weight_idx = 0;
@@ -2925,21 +2912,14 @@ nimcp_status_t nimcp_brain_unregister_callback(
     nimcp_brain_t brain,
     uint32_t callback_id)
 {
-    if (!brain) {
-        set_error("Brain handle is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
 
     training_pipeline_state_t* state = get_training_state(brain);
-    if (!state || !state->callbacks) {
-        set_error("Callbacks not enabled");
-        return NIMCP_ERROR_INVALID;
-    }
+    NIMCP_CHECK_THROW(state && state->callbacks, NIMCP_ERROR_INVALID, "Callbacks not enabled");
 
     // Unregister from internal manager
     if (!tcb_unregister(state->callbacks, callback_id)) {
-        set_error("Failed to unregister callback");
-        return NIMCP_ERROR;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_OPERATION_FAILED, "Failed to unregister callback");
     }
 
     set_error("No error");
@@ -2952,10 +2932,7 @@ nimcp_status_t nimcp_brain_get_callback_stats(
     float* avg_time_us,
     uint32_t* early_stops)
 {
-    if (!brain) {
-        set_error("Brain handle is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
 
     training_pipeline_state_t* state = get_training_state(brain);
     if (!state || !state->callbacks) {

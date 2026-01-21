@@ -309,9 +309,7 @@ static nimcp_result_t s_pbkdf2_sha256(
     uint32_t iterations,
     uint8_t* output, size_t output_len)
 {
-    if (!password || !salt || !output) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(password && salt && output, NIMCP_ERROR_NULL_POINTER, "password, salt, or output is NULL");
 
     if (iterations < NIMCP_KDF_PBKDF2_MIN_ITERATIONS) {
         LOG_WARN("PBKDF2 iterations too low: %u < %u",
@@ -337,9 +335,7 @@ static nimcp_result_t s_pbkdf2_sha256(
         // Prepare salt || block_index
         size_t salt_block_len = salt_len + 4;
         uint8_t* salt_block = (uint8_t*)nimcp_malloc(salt_block_len);
-        if (!salt_block) {
-            return NIMCP_ERROR_MEMORY;
-        }
+        NIMCP_CHECK_THROW(salt_block, NIMCP_ERROR_MEMORY, "failed to allocate salt block");
 
         memcpy(salt_block, salt, salt_len);
         salt_block[salt_len] = (uint8_t)(block_idx >> 24);
@@ -660,24 +656,15 @@ void nimcp_kdf_destroy(nimcp_kdf_context_t ctx)
 
 nimcp_result_t nimcp_kdf_update_config(nimcp_kdf_context_t ctx, const nimcp_kdf_config_t* config)
 {
-    if (!ctx || ctx->magic != NIMCP_KDF_MAGIC) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(ctx && ctx->magic == NIMCP_KDF_MAGIC, NIMCP_ERROR_INVALID_PARAM, "invalid KDF context");
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     // Validate new configuration (same checks as create)
-    if (config->algorithm >= NIMCP_KDF_ALGORITHM_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config->algorithm < NIMCP_KDF_ALGORITHM_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid algorithm");
 
     if (config->algorithm == NIMCP_KDF_ARGON2ID) {
-        if (config->memory_kb < 8192 || config->iterations < 1 ||
-            config->parallelism < 1 || config->parallelism > 64) {
-            return NIMCP_ERROR_INVALID_PARAM;
-        }
+        NIMCP_CHECK_THROW(config->memory_kb >= 8192 && config->iterations >= 1 &&
+                          config->parallelism >= 1 && config->parallelism <= 64, NIMCP_ERROR_INVALID_PARAM, "invalid Argon2 parameters");
     }
 
     // Update configuration
@@ -721,30 +708,11 @@ nimcp_result_t nimcp_kdf_derive_with_ad(
     uint8_t* key_out,
     size_t key_len)
 {
-    if (!ctx || ctx->magic != NIMCP_KDF_MAGIC) {
-        LOG_ERROR("Invalid KDF context");
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!password || !salt || !key_out) {
-        LOG_ERROR("NULL pointer in kdf_derive");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (password_len == 0 || password_len > NIMCP_KDF_MAX_PASSWORD_LEN) {
-        LOG_ERROR("Invalid password length: %zu", password_len);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (salt_len < NIMCP_KDF_MIN_SALT_LEN) {
-        LOG_ERROR("Salt too short: %zu < %d", salt_len, NIMCP_KDF_MIN_SALT_LEN);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (key_len == 0 || key_len > NIMCP_KDF_MAX_KEY_LEN) {
-        LOG_ERROR("Invalid key length: %zu", key_len);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW_MSG(ctx && ctx->magic == NIMCP_KDF_MAGIC, NIMCP_ERROR_INVALID_PARAM, "invalid KDF context");
+    NIMCP_CHECK_THROW_MSG(password && salt && key_out, NIMCP_ERROR_NULL_POINTER, "password, salt, or key_out is NULL");
+    NIMCP_CHECK_THROW_MSG(password_len > 0 && password_len <= NIMCP_KDF_MAX_PASSWORD_LEN, NIMCP_ERROR_INVALID_PARAM, "invalid password length: %zu", password_len);
+    NIMCP_CHECK_THROW_MSG(salt_len >= NIMCP_KDF_MIN_SALT_LEN, NIMCP_ERROR_INVALID_PARAM, "salt too short: %zu < %d", salt_len, NIMCP_KDF_MIN_SALT_LEN);
+    NIMCP_CHECK_THROW_MSG(key_len > 0 && key_len <= NIMCP_KDF_MAX_KEY_LEN, NIMCP_ERROR_INVALID_PARAM, "invalid key length: %zu", key_len);
 
     struct timespec start, end;
     clock_gettime(CLOCK_MONOTONIC, &start);
@@ -827,33 +795,20 @@ nimcp_result_t nimcp_kdf_derive_with_ad(
 
 nimcp_result_t nimcp_kdf_generate_salt(uint8_t* salt, size_t salt_len)
 {
-    if (!salt) {
-        LOG_ERROR("NULL salt buffer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (salt_len < NIMCP_KDF_MIN_SALT_LEN) {
-        LOG_ERROR("Salt too short: %zu < %d", salt_len, NIMCP_KDF_MIN_SALT_LEN);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW_MSG(salt, NIMCP_ERROR_NULL_POINTER, "salt buffer is NULL");
+    NIMCP_CHECK_THROW_MSG(salt_len >= NIMCP_KDF_MIN_SALT_LEN, NIMCP_ERROR_INVALID_PARAM, "salt too short: %zu < %d", salt_len, NIMCP_KDF_MIN_SALT_LEN);
 
     // Platform-specific CSPRNG
 #if defined(__linux__) && defined(SYS_getrandom)
     // Linux: getrandom syscall (kernel 3.17+)
     ssize_t ret = getrandom(salt, salt_len, 0);
-    if (ret < 0 || (size_t)ret != salt_len) {
-        LOG_ERROR("getrandom failed");
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW_MSG(ret >= 0 && (size_t)ret == salt_len, NIMCP_ERROR_INVALID_PARAM, "getrandom failed");
 
 #elif defined(_WIN32)
     // Windows: BCryptGenRandom
     NTSTATUS status = BCryptGenRandom(NULL, salt, (ULONG)salt_len,
                                      BCRYPT_USE_SYSTEM_PREFERRED_RNG);
-    if (!BCRYPT_SUCCESS(status)) {
-        LOG_ERROR("BCryptGenRandom failed: 0x%08lx", status);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW_MSG(BCRYPT_SUCCESS(status), NIMCP_ERROR_INVALID_PARAM, "BCryptGenRandom failed: 0x%08lx", status);
 
 #elif defined(__APPLE__) || defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__NetBSD__)
     // BSD/macOS: arc4random_buf
@@ -862,18 +817,12 @@ nimcp_result_t nimcp_kdf_generate_salt(uint8_t* salt, size_t salt_len)
 #else
     // Fallback: /dev/urandom
     int fd = open("/dev/urandom", O_RDONLY);
-    if (fd < 0) {
-        LOG_ERROR("Failed to open /dev/urandom");
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW_MSG(fd >= 0, NIMCP_ERROR_INVALID_PARAM, "failed to open /dev/urandom");
 
     ssize_t ret = read(fd, salt, salt_len);
     close(fd);
 
-    if (ret < 0 || (size_t)ret != salt_len) {
-        LOG_ERROR("Failed to read from /dev/urandom");
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW_MSG(ret >= 0 && (size_t)ret == salt_len, NIMCP_ERROR_INVALID_PARAM, "failed to read from /dev/urandom");
 #endif
 
     LOG_DEBUG("Generated %zu-byte random salt", salt_len);
@@ -887,13 +836,8 @@ nimcp_result_t nimcp_kdf_generate_salt(uint8_t* salt, size_t salt_len)
 
 nimcp_result_t nimcp_kdf_get_stats(nimcp_kdf_context_t ctx, nimcp_kdf_stats_t* stats)
 {
-    if (!ctx || ctx->magic != NIMCP_KDF_MAGIC) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!stats) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(ctx && ctx->magic == NIMCP_KDF_MAGIC, NIMCP_ERROR_INVALID_PARAM, "invalid KDF context");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     memcpy(stats, &ctx->stats, sizeof(nimcp_kdf_stats_t));
     return NIMCP_SUCCESS;
@@ -901,9 +845,7 @@ nimcp_result_t nimcp_kdf_get_stats(nimcp_kdf_context_t ctx, nimcp_kdf_stats_t* s
 
 nimcp_result_t nimcp_kdf_reset_stats(nimcp_kdf_context_t ctx)
 {
-    if (!ctx || ctx->magic != NIMCP_KDF_MAGIC) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx && ctx->magic == NIMCP_KDF_MAGIC, NIMCP_ERROR_INVALID_PARAM, "invalid KDF context");
 
     // Preserve algorithm info
     nimcp_kdf_algorithm_t algo = ctx->stats.algorithm;
@@ -974,13 +916,8 @@ bool nimcp_kdf_verify_params(const nimcp_kdf_config_t* config, size_t salt_len)
 
 nimcp_result_t nimcp_kdf_estimate_time(nimcp_kdf_context_t ctx, double* estimated_ms)
 {
-    if (!ctx || ctx->magic != NIMCP_KDF_MAGIC) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!estimated_ms) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(ctx && ctx->magic == NIMCP_KDF_MAGIC, NIMCP_ERROR_INVALID_PARAM, "invalid KDF context");
+    NIMCP_CHECK_THROW(estimated_ms, NIMCP_ERROR_NULL_POINTER, "estimated_ms is NULL");
 
     // If we have statistics, use average
     if (ctx->stats.derivations_performed > 0) {

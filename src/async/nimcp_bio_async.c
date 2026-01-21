@@ -939,24 +939,24 @@ nimcp_error_t nimcp_bio_async_init(const nimcp_bio_async_config_t* config) {
     }
     g_bio_async.thread_pool = nimcp_pool_create(pool_size);
     if (!g_bio_async.thread_pool) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_THREAD_CREATE, "Bio-async thread pool creation failed");
         LOG_ERROR("Failed to create thread pool");
         if (g_bio_async.mem_mgr) {
             unified_mem_destroy(g_bio_async.mem_mgr);
             g_bio_async.mem_mgr = NULL;
         }
-        return NIMCP_ERROR_THREAD_CREATE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_THREAD_CREATE,
+                          "nimcp_bio_async_init: thread pool creation failed");
     }
 
     /* Initialize stats lock */
     if (nimcp_rwlock_init(&g_bio_async.stats_lock) != NIMCP_SUCCESS) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "Bio-async stats rwlock init failed");
         LOG_ERROR("Failed to create stats rwlock");
         nimcp_pool_destroy(g_bio_async.thread_pool);
         if (g_bio_async.mem_mgr) {
             unified_mem_destroy(g_bio_async.mem_mgr);
         }
-        return NIMCP_ERROR_MUTEX_INIT;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_MUTEX_INIT,
+                          "nimcp_bio_async_init: stats rwlock init failed");
     }
 
     /* Initialize time mutex */
@@ -967,7 +967,8 @@ nimcp_error_t nimcp_bio_async_init(const nimcp_bio_async_config_t* config) {
         if (g_bio_async.mem_mgr) {
             unified_mem_destroy(g_bio_async.mem_mgr);
         }
-        return NIMCP_ERROR_MUTEX_INIT;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_MUTEX_INIT,
+                          "nimcp_bio_async_init: time mutex init failed");
     }
 
     /* Initialize per-channel state mutexes for refractory period tracking */
@@ -984,7 +985,8 @@ nimcp_error_t nimcp_bio_async_init(const nimcp_bio_async_config_t* config) {
             if (g_bio_async.mem_mgr) {
                 unified_mem_destroy(g_bio_async.mem_mgr);
             }
-            return NIMCP_ERROR_MUTEX_INIT;
+            NIMCP_CHECK_THROW(false, NIMCP_ERROR_MUTEX_INIT,
+                              "nimcp_bio_async_init: channel state mutex init failed");
         }
         g_bio_async.channel_state[i].last_completion_ms = 0;
     }
@@ -1153,7 +1155,8 @@ nimcp_error_t nimcp_bio_promise_complete_sized(
                 LOG_DEBUG("nimcp_bio_promise_complete: refractory period not elapsed "
                           "(channel=%s, elapsed=%lu ms, required=%.1f ms)",
                           nimcp_bio_channel_name(channel), (unsigned long)elapsed, refractory_ms);
-                return NIMCP_ERROR_INVALID_STATE;
+                NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_STATE,
+                                  "nimcp_bio_promise_complete: refractory period not elapsed");
             }
             nimcp_mutex_unlock(&g_bio_async.channel_state[channel].mutex);
         }
@@ -1205,7 +1208,8 @@ nimcp_error_t nimcp_bio_promise_complete_sized(
             bio_free(shared->result);
             shared->result = NULL;
         }
-        return NIMCP_ERROR_INVALID_STATE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_STATE,
+                          "nimcp_bio_promise_complete: promise already completed/failed/cancelled");
     }
 
     /* Update channel last completion time for refractory period tracking */
@@ -1279,7 +1283,8 @@ nimcp_error_t nimcp_bio_promise_fail(
     if (!nimcp_atomic_compare_exchange_u32(&shared->state, &expected, BIO_FUTURE_FAILED,
                                            NIMCP_MEMORY_ORDER_ACQ_REL)) {
         LOG_WARNING("nimcp_bio_promise_fail: promise already in state %u", expected);
-        return NIMCP_ERROR_INVALID_STATE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_STATE,
+                          "nimcp_bio_promise_fail: promise already completed/failed/cancelled");
     }
 
     /* Wake waiters */
@@ -1395,7 +1400,8 @@ nimcp_error_t nimcp_bio_future_wait(
             if (wait_result != NIMCP_SUCCESS) {
                 nimcp_mutex_unlock(&shared->mutex);
                 LOG_DEBUG("nimcp_bio_future_wait: timeout after %lu ms", (unsigned long)timeout_ms);
-                return NIMCP_ERROR_TIMEOUT;
+                NIMCP_CHECK_THROW(false, NIMCP_ERROR_TIMEOUT,
+                                  "nimcp_bio_future_wait: timeout waiting for future");
             }
         } else {
             nimcp_cond_wait(&shared->cond, &shared->mutex);
@@ -1425,11 +1431,13 @@ handle_result:
         return NIMCP_BIO_ERROR_DECAY_COMPLETE;
     } else if (state == BIO_FUTURE_CANCELLED) {
         LOG_DEBUG("nimcp_bio_future_wait: future cancelled");
-        return NIMCP_ERROR_CANCELLED;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_CANCELLED,
+                          "nimcp_bio_future_wait: future was cancelled");
     }
 
     LOG_ERROR("nimcp_bio_future_wait: unexpected state %u", state);
-    return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_STATE,
+                      "nimcp_bio_future_wait: unexpected state");
 }
 
 float nimcp_bio_future_get_confidence(nimcp_bio_future_t future) {
@@ -1699,7 +1707,8 @@ nimcp_error_t nimcp_phase_sync_add_future(
 
     if (sync->count >= sync->capacity) {
         nimcp_rwlock_unlock(&sync->rwlock);
-        return NIMCP_ERROR_OUT_OF_RANGE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_OUT_OF_RANGE,
+                          "nimcp_phase_sync_add_future: capacity exceeded");
     }
 
     /* Create oscillator with random initial phase and natural frequency */
@@ -2283,9 +2292,8 @@ nimcp_error_t nimcp_glial_wave_wait_for_region(
     NIMCP_CHECK_THROW(wave && wave->magic == BIO_MAGIC_GLIAL,
                        NIMCP_ERROR_NULL_POINTER, "nimcp_glial_wave_wait_for_region: wave is NULL/invalid");
 
-    if (region_id >= wave->num_regions) {
-        return NIMCP_ERROR_OUT_OF_RANGE;
-    }
+    NIMCP_CHECK_THROW(region_id < wave->num_regions, NIMCP_ERROR_OUT_OF_RANGE,
+                      "nimcp_glial_wave_wait_for_region: region_id out of range");
 
     uint64_t start_ms = bio_time_ms();
     float dt_ms = g_bio_async.config.simulation_dt_ms;
@@ -2308,7 +2316,8 @@ nimcp_error_t nimcp_glial_wave_wait_for_region(
         if (timeout_ms > 0) {
             uint64_t elapsed = bio_time_ms() - start_ms;
             if (elapsed >= timeout_ms) {
-                return NIMCP_ERROR_TIMEOUT;
+                NIMCP_CHECK_THROW(false, NIMCP_ERROR_TIMEOUT,
+                                  "nimcp_glial_wave_wait_for_region: timeout waiting for wave");
             }
         }
 
@@ -2328,9 +2337,8 @@ nimcp_error_t nimcp_glial_wave_on_arrival(
     NIMCP_CHECK_THROW(wave && wave->magic == BIO_MAGIC_GLIAL && callback,
                        NIMCP_ERROR_NULL_POINTER, "nimcp_glial_wave_on_arrival: wave or callback is NULL/invalid");
 
-    if (region_id >= wave->num_regions) {
-        return NIMCP_ERROR_OUT_OF_RANGE;
-    }
+    NIMCP_CHECK_THROW(region_id < wave->num_regions, NIMCP_ERROR_OUT_OF_RANGE,
+                      "nimcp_glial_wave_on_arrival: region_id out of range");
 
     nimcp_rwlock_wrlock(&wave->rwlock);
     wave->regions[region_id].callback = callback;

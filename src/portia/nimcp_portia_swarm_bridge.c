@@ -124,9 +124,8 @@ static int connect_bio_async_unlocked(portia_swarm_bridge_t* bridge);
  * HOW:  Query Portia context and populate state structure
  */
 static int update_local_state(portia_swarm_bridge_t* bridge) {
-    if (!bridge || !bridge->portia) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL && bridge->portia != NULL,
+                      NIMCP_ERROR_NULL_ARG, "bridge or portia is NULL");
 
     /* Read actual values from Portia context
      * NOTE: We cast to access the portable struct fields that tests define */
@@ -165,9 +164,7 @@ static int update_local_state(portia_swarm_bridge_t* bridge) {
  * HOW:  Query swarm modules and compute statistics
  */
 static int update_collective_state(portia_swarm_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
 
     /* Read from swarm brain if connected */
     if (bridge->swarm_brain) {
@@ -322,9 +319,7 @@ int portia_swarm_bridge_start(portia_swarm_bridge_t* bridge) {
      * WHY:  Enable active state synchronization and messaging
      * HOW:  Set running flag, connect bio-async if enabled
      */
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
 
     if (bridge->running) {
         return 0; /* Already running */
@@ -351,9 +346,7 @@ int portia_swarm_bridge_stop(portia_swarm_bridge_t* bridge) {
      * WHY:  Suspend active synchronization
      * HOW:  Clear running flag
      */
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
 
     if (!bridge->running) {
         return 0; /* Not running */
@@ -380,13 +373,8 @@ int portia_swarm_connect_brain(
      * WHY:  Swarm brain orchestrates high-level collective decisions
      * HOW:  Store reference to swarm brain module
      */
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!swarm_brain) {
-        return NIMCP_ERROR_INVALID;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
+    NIMCP_CHECK_THROW(swarm_brain != NULL, NIMCP_ERROR_INVALID, "swarm_brain is NULL");
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     bridge->swarm_brain = swarm_brain;
@@ -405,13 +393,8 @@ int portia_swarm_connect_consensus(
      * WHY:  Consensus provides quorum-based tier recommendations
      * HOW:  Store reference to consensus module
      */
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!consensus) {
-        return NIMCP_ERROR_INVALID;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
+    NIMCP_CHECK_THROW(consensus != NULL, NIMCP_ERROR_INVALID, "consensus is NULL");
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     bridge->swarm_consensus = consensus;
@@ -430,13 +413,8 @@ int portia_swarm_connect_emergence(
      * WHY:  Emergent patterns provide advance warning of collective shifts
      * HOW:  Store reference to emergence module
      */
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!emergence) {
-        return NIMCP_ERROR_INVALID;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
+    NIMCP_CHECK_THROW(emergence != NULL, NIMCP_ERROR_INVALID, "emergence is NULL");
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     bridge->swarm_emergence = emergence;
@@ -455,13 +433,8 @@ int portia_swarm_connect_energy_gossip(
      * WHY:  Energy gossip enables lightweight resource state propagation
      * HOW:  Store reference to energy gossip module
      */
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!energy_gossip) {
-        return NIMCP_ERROR_INVALID;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
+    NIMCP_CHECK_THROW(energy_gossip != NULL, NIMCP_ERROR_INVALID, "energy_gossip is NULL");
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     bridge->swarm_energy_gossip = energy_gossip;
@@ -503,9 +476,7 @@ int portia_swarm_connect_bio_async(portia_swarm_bridge_t* bridge) {
      * WHY:  Enable distributed messaging for Portia-Swarm coordination
      * HOW:  Use bio_router_register_module with PORTIA_SWARM module ID
      */
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     int result = connect_bio_async_unlocked(bridge);
@@ -520,9 +491,7 @@ int portia_swarm_disconnect_bio_async(portia_swarm_bridge_t* bridge) {
      * WHY:  Clean shutdown of messaging capability
      * HOW:  Call bio_router_unregister_module
      */
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
 
     if (!bridge->base.bio_async_enabled) {
         return 0; /* Not connected */
@@ -564,9 +533,7 @@ int portia_swarm_update(portia_swarm_bridge_t* bridge) {
      * WHY:  Keep local and collective states in sync
      * HOW:  Update states, process messages, check intervals
      */
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
 
     if (!bridge->running) {
         return 0; /* Not running, skip update */
@@ -627,9 +594,7 @@ int portia_swarm_broadcast_state(portia_swarm_bridge_t* bridge) {
      * WHY:  Inform collective of local resource constraints
      * HOW:  Send state via bio-async or direct swarm API
      */
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
 
     /* In DISABLED mode, don't broadcast */
     if (bridge->config.mode == PORTIA_SWARM_MODE_DISABLED) {
@@ -652,9 +617,8 @@ int portia_swarm_request_recommendation(
      * WHY:  Get collective wisdom for tier decisions
      * HOW:  Query consensus module, blend with local state
      */
-    if (!bridge || !recommendation) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL && recommendation != NULL,
+                      NIMCP_ERROR_NULL_ARG, "NULL parameter in request_recommendation");
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -695,9 +659,7 @@ int portia_swarm_notify_tier_change(
      * WHY:  Inform collective of local adaptation
      * HOW:  Broadcast tier change event
      */
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -724,9 +686,7 @@ int portia_swarm_notify_degradation(
      * WHY:  Alert collective to local capability reduction
      * HOW:  Broadcast degradation notification
      */
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -756,9 +716,8 @@ int portia_swarm_get_collective_state(
      * WHY:  Enable Portia to make decisions based on collective context
      * HOW:  Copy cached collective state
      */
-    if (!bridge || !state) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL && state != NULL,
+                      NIMCP_ERROR_NULL_ARG, "NULL parameter in get_collective_state");
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->collective_state, sizeof(portia_swarm_collective_state_t));
@@ -776,9 +735,8 @@ int portia_swarm_get_local_state(
      * WHY:  Allow external queries of local resource state
      * HOW:  Copy cached local state
      */
-    if (!bridge || !state) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL && state != NULL,
+                      NIMCP_ERROR_NULL_ARG, "NULL parameter in get_local_state");
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(state, &bridge->local_state, sizeof(portia_swarm_state_t));
@@ -796,9 +754,8 @@ int portia_swarm_get_recommendation(
      * WHY:  Access cached recommendation without querying swarm
      * HOW:  Copy cached recommendation
      */
-    if (!bridge || !recommendation) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL && recommendation != NULL,
+                      NIMCP_ERROR_NULL_ARG, "NULL parameter in get_recommendation");
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(recommendation, &bridge->latest_recommendation,
@@ -817,9 +774,8 @@ int portia_swarm_get_stats(
      * WHY:  Enable monitoring of bridge activity and performance
      * HOW:  Copy cached statistics
      */
-    if (!bridge || !stats) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL && stats != NULL,
+                      NIMCP_ERROR_NULL_ARG, "NULL parameter in get_stats");
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(portia_swarm_stats_t));
@@ -834,9 +790,7 @@ int portia_swarm_reset_stats(portia_swarm_bridge_t* bridge) {
      * WHY:  Enable fresh measurement periods
      * HOW:  Zero out statistics structure
      */
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(portia_swarm_stats_t));
@@ -859,9 +813,7 @@ int portia_swarm_register_recommendation_cb(
      * WHY:  Enable reactive processing of swarm recommendations
      * HOW:  Store callback pointer and user data
      */
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     bridge->recommendation_cb = callback;
@@ -881,9 +833,7 @@ int portia_swarm_register_emergence_cb(
      * WHY:  Enable reactive processing of emergent swarm patterns
      * HOW:  Store callback pointer and user data
      */
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     bridge->emergence_cb = callback;
@@ -903,9 +853,7 @@ int portia_swarm_register_collective_cb(
      * WHY:  Enable reactive processing of collective changes
      * HOW:  Store callback pointer and user data
      */
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_ARG, "bridge is NULL");
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     bridge->collective_cb = callback;
@@ -929,9 +877,8 @@ int portia_swarm_compute_optimal_tier(
      * WHY:  Blend individual resource awareness with collective wisdom
      * HOW:  Weighted average of local recommendation and swarm consensus
      */
-    if (!bridge || !optimal_tier) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL && optimal_tier != NULL,
+                      NIMCP_ERROR_NULL_ARG, "NULL parameter in compute_optimal_tier");
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -993,9 +940,8 @@ int portia_swarm_apply_recommendation(
      * WHY:  Execute collective decision on local instance
      * HOW:  Update Portia configuration based on recommendation
      */
-    if (!bridge || !recommendation) {
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL && recommendation != NULL,
+                      NIMCP_ERROR_NULL_ARG, "NULL parameter in apply_recommendation");
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 

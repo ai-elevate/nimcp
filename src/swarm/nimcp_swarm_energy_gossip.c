@@ -93,7 +93,8 @@ static bool is_message_cached(const NimcpEnergyGossip* gossip, uint64_t message_
  * @brief Add message to cache
  */
 static nimcp_result_t add_to_cache(NimcpEnergyGossip* gossip, const NimcpGossipMessage* message) {
-    if (!gossip || !message) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
+    NIMCP_CHECK_THROW(message, NIMCP_ERROR_NULL_POINTER, "message is NULL");
 
     /* Check if cache is full */
     if (gossip->message_cache_size >= gossip->message_cache_capacity) {
@@ -114,7 +115,7 @@ static nimcp_result_t add_to_cache(NimcpEnergyGossip* gossip, const NimcpGossipM
 
     /* Allocate new message */
     NimcpGossipMessage* cached = (NimcpGossipMessage*)nimcp_malloc(sizeof(NimcpGossipMessage));
-    if (!cached) return NIMCP_NO_MEMORY;
+    NIMCP_CHECK_THROW(cached, NIMCP_NO_MEMORY, "failed to allocate gossip message cache entry");
 
     memcpy(cached, message, sizeof(NimcpGossipMessage));
 
@@ -354,7 +355,8 @@ nimcp_result_t nimcp_energy_gossip_init_bio_async(
     NimcpEnergyGossip* gossip,
     void* inbox
 ) {
-    if (!gossip || !inbox) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
+    NIMCP_CHECK_THROW(inbox, NIMCP_ERROR_NULL_POINTER, "inbox is NULL");
 
     nimcp_platform_mutex_lock(gossip->mutex);
     gossip->inbox = inbox;
@@ -373,10 +375,8 @@ nimcp_result_t nimcp_energy_gossip_update_energy(
     NimcpEnergyGossip* gossip,
     float energy_level
 ) {
-    if (!gossip) return NIMCP_ERROR_NULL_POINTER;
-    if (energy_level < 0.0F || energy_level > 100.0F) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
+    NIMCP_CHECK_THROW(energy_level >= 0.0F && energy_level <= 100.0F, NIMCP_INVALID_PARAM, "energy_level must be in range [0.0, 100.0]");
 
     nimcp_platform_mutex_lock(gossip->mutex);
 
@@ -434,8 +434,8 @@ nimcp_result_t nimcp_energy_gossip_set_consumption_rate(
     NimcpEnergyGossip* gossip,
     float rate
 ) {
-    if (!gossip) return NIMCP_ERROR_NULL_POINTER;
-    if (rate < 0.0F) return NIMCP_INVALID_PARAM;
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
+    NIMCP_CHECK_THROW(rate >= 0.0F, NIMCP_INVALID_PARAM, "consumption rate must be non-negative");
 
     nimcp_platform_mutex_lock(gossip->mutex);
     gossip->stats.consumption_rate = rate;
@@ -448,8 +448,8 @@ nimcp_result_t nimcp_energy_gossip_set_harvest_rate(
     NimcpEnergyGossip* gossip,
     float rate
 ) {
-    if (!gossip) return NIMCP_ERROR_NULL_POINTER;
-    if (rate < 0.0F) return NIMCP_INVALID_PARAM;
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
+    NIMCP_CHECK_THROW(rate >= 0.0F, NIMCP_INVALID_PARAM, "harvest rate must be non-negative");
 
     nimcp_platform_mutex_lock(gossip->mutex);
     gossip->stats.harvest_rate = rate;
@@ -471,7 +471,8 @@ nimcp_result_t nimcp_energy_gossip_get_stats(
     const NimcpEnergyGossip* gossip,
     NimcpEnergyStats* stats
 ) {
-    if (!gossip || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats output is NULL");
 
     memcpy(stats, &gossip->stats, sizeof(NimcpEnergyStats));
     return NIMCP_SUCCESS;
@@ -487,10 +488,8 @@ nimcp_result_t nimcp_energy_gossip_configure_reserve(
     float return_distance,
     float return_energy_cost
 ) {
-    if (!gossip) return NIMCP_ERROR_NULL_POINTER;
-    if (reserve_percentage < 0.0F || reserve_percentage > 50.0F) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
+    NIMCP_CHECK_THROW(reserve_percentage >= 0.0F && reserve_percentage <= 50.0F, NIMCP_INVALID_PARAM, "reserve_percentage must be in range [0.0, 50.0]");
 
     nimcp_platform_mutex_lock(gossip->mutex);
     gossip->reserve.reserve_percentage = reserve_percentage;
@@ -519,7 +518,7 @@ bool nimcp_energy_gossip_needs_emergency_return(const NimcpEnergyGossip* gossip)
 }
 
 nimcp_result_t nimcp_energy_gossip_emergency_mode(NimcpEnergyGossip* gossip) {
-    if (!gossip) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
 
     nimcp_platform_mutex_lock(gossip->mutex);
     gossip->reserve.emergency_mode = true;
@@ -595,7 +594,8 @@ nimcp_result_t nimcp_energy_gossip_receive(
     NimcpEnergyGossip* gossip,
     const NimcpGossipMessage* message
 ) {
-    if (!gossip || !message) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
+    NIMCP_CHECK_THROW(message, NIMCP_ERROR_NULL_POINTER, "message is NULL");
 
     nimcp_platform_mutex_lock(gossip->mutex);
 
@@ -633,7 +633,8 @@ nimcp_result_t nimcp_energy_gossip_forward(
     NimcpEnergyGossip* gossip,
     NimcpGossipMessage* message
 ) {
-    if (!gossip || !message) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
+    NIMCP_CHECK_THROW(message, NIMCP_ERROR_NULL_POINTER, "message is NULL");
 
     /* Check TTL */
     if (message->header.hop_count >= message->header.ttl) {
@@ -720,8 +721,8 @@ nimcp_result_t nimcp_energy_gossip_register_relay(
     float energy_level,
     float distance
 ) {
-    if (!gossip) return NIMCP_ERROR_NULL_POINTER;
-    if (node_id == gossip->node_id) return NIMCP_INVALID_PARAM;
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
+    NIMCP_CHECK_THROW(node_id != gossip->node_id, NIMCP_INVALID_PARAM, "cannot register self as relay");
 
     nimcp_platform_mutex_lock(gossip->mutex);
 
@@ -769,7 +770,7 @@ nimcp_result_t nimcp_energy_gossip_update_relay(
     uint32_t node_id,
     float energy_level
 ) {
-    if (!gossip) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
 
     nimcp_platform_mutex_lock(gossip->mutex);
 
@@ -795,7 +796,9 @@ nimcp_result_t nimcp_energy_gossip_select_relays(
     uint32_t* selected,
     uint32_t* selected_count
 ) {
-    if (!gossip || !selected || !selected_count) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
+    NIMCP_CHECK_THROW(selected, NIMCP_ERROR_NULL_POINTER, "selected output array is NULL");
+    NIMCP_CHECK_THROW(selected_count, NIMCP_ERROR_NULL_POINTER, "selected_count output is NULL");
 
     nimcp_platform_mutex_lock(gossip->mutex);
 
@@ -847,7 +850,8 @@ nimcp_result_t nimcp_energy_gossip_get_relay_info(
     uint32_t node_id,
     NimcpRelayNode* relay
 ) {
-    if (!gossip || !relay) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
+    NIMCP_CHECK_THROW(relay, NIMCP_ERROR_NULL_POINTER, "relay output is NULL");
 
     for (uint32_t i = 0; i < gossip->relay_node_count; i++) {
         if (gossip->relay_nodes[i].node_id == node_id) {
@@ -869,7 +873,7 @@ nimcp_result_t nimcp_energy_gossip_schedule_sleep(
     uint32_t duration_seconds,
     bool wake_on_emergency
 ) {
-    if (!gossip) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
 
     nimcp_platform_mutex_lock(gossip->mutex);
 
@@ -908,7 +912,7 @@ nimcp_result_t nimcp_energy_gossip_sleep(
     NimcpEnergyGossip* gossip,
     uint32_t duration_seconds
 ) {
-    if (!gossip) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
 
     nimcp_platform_mutex_lock(gossip->mutex);
 
@@ -925,7 +929,7 @@ nimcp_result_t nimcp_energy_gossip_sleep(
 }
 
 nimcp_result_t nimcp_energy_gossip_wake(NimcpEnergyGossip* gossip) {
-    if (!gossip) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
 
     nimcp_platform_mutex_lock(gossip->mutex);
 
@@ -960,7 +964,8 @@ nimcp_result_t nimcp_energy_gossip_coordinate_sleep(
     const NimcpSleepSchedule* node_schedules,
     uint32_t node_count
 ) {
-    if (!gossip || !node_schedules) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
+    NIMCP_CHECK_THROW(node_schedules, NIMCP_ERROR_NULL_POINTER, "node_schedules is NULL");
 
     /* Analyze other nodes' schedules to find optimal sleep time */
     time_t now = time(NULL);
@@ -1011,8 +1016,9 @@ nimcp_result_t nimcp_energy_gossip_register_harvest(
     float harvest_rate,
     float quality_score
 ) {
-    if (!gossip || !position) return NIMCP_ERROR_NULL_POINTER;
-    if (!gossip->config.enable_harvest_awareness) return NIMCP_NOT_IMPLEMENTED;
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
+    NIMCP_CHECK_THROW(position, NIMCP_ERROR_NULL_POINTER, "position is NULL");
+    NIMCP_CHECK_THROW(gossip->config.enable_harvest_awareness, NIMCP_NOT_IMPLEMENTED, "harvest awareness not enabled");
 
     nimcp_platform_mutex_lock(gossip->mutex);
 
@@ -1054,8 +1060,9 @@ nimcp_result_t nimcp_energy_gossip_select_harvest(
     NimcpEnergyGossip* gossip,
     NimcpHarvestOpportunity* opportunity
 ) {
-    if (!gossip || !opportunity) return NIMCP_ERROR_NULL_POINTER;
-    if (!gossip->config.enable_harvest_awareness) return NIMCP_NOT_IMPLEMENTED;
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
+    NIMCP_CHECK_THROW(opportunity, NIMCP_ERROR_NULL_POINTER, "opportunity output is NULL");
+    NIMCP_CHECK_THROW(gossip->config.enable_harvest_awareness, NIMCP_NOT_IMPLEMENTED, "harvest awareness not enabled");
 
     nimcp_platform_mutex_lock(gossip->mutex);
 
@@ -1096,7 +1103,8 @@ nimcp_result_t nimcp_energy_gossip_update_harvest_congestion(
     const float position[3],
     uint32_t congestion_level
 ) {
-    if (!gossip || !position) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
+    NIMCP_CHECK_THROW(position, NIMCP_ERROR_NULL_POINTER, "position is NULL");
 
     nimcp_platform_mutex_lock(gossip->mutex);
 
@@ -1113,7 +1121,7 @@ nimcp_result_t nimcp_energy_gossip_update_harvest_congestion(
 }
 
 nimcp_result_t nimcp_energy_gossip_start_harvest(NimcpEnergyGossip* gossip) {
-    if (!gossip) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
 
     nimcp_platform_mutex_lock(gossip->mutex);
 
@@ -1140,7 +1148,7 @@ nimcp_result_t nimcp_energy_gossip_start_harvest(NimcpEnergyGossip* gossip) {
 }
 
 nimcp_result_t nimcp_energy_gossip_stop_harvest(NimcpEnergyGossip* gossip) {
-    if (!gossip) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
 
     nimcp_platform_mutex_lock(gossip->mutex);
 
@@ -1220,7 +1228,8 @@ nimcp_result_t nimcp_energy_gossip_handle_energy_broadcast(
     NimcpEnergyGossip* gossip,
     const void* message
 ) {
-    if (!gossip || !message) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
+    NIMCP_CHECK_THROW(message, NIMCP_ERROR_NULL_POINTER, "message is NULL");
     /* Stubbed - requires brain integration */
     (void)message;
     return NIMCP_SUCCESS;
@@ -1230,7 +1239,8 @@ nimcp_result_t nimcp_energy_gossip_handle_sleep_coordination(
     NimcpEnergyGossip* gossip,
     const void* message
 ) {
-    if (!gossip || !message) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
+    NIMCP_CHECK_THROW(message, NIMCP_ERROR_NULL_POINTER, "message is NULL");
     /* Stubbed - requires brain integration */
     (void)message;
     return NIMCP_SUCCESS;
@@ -1240,14 +1250,15 @@ nimcp_result_t nimcp_energy_gossip_handle_relay_request(
     NimcpEnergyGossip* gossip,
     const void* message
 ) {
-    if (!gossip || !message) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
+    NIMCP_CHECK_THROW(message, NIMCP_ERROR_NULL_POINTER, "message is NULL");
     /* Stubbed - requires brain integration */
     (void)message;
     return NIMCP_SUCCESS;
 }
 
 nimcp_result_t nimcp_energy_gossip_process_inbox(NimcpEnergyGossip* gossip) {
-    if (!gossip) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(gossip, NIMCP_ERROR_NULL_POINTER, "gossip context is NULL");
     if (!gossip->bio_async_enabled || !gossip->inbox) {
         return NIMCP_SUCCESS;  /* Not enabled, return success */
     }

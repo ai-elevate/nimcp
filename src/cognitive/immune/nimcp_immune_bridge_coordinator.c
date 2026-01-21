@@ -71,9 +71,7 @@ static immune_bridge_entry_t* find_bridge(
 int immune_bridge_coordinator_default_config(
     immune_bridge_coordinator_config_t* config
 ) {
-    if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config != NULL, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(*config));
 
@@ -200,9 +198,7 @@ void immune_bridge_coordinator_destroy(immune_bridge_coordinator_t* coordinator)
 }
 
 int immune_bridge_coordinator_start(immune_bridge_coordinator_t* coordinator) {
-    if (!coordinator) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     nimcp_platform_mutex_lock(coordinator->mutex);
 
@@ -227,9 +223,7 @@ int immune_bridge_coordinator_start(immune_bridge_coordinator_t* coordinator) {
 }
 
 int immune_bridge_coordinator_stop(immune_bridge_coordinator_t* coordinator) {
-    if (!coordinator) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     nimcp_platform_mutex_lock(coordinator->mutex);
 
@@ -251,9 +245,7 @@ int immune_bridge_coordinator_stop(immune_bridge_coordinator_t* coordinator) {
 }
 
 int immune_bridge_coordinator_pause(immune_bridge_coordinator_t* coordinator) {
-    if (!coordinator) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     nimcp_platform_mutex_lock(coordinator->mutex);
 
@@ -269,9 +261,7 @@ int immune_bridge_coordinator_pause(immune_bridge_coordinator_t* coordinator) {
 }
 
 int immune_bridge_coordinator_resume(immune_bridge_coordinator_t* coordinator) {
-    if (!coordinator) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     nimcp_platform_mutex_lock(coordinator->mutex);
 
@@ -300,13 +290,10 @@ int immune_bridge_coordinator_register_bridge(
     immune_bridge_health_fn_t health_fn,
     uint32_t* bridge_id_out
 ) {
-    if (!coordinator || !name || !handle) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (category >= IMMUNE_BRIDGE_CATEGORY_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(coordinator != NULL && name != NULL && handle != NULL,
+                      NIMCP_ERROR_NULL_POINTER, "NULL parameter in register_bridge");
+    NIMCP_CHECK_THROW(category < IMMUNE_BRIDGE_CATEGORY_COUNT,
+                      NIMCP_ERROR_INVALID_PARAM, "Invalid bridge category");
 
     nimcp_platform_mutex_lock(coordinator->mutex);
 
@@ -364,9 +351,7 @@ int immune_bridge_coordinator_unregister_bridge(
     immune_bridge_coordinator_t* coordinator,
     uint32_t bridge_id
 ) {
-    if (!coordinator) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     nimcp_platform_mutex_lock(coordinator->mutex);
 
@@ -418,9 +403,7 @@ int immune_bridge_coordinator_set_bridge_enabled(
     uint32_t bridge_id,
     bool enabled
 ) {
-    if (!coordinator) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     nimcp_platform_mutex_lock(coordinator->mutex);
 
@@ -495,9 +478,7 @@ int immune_bridge_coordinator_update(
     immune_bridge_coordinator_t* coordinator,
     uint64_t current_time_ms
 ) {
-    if (!coordinator) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     nimcp_platform_mutex_lock(coordinator->mutex);
 
@@ -594,13 +575,9 @@ int immune_bridge_coordinator_update_category(
     immune_bridge_coordinator_t* coordinator,
     immune_bridge_category_t category
 ) {
-    if (!coordinator) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (category >= IMMUNE_BRIDGE_CATEGORY_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
+    NIMCP_CHECK_THROW(category < IMMUNE_BRIDGE_CATEGORY_COUNT,
+                      NIMCP_ERROR_INVALID_PARAM, "Invalid bridge category");
 
     nimcp_platform_mutex_lock(coordinator->mutex);
 
@@ -638,9 +615,7 @@ int immune_bridge_coordinator_update_bridge(
     immune_bridge_coordinator_t* coordinator,
     uint32_t bridge_id
 ) {
-    if (!coordinator) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     nimcp_platform_mutex_lock(coordinator->mutex);
 
@@ -667,9 +642,7 @@ int immune_bridge_coordinator_update_bridge(
 int immune_bridge_coordinator_health_check(
     immune_bridge_coordinator_t* coordinator
 ) {
-    if (!coordinator) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     nimcp_platform_mutex_lock(coordinator->mutex);
 
@@ -797,9 +770,7 @@ int immune_bridge_coordinator_broadcast_message(
     const void* data,
     size_t data_len
 ) {
-    if (!coordinator) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     if (!coordinator->bio_async_connected) {
         return 0;  /* Not an error, just not connected */
@@ -818,13 +789,9 @@ int immune_bridge_coordinator_send_category_message(
     const void* data,
     size_t data_len
 ) {
-    if (!coordinator) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (category >= IMMUNE_BRIDGE_CATEGORY_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
+    NIMCP_CHECK_THROW(category < IMMUNE_BRIDGE_CATEGORY_COUNT,
+                      NIMCP_ERROR_INVALID_PARAM, "Invalid bridge category");
 
     if (!coordinator->bio_async_connected) {
         return 0;
@@ -850,9 +817,8 @@ int immune_bridge_coordinator_connect_brain_immune(
     immune_bridge_coordinator_t* coordinator,
     brain_immune_system_t* immune
 ) {
-    if (!coordinator || !immune) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coordinator != NULL && immune != NULL,
+                      NIMCP_ERROR_NULL_POINTER, "NULL parameter in connect_brain_immune");
 
     nimcp_platform_mutex_lock(coordinator->mutex);
     coordinator->brain_immune = immune;
@@ -869,9 +835,7 @@ int immune_bridge_coordinator_connect_brain_immune(
 int immune_bridge_coordinator_disconnect_brain_immune(
     immune_bridge_coordinator_t* coordinator
 ) {
-    if (!coordinator) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     nimcp_platform_mutex_lock(coordinator->mutex);
     coordinator->brain_immune = NULL;
@@ -884,9 +848,7 @@ int immune_bridge_coordinator_disconnect_brain_immune(
 int immune_bridge_coordinator_connect_bio_async(
     immune_bridge_coordinator_t* coordinator
 ) {
-    if (!coordinator) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     if (coordinator->bio_async_connected) {
         return NIMCP_SUCCESS;
@@ -919,9 +881,7 @@ int immune_bridge_coordinator_connect_bio_async(
 int immune_bridge_coordinator_disconnect_bio_async(
     immune_bridge_coordinator_t* coordinator
 ) {
-    if (!coordinator) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coordinator != NULL, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     if (coordinator->bio_async_connected && coordinator->bio_context) {
         bio_router_unregister_module(coordinator->bio_context);
@@ -940,9 +900,8 @@ int immune_bridge_coordinator_get_stats(
     const immune_bridge_coordinator_t* coordinator,
     immune_coordinator_stats_t* stats
 ) {
-    if (!coordinator || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coordinator != NULL && stats != NULL,
+                      NIMCP_ERROR_NULL_POINTER, "NULL parameter in get_stats");
 
     *stats = coordinator->stats;
     return NIMCP_SUCCESS;

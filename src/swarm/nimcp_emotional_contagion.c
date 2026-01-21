@@ -357,26 +357,17 @@ nimcp_result_t emotional_contagion_validate_config(
     NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Validate rates */
-    if (config->contagion_rate < 0.0F || config->contagion_rate > 1.0F) {
-        LOG_ERROR(CONTAGION_MODULE, "Invalid contagion_rate: %.2f", config->contagion_rate);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config->contagion_rate >= 0.0F && config->contagion_rate <= 1.0F,
+                      NIMCP_ERROR_INVALID_PARAM, "contagion_rate must be in range [0.0, 1.0]");
 
-    if (config->decay_rate < 0.0F || config->decay_rate > 1.0F) {
-        LOG_ERROR(CONTAGION_MODULE, "Invalid decay_rate: %.2f", config->decay_rate);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config->decay_rate >= 0.0F && config->decay_rate <= 1.0F,
+                      NIMCP_ERROR_INVALID_PARAM, "decay_rate must be in range [0.0, 1.0]");
 
-    if (config->susceptibility_threshold < 0.0F || config->susceptibility_threshold > 1.0F) {
-        LOG_ERROR(CONTAGION_MODULE, "Invalid susceptibility_threshold: %.2f",
-                  config->susceptibility_threshold);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config->susceptibility_threshold >= 0.0F && config->susceptibility_threshold <= 1.0F,
+                      NIMCP_ERROR_INVALID_PARAM, "susceptibility_threshold must be in range [0.0, 1.0]");
 
-    if (config->max_agents == 0 || config->max_agents > EMOTIONAL_CONTAGION_MAX_AGENTS) {
-        LOG_ERROR(CONTAGION_MODULE, "Invalid max_agents: %u", config->max_agents);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config->max_agents > 0 && config->max_agents <= EMOTIONAL_CONTAGION_MAX_AGENTS,
+                      NIMCP_ERROR_INVALID_PARAM, "max_agents must be in range (0, EMOTIONAL_CONTAGION_MAX_AGENTS]");
 
     return NIMCP_SUCCESS;
 }
@@ -527,11 +518,8 @@ nimcp_result_t emotional_contagion_register_agent(
 
     /* Validate parameters */
     NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
-
-    if (susceptibility < 0.0F || susceptibility > 1.0F) {
-        LOG_ERROR(CONTAGION_MODULE, "Invalid susceptibility: %.2f", susceptibility);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(susceptibility >= 0.0F && susceptibility <= 1.0F,
+                      NIMCP_ERROR_INVALID_PARAM, "susceptibility must be in range [0.0, 1.0]");
 
     nimcp_platform_mutex_lock(&ec->mutex);
 
@@ -544,17 +532,15 @@ nimcp_result_t emotional_contagion_register_agent(
 
     /* Check agent limit */
     if (ec->agent_count >= ec->config.max_agents) {
-        LOG_ERROR(CONTAGION_MODULE, "Agent limit reached: %u", ec->config.max_agents);
         nimcp_platform_mutex_unlock(&ec->mutex);
-        return NIMCP_ERROR_QUEUE_FULL;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_QUEUE_FULL, "agent limit reached");
     }
 
     /* Allocate agent entry */
     agent_entry_t* entry = (agent_entry_t*)nimcp_malloc(sizeof(agent_entry_t));
     if (!entry) {
-        LOG_ERROR(CONTAGION_MODULE, "Failed to allocate agent entry");
         nimcp_platform_mutex_unlock(&ec->mutex);
-        return NIMCP_ERROR_MEMORY;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_MEMORY, "failed to allocate agent entry");
     }
 
     memset(entry, 0, sizeof(agent_entry_t));
@@ -625,8 +611,7 @@ nimcp_result_t emotional_contagion_unregister_agent(
 
     nimcp_platform_mutex_unlock(&ec->mutex);
 
-    LOG_WARN(CONTAGION_MODULE, "Agent %u not found", agent_id);
-    return NIMCP_ERROR_NOT_FOUND;
+    NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "agent not found");
 }
 
 nimcp_result_t emotional_contagion_set_emotion(
@@ -637,24 +622,15 @@ nimcp_result_t emotional_contagion_set_emotion(
 
     /* Validate parameters */
     NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
-
-    if (emotion >= EMOTION_TYPE_COUNT) {
-        LOG_ERROR(CONTAGION_MODULE, "Invalid emotion type: %d", emotion);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (intensity < 0.0F || intensity > 1.0F) {
-        LOG_ERROR(CONTAGION_MODULE, "Invalid intensity: %.2f", intensity);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(emotion < EMOTION_TYPE_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid emotion type");
+    NIMCP_CHECK_THROW(intensity >= 0.0F && intensity <= 1.0F, NIMCP_ERROR_INVALID_PARAM, "intensity must be in range [0.0, 1.0]");
 
     nimcp_platform_mutex_lock(&ec->mutex);
 
     agent_entry_t* entry = find_agent(ec, agent_id);
     if (!entry) {
         nimcp_platform_mutex_unlock(&ec->mutex);
-        LOG_ERROR(CONTAGION_MODULE, "Agent %u not found", agent_id);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "agent not found");
     }
 
     /* Apply dampening if enabled */
@@ -703,7 +679,7 @@ nimcp_result_t emotional_contagion_get_emotional_state(
     agent_entry_t* entry = find_agent(ec, agent_id);
     if (!entry) {
         nimcp_platform_mutex_unlock(&ec->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "agent not found");
     }
 
     *state = entry->state;
@@ -726,7 +702,7 @@ nimcp_result_t emotional_contagion_set_susceptibility(
     agent_entry_t* entry = find_agent(ec, agent_id);
     if (!entry) {
         nimcp_platform_mutex_unlock(&ec->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "agent not found");
     }
 
     entry->state.susceptibility = susceptibility;
@@ -756,20 +732,19 @@ nimcp_result_t emotional_contagion_add_connection(
     agent_entry_t* from_entry = find_agent(ec, from_agent);
     if (!from_entry) {
         nimcp_platform_mutex_unlock(&ec->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "source agent not found");
     }
 
     /* Verify target agent exists */
     if (!find_agent(ec, to_agent)) {
         nimcp_platform_mutex_unlock(&ec->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "target agent not found");
     }
 
     /* Check connection limit */
     if (from_entry->connection_count >= ec->config.max_connections_per_agent) {
         nimcp_platform_mutex_unlock(&ec->mutex);
-        LOG_WARN(CONTAGION_MODULE, "Connection limit reached for agent %u", from_agent);
-        return NIMCP_ERROR_QUEUE_FULL;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_QUEUE_FULL, "connection limit reached for agent");
     }
 
     /* Grow connection array if needed */
@@ -784,7 +759,7 @@ nimcp_result_t emotional_contagion_add_connection(
 
         if (!new_connections) {
             nimcp_platform_mutex_unlock(&ec->mutex);
-            return NIMCP_ERROR_MEMORY;
+            NIMCP_CHECK_THROW(false, NIMCP_ERROR_MEMORY, "failed to grow connection array");
         }
 
         from_entry->connections = new_connections;
@@ -796,7 +771,7 @@ nimcp_result_t emotional_contagion_add_connection(
         (emotional_connection_t*)nimcp_malloc(sizeof(emotional_connection_t));
     if (!conn) {
         nimcp_platform_mutex_unlock(&ec->mutex);
-        return NIMCP_ERROR_MEMORY;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_MEMORY, "failed to allocate connection");
     }
 
     conn->from_agent = from_agent;
@@ -829,7 +804,7 @@ nimcp_result_t emotional_contagion_remove_connection(
     agent_entry_t* from_entry = find_agent(ec, from_agent);
     if (!from_entry || !from_entry->connections) {
         nimcp_platform_mutex_unlock(&ec->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "agent or connections not found");
     }
 
     /* Find and remove connection */
@@ -851,7 +826,7 @@ nimcp_result_t emotional_contagion_remove_connection(
     }
 
     nimcp_platform_mutex_unlock(&ec->mutex);
-    return NIMCP_ERROR_NOT_FOUND;
+    NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "connection not found");
 }
 
 nimcp_result_t emotional_contagion_update_connection(
@@ -870,7 +845,7 @@ nimcp_result_t emotional_contagion_update_connection(
     agent_entry_t* from_entry = find_agent(ec, from_agent);
     if (!from_entry || !from_entry->connections) {
         nimcp_platform_mutex_unlock(&ec->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "agent or connections not found");
     }
 
     /* Find connection */
@@ -886,7 +861,7 @@ nimcp_result_t emotional_contagion_update_connection(
     }
 
     nimcp_platform_mutex_unlock(&ec->mutex);
-    return NIMCP_ERROR_NOT_FOUND;
+    NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "connection not found");
 }
 
 /* ============================================================================
@@ -1151,16 +1126,9 @@ nimcp_result_t emotional_contagion_trigger_outbreak(
 
     /* Guard: validate parameters */
     NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
-
-    if (emotion >= EMOTION_TYPE_COUNT) {
-        LOG_ERROR(CONTAGION_MODULE, "Invalid emotion type: %d", emotion);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (initial_intensity < 0.0F || initial_intensity > 1.0F) {
-        LOG_ERROR(CONTAGION_MODULE, "Invalid intensity: %.2f", initial_intensity);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(emotion < EMOTION_TYPE_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid emotion type");
+    NIMCP_CHECK_THROW(initial_intensity >= 0.0F && initial_intensity <= 1.0F,
+                      NIMCP_ERROR_INVALID_PARAM, "initial_intensity must be in range [0.0, 1.0]");
 
     nimcp_platform_mutex_lock(&ec->mutex);
 
@@ -1168,8 +1136,7 @@ nimcp_result_t emotional_contagion_trigger_outbreak(
     agent_entry_t* source = find_agent(ec, source_agent);
     if (!source) {
         nimcp_platform_mutex_unlock(&ec->mutex);
-        LOG_ERROR(CONTAGION_MODULE, "Source agent %u not found", source_agent);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "source agent not found");
     }
 
     /* Set source agent's emotion */
@@ -1185,7 +1152,7 @@ nimcp_result_t emotional_contagion_trigger_outbreak(
     bool* visited = (bool*)nimcp_calloc(ec->agent_count, sizeof(bool));
     if (!visited) {
         nimcp_platform_mutex_unlock(&ec->mutex);
-        return NIMCP_ERROR_MEMORY;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_MEMORY, "failed to allocate visited array");
     }
 
     /* BFS for propagation */
@@ -1196,7 +1163,7 @@ nimcp_result_t emotional_contagion_trigger_outbreak(
         if (queue) nimcp_free(queue);
         if (depths) nimcp_free(depths);
         nimcp_platform_mutex_unlock(&ec->mutex);
-        return NIMCP_ERROR_MEMORY;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_MEMORY, "failed to allocate BFS arrays");
     }
 
     size_t head = 0, tail = 0;

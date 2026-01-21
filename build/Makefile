@@ -510,19 +510,6 @@ unit_api_test_api_working_memory/fast:
 .PHONY : unit_api_test_api_working_memory/fast
 
 #=============================================================================
-# Target rules for targets named unit_brain_test_kg_module_wiring
-
-# Build rule for target.
-unit_brain_test_kg_module_wiring: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_brain_test_kg_module_wiring
-.PHONY : unit_brain_test_kg_module_wiring
-
-# fast build rule for target.
-unit_brain_test_kg_module_wiring/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_brain_test_kg_module_wiring.dir/build.make test/CMakeFiles/unit_brain_test_kg_module_wiring.dir/build
-.PHONY : unit_brain_test_kg_module_wiring/fast
-
-#=============================================================================
 # Target rules for targets named unit_cognitive_analysis_test_analysis_fep_bridge
 
 # Build rule for target.
@@ -8737,6 +8724,84 @@ e2e_fault_tolerance_test_exception_recovery_e2e: cmake_check_build_system
 e2e_fault_tolerance_test_exception_recovery_e2e/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_recovery_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_recovery_e2e.dir/build
 .PHONY : e2e_fault_tolerance_test_exception_recovery_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_exception_macro_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_exception_macro_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_exception_macro_e2e
+.PHONY : e2e_fault_tolerance_test_exception_macro_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_exception_macro_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_macro_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_macro_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_exception_macro_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_exception_immune_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_exception_immune_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_exception_immune_e2e
+.PHONY : e2e_fault_tolerance_test_exception_immune_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_exception_immune_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_immune_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_immune_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_exception_immune_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_exception_complete_flow_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_exception_complete_flow_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_exception_complete_flow_e2e
+.PHONY : e2e_fault_tolerance_test_exception_complete_flow_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_exception_complete_flow_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_complete_flow_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_complete_flow_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_exception_complete_flow_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_exception_recovery_scenarios_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_exception_recovery_scenarios_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_exception_recovery_scenarios_e2e
+.PHONY : e2e_fault_tolerance_test_exception_recovery_scenarios_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_exception_recovery_scenarios_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_recovery_scenarios_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_recovery_scenarios_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_exception_recovery_scenarios_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_exception_stress_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_exception_stress_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_exception_stress_e2e
+.PHONY : e2e_fault_tolerance_test_exception_stress_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_exception_stress_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_stress_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_stress_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_exception_stress_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_exception_module_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_exception_module_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_exception_module_e2e
+.PHONY : e2e_fault_tolerance_test_exception_module_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_exception_module_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_module_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_module_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_exception_module_e2e/fast
 
 #=============================================================================
 # Target rules for targets named unit_middleware_integration
@@ -19126,6 +19191,84 @@ integration_utils_exception_test_exception_immune_integration/fast:
 .PHONY : integration_utils_exception_test_exception_immune_integration/fast
 
 #=============================================================================
+# Target rules for targets named unit_exception_test_macro_behavior
+
+# Build rule for target.
+unit_exception_test_macro_behavior: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_exception_test_macro_behavior
+.PHONY : unit_exception_test_macro_behavior
+
+# fast build rule for target.
+unit_exception_test_macro_behavior/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/exception/CMakeFiles/unit_exception_test_macro_behavior.dir/build.make test/unit/exception/CMakeFiles/unit_exception_test_macro_behavior.dir/build
+.PHONY : unit_exception_test_macro_behavior/fast
+
+#=============================================================================
+# Target rules for targets named unit_exception_test_security_macros
+
+# Build rule for target.
+unit_exception_test_security_macros: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_exception_test_security_macros
+.PHONY : unit_exception_test_security_macros
+
+# fast build rule for target.
+unit_exception_test_security_macros/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/exception/CMakeFiles/unit_exception_test_security_macros.dir/build.make test/unit/exception/CMakeFiles/unit_exception_test_security_macros.dir/build
+.PHONY : unit_exception_test_security_macros/fast
+
+#=============================================================================
+# Target rules for targets named unit_exception_test_swarm_macros
+
+# Build rule for target.
+unit_exception_test_swarm_macros: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_exception_test_swarm_macros
+.PHONY : unit_exception_test_swarm_macros
+
+# fast build rule for target.
+unit_exception_test_swarm_macros/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/exception/CMakeFiles/unit_exception_test_swarm_macros.dir/build.make test/unit/exception/CMakeFiles/unit_exception_test_swarm_macros.dir/build
+.PHONY : unit_exception_test_swarm_macros/fast
+
+#=============================================================================
+# Target rules for targets named unit_exception_test_security_lgss_macros
+
+# Build rule for target.
+unit_exception_test_security_lgss_macros: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_exception_test_security_lgss_macros
+.PHONY : unit_exception_test_security_lgss_macros
+
+# fast build rule for target.
+unit_exception_test_security_lgss_macros/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/exception/CMakeFiles/unit_exception_test_security_lgss_macros.dir/build.make test/unit/exception/CMakeFiles/unit_exception_test_security_lgss_macros.dir/build
+.PHONY : unit_exception_test_security_lgss_macros/fast
+
+#=============================================================================
+# Target rules for targets named unit_exception_test_swarm_memory_macros
+
+# Build rule for target.
+unit_exception_test_swarm_memory_macros: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_exception_test_swarm_memory_macros
+.PHONY : unit_exception_test_swarm_memory_macros
+
+# fast build rule for target.
+unit_exception_test_swarm_memory_macros/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/exception/CMakeFiles/unit_exception_test_swarm_memory_macros.dir/build.make test/unit/exception/CMakeFiles/unit_exception_test_swarm_memory_macros.dir/build
+.PHONY : unit_exception_test_swarm_memory_macros/fast
+
+#=============================================================================
+# Target rules for targets named unit_brain_test_kg_module_wiring
+
+# Build rule for target.
+unit_brain_test_kg_module_wiring: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_brain_test_kg_module_wiring
+.PHONY : unit_brain_test_kg_module_wiring
+
+# fast build rule for target.
+unit_brain_test_kg_module_wiring/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/brain/CMakeFiles/unit_brain_test_kg_module_wiring.dir/build.make test/unit/brain/CMakeFiles/unit_brain_test_kg_module_wiring.dir/build
+.PHONY : unit_brain_test_kg_module_wiring/fast
+
+#=============================================================================
 # Target rules for targets named unit_utils_memory_test_memory_pool
 
 # Build rule for target.
@@ -27420,6 +27563,58 @@ integration_exception_test_exception_cognitive_integration/fast:
 .PHONY : integration_exception_test_exception_cognitive_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_exception_test_exception_bio_async_flow
+
+# Build rule for target.
+integration_exception_test_exception_bio_async_flow: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_exception_test_exception_bio_async_flow
+.PHONY : integration_exception_test_exception_bio_async_flow
+
+# fast build rule for target.
+integration_exception_test_exception_bio_async_flow/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/exception/CMakeFiles/integration_exception_test_exception_bio_async_flow.dir/build.make test/integration/exception/CMakeFiles/integration_exception_test_exception_bio_async_flow.dir/build
+.PHONY : integration_exception_test_exception_bio_async_flow/fast
+
+#=============================================================================
+# Target rules for targets named integration_exception_test_exception_health_integration
+
+# Build rule for target.
+integration_exception_test_exception_health_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_exception_test_exception_health_integration
+.PHONY : integration_exception_test_exception_health_integration
+
+# fast build rule for target.
+integration_exception_test_exception_health_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/exception/CMakeFiles/integration_exception_test_exception_health_integration.dir/build.make test/integration/exception/CMakeFiles/integration_exception_test_exception_health_integration.dir/build
+.PHONY : integration_exception_test_exception_health_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_exception_test_exception_cross_module
+
+# Build rule for target.
+integration_exception_test_exception_cross_module: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_exception_test_exception_cross_module
+.PHONY : integration_exception_test_exception_cross_module
+
+# fast build rule for target.
+integration_exception_test_exception_cross_module/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/exception/CMakeFiles/integration_exception_test_exception_cross_module.dir/build.make test/integration/exception/CMakeFiles/integration_exception_test_exception_cross_module.dir/build
+.PHONY : integration_exception_test_exception_cross_module/fast
+
+#=============================================================================
+# Target rules for targets named integration_exception_test_exception_cross_module_flow
+
+# Build rule for target.
+integration_exception_test_exception_cross_module_flow: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_exception_test_exception_cross_module_flow
+.PHONY : integration_exception_test_exception_cross_module_flow
+
+# fast build rule for target.
+integration_exception_test_exception_cross_module_flow/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/exception/CMakeFiles/integration_exception_test_exception_cross_module_flow.dir/build.make test/integration/exception/CMakeFiles/integration_exception_test_exception_cross_module_flow.dir/build
+.PHONY : integration_exception_test_exception_cross_module_flow/fast
+
+#=============================================================================
 # Target rules for targets named integration_gpu_test_gpu_cpu_equivalence
 
 # Build rule for target.
@@ -30462,6 +30657,84 @@ regression_exception_performance/fast:
 .PHONY : regression_exception_performance/fast
 
 #=============================================================================
+# Target rules for targets named regression_exception_api_compatibility
+
+# Build rule for target.
+regression_exception_api_compatibility: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_exception_api_compatibility
+.PHONY : regression_exception_api_compatibility
+
+# fast build rule for target.
+regression_exception_api_compatibility/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/exception/CMakeFiles/regression_exception_api_compatibility.dir/build.make test/regression/exception/CMakeFiles/regression_exception_api_compatibility.dir/build
+.PHONY : regression_exception_api_compatibility/fast
+
+#=============================================================================
+# Target rules for targets named regression_exception_error_code_stability
+
+# Build rule for target.
+regression_exception_error_code_stability: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_exception_error_code_stability
+.PHONY : regression_exception_error_code_stability
+
+# fast build rule for target.
+regression_exception_error_code_stability/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/exception/CMakeFiles/regression_exception_error_code_stability.dir/build.make test/regression/exception/CMakeFiles/regression_exception_error_code_stability.dir/build
+.PHONY : regression_exception_error_code_stability/fast
+
+#=============================================================================
+# Target rules for targets named regression_exception_performance_regression
+
+# Build rule for target.
+regression_exception_performance_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_exception_performance_regression
+.PHONY : regression_exception_performance_regression
+
+# fast build rule for target.
+regression_exception_performance_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/exception/CMakeFiles/regression_exception_performance_regression.dir/build.make test/regression/exception/CMakeFiles/regression_exception_performance_regression.dir/build
+.PHONY : regression_exception_performance_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_exception_typed_regression
+
+# Build rule for target.
+regression_exception_typed_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_exception_typed_regression
+.PHONY : regression_exception_typed_regression
+
+# fast build rule for target.
+regression_exception_typed_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/exception/CMakeFiles/regression_exception_typed_regression.dir/build.make test/regression/exception/CMakeFiles/regression_exception_typed_regression.dir/build
+.PHONY : regression_exception_typed_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_exception_macro_regression
+
+# Build rule for target.
+regression_exception_macro_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_exception_macro_regression
+.PHONY : regression_exception_macro_regression
+
+# fast build rule for target.
+regression_exception_macro_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/exception/CMakeFiles/regression_exception_macro_regression.dir/build.make test/regression/exception/CMakeFiles/regression_exception_macro_regression.dir/build
+.PHONY : regression_exception_macro_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_exception_module_api_stability
+
+# Build rule for target.
+regression_exception_module_api_stability: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_exception_module_api_stability
+.PHONY : regression_exception_module_api_stability
+
+# fast build rule for target.
+regression_exception_module_api_stability/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/exception/CMakeFiles/regression_exception_module_api_stability.dir/build.make test/regression/exception/CMakeFiles/regression_exception_module_api_stability.dir/build
+.PHONY : regression_exception_module_api_stability/fast
+
+#=============================================================================
 # Target rules for targets named test_exception_regression
 
 # Build rule for target.
@@ -30988,9 +31261,15 @@ help:
 	@echo "... e2e_fault_tolerance_test_capacity_manager_e2e"
 	@echo "... e2e_fault_tolerance_test_crash_recovery"
 	@echo "... e2e_fault_tolerance_test_exception_brain_integration_e2e"
+	@echo "... e2e_fault_tolerance_test_exception_complete_flow_e2e"
 	@echo "... e2e_fault_tolerance_test_exception_flow_e2e"
+	@echo "... e2e_fault_tolerance_test_exception_immune_e2e"
+	@echo "... e2e_fault_tolerance_test_exception_macro_e2e"
+	@echo "... e2e_fault_tolerance_test_exception_module_e2e"
 	@echo "... e2e_fault_tolerance_test_exception_recovery_e2e"
+	@echo "... e2e_fault_tolerance_test_exception_recovery_scenarios_e2e"
 	@echo "... e2e_fault_tolerance_test_exception_resilience_e2e"
+	@echo "... e2e_fault_tolerance_test_exception_stress_e2e"
 	@echo "... e2e_fault_tolerance_test_health_agent_active_cognitive_e2e"
 	@echo "... e2e_fault_tolerance_test_health_agent_behavioral_e2e"
 	@echo "... e2e_fault_tolerance_test_health_agent_connection_e2e"
@@ -31399,7 +31678,11 @@ help:
 	@echo "... integration_emotion_immune_pipeline"
 	@echo "... integration_error_propagation"
 	@echo "... integration_exception_test_exception_async_integration"
+	@echo "... integration_exception_test_exception_bio_async_flow"
 	@echo "... integration_exception_test_exception_cognitive_integration"
+	@echo "... integration_exception_test_exception_cross_module"
+	@echo "... integration_exception_test_exception_cross_module_flow"
+	@echo "... integration_exception_test_exception_health_integration"
 	@echo "... integration_exception_test_exception_immune_integration"
 	@echo "... integration_exception_test_exception_module_integration"
 	@echo "... integration_exception_test_exception_propagation_integration"
@@ -31786,13 +32069,19 @@ help:
 	@echo "... regression_dragonfly_numerical"
 	@echo "... regression_dragonfly_parameters"
 	@echo "... regression_dragonfly_performance"
+	@echo "... regression_exception_api_compatibility"
 	@echo "... regression_exception_api_stability"
+	@echo "... regression_exception_error_code_stability"
 	@echo "... regression_exception_error_codes"
+	@echo "... regression_exception_macro_regression"
+	@echo "... regression_exception_module_api_stability"
 	@echo "... regression_exception_performance"
+	@echo "... regression_exception_performance_regression"
 	@echo "... regression_exception_test_exception_api_regression"
 	@echo "... regression_exception_test_exception_contracts_regression"
 	@echo "... regression_exception_test_exception_immune_regression"
 	@echo "... regression_exception_test_signal_exception_regression"
+	@echo "... regression_exception_typed_regression"
 	@echo "... regression_fault_tolerance_test_fault_tolerance_regression"
 	@echo "... regression_fep_bridges"
 	@echo "... regression_game_theory"
@@ -32730,6 +33019,11 @@ help:
 	@echo "... unit_dragonfly_test_tsdn"
 	@echo "... unit_dragonfly_test_visual_bridge"
 	@echo "... unit_dragonfly_test_workspace_bridge"
+	@echo "... unit_exception_test_macro_behavior"
+	@echo "... unit_exception_test_security_lgss_macros"
+	@echo "... unit_exception_test_security_macros"
+	@echo "... unit_exception_test_swarm_macros"
+	@echo "... unit_exception_test_swarm_memory_macros"
 	@echo "... unit_fep_consciousness"
 	@echo "... unit_fep_context"
 	@echo "... unit_fep_curiosity"

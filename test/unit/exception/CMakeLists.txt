@@ -114,3 +114,73 @@ set_tests_properties(unit_exception_test_swarm_macros
     LABELS "unit;exception;swarm"
     TIMEOUT 120
 )
+
+#=============================================================================
+# Test 4: Security and LGSS Module Exception Macros Tests
+#=============================================================================
+# WHAT: Tests for LGSS guards and security module exception handling
+# WHY:  Verify exception flow through LGSS STDP guards, training guards,
+#       autonomic gates, perception input bridges, and key derivation
+#=============================================================================
+
+add_executable(unit_exception_test_security_lgss_macros
+    test_exception_security_lgss_macros.cpp
+)
+
+target_include_directories(unit_exception_test_security_lgss_macros PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(unit_exception_test_security_lgss_macros
+    nimcp
+    GTest::gtest
+    GTest::gtest_main
+    pthread
+    m
+)
+
+add_test(
+    NAME unit_exception_test_security_lgss_macros
+    COMMAND unit_exception_test_security_lgss_macros
+)
+
+set_tests_properties(unit_exception_test_security_lgss_macros
+    PROPERTIES
+    LABELS "unit;exception;lgss;security"
+    TIMEOUT 120
+)
+
+#=============================================================================
+# Test 5: Swarm Memory Module Exception Macros Tests
+#=============================================================================
+# WHAT: Tests for swarm memory and cognitive memory exception handling
+# WHY:  Verify swarm memory, emotional contagion, energy gossip,
+#       temporal replay, and Hopfield memory exception flows
+#=============================================================================
+
+add_executable(unit_exception_test_swarm_memory_macros
+    test_exception_swarm_memory_macros.cpp
+)
+
+target_include_directories(unit_exception_test_swarm_memory_macros PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(unit_exception_test_swarm_memory_macros
+    nimcp
+    GTest::gtest
+    GTest::gtest_main
+    pthread
+    m
+)
+
+add_test(
+    NAME unit_exception_test_swarm_memory_macros
+    COMMAND unit_exception_test_swarm_memory_macros
+)
+
+set_tests_properties(unit_exception_test_swarm_memory_macros
+    PROPERTIES
+    LABELS "unit;exception;swarm;memory;hopfield;replay"
+    TIMEOUT 120
+)

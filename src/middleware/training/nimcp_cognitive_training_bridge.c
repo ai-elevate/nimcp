@@ -166,9 +166,7 @@ static inline float clamp_f(float value, float min, float max) {
  * HOW:  Calls getter functions on each module, handles NULL safely
  */
 static int extract_cognitive_state(cognitive_training_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "extract_cognitive_state: bridge is NULL");
 
     cognitive_training_effects_t* effects = &bridge->cognitive_effects;
 
@@ -629,9 +627,7 @@ void cognitive_training_destroy(cognitive_training_bridge_t* bridge) {
 }
 
 int cognitive_training_start(cognitive_training_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "cognitive_training_start: bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -659,9 +655,7 @@ int cognitive_training_start(cognitive_training_bridge_t* bridge) {
 }
 
 int cognitive_training_stop(cognitive_training_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "cognitive_training_stop: bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -687,9 +681,7 @@ int cognitive_training_connect_executive(
     cognitive_training_bridge_t* bridge,
     executive_controller_t* executive)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "cognitive_training_connect_executive: bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -707,9 +699,7 @@ int cognitive_training_connect_introspection(
     cognitive_training_bridge_t* bridge,
     introspection_context_t introspection)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "cognitive_training_connect_introspection: bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -727,9 +717,7 @@ int cognitive_training_connect_attention(
     cognitive_training_bridge_t* bridge,
     multihead_attention_t attention)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "cognitive_training_connect_attention: bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -747,9 +735,7 @@ int cognitive_training_connect_curiosity(
     cognitive_training_bridge_t* bridge,
     curiosity_engine_t curiosity)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "cognitive_training_connect_curiosity: bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -767,9 +753,7 @@ int cognitive_training_connect_emotion(
     cognitive_training_bridge_t* bridge,
     emotion_recognition_system_t* emotion)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "cognitive_training_connect_emotion: bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -791,9 +775,7 @@ int cognitive_training_connect_brain_training(
     cognitive_training_bridge_t* bridge,
     nimcp_brain_training_ctx_t* training_ctx)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "cognitive_training_connect_brain_training: bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -811,9 +793,7 @@ int cognitive_training_connect_training_logic(
     cognitive_training_bridge_t* bridge,
     training_logic_bridge_t* training_logic)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "cognitive_training_connect_training_logic: bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -831,9 +811,7 @@ int cognitive_training_connect_training_plasticity(
     cognitive_training_bridge_t* bridge,
     training_plasticity_bridge_t* training_plasticity)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "cognitive_training_connect_training_plasticity: bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -851,9 +829,7 @@ int cognitive_training_connect_training_immune(
     cognitive_training_bridge_t* bridge,
     training_immune_system_t* training_immune)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "cognitive_training_connect_training_immune: bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -871,9 +847,7 @@ int cognitive_training_connect_perception_training(
     cognitive_training_bridge_t* bridge,
     perception_training_bridge_t* perception_training)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "cognitive_training_connect_perception_training: bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -895,9 +869,7 @@ int cognitive_training_connect_cortical_training(
     cognitive_training_bridge_t* bridge,
     cortical_training_bridge_t* cortical_training)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "cognitive_training_connect_cortical_training: bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -920,9 +892,7 @@ int cognitive_training_connect_cortical_training(
  *============================================================================*/
 
 int cognitive_training_update(cognitive_training_bridge_t* bridge, uint64_t delta_ms) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "cognitive_training_update: bridge is NULL");
     (void)delta_ms;  /* Currently unused, for future time-based updates */
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1013,9 +983,7 @@ int cognitive_training_get_cognitive_effects(
     const cognitive_training_bridge_t* bridge,
     cognitive_training_effects_t* effects)
 {
-    if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_NULL_POINTER, "cognitive_training_get_cognitive_effects: NULL argument");
 
     memcpy(effects, &bridge->cognitive_effects, sizeof(cognitive_training_effects_t));
 
@@ -1033,9 +1001,7 @@ int cognitive_training_update_metrics(
     float learning_rate,
     uint64_t step)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "cognitive_training_update_metrics: bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1063,13 +1029,9 @@ int cognitive_training_signal_divergence(
     cognitive_training_bridge_t* bridge,
     cognitive_training_divergence_t divergence_type)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (divergence_type >= COGNITIVE_DIVERGENCE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "cognitive_training_signal_divergence: bridge is NULL");
+    NIMCP_CHECK_THROW(divergence_type < COGNITIVE_DIVERGENCE_COUNT, NIMCP_ERROR_INVALID_PARAM,
+                      "cognitive_training_signal_divergence: invalid divergence_type %d", divergence_type);
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1096,9 +1058,7 @@ int cognitive_training_get_training_effects(
     const cognitive_training_bridge_t* bridge,
     training_cognitive_effects_t* effects)
 {
-    if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_NULL_POINTER, "cognitive_training_get_training_effects: NULL argument");
 
     memcpy(effects, &bridge->training_effects, sizeof(training_cognitive_effects_t));
 
@@ -1110,9 +1070,7 @@ int cognitive_training_get_training_effects(
  *============================================================================*/
 
 int cognitive_training_connect_bio_async(cognitive_training_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "cognitive_training_connect_bio_async: bridge is NULL");
 
     if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  /* Already connected */
@@ -1137,9 +1095,7 @@ int cognitive_training_connect_bio_async(cognitive_training_bridge_t* bridge) {
 }
 
 int cognitive_training_disconnect_bio_async(cognitive_training_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "cognitive_training_disconnect_bio_async: bridge is NULL");
 
     if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  /* Already disconnected */
@@ -1186,9 +1142,7 @@ int cognitive_training_get_stats(
     const cognitive_training_bridge_t* bridge,
     cognitive_training_stats_t* stats)
 {
-    if (!bridge || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "cognitive_training_get_stats: NULL argument");
 
     memcpy(stats, &bridge->stats, sizeof(cognitive_training_stats_t));
 
@@ -1196,9 +1150,7 @@ int cognitive_training_get_stats(
 }
 
 int cognitive_training_reset_stats(cognitive_training_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "cognitive_training_reset_stats: bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1324,9 +1276,7 @@ int cognitive_training_get_gradient_scaling(
     float* factors,
     uint32_t num_features
 ) {
-    if (!bridge || !factors) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && factors, NIMCP_ERROR_NULL_POINTER, "cognitive_training_get_gradient_scaling: NULL argument");
 
     /* Zero features is valid - nothing to do */
     if (num_features == 0) {
@@ -1378,12 +1328,9 @@ int cognitive_training_signal_event(
     cognitive_training_feedback_t event,
     float magnitude
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (event < 0 || event >= COGNITIVE_TRAINING_FEEDBACK_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "cognitive_training_signal_event: bridge is NULL");
+    NIMCP_CHECK_THROW(event >= 0 && event < COGNITIVE_TRAINING_FEEDBACK_COUNT, NIMCP_ERROR_INVALID_PARAM,
+                      "cognitive_training_signal_event: invalid event %d", event);
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1462,9 +1409,7 @@ int cognitive_training_pattern_learned(
     const char* pattern_name,
     float novelty
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "cognitive_training_pattern_learned: bridge is NULL");
     (void)pattern_name;  /* For future use */
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1488,9 +1433,7 @@ int cognitive_training_checkpoint_complete(
     cognitive_training_bridge_t* bridge,
     uint64_t step
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "cognitive_training_checkpoint_complete: bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1514,9 +1457,7 @@ int cognitive_training_checkpoint_complete(
 int cognitive_training_update_cognitive_state(
     cognitive_training_bridge_t* bridge
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "cognitive_training_update_cognitive_state: bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1534,9 +1475,7 @@ int cognitive_training_update_cognitive_state(
 int cognitive_training_apply_feedback(
     cognitive_training_bridge_t* bridge
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "cognitive_training_apply_feedback: bridge is NULL");
 
     /* Check for events to trigger based on training effects */
     /* Note: signal_event handles its own locking */
@@ -1609,9 +1548,7 @@ int cognitive_training_set_effects_for_testing(
     cognitive_training_bridge_t* bridge,
     const cognitive_training_effects_t* effects
 ) {
-    if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_NULL_POINTER, "cognitive_training_set_effects_for_testing: NULL argument");
 
     nimcp_mutex_lock(bridge->base.mutex);
 

@@ -83,7 +83,7 @@ nimcp_result_t nimcp_barrier_init(nimcp_barrier_t** barrier, uint32_t count)
 
     if (count == 0) {
         *barrier = NULL;
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "barrier count must be greater than 0");
     }
 
     // Allocate barrier structure
@@ -91,7 +91,7 @@ nimcp_result_t nimcp_barrier_init(nimcp_barrier_t** barrier, uint32_t count)
     nimcp_barrier_t* b = (nimcp_barrier_t*)nimcp_calloc(1, sizeof(nimcp_barrier_t));
     if (!b) {
         *barrier = NULL;
-        return NIMCP_ERROR_MEMORY;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_MEMORY, "failed to allocate barrier structure");
     }
 
     // Set thread count

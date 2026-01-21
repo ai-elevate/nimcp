@@ -188,7 +188,7 @@ int astro_immune_base_init(
 ) {
     if (!base || !ops) {
         NIMCP_LOGGING_ERROR("astro_immune_base_init: NULL base or ops");
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     memset(base, 0, sizeof(astrocyte_immune_base_t));
@@ -204,7 +204,7 @@ int astro_immune_base_init(
     base->infra.mutex = nimcp_platform_mutex_create();
     if (!base->infra.mutex) {
         NIMCP_LOGGING_ERROR("astro_immune_base_init: mutex creation failed");
-        return NIMCP_ERROR_NO_MEMORY;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NO_MEMORY, "memory allocation failed");
     }
 
     /* Initialize timing */

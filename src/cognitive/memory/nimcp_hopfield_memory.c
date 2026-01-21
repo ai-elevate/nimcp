@@ -143,9 +143,7 @@ static inline bool should_use_gpu(const hopfield_memory_t* memory, uint32_t batc
  * ============================================================================ */
 
 int hopfield_default_config(hopfield_config_t* config) {
-    if (!config) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     memset(config, 0, sizeof(*config));
 
@@ -171,18 +169,13 @@ int hopfield_default_config(hopfield_config_t* config) {
 }
 
 int hopfield_validate_config(const hopfield_config_t* config) {
-    if (!config) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (config->pattern_dim == 0 || config->pattern_dim > 65536) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (config->capacity == 0 || config->capacity > HOPFIELD_MAX_CAPACITY) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (config->beta <= 0.0f || config->beta > HOPFIELD_MAX_BETA) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
+    NIMCP_CHECK_THROW(config->pattern_dim > 0 && config->pattern_dim <= 65536,
+                      NIMCP_ERROR_INVALID_PARAM, "pattern_dim must be in range (0, 65536]");
+    NIMCP_CHECK_THROW(config->capacity > 0 && config->capacity <= HOPFIELD_MAX_CAPACITY,
+                      NIMCP_ERROR_INVALID_PARAM, "capacity must be in range (0, HOPFIELD_MAX_CAPACITY]");
+    NIMCP_CHECK_THROW(config->beta > 0.0f && config->beta <= HOPFIELD_MAX_BETA,
+                      NIMCP_ERROR_INVALID_PARAM, "beta must be in range (0.0, HOPFIELD_MAX_BETA]");
     return NIMCP_SUCCESS;
 }
 
@@ -316,9 +309,7 @@ void hopfield_memory_destroy(hopfield_memory_t* memory) {
 }
 
 int hopfield_memory_clear(hopfield_memory_t* memory) {
-    if (!memory) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
 
     nimcp_mutex_lock(memory->mutex);
 
@@ -357,9 +348,8 @@ int hopfield_memory_store_with_meta(hopfield_memory_t* memory,
                                      float strength,
                                      void* user_data,
                                      uint32_t* pattern_id) {
-    if (!memory || !pattern) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
+    NIMCP_CHECK_THROW(pattern, NIMCP_ERROR_INVALID_PARAM, "pattern is NULL");
 
     nimcp_mutex_lock(memory->mutex);
 
@@ -429,9 +419,9 @@ int hopfield_memory_store_batch(hopfield_memory_t* memory,
                                  const float* patterns,
                                  uint32_t num_patterns,
                                  uint32_t* pattern_ids) {
-    if (!memory || !patterns || num_patterns == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
+    NIMCP_CHECK_THROW(patterns, NIMCP_ERROR_INVALID_PARAM, "patterns is NULL");
+    NIMCP_CHECK_THROW(num_patterns > 0, NIMCP_ERROR_INVALID_PARAM, "num_patterns must be > 0");
 
     for (uint32_t i = 0; i < num_patterns; i++) {
         const float* pattern = patterns + (size_t)i * memory->config.pattern_dim;
@@ -451,16 +441,15 @@ int hopfield_memory_store_batch(hopfield_memory_t* memory,
 int hopfield_memory_update_pattern(hopfield_memory_t* memory,
                                     uint32_t pattern_id,
                                     const float* pattern) {
-    if (!memory || !pattern) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
+    NIMCP_CHECK_THROW(pattern, NIMCP_ERROR_INVALID_PARAM, "pattern is NULL");
 
     nimcp_mutex_lock(memory->mutex);
 
     int32_t idx = find_pattern_index(memory, pattern_id);
     if (idx < 0) {
         nimcp_mutex_unlock(memory->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "pattern not found");
     }
 
     float* dest = get_pattern(memory, (uint32_t)idx);
@@ -480,16 +469,14 @@ int hopfield_memory_update_pattern(hopfield_memory_t* memory,
 
 int hopfield_memory_remove_pattern(hopfield_memory_t* memory,
                                     uint32_t pattern_id) {
-    if (!memory) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
 
     nimcp_mutex_lock(memory->mutex);
 
     int32_t idx = find_pattern_index(memory, pattern_id);
     if (idx < 0) {
         nimcp_mutex_unlock(memory->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "pattern not found");
     }
 
     uint32_t last_idx = memory->pattern_count - 1;
@@ -531,15 +518,16 @@ int hopfield_memory_retrieve_iter(hopfield_memory_t* memory,
                                    const float* query,
                                    uint32_t max_iterations,
                                    hopfield_retrieval_result_t* result) {
-    if (!memory || !query || !result || !result->pattern) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
+    NIMCP_CHECK_THROW(query, NIMCP_ERROR_INVALID_PARAM, "query is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
+    NIMCP_CHECK_THROW(result->pattern, NIMCP_ERROR_INVALID_PARAM, "result->pattern is NULL");
 
     nimcp_mutex_lock(memory->mutex);
 
     if (memory->pattern_count == 0) {
         nimcp_mutex_unlock(memory->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "no patterns stored");
     }
 
     uint32_t dim = memory->config.pattern_dim;
@@ -636,9 +624,10 @@ int hopfield_memory_retrieve_batch(hopfield_memory_t* memory,
                                     const float* queries,
                                     uint32_t num_queries,
                                     hopfield_batch_result_t* result) {
-    if (!memory || !queries || !result || num_queries == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
+    NIMCP_CHECK_THROW(queries, NIMCP_ERROR_INVALID_PARAM, "queries is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
+    NIMCP_CHECK_THROW(num_queries > 0, NIMCP_ERROR_INVALID_PARAM, "num_queries must be > 0");
 
     uint64_t start_time = 0;
     float total_sim = 0.0f;
@@ -667,15 +656,17 @@ int hopfield_memory_top_k(hopfield_memory_t* memory,
                            uint32_t k,
                            uint32_t* pattern_ids,
                            float* similarities) {
-    if (!memory || !query || !pattern_ids || !similarities || k == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
+    NIMCP_CHECK_THROW(query, NIMCP_ERROR_INVALID_PARAM, "query is NULL");
+    NIMCP_CHECK_THROW(pattern_ids, NIMCP_ERROR_INVALID_PARAM, "pattern_ids is NULL");
+    NIMCP_CHECK_THROW(similarities, NIMCP_ERROR_INVALID_PARAM, "similarities is NULL");
+    NIMCP_CHECK_THROW(k > 0, NIMCP_ERROR_INVALID_PARAM, "k must be > 0");
 
     nimcp_mutex_lock(memory->mutex);
 
     if (memory->pattern_count == 0) {
         nimcp_mutex_unlock(memory->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "no patterns stored");
     }
 
     uint32_t actual_k = (k > memory->pattern_count) ? memory->pattern_count : k;
@@ -756,9 +747,9 @@ float hopfield_memory_compute_energy(hopfield_memory_t* memory,
 int hopfield_memory_get_similarities(hopfield_memory_t* memory,
                                       const float* query,
                                       float* similarities) {
-    if (!memory || !query || !similarities) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
+    NIMCP_CHECK_THROW(query, NIMCP_ERROR_INVALID_PARAM, "query is NULL");
+    NIMCP_CHECK_THROW(similarities, NIMCP_ERROR_INVALID_PARAM, "similarities output is NULL");
 
     nimcp_mutex_lock(memory->mutex);
 
@@ -785,17 +776,13 @@ int hopfield_memory_get_similarities(hopfield_memory_t* memory,
 #ifdef NIMCP_ENABLE_CUDA
 int hopfield_memory_init_gpu(hopfield_memory_t* memory,
                               struct nimcp_gpu_context_s* gpu_ctx) {
-    if (!memory) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
 
     if (gpu_ctx) {
         memory->gpu_ctx = gpu_ctx;
     } else {
         memory->gpu_ctx = nimcp_gpu_context_create_auto();
-        if (!memory->gpu_ctx) {
-            return NIMCP_ERROR_GPU_NOT_AVAILABLE;
-        }
+        NIMCP_CHECK_THROW(memory->gpu_ctx, NIMCP_ERROR_GPU_NOT_AVAILABLE, "failed to create GPU context");
     }
 
     memory->gpu_initialized = true;
@@ -805,9 +792,8 @@ int hopfield_memory_init_gpu(hopfield_memory_t* memory,
 }
 
 int hopfield_memory_sync_to_gpu(hopfield_memory_t* memory) {
-    if (!memory || !memory->gpu_initialized) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
+    NIMCP_CHECK_THROW(memory->gpu_initialized, NIMCP_ERROR_INVALID_PARAM, "GPU not initialized");
     memory->patterns_synced = true;
     return NIMCP_SUCCESS;
 }
@@ -823,17 +809,14 @@ bool hopfield_memory_has_gpu(const hopfield_memory_t* memory) {
 
 int hopfield_memory_get_stats(const hopfield_memory_t* memory,
                                hopfield_stats_t* stats) {
-    if (!memory || !stats) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_INVALID_PARAM, "stats output is NULL");
     memcpy(stats, &memory->stats, sizeof(hopfield_stats_t));
     return NIMCP_SUCCESS;
 }
 
 int hopfield_memory_reset_stats(hopfield_memory_t* memory) {
-    if (!memory) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
 
     nimcp_mutex_lock(memory->mutex);
     uint32_t stored = memory->stats.patterns_stored;
@@ -859,17 +842,13 @@ uint32_t hopfield_memory_capacity(const hopfield_memory_t* memory) {
  * ============================================================================ */
 
 int hopfield_memory_connect_bio_async(hopfield_memory_t* memory) {
-    if (!memory) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
     NIMCP_LOG_INFO("Bio-async connection (stub)");
     return NIMCP_SUCCESS;
 }
 
 int hopfield_memory_disconnect_bio_async(hopfield_memory_t* memory) {
-    if (!memory) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(memory, NIMCP_ERROR_INVALID_PARAM, "memory is NULL");
     return NIMCP_SUCCESS;
 }
 

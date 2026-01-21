@@ -119,15 +119,13 @@ NIMCP_EXPORT nimcp_status_t nimcp_brain_learn_example(
         if (!bbb_validate_input(brain->internal_brain->bbb_system,
                                features, num_features * sizeof(float), &result)) {
             LOG_WARN("BBB rejected features: %s", result.reason);
-            set_error("BBB rejected features: %s", result.reason);
-            return NIMCP_ERROR_INVALID;
+            NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID, "BBB rejected features: %s", result.reason);
         }
 
         // Validate label string (external string input)
         if (!bbb_validate_string(brain->internal_brain->bbb_system, label, &result)) {
             LOG_WARN("BBB rejected label: %s", result.reason);
-            set_error("BBB rejected label: %s", result.reason);
-            return NIMCP_ERROR_INVALID;
+            NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID, "BBB rejected label: %s", result.reason);
         }
         LOG_DEBUG("BBB validation passed");
     }
@@ -140,8 +138,6 @@ NIMCP_EXPORT nimcp_status_t nimcp_brain_learn_example(
     if (loss < 0.0f) {
         LOG_ERROR("Brain learning failed for label '%s'", label);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_LEARNING_FAILED, "Brain learning failed for label '%s'", label);
-        set_error("Brain learning failed");
-        return NIMCP_ERROR;
     }
 
     set_error("No error");
@@ -170,8 +166,7 @@ NIMCP_EXPORT nimcp_status_t nimcp_brain_predict(
         // Validate features array (external input data)
         if (!bbb_validate_input(brain->internal_brain->bbb_system,
                                features, num_features * sizeof(float), &result)) {
-            set_error("BBB rejected features: %s", result.reason);
-            return NIMCP_ERROR_INVALID;
+            NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID, "BBB rejected features: %s", result.reason);
         }
     }
 
@@ -180,8 +175,6 @@ NIMCP_EXPORT nimcp_status_t nimcp_brain_predict(
 
     if (!decision) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INFERENCE_FAILED, "Brain prediction failed");
-        set_error("Brain prediction failed");
-        return NIMCP_ERROR;
     }
 
     // Copy results
@@ -243,8 +236,6 @@ NIMCP_EXPORT nimcp_status_t nimcp_brain_save(nimcp_brain_t brain, const char* fi
 
     if (!success) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_FILE_WRITE, "Failed to save brain to '%s'", filepath);
-        set_error("Failed to save brain");
-        return NIMCP_ERROR_IO;
     }
 
     set_error("No error");

@@ -134,9 +134,7 @@ static inline bool should_use_gpu(const temporal_replay_t* replay, uint32_t batc
  * ============================================================================ */
 
 int replay_default_config(replay_config_t* config) {
-    if (!config) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     memset(config, 0, sizeof(*config));
 
@@ -165,21 +163,15 @@ int replay_default_config(replay_config_t* config) {
 }
 
 int replay_validate_config(const replay_config_t* config) {
-    if (!config) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (config->capacity == 0 || config->capacity > REPLAY_MAX_CAPACITY) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (config->state_dim == 0 || config->state_dim > 65536) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (config->priority_alpha < 0.0f || config->priority_alpha > 1.0f) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (config->is_beta < 0.0f || config->is_beta > 1.0f) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
+    NIMCP_CHECK_THROW(config->capacity > 0 && config->capacity <= REPLAY_MAX_CAPACITY,
+                      NIMCP_ERROR_INVALID_PARAM, "capacity must be in range (0, REPLAY_MAX_CAPACITY]");
+    NIMCP_CHECK_THROW(config->state_dim > 0 && config->state_dim <= 65536,
+                      NIMCP_ERROR_INVALID_PARAM, "state_dim must be in range (0, 65536]");
+    NIMCP_CHECK_THROW(config->priority_alpha >= 0.0f && config->priority_alpha <= 1.0f,
+                      NIMCP_ERROR_INVALID_PARAM, "priority_alpha must be in range [0.0, 1.0]");
+    NIMCP_CHECK_THROW(config->is_beta >= 0.0f && config->is_beta <= 1.0f,
+                      NIMCP_ERROR_INVALID_PARAM, "is_beta must be in range [0.0, 1.0]");
     return NIMCP_SUCCESS;
 }
 
@@ -350,9 +342,7 @@ void temporal_replay_destroy(temporal_replay_t* replay) {
 }
 
 int temporal_replay_clear(temporal_replay_t* replay) {
-    if (!replay) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
 
     nimcp_mutex_lock(replay->mutex);
 
@@ -391,9 +381,8 @@ int temporal_replay_store(temporal_replay_t* replay,
                            float reward,
                            bool terminal,
                            float priority) {
-    if (!replay || !state) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_INVALID_PARAM, "state is NULL");
 
     nimcp_mutex_lock(replay->mutex);
 
@@ -473,15 +462,13 @@ uint32_t temporal_replay_start_sequence(temporal_replay_t* replay) {
 }
 
 int temporal_replay_end_sequence(temporal_replay_t* replay) {
-    if (!replay) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
 
     nimcp_mutex_lock(replay->mutex);
 
     if (!replay->recording_sequence) {
         nimcp_mutex_unlock(replay->mutex);
-        return NIMCP_ERROR_INVALID_STATE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_STATE, "not currently recording a sequence");
     }
 
     replay->recording_sequence = false;
@@ -493,9 +480,8 @@ int temporal_replay_end_sequence(temporal_replay_t* replay) {
 int temporal_replay_update_priority(temporal_replay_t* replay,
                                      uint32_t index,
                                      float priority) {
-    if (!replay || index >= replay->count) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
+    NIMCP_CHECK_THROW(index < replay->count, NIMCP_ERROR_INVALID_PARAM, "index out of range");
 
     nimcp_mutex_lock(replay->mutex);
 
@@ -514,9 +500,10 @@ int temporal_replay_update_priorities(temporal_replay_t* replay,
                                        const uint32_t* indices,
                                        const float* priorities,
                                        uint32_t batch_size) {
-    if (!replay || !indices || !priorities || batch_size == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
+    NIMCP_CHECK_THROW(indices, NIMCP_ERROR_INVALID_PARAM, "indices is NULL");
+    NIMCP_CHECK_THROW(priorities, NIMCP_ERROR_INVALID_PARAM, "priorities is NULL");
+    NIMCP_CHECK_THROW(batch_size > 0, NIMCP_ERROR_INVALID_PARAM, "batch_size must be > 0");
 
     for (uint32_t i = 0; i < batch_size; i++) {
         int ret = temporal_replay_update_priority(replay, indices[i], priorities[i]);
@@ -536,9 +523,10 @@ int temporal_replay_sample(temporal_replay_t* replay,
                             replay_mode_t mode,
                             uint32_t batch_size,
                             replay_batch_t* batch) {
-    if (!replay || !batch || batch_size == 0 || replay->count == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
+    NIMCP_CHECK_THROW(batch, NIMCP_ERROR_INVALID_PARAM, "batch output is NULL");
+    NIMCP_CHECK_THROW(batch_size > 0, NIMCP_ERROR_INVALID_PARAM, "batch_size must be > 0");
+    NIMCP_CHECK_THROW(replay->count > 0, NIMCP_ERROR_INVALID_PARAM, "replay buffer is empty");
 
     nimcp_mutex_lock(replay->mutex);
 
@@ -624,9 +612,10 @@ int temporal_replay_sample(temporal_replay_t* replay,
 int temporal_replay_sample_sequence(temporal_replay_t* replay,
                                      uint32_t sequence_length,
                                      replay_batch_t* batch) {
-    if (!replay || !batch || sequence_length == 0 || replay->count == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
+    NIMCP_CHECK_THROW(batch, NIMCP_ERROR_INVALID_PARAM, "batch output is NULL");
+    NIMCP_CHECK_THROW(sequence_length > 0, NIMCP_ERROR_INVALID_PARAM, "sequence_length must be > 0");
+    NIMCP_CHECK_THROW(replay->count > 0, NIMCP_ERROR_INVALID_PARAM, "replay buffer is empty");
 
     nimcp_mutex_lock(replay->mutex);
 
@@ -669,15 +658,15 @@ int temporal_replay_forward_sweep(temporal_replay_t* replay,
                                    uint32_t start_idx,
                                    uint32_t length,
                                    replay_sweep_result_t* result) {
-    if (!replay || !result || length == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result output is NULL");
+    NIMCP_CHECK_THROW(length > 0, NIMCP_ERROR_INVALID_PARAM, "length must be > 0");
 
     nimcp_mutex_lock(replay->mutex);
 
     if (start_idx >= replay->count) {
         nimcp_mutex_unlock(replay->mutex);
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "start_idx out of range");
     }
 
     uint32_t actual_length = length;
@@ -708,15 +697,15 @@ int temporal_replay_backward_sweep(temporal_replay_t* replay,
                                     uint32_t end_idx,
                                     uint32_t length,
                                     replay_sweep_result_t* result) {
-    if (!replay || !result || length == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result output is NULL");
+    NIMCP_CHECK_THROW(length > 0, NIMCP_ERROR_INVALID_PARAM, "length must be > 0");
 
     nimcp_mutex_lock(replay->mutex);
 
     if (end_idx >= replay->count) {
         nimcp_mutex_unlock(replay->mutex);
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "end_idx out of range");
     }
 
     uint32_t actual_length = length;
@@ -747,14 +736,12 @@ int temporal_replay_replay_sequence(temporal_replay_t* replay,
                                      uint32_t sequence_id,
                                      replay_mode_t mode,
                                      replay_sweep_result_t* result) {
-    if (!replay || !result || sequence_id >= replay->num_sequences) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result output is NULL");
+    NIMCP_CHECK_THROW(sequence_id < replay->num_sequences, NIMCP_ERROR_INVALID_PARAM, "sequence_id out of range");
 
     replay_sequence_t* seq = &replay->sequences[sequence_id];
-    if (seq->length == 0 || !seq->transition_indices) {
-        return NIMCP_ERROR_NOT_FOUND;
-    }
+    NIMCP_CHECK_THROW(seq->length > 0 && seq->transition_indices, NIMCP_ERROR_NOT_FOUND, "sequence is empty or invalid");
 
     if (mode == REPLAY_MODE_FORWARD) {
         return temporal_replay_forward_sweep(replay, seq->transition_indices[0],
@@ -765,21 +752,20 @@ int temporal_replay_replay_sequence(temporal_replay_t* replay,
                                                seq->length, result);
     }
 
-    return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "invalid replay mode");
 }
 
 int temporal_replay_next(temporal_replay_t* replay,
                           float* state,
                           uint64_t* timestamp) {
-    if (!replay || !state) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_INVALID_PARAM, "state output is NULL");
 
     nimcp_mutex_lock(replay->mutex);
 
     if (replay->seq_state == REPLAY_SEQ_IDLE) {
         nimcp_mutex_unlock(replay->mutex);
-        return NIMCP_ERROR_INVALID_STATE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_STATE, "replay is idle");
     }
 
     nimcp_mutex_unlock(replay->mutex);
@@ -787,9 +773,7 @@ int temporal_replay_next(temporal_replay_t* replay,
 }
 
 int temporal_replay_pause(temporal_replay_t* replay) {
-    if (!replay) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
 
     nimcp_mutex_lock(replay->mutex);
 
@@ -803,9 +787,7 @@ int temporal_replay_pause(temporal_replay_t* replay) {
 }
 
 int temporal_replay_resume(temporal_replay_t* replay) {
-    if (!replay) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
 
     nimcp_mutex_lock(replay->mutex);
 
@@ -818,9 +800,7 @@ int temporal_replay_resume(temporal_replay_t* replay) {
 }
 
 int temporal_replay_stop(temporal_replay_t* replay) {
-    if (!replay) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
 
     nimcp_mutex_lock(replay->mutex);
     replay->seq_state = REPLAY_SEQ_IDLE;
@@ -837,17 +817,13 @@ int temporal_replay_stop(temporal_replay_t* replay) {
 #ifdef NIMCP_ENABLE_CUDA
 int temporal_replay_init_gpu(temporal_replay_t* replay,
                               struct nimcp_gpu_context_s* gpu_ctx) {
-    if (!replay) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
 
     if (gpu_ctx) {
         replay->gpu_ctx = gpu_ctx;
     } else {
         replay->gpu_ctx = nimcp_gpu_context_create_auto();
-        if (!replay->gpu_ctx) {
-            return NIMCP_ERROR_GPU_NOT_AVAILABLE;
-        }
+        NIMCP_CHECK_THROW(replay->gpu_ctx, NIMCP_ERROR_GPU_NOT_AVAILABLE, "failed to create GPU context");
     }
 
     replay->gpu_initialized = true;
@@ -856,9 +832,8 @@ int temporal_replay_init_gpu(temporal_replay_t* replay,
 }
 
 int temporal_replay_sync_to_gpu(temporal_replay_t* replay) {
-    if (!replay || !replay->gpu_initialized) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
+    NIMCP_CHECK_THROW(replay->gpu_initialized, NIMCP_ERROR_INVALID_PARAM, "GPU not initialized");
     return NIMCP_SUCCESS;
 }
 
@@ -873,17 +848,14 @@ bool temporal_replay_has_gpu(const temporal_replay_t* replay) {
 
 int temporal_replay_get_stats(const temporal_replay_t* replay,
                                replay_stats_t* stats) {
-    if (!replay || !stats) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_INVALID_PARAM, "stats output is NULL");
     memcpy(stats, &replay->stats, sizeof(replay_stats_t));
     return NIMCP_SUCCESS;
 }
 
 int temporal_replay_reset_stats(temporal_replay_t* replay) {
-    if (!replay) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
 
     nimcp_mutex_lock(replay->mutex);
 
@@ -918,17 +890,13 @@ bool temporal_replay_is_full(const temporal_replay_t* replay) {
  * ============================================================================ */
 
 int temporal_replay_connect_bio_async(temporal_replay_t* replay) {
-    if (!replay) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
     NIMCP_LOG_INFO("Bio-async connection (stub)");
     return NIMCP_SUCCESS;
 }
 
 int temporal_replay_disconnect_bio_async(temporal_replay_t* replay) {
-    if (!replay) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(replay, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
     return NIMCP_SUCCESS;
 }
 

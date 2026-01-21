@@ -1057,6 +1057,14 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/exception")
     add_subdirectory(unit/exception)
 endif()
 
+# Brain Unit Tests
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/brain/CMakeLists.txt")
+    message(STATUS "Adding brain unit tests...")
+    add_subdirectory(unit/brain)
+endif()
+
 # Utils Memory Tests
 # ============================================================================
 

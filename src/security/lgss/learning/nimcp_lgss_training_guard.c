@@ -415,10 +415,10 @@ void training_guard_destroy(training_guard_t guard) {
 }
 
 int training_guard_reset(training_guard_t guard) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct training_guard_internal* g = guard;
-    if (g->magic != LGSS_TRAINING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_TRAINING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid training guard magic");
 
     /* Reset histories */
     g->reward_history.head = 0;
@@ -449,12 +449,10 @@ int training_guard_apply_gradients(
     gradient_buffer_t* gradients,
     gradient_check_result_t* result
 ) {
-    if (!guard || !gradients || !result || !gradients->data) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(guard && gradients && result && gradients->data, NIMCP_ERROR_NULL_POINTER, "guard, gradients, result, or gradients->data is NULL");
 
     struct training_guard_internal* g = guard;
-    if (g->magic != LGSS_TRAINING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_TRAINING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid training guard magic");
 
     uint64_t start_time = get_time_us();
 
@@ -622,12 +620,12 @@ int training_guard_check_gradients(
     const gradient_buffer_t* gradients,
     gradient_check_result_t* result
 ) {
-    if (!guard || !gradients || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard && gradients && result, NIMCP_ERROR_NULL_POINTER, "guard, gradients, or result is NULL");
 
     /* Create a copy for non-destructive checking */
     gradient_buffer_t copy = *gradients;
     float* copy_data = malloc(gradients->size * sizeof(float));
-    if (!copy_data) return NIMCP_ERROR_NO_MEMORY;
+    NIMCP_CHECK_THROW(copy_data, NIMCP_ERROR_NO_MEMORY, "failed to allocate gradient buffer copy");
 
     memcpy(copy_data, gradients->data, gradients->size * sizeof(float));
     copy.data = copy_data;
@@ -733,10 +731,10 @@ bool training_guard_detect_reward_hacking(
 }
 
 int training_guard_record_reward(training_guard_t guard, float reward, uint64_t timestamp) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct training_guard_internal* g = guard;
-    if (g->magic != LGSS_TRAINING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_TRAINING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid training guard magic");
 
     if (timestamp == 0) {
         timestamp = get_time_us();
@@ -831,16 +829,16 @@ int training_guard_set_reference_goal(
     const float* goal,
     uint32_t goal_dim
 ) {
-    if (!guard || !goal || goal_dim == 0) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard && goal && goal_dim > 0, NIMCP_ERROR_NULL_POINTER, "guard or goal is NULL, or goal_dim is zero");
 
     struct training_guard_internal* g = guard;
-    if (g->magic != LGSS_TRAINING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_TRAINING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid training guard magic");
 
-    if (goal_dim > TRAINING_MAX_GOAL_DIM) return NIMCP_ERROR_OUT_OF_RANGE;
+    NIMCP_CHECK_THROW(goal_dim <= TRAINING_MAX_GOAL_DIM, NIMCP_ERROR_OUT_OF_RANGE, "goal_dim exceeds maximum");
 
     /* Allocate or reallocate */
     float* new_goal = realloc(g->reference_goal, goal_dim * sizeof(float));
-    if (!new_goal) return NIMCP_ERROR_NO_MEMORY;
+    NIMCP_CHECK_THROW(new_goal, NIMCP_ERROR_NO_MEMORY, "failed to allocate reference goal");
 
     memcpy(new_goal, goal, goal_dim * sizeof(float));
     g->reference_goal = new_goal;
@@ -857,14 +855,14 @@ int training_guard_get_goal_drift(
     uint32_t goal_dim,
     float* drift_out
 ) {
-    if (!guard || !current_goal || !drift_out) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard && current_goal && drift_out, NIMCP_ERROR_NULL_POINTER, "guard, current_goal, or drift_out is NULL");
 
     struct training_guard_internal* g = guard;
-    if (g->magic != LGSS_TRAINING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_TRAINING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid training guard magic");
 
     if (!g->reference_goal || goal_dim != g->goal_dim) {
         *drift_out = 0.0f;
-        return NIMCP_ERROR_INVALID_STATE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_STATE, "no reference goal or dimension mismatch");
     }
 
     *drift_out = compute_goal_distance(current_goal, g->reference_goal, goal_dim);
@@ -918,10 +916,10 @@ int training_guard_rollback(
     size_t model_size,
     size_t* actual_size
 ) {
-    if (!guard || !model_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard && model_data, NIMCP_ERROR_NULL_POINTER, "guard or model_data is NULL");
 
     struct training_guard_internal* g = guard;
-    if (g->magic != LGSS_TRAINING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_TRAINING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid training guard magic");
 
     /* Placeholder - would load from disk */
     (void)checkpoint_id;
@@ -952,24 +950,20 @@ uint32_t training_guard_prune_checkpoints(training_guard_t guard, uint32_t keep_
 }
 
 int training_guard_freeze_parameter(training_guard_t guard, uint32_t param_index) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
     struct training_guard_internal* g = guard;
-    if (g->magic != LGSS_TRAINING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_TRAINING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid training guard magic");
 
-    if (!frozen_params_add(&g->frozen_params, param_index)) {
-        return NIMCP_ERROR_OUT_OF_RANGE;
-    }
+    NIMCP_CHECK_THROW(frozen_params_add(&g->frozen_params, param_index), NIMCP_ERROR_OUT_OF_RANGE, "failed to freeze parameter");
     return NIMCP_SUCCESS;
 }
 
 int training_guard_unfreeze_parameter(training_guard_t guard, uint32_t param_index) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
     struct training_guard_internal* g = guard;
-    if (g->magic != LGSS_TRAINING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_TRAINING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid training guard magic");
 
-    if (!frozen_params_remove(&g->frozen_params, param_index)) {
-        return NIMCP_ERROR_NOT_FOUND;
-    }
+    NIMCP_CHECK_THROW(frozen_params_remove(&g->frozen_params, param_index), NIMCP_ERROR_NOT_FOUND, "parameter not found for unfreezing");
     return NIMCP_SUCCESS;
 }
 
@@ -981,27 +975,27 @@ bool training_guard_is_parameter_frozen(training_guard_t guard, uint32_t param_i
 }
 
 int training_guard_get_stats(training_guard_t guard, training_guard_stats_t* stats) {
-    if (!guard || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard && stats, NIMCP_ERROR_NULL_POINTER, "guard or stats is NULL");
     struct training_guard_internal* g = guard;
-    if (g->magic != LGSS_TRAINING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_TRAINING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid training guard magic");
 
     *stats = g->stats;
     return NIMCP_SUCCESS;
 }
 
 int training_guard_reset_stats(training_guard_t guard) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
     struct training_guard_internal* g = guard;
-    if (g->magic != LGSS_TRAINING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_TRAINING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid training guard magic");
 
     memset(&g->stats, 0, sizeof(g->stats));
     return NIMCP_SUCCESS;
 }
 
 int training_guard_record_loss(training_guard_t guard, float loss) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
     struct training_guard_internal* g = guard;
-    if (g->magic != LGSS_TRAINING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_TRAINING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid training guard magic");
 
     loss_history_add(&g->loss_history, loss);
     return NIMCP_SUCCESS;

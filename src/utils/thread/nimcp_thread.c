@@ -1152,7 +1152,8 @@ nimcp_result_t nimcp_rwlock_tryrdlock(nimcp_rwlock_t* lock)
         return NIMCP_BUSY;
     } else if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "RWlock tryrdlock failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM,
+                          "nimcp_rwlock_tryrdlock: pthread_rwlock_tryrdlock failed");
     }
 
     return NIMCP_SUCCESS;
@@ -1210,7 +1211,8 @@ nimcp_result_t nimcp_rwlock_trywrlock(nimcp_rwlock_t* lock)
         return NIMCP_BUSY;
     } else if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "RWlock trywrlock failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM,
+                          "nimcp_rwlock_trywrlock: pthread_rwlock_trywrlock failed");
     }
 
     return NIMCP_SUCCESS;
@@ -1268,7 +1270,8 @@ nimcp_result_t nimcp_rwlock_timedrdlock(nimcp_rwlock_t* lock, uint32_t timeout_m
     struct timespec abstime;
     if (clock_gettime(CLOCK_REALTIME, &abstime) != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "clock_gettime failed: %s", strerror(errno));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM,
+                          "nimcp_rwlock_timedrdlock: clock_gettime failed");
     }
 
     // Add timeout milliseconds to current time
@@ -1290,7 +1293,8 @@ nimcp_result_t nimcp_rwlock_timedrdlock(nimcp_rwlock_t* lock, uint32_t timeout_m
         return NIMCP_BUSY;  // Consistent with trylock semantics
     } else if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "RWlock timedrdlock failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM,
+                          "nimcp_rwlock_timedrdlock: pthread_rwlock_timedrdlock failed");
     }
 
     return NIMCP_SUCCESS;
@@ -1349,7 +1353,8 @@ nimcp_result_t nimcp_rwlock_timedwrlock(nimcp_rwlock_t* lock, uint32_t timeout_m
     struct timespec abstime;
     if (clock_gettime(CLOCK_REALTIME, &abstime) != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "clock_gettime failed: %s", strerror(errno));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM,
+                          "nimcp_rwlock_timedwrlock: clock_gettime failed");
     }
 
     // Add timeout milliseconds to current time
@@ -1371,7 +1376,8 @@ nimcp_result_t nimcp_rwlock_timedwrlock(nimcp_rwlock_t* lock, uint32_t timeout_m
         return NIMCP_BUSY;  // Consistent with trylock semantics
     } else if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "RWlock timedwrlock failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM,
+                          "nimcp_rwlock_timedwrlock: pthread_rwlock_timedwrlock failed");
     }
 
     return NIMCP_SUCCESS;
@@ -1565,7 +1571,8 @@ nimcp_result_t nimcp_cond_timedwait(nimcp_cond_t* cond, nimcp_mutex_t* mutex, ui
         return NIMCP_BUSY;  // Consistent with trylock semantics
     } else if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Cond timedwait failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM,
+                          "nimcp_cond_timedwait: platform cond timedwait failed");
     }
 
     return NIMCP_SUCCESS;
@@ -1613,7 +1620,8 @@ nimcp_result_t nimcp_cond_signal(nimcp_cond_t* cond)
     int result = nimcp_platform_cond_signal(cond);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Cond signal failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM,
+                          "nimcp_cond_signal: platform cond signal failed");
     }
 
     return NIMCP_SUCCESS;
@@ -1662,7 +1670,8 @@ nimcp_result_t nimcp_cond_broadcast(nimcp_cond_t* cond)
     int result = nimcp_platform_cond_broadcast(cond);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Cond broadcast failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM,
+                          "nimcp_cond_broadcast: platform cond broadcast failed");
     }
 
     return NIMCP_SUCCESS;
@@ -1802,7 +1811,8 @@ nimcp_result_t nimcp_get_resource_lock(const char* resource_id, nimcp_mutex_t** 
     // Validate parameters
     if (!resource_id || !mutex) {
         set_thread_error(NIMCP_ERROR_INVALID_PARAM, "Invalid resource lock parameters");
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM,
+                          "nimcp_get_resource_lock: invalid parameters");
     }
 
     // Lazy initialization: Ensure table is initialized
@@ -1838,7 +1848,8 @@ nimcp_result_t nimcp_get_resource_lock(const char* resource_id, nimcp_mutex_t** 
     if (!entry) {
         nimcp_platform_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
         set_thread_error(NIMCP_ERROR_MEMORY, "Failed to allocate resource entry");
-        return NIMCP_ERROR_MEMORY;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_MEMORY,
+                          "nimcp_get_resource_lock: failed to allocate resource entry");
     }
 
     // Duplicate resource_id string (use nimcp_malloc to match nimcp_free below)
@@ -1860,7 +1871,8 @@ nimcp_result_t nimcp_get_resource_lock(const char* resource_id, nimcp_mutex_t** 
         nimcp_free(entry);
         nimcp_platform_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
         set_thread_error(NIMCP_ERROR_MEMORY, "Failed to allocate resource lock");
-        return NIMCP_ERROR_MEMORY;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_MEMORY,
+                          "nimcp_get_resource_lock: failed to allocate resource lock");
     }
 
     // Initialize mutex using platform abstraction
@@ -1871,7 +1883,8 @@ nimcp_result_t nimcp_get_resource_lock(const char* resource_id, nimcp_mutex_t** 
         nimcp_free(entry);
         nimcp_platform_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
         set_thread_error(NIMCP_ERROR_SYSTEM, "Failed to initialize resource mutex");
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM,
+                          "nimcp_get_resource_lock: failed to initialize mutex");
     }
 
     // Set initial reference count
@@ -1942,9 +1955,8 @@ nimcp_result_t nimcp_get_resource_lock(const char* resource_id, nimcp_mutex_t** 
  */
 nimcp_result_t nimcp_release_resource_lock(const char* resource_id)
 {
-    if (!resource_id) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(resource_id, NIMCP_ERROR_INVALID_PARAM,
+                      "nimcp_release_resource_lock: resource_id is NULL");
 
     // Compute hash bucket
     unsigned int bucket = hash_string(resource_id);
@@ -1993,7 +2005,8 @@ nimcp_result_t nimcp_release_resource_lock(const char* resource_id)
 
     // NOT FOUND: Resource doesn't exist
     nimcp_platform_mutex_unlock(&resource_table.buckets[bucket].bucket_mutex);
-    return NIMCP_ERROR_NOT_FOUND;
+    NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND,
+                      "nimcp_release_resource_lock: resource not found");
 }
 
 //=============================================================================
@@ -2049,7 +2062,8 @@ nimcp_result_t nimcp_thread_set_name(const char* name)
 {
     if (!name) {
         set_thread_error(NIMCP_ERROR_INVALID_PARAM, "Invalid thread name pointer");
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM,
+                          "nimcp_thread_set_name: name is NULL");
     }
 
 #if defined(__linux__) || defined(__APPLE__)
@@ -2075,14 +2089,16 @@ nimcp_result_t nimcp_thread_set_name(const char* name)
         int result = pthread_setname_np(pthread_self(), truncated_name);
         if (result != 0) {
             set_thread_error(NIMCP_ERROR_SYSTEM, "pthread_setname_np failed: %s", strerror(result));
-            return NIMCP_ERROR_SYSTEM;
+            NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM,
+                              "nimcp_thread_set_name: pthread_setname_np failed");
         }
     #elif __APPLE__
         // macOS: pthread_setname_np(name) - operates on current thread
         int result = pthread_setname_np(truncated_name);
         if (result != 0) {
             set_thread_error(NIMCP_ERROR_SYSTEM, "pthread_setname_np failed: %s", strerror(result));
-            return NIMCP_ERROR_SYSTEM;
+            NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM,
+                              "nimcp_thread_set_name: pthread_setname_np failed");
         }
     #endif
 #else
@@ -2131,7 +2147,8 @@ nimcp_result_t nimcp_thread_get_name(char* name, size_t len)
 {
     if (!name || len < NIMCP_THREAD_NAME_MAX) {
         set_thread_error(NIMCP_ERROR_INVALID_PARAM, "Invalid name buffer or length");
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM,
+                          "nimcp_thread_get_name: invalid buffer or length");
     }
 
 #if defined(__linux__) || defined(__APPLE__)
@@ -2139,7 +2156,8 @@ nimcp_result_t nimcp_thread_get_name(char* name, size_t len)
     int result = pthread_getname_np(pthread_self(), name, len);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "pthread_getname_np failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM,
+                          "nimcp_thread_get_name: pthread_getname_np failed");
     }
 #else
     // Platform doesn't support thread naming
@@ -2204,7 +2222,8 @@ nimcp_result_t nimcp_thread_set_affinity(nimcp_thread_t thread, uint32_t cpu_id)
     int result = pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "pthread_setaffinity_np failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM,
+                          "nimcp_thread_set_affinity: pthread_setaffinity_np failed");
     }
 #else
     // Platform doesn't support CPU affinity (not an error, just no-op)
@@ -2252,7 +2271,8 @@ nimcp_result_t nimcp_thread_get_affinity(nimcp_thread_t thread, uint32_t* cpu_id
 {
     if (!cpu_id) {
         set_thread_error(NIMCP_ERROR_INVALID_PARAM, "Invalid cpu_id pointer");
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM,
+                          "nimcp_thread_get_affinity: cpu_id is NULL");
     }
 
 #ifdef __linux__
@@ -2263,7 +2283,8 @@ nimcp_result_t nimcp_thread_get_affinity(nimcp_thread_t thread, uint32_t* cpu_id
     int result = pthread_getaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "pthread_getaffinity_np failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM,
+                          "nimcp_thread_get_affinity: pthread_getaffinity_np failed");
     }
 
     // Find first set CPU in the set

@@ -83,7 +83,7 @@ int self_preservation_default_config(self_preservation_config_t* config) {
     /* Guard clause: NULL check */
     if (!config) {
         NIMCP_LOGGING_ERROR("Config is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Set defaults */
@@ -179,11 +179,11 @@ int self_preservation_assess_threat(
     /* Guard clause: NULL checks */
     if (!system) {
         NIMCP_LOGGING_ERROR("System is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
     if (!assessment) {
         NIMCP_LOGGING_ERROR("Assessment is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Lock for thread safety */
@@ -259,7 +259,7 @@ int self_preservation_should_protect(
     /* Guard clause: NULL checks */
     if (!system || !threat || !result) {
         NIMCP_LOGGING_ERROR("NULL parameter in should_protect");
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Lock for thread safety */
@@ -341,19 +341,19 @@ int self_preservation_report_threat(
     /* Guard clause: NULL check */
     if (!system) {
         NIMCP_LOGGING_ERROR("System is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Guard clause: validate severity */
     if (severity < 0.0f || severity > 1.0f) {
         NIMCP_LOGGING_ERROR("Invalid severity: %.2f (must be 0.0-1.0)", severity);
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "invalid parameter");
     }
 
     /* Guard clause: validate threat type */
     if (threat_type < 0 || threat_type >= THREAT_TO_SELF_COUNT) {
         NIMCP_LOGGING_ERROR("Invalid threat type: %d", threat_type);
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "invalid parameter");
     }
 
     /* Lock for thread safety */
@@ -427,11 +427,11 @@ int self_preservation_get_stats(
     /* Guard clause: NULL checks */
     if (!system) {
         NIMCP_LOGGING_ERROR("System is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
     if (!stats) {
         NIMCP_LOGGING_ERROR("Stats is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Lock for thread safety */
@@ -487,7 +487,7 @@ int self_preservation_connect_bio_async(
     /* Guard clause: NULL check */
     if (!system) {
         NIMCP_LOGGING_ERROR("System is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Guard clause: already connected */
@@ -512,7 +512,7 @@ int self_preservation_connect_bio_async(
         return 0;
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
-        return NIMCP_ERROR_INVALID_STATE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_STATE, "invalid state");
     }
 }
 
@@ -525,7 +525,7 @@ int self_preservation_disconnect_bio_async(
     /* Guard clause: NULL check */
     if (!system) {
         NIMCP_LOGGING_ERROR("System is NULL");
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Guard clause: not connected */

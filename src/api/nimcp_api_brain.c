@@ -128,7 +128,6 @@ nimcp_status_t nimcp_brain_save(nimcp_brain_t brain, const char* filepath) {
 
     if (!success) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_FILE_WRITE, "Failed to save brain to '%s'", filepath);
-        return NIMCP_ERROR_IO;
     }
 
     return NIMCP_OK;

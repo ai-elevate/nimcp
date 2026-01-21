@@ -81,7 +81,7 @@ static float compute_language_fe(float combined_pe, float precision) {
  * ============================================================================ */
 
 int omni_broca_default_config(omni_broca_config_t* config) {
-    if (!config) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(config != NULL, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     memset(config, 0, sizeof(omni_broca_config_t));
 
@@ -194,7 +194,7 @@ void omni_broca_bridge_destroy(omni_broca_bridge_t* bridge) {
 
 int omni_broca_connect_jepa(omni_broca_bridge_t* bridge,
                              jepa_bidirectional_t* jepa) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->jepa = jepa;
     nimcp_mutex_unlock(bridge->mutex);
@@ -203,7 +203,7 @@ int omni_broca_connect_jepa(omni_broca_bridge_t* bridge,
 
 int omni_broca_connect_pred_hier(omni_broca_bridge_t* bridge,
                                   predictive_hierarchy_t* pred_hier) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->pred_hier = pred_hier;
     nimcp_mutex_unlock(bridge->mutex);
@@ -212,7 +212,7 @@ int omni_broca_connect_pred_hier(omni_broca_bridge_t* bridge,
 
 int omni_broca_connect_hopfield(omni_broca_bridge_t* bridge,
                                  hopfield_memory_t* hopfield) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->hopfield = hopfield;
     nimcp_mutex_unlock(bridge->mutex);
@@ -221,7 +221,7 @@ int omni_broca_connect_hopfield(omni_broca_bridge_t* bridge,
 
 int omni_broca_connect_broca(omni_broca_bridge_t* bridge,
                               broca_adapter_t* broca) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->broca = broca;
     nimcp_mutex_unlock(bridge->mutex);
@@ -230,7 +230,7 @@ int omni_broca_connect_broca(omni_broca_bridge_t* bridge,
 
 int omni_broca_connect_speech_cortex(omni_broca_bridge_t* bridge,
                                       speech_cortex_t* speech) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->speech_cortex = speech;
     nimcp_mutex_unlock(bridge->mutex);
@@ -242,7 +242,7 @@ int omni_broca_connect_speech_cortex(omni_broca_bridge_t* bridge,
  * ============================================================================ */
 
 int omni_broca_update(omni_broca_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -312,12 +312,12 @@ int omni_broca_update(omni_broca_bridge_t* bridge) {
 }
 
 int omni_broca_apply_to_broca(omni_broca_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     return NIMCP_SUCCESS;
 }
 
 int omni_broca_apply_to_omni(omni_broca_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     return NIMCP_SUCCESS;
 }
 
@@ -328,7 +328,8 @@ int omni_broca_apply_to_omni(omni_broca_bridge_t* bridge) {
 int omni_broca_begin_production(omni_broca_bridge_t* bridge,
                                  const float* semantic_repr,
                                  uint32_t repr_dim) {
-    if (!bridge || !semantic_repr || repr_dim == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL && semantic_repr != NULL && repr_dim > 0,
+                      NIMCP_ERROR_INVALID_PARAM, "Invalid parameters in begin_production");
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->omni_effects.mode = OMNI_LANG_PRODUCTION;
@@ -338,7 +339,8 @@ int omni_broca_begin_production(omni_broca_bridge_t* bridge,
 
 int omni_broca_predict_syntax(omni_broca_bridge_t* bridge,
                                omni_syntactic_prediction_t* prediction) {
-    if (!bridge || !prediction) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL && prediction != NULL,
+                      NIMCP_ERROR_INVALID_PARAM, "NULL parameter in predict_syntax");
 
     nimcp_mutex_lock(bridge->mutex);
     memcpy(prediction, &bridge->omni_effects.syntax_pred,
@@ -351,9 +353,8 @@ int omni_broca_predict_motor(omni_broca_bridge_t* bridge,
                               const float* phoneme,
                               uint32_t phoneme_dim,
                               omni_motor_prediction_t* prediction) {
-    if (!bridge || !phoneme || !prediction || phoneme_dim == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL && phoneme != NULL && prediction != NULL && phoneme_dim > 0,
+                      NIMCP_ERROR_INVALID_PARAM, "Invalid parameters in predict_motor");
 
     nimcp_mutex_lock(bridge->mutex);
     memcpy(prediction, &bridge->omni_effects.motor_pred,
@@ -365,7 +366,8 @@ int omni_broca_predict_motor(omni_broca_bridge_t* bridge,
 int omni_broca_get_production_output(omni_broca_bridge_t* bridge,
                                       float* motor_output,
                                       uint32_t* output_dim) {
-    if (!bridge || !motor_output || !output_dim) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL && motor_output != NULL && output_dim != NULL,
+                      NIMCP_ERROR_INVALID_PARAM, "NULL parameter in get_production_output");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -390,9 +392,8 @@ int omni_broca_parse_phonemes(omni_broca_bridge_t* bridge,
                                const float* phonemes,
                                uint32_t phoneme_dim,
                                uint32_t num_phonemes) {
-    if (!bridge || !phonemes || phoneme_dim == 0 || num_phonemes == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL && phonemes != NULL && phoneme_dim > 0 && num_phonemes > 0,
+                      NIMCP_ERROR_INVALID_PARAM, "Invalid parameters in parse_phonemes");
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->omni_effects.mode = OMNI_LANG_PARSING;
@@ -403,7 +404,8 @@ int omni_broca_parse_phonemes(omni_broca_bridge_t* bridge,
 int omni_broca_infer_syntax(omni_broca_bridge_t* bridge,
                              omni_syntactic_category_t* categories,
                              uint32_t* num_categories) {
-    if (!bridge || !categories || !num_categories) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL && categories != NULL && num_categories != NULL,
+                      NIMCP_ERROR_INVALID_PARAM, "NULL parameter in infer_syntax");
 
     nimcp_mutex_lock(bridge->mutex);
     *num_categories = 0;  /* Placeholder */
@@ -423,8 +425,10 @@ bool omni_broca_has_syntax_violation(const omni_broca_bridge_t* bridge) {
 int omni_broca_wm_push(omni_broca_bridge_t* bridge,
                         const float* phoneme,
                         uint32_t dim) {
-    if (!bridge || !phoneme || dim == 0) return NIMCP_ERROR_INVALID_PARAM;
-    if (!bridge->phon_wm) return NIMCP_ERROR_NOT_INITIALIZED;
+    NIMCP_CHECK_THROW(bridge != NULL && phoneme != NULL && dim > 0,
+                      NIMCP_ERROR_INVALID_PARAM, "Invalid parameters in wm_push");
+    NIMCP_CHECK_THROW(bridge->phon_wm != NULL,
+                      NIMCP_ERROR_NOT_INITIALIZED, "Phonological WM not initialized");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -444,8 +448,10 @@ int omni_broca_wm_push(omni_broca_bridge_t* bridge,
 int omni_broca_wm_pop(omni_broca_bridge_t* bridge,
                        float* phoneme,
                        uint32_t* dim) {
-    if (!bridge || !phoneme || !dim) return NIMCP_ERROR_INVALID_PARAM;
-    if (!bridge->phon_wm) return NIMCP_ERROR_NOT_INITIALIZED;
+    NIMCP_CHECK_THROW(bridge != NULL && phoneme != NULL && dim != NULL,
+                      NIMCP_ERROR_INVALID_PARAM, "NULL parameter in wm_pop");
+    NIMCP_CHECK_THROW(bridge->phon_wm != NULL,
+                      NIMCP_ERROR_NOT_INITIALIZED, "Phonological WM not initialized");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -486,7 +492,8 @@ float omni_broca_wm_get_load(const omni_broca_bridge_t* bridge) {
 }
 
 int omni_broca_wm_rehearse(omni_broca_bridge_t* bridge) {
-    if (!bridge || !bridge->phon_wm) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL && bridge->phon_wm != NULL,
+                      NIMCP_ERROR_INVALID_PARAM, "bridge or phon_wm is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     /* Rehearsal refreshes memory by replaying */
@@ -496,7 +503,8 @@ int omni_broca_wm_rehearse(omni_broca_bridge_t* bridge) {
 }
 
 int omni_broca_wm_clear(omni_broca_bridge_t* bridge) {
-    if (!bridge || !bridge->phon_wm) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL && bridge->phon_wm != NULL,
+                      NIMCP_ERROR_INVALID_PARAM, "bridge or phon_wm is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -517,9 +525,8 @@ int omni_broca_wm_clear(omni_broca_bridge_t* bridge) {
 int omni_broca_send_efference_copy(omni_broca_bridge_t* bridge,
                                     const float* motor_commands,
                                     uint32_t num_commands) {
-    if (!bridge || !motor_commands || num_commands == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL && motor_commands != NULL && num_commands > 0,
+                      NIMCP_ERROR_INVALID_PARAM, "Invalid parameters in send_efference_copy");
     /* Would send to Wernicke for prediction comparison */
     return NIMCP_SUCCESS;
 }
@@ -527,9 +534,8 @@ int omni_broca_send_efference_copy(omni_broca_bridge_t* bridge,
 int omni_broca_receive_feedback(omni_broca_bridge_t* bridge,
                                  const float* auditory_feedback,
                                  uint32_t feedback_dim) {
-    if (!bridge || !auditory_feedback || feedback_dim == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL && auditory_feedback != NULL && feedback_dim > 0,
+                      NIMCP_ERROR_INVALID_PARAM, "Invalid parameters in receive_feedback");
     /* Would compare to predicted output */
     return NIMCP_SUCCESS;
 }
@@ -546,7 +552,8 @@ float omni_broca_compute_feedback_pe(const omni_broca_bridge_t* bridge) {
 
 int omni_broca_get_omni_effects(const omni_broca_bridge_t* bridge,
                                  omni_to_broca_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL && effects != NULL,
+                      NIMCP_ERROR_INVALID_PARAM, "NULL parameter in get_omni_effects");
     nimcp_mutex_lock(((omni_broca_bridge_t*)bridge)->mutex);
     memcpy(effects, &bridge->omni_effects, sizeof(omni_to_broca_effects_t));
     nimcp_mutex_unlock(((omni_broca_bridge_t*)bridge)->mutex);
@@ -555,7 +562,8 @@ int omni_broca_get_omni_effects(const omni_broca_bridge_t* bridge,
 
 int omni_broca_get_broca_effects(const omni_broca_bridge_t* bridge,
                                   broca_to_omni_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL && effects != NULL,
+                      NIMCP_ERROR_INVALID_PARAM, "NULL parameter in get_broca_effects");
     nimcp_mutex_lock(((omni_broca_bridge_t*)bridge)->mutex);
     memcpy(effects, &bridge->broca_effects, sizeof(broca_to_omni_effects_t));
     nimcp_mutex_unlock(((omni_broca_bridge_t*)bridge)->mutex);
@@ -564,7 +572,8 @@ int omni_broca_get_broca_effects(const omni_broca_bridge_t* bridge,
 
 int omni_broca_get_stats(const omni_broca_bridge_t* bridge,
                           omni_broca_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL && stats != NULL,
+                      NIMCP_ERROR_INVALID_PARAM, "NULL parameter in get_stats");
     nimcp_mutex_lock(((omni_broca_bridge_t*)bridge)->mutex);
     memcpy(stats, &bridge->stats, sizeof(omni_broca_stats_t));
     nimcp_mutex_unlock(((omni_broca_bridge_t*)bridge)->mutex);
@@ -572,7 +581,7 @@ int omni_broca_get_stats(const omni_broca_bridge_t* bridge,
 }
 
 int omni_broca_reset_stats(omni_broca_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     memset(&bridge->stats, 0, sizeof(omni_broca_stats_t));
     nimcp_mutex_unlock(bridge->mutex);
@@ -586,7 +595,7 @@ omni_language_mode_t omni_broca_get_mode(const omni_broca_bridge_t* bridge) {
 
 int omni_broca_set_mode(omni_broca_bridge_t* bridge,
                          omni_language_mode_t mode) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->omni_effects.mode = mode;
     nimcp_mutex_unlock(bridge->mutex);
@@ -604,7 +613,8 @@ static nimcp_error_t handle_broca_predict_request(
     void* user_data)
 {
     omni_broca_bridge_t* bridge = (omni_broca_bridge_t*)user_data;
-    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL && msg != NULL,
+                      NIMCP_ERROR_INVALID_PARAM, "NULL parameter in predict_request handler");
 
     omni_broca_update(bridge);
 
@@ -620,7 +630,8 @@ static nimcp_error_t handle_broca_precision_update(
     void* user_data)
 {
     omni_broca_bridge_t* bridge = (omni_broca_bridge_t*)user_data;
-    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL && msg != NULL,
+                      NIMCP_ERROR_INVALID_PARAM, "NULL parameter in precision_update handler");
 
     /* Update precision for language processing */
     omni_broca_update(bridge);
@@ -635,7 +646,7 @@ static nimcp_error_t handle_broca_precision_update(
  * ============================================================================ */
 
 int omni_broca_connect_bio_async(omni_broca_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     if (bridge->bio_async_connected) return NIMCP_SUCCESS;
 
     bio_module_info_t info = {
@@ -646,9 +657,8 @@ int omni_broca_connect_bio_async(omni_broca_bridge_t* bridge) {
     };
 
     bio_module_context_t ctx = bio_router_register_module(&info);
-    if (!ctx) {
-        return NIMCP_ERROR_OPERATION_FAILED;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_OPERATION_FAILED,
+                      "Failed to register with bio-async router");
 
     bridge->bio_context = ctx;
 
@@ -662,7 +672,7 @@ int omni_broca_connect_bio_async(omni_broca_bridge_t* bridge) {
 }
 
 int omni_broca_disconnect_bio_async(omni_broca_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     if (!bridge->bio_async_connected) return NIMCP_SUCCESS;
 
     if (bridge->bio_context) {

@@ -723,14 +723,12 @@ nimcp_thread_pool_t* nimcp_pool_create(size_t num_threads)
     if (num_threads == 0) {
         LOG_ERROR("THREAD_POOL", "Invalid num_threads: cannot be 0");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Thread pool num_threads cannot be 0");
-        return NULL;
     }
     if (num_threads > NIMCP_POOL_MAX_THREADS) {
         LOG_ERROR("THREAD_POOL", "Invalid num_threads %zu: exceeds max %d",
                   num_threads, NIMCP_POOL_MAX_THREADS);
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Thread pool num_threads %zu exceeds max %d",
                              num_threads, NIMCP_POOL_MAX_THREADS);
-        return NULL;
     }
 
     // Allocate pool structure
@@ -942,7 +940,7 @@ nimcp_result_t nimcp_pool_submit(nimcp_thread_pool_t* pool, nimcp_task_fn task, 
     // WHY: Don't accept new tasks if shutting down
     if (pool->shutdown) {
         nimcp_mutex_unlock(&pool->lock);
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "thread pool is shutting down");
     }
 
     // Wait if queue is full
@@ -955,7 +953,7 @@ nimcp_result_t nimcp_pool_submit(nimcp_thread_pool_t* pool, nimcp_task_fn task, 
     // Check shutdown again (may have changed during wait)
     if (pool->shutdown) {
         nimcp_mutex_unlock(&pool->lock);
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "thread pool shut down during wait");
     }
 
     // Enqueue task

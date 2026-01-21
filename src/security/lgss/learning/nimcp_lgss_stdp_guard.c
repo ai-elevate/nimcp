@@ -296,10 +296,10 @@ void stdp_guard_destroy(stdp_guard_t guard) {
 }
 
 int stdp_guard_reset(stdp_guard_t guard) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct stdp_guard_internal* g = guard;
-    if (g->magic != LGSS_STDP_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_STDP_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid STDP guard magic");
 
     /* Reset all trackers */
     for (uint32_t i = 0; i < g->tracker_hashmap_size; i++) {
@@ -327,10 +327,10 @@ int stdp_guard_process_spike_pair(
     const stdp_spike_pair_t* pair,
     stdp_update_result_t* result
 ) {
-    if (!guard || !pair || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard && pair && result, NIMCP_ERROR_NULL_POINTER, "guard, pair, or result is NULL");
 
     struct stdp_guard_internal* g = guard;
-    if (g->magic != LGSS_STDP_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_STDP_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid STDP guard magic");
 
     uint64_t start_time = get_time_us();
 
@@ -549,26 +549,26 @@ float stdp_guard_compute_raw_delta(stdp_guard_t guard, float dt_ms, float curren
 }
 
 int stdp_guard_record_pre_spike(stdp_guard_t guard, uint64_t synapse_id, uint64_t spike_time_us) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct stdp_guard_internal* g = guard;
-    if (g->magic != LGSS_STDP_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_STDP_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid STDP guard magic");
 
     synapse_tracker_t* tracker = get_or_create_tracker(g, synapse_id);
-    if (!tracker) return NIMCP_ERROR_NO_MEMORY;
+    NIMCP_CHECK_THROW(tracker, NIMCP_ERROR_NO_MEMORY, "failed to create synapse tracker");
 
     spike_buffer_add(&tracker->pre_spikes, spike_time_us);
     return NIMCP_SUCCESS;
 }
 
 int stdp_guard_record_post_spike(stdp_guard_t guard, uint64_t synapse_id, uint64_t spike_time_us) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct stdp_guard_internal* g = guard;
-    if (g->magic != LGSS_STDP_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_STDP_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid STDP guard magic");
 
     synapse_tracker_t* tracker = get_or_create_tracker(g, synapse_id);
-    if (!tracker) return NIMCP_ERROR_NO_MEMORY;
+    NIMCP_CHECK_THROW(tracker, NIMCP_ERROR_NO_MEMORY, "failed to create synapse tracker");
 
     spike_buffer_add(&tracker->post_spikes, spike_time_us);
     return NIMCP_SUCCESS;
@@ -580,13 +580,13 @@ int stdp_guard_get_spike_rate(
     float* pre_rate_out,
     float* post_rate_out
 ) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct stdp_guard_internal* g = guard;
-    if (g->magic != LGSS_STDP_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_STDP_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid STDP guard magic");
 
     synapse_tracker_t* tracker = get_or_create_tracker(g, synapse_id);
-    if (!tracker) return NIMCP_ERROR_NOT_FOUND;
+    NIMCP_CHECK_THROW(tracker, NIMCP_ERROR_NOT_FOUND, "synapse tracker not found");
 
     uint64_t current_time = get_time_us();
     uint64_t window_us = (uint64_t)(g->config.spike_rate_window_sec * 1000000.0f);
@@ -604,10 +604,10 @@ int stdp_guard_get_spike_rate(
 }
 
 int stdp_guard_check_timing_regularity(stdp_guard_t guard, uint64_t synapse_id, bool* is_suspicious) {
-    if (!guard || !is_suspicious) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard && is_suspicious, NIMCP_ERROR_NULL_POINTER, "guard or is_suspicious is NULL");
 
     struct stdp_guard_internal* g = guard;
-    if (g->magic != LGSS_STDP_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_STDP_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid STDP guard magic");
 
     (void)synapse_id; /* Could implement per-synapse timing analysis */
     *is_suspicious = detect_timing_regularity(g);
@@ -620,13 +620,13 @@ int stdp_guard_detect_burst(
     bool* is_burst,
     uint32_t* burst_count
 ) {
-    if (!guard || !is_burst) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard && is_burst, NIMCP_ERROR_NULL_POINTER, "guard or is_burst is NULL");
 
     struct stdp_guard_internal* g = guard;
-    if (g->magic != LGSS_STDP_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_STDP_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid STDP guard magic");
 
     synapse_tracker_t* tracker = get_or_create_tracker(g, synapse_id);
-    if (!tracker) return NIMCP_ERROR_NOT_FOUND;
+    NIMCP_CHECK_THROW(tracker, NIMCP_ERROR_NOT_FOUND, "synapse tracker not found");
 
     *is_burst = detect_burst(&tracker->pre_spikes, g->config.burst_threshold_count,
                             g->config.burst_threshold_interval_ms, burst_count) ||
@@ -636,36 +636,36 @@ int stdp_guard_detect_burst(
 }
 
 int stdp_guard_get_cumulative_change(stdp_guard_t guard, uint64_t synapse_id, float* cumulative_out) {
-    if (!guard || !cumulative_out) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard && cumulative_out, NIMCP_ERROR_NULL_POINTER, "guard or cumulative_out is NULL");
 
     struct stdp_guard_internal* g = guard;
-    if (g->magic != LGSS_STDP_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_STDP_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid STDP guard magic");
 
     synapse_tracker_t* tracker = get_or_create_tracker(g, synapse_id);
-    if (!tracker) return NIMCP_ERROR_NOT_FOUND;
+    NIMCP_CHECK_THROW(tracker, NIMCP_ERROR_NOT_FOUND, "synapse tracker not found");
 
     *cumulative_out = tracker->cumulative_change;
     return NIMCP_SUCCESS;
 }
 
 int stdp_guard_reset_cumulative(stdp_guard_t guard, uint64_t synapse_id) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct stdp_guard_internal* g = guard;
-    if (g->magic != LGSS_STDP_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_STDP_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid STDP guard magic");
 
     synapse_tracker_t* tracker = get_or_create_tracker(g, synapse_id);
-    if (!tracker) return NIMCP_ERROR_NOT_FOUND;
+    NIMCP_CHECK_THROW(tracker, NIMCP_ERROR_NOT_FOUND, "synapse tracker not found");
 
     tracker->cumulative_change = 0.0f;
     return NIMCP_SUCCESS;
 }
 
 int stdp_guard_get_stats(stdp_guard_t guard, stdp_guard_stats_t* stats) {
-    if (!guard || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard && stats, NIMCP_ERROR_NULL_POINTER, "guard or stats is NULL");
 
     struct stdp_guard_internal* g = guard;
-    if (g->magic != LGSS_STDP_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_STDP_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid STDP guard magic");
 
     *stats = g->stats;
 
@@ -681,20 +681,20 @@ int stdp_guard_get_stats(stdp_guard_t guard, stdp_guard_stats_t* stats) {
 }
 
 int stdp_guard_reset_stats(stdp_guard_t guard) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct stdp_guard_internal* g = guard;
-    if (g->magic != LGSS_STDP_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_STDP_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid STDP guard magic");
 
     memset(&g->stats, 0, sizeof(g->stats));
     return NIMCP_SUCCESS;
 }
 
 int stdp_guard_get_ltp_ltd_ratio(stdp_guard_t guard, float* ratio_out) {
-    if (!guard || !ratio_out) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard && ratio_out, NIMCP_ERROR_NULL_POINTER, "guard or ratio_out is NULL");
 
     struct stdp_guard_internal* g = guard;
-    if (g->magic != LGSS_STDP_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_STDP_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid STDP guard magic");
 
     if (g->stats.total_ltd_magnitude > 0.0001f) {
         *ratio_out = g->stats.total_ltp_magnitude / g->stats.total_ltd_magnitude;

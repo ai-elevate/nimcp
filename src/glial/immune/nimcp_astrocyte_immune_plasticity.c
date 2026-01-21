@@ -412,7 +412,7 @@ int astro_plasticity_alert_dysfunction(
     NIMCP_CHECK_THROW(bridge && antigen_id && bridge->base.immune_system, NIMCP_ERROR_NULL_POINTER, "bridge, antigen_id, or immune_system is NULL");
 
     if (bridge->dysfunction.dysfunction_severity < 0.5f) {
-        return NIMCP_ERROR_INVALID_STATE; /* Not significant */
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_STATE, "not significant"); /* Not significant */
     }
 
     /* Create epitope from dysfunction signature */

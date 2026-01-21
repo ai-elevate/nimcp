@@ -435,13 +435,13 @@ int combinatorial_harm_check_pair(
 {
     /* Guard: validate inputs */
     if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
     if (!action_a || !action_b) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
     if (!result) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Acquire mutex */
@@ -534,13 +534,13 @@ int combinatorial_harm_check_action(
 {
     /* Guard: validate inputs */
     if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
     if (!pending_action) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
     if (!result) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Get recent actions from history */
@@ -660,7 +660,7 @@ int combinatorial_harm_remove_pattern(
 {
     /* Guard: validate inputs */
     if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Acquire mutex */
@@ -682,7 +682,7 @@ int combinatorial_harm_remove_pattern(
     nimcp_platform_mutex_unlock(system->mutex);
 
     if (!found) {
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "not found");
     }
 
     NIMCP_LOGGING_INFO("Removed pattern %u", pattern_id);
@@ -697,10 +697,10 @@ int combinatorial_harm_get_known_patterns(
 {
     /* Guard: validate inputs */
     if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
     if (!out_patterns || !out_count) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Acquire mutex */
@@ -729,15 +729,15 @@ int combinatorial_harm_simulate_combination(
 {
     /* Guard: validate inputs */
     if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
     if (!action_a || !action_b || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Guard: simulation disabled */
     if (!system->config.enable_simulation) {
-        return NIMCP_ERROR_INVALID_STATE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_STATE, "invalid state");
     }
 
     /* Use check_pair which includes simulation logic */
@@ -750,10 +750,10 @@ int combinatorial_harm_get_stats(
 {
     /* Guard: validate inputs */
     if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
     if (!stats) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Acquire mutex */
@@ -770,7 +770,7 @@ int combinatorial_harm_get_stats(
 int combinatorial_harm_connect_bio_async(combinatorial_harm_system_t* system) {
     /* Guard: validate inputs */
     if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Guard: already connected */
@@ -795,14 +795,14 @@ int combinatorial_harm_connect_bio_async(combinatorial_harm_system_t* system) {
         return 0;
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
-        return NIMCP_ERROR_INVALID_STATE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_STATE, "invalid state");
     }
 }
 
 int combinatorial_harm_disconnect_bio_async(combinatorial_harm_system_t* system) {
     /* Guard: validate inputs */
     if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Guard: not connected */

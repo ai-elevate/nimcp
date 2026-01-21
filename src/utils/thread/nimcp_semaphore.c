@@ -677,8 +677,7 @@ nimcp_result_t nimcp_semaphore_post(nimcp_semaphore_t* sem)
     // WHY: count == UINT32_MAX cannot increment (catastrophic if wraps to 0)
     if (sem->count == UINT32_MAX) {
         nimcp_mutex_unlock(&sem->mutex);
-        set_semaphore_error("Semaphore overflow: count already at UINT32_MAX");
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "Semaphore overflow: count already at UINT32_MAX");
     }
 
     // RELEASE RESOURCE: Increment count

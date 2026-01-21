@@ -618,15 +618,8 @@ nimcp_result_t nimcp_swarm_memory_store(
     NIMCP_VALIDATE_NOT_NULL(data);
     NIMCP_VALIDATE(data_size > 0);
 
-    if (!memory->is_initialized) {
-        LOG_ERROR("Swarm memory system not initialized");
-        return NIMCP_ERROR;
-    }
-
-    if (type >= NIMCP_MEMORY_TYPE_COUNT) {
-        LOG_ERROR("Invalid memory type: %d", type);
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
+    NIMCP_CHECK_THROW(type < NIMCP_MEMORY_TYPE_COUNT, NIMCP_INVALID_PARAM, "invalid memory type");
 
     nimcp_platform_mutex_lock(memory->mutex);
 
@@ -644,9 +637,8 @@ nimcp_result_t nimcp_swarm_memory_store(
     /* Create memory entry */
     NimcpMemoryEntry *entry = create_memory_entry(type, importance, data, data_size, "local");
     if (!entry) {
-        LOG_ERROR("Failed to create memory entry");
         nimcp_platform_mutex_unlock(memory->mutex);
-        return NIMCP_NO_MEMORY;
+        NIMCP_CHECK_THROW(false, NIMCP_NO_MEMORY, "failed to create memory entry");
     }
 
     strncpy(entry->id, id, sizeof(entry->id) - 1);
@@ -673,18 +665,16 @@ nimcp_result_t nimcp_swarm_memory_store(
 
     /* Store in hash tables */
     if (nimcp_hash_table_insert(memory->memories, id, entry) != NIMCP_SUCCESS) {
-        LOG_ERROR("Failed to insert memory into main table");
         destroy_memory_entry(entry);
         nimcp_platform_mutex_unlock(memory->mutex);
-        return NIMCP_ERROR;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR, "failed to insert memory into main table");
     }
 
     if (nimcp_hash_table_insert(memory->memories_by_type[type], id, entry) != NIMCP_SUCCESS) {
-        LOG_ERROR("Failed to insert memory into type table");
         nimcp_hash_table_remove(memory->memories, id);
         destroy_memory_entry(entry);
         nimcp_platform_mutex_unlock(memory->mutex);
-        return NIMCP_ERROR;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR, "failed to insert memory into type table");
     }
 
     /* Update statistics */
@@ -727,26 +717,21 @@ nimcp_result_t nimcp_swarm_memory_retrieve(
     NIMCP_VALIDATE_NOT_NULL(memory);
     NIMCP_VALIDATE_NOT_NULL(memory_id);
     NIMCP_VALIDATE_NOT_NULL(out_data);
-
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
 
     nimcp_platform_mutex_lock(memory->mutex);
 
     /* Lookup memory */
     NimcpMemoryEntry *entry = (NimcpMemoryEntry *)nimcp_hash_table_get(memory->memories, memory_id);
     if (!entry) {
-        LOG_WARN("Memory not found: %s", memory_id);
         nimcp_platform_mutex_unlock(memory->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "memory not found");
     }
 
     /* Check buffer size */
     if (data_size < entry->data_size) {
-        LOG_ERROR("Buffer too small: need %zu, got %zu", entry->data_size, data_size);
         nimcp_platform_mutex_unlock(memory->mutex);
-        return NIMCP_ERROR_BUFFER_TOO_SMALL;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_BUFFER_TOO_SMALL, "buffer too small for memory data");
     }
 
     /* Copy data */
@@ -784,9 +769,7 @@ static nimcp_result_t _access_unlocked(
     const char *memory_id)
 {
     NimcpMemoryEntry *entry = (NimcpMemoryEntry *)nimcp_hash_table_get(memory->memories, memory_id);
-    if (!entry) {
-        return NIMCP_ERROR_NOT_FOUND;
-    }
+    NIMCP_CHECK_THROW(entry, NIMCP_ERROR_NOT_FOUND, "memory not found");
 
     /* Update access tracking */
     entry->last_accessed = nimcp_time_get_us();
@@ -804,10 +787,7 @@ nimcp_result_t nimcp_swarm_memory_access(
 {
     NIMCP_VALIDATE_NOT_NULL(memory);
     NIMCP_VALIDATE_NOT_NULL(memory_id);
-
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
 
     nimcp_platform_mutex_lock(memory->mutex);
     nimcp_result_t result = _access_unlocked(memory, memory_id);
@@ -831,9 +811,7 @@ static nimcp_result_t _rehearse_unlocked(
     const char *memory_id)
 {
     NimcpMemoryEntry *entry = (NimcpMemoryEntry *)nimcp_hash_table_get(memory->memories, memory_id);
-    if (!entry) {
-        return NIMCP_ERROR_NOT_FOUND;
-    }
+    NIMCP_CHECK_THROW(entry, NIMCP_ERROR_NOT_FOUND, "memory not found");
 
     /* Update rehearsal tracking */
     entry->last_rehearsed = nimcp_time_get_us();
@@ -859,10 +837,7 @@ nimcp_result_t nimcp_swarm_memory_rehearse(
 {
     NIMCP_VALIDATE_NOT_NULL(memory);
     NIMCP_VALIDATE_NOT_NULL(memory_id);
-
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
 
     nimcp_platform_mutex_lock(memory->mutex);
     nimcp_result_t result = _rehearse_unlocked(memory, memory_id);
@@ -877,17 +852,14 @@ nimcp_result_t nimcp_swarm_memory_delete(
 {
     NIMCP_VALIDATE_NOT_NULL(memory);
     NIMCP_VALIDATE_NOT_NULL(memory_id);
-
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
 
     nimcp_platform_mutex_lock(memory->mutex);
 
     NimcpMemoryEntry *entry = (NimcpMemoryEntry *)nimcp_hash_table_get(memory->memories, memory_id);
     if (!entry) {
         nimcp_platform_mutex_unlock(memory->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "memory not found");
     }
 
     /* Remove from all tables */
@@ -920,15 +892,11 @@ static nimcp_result_t _schedule_replay_unlocked(
     float priority)
 {
     NimcpMemoryEntry *entry = (NimcpMemoryEntry *)nimcp_hash_table_get(memory->memories, memory_id);
-    if (!entry) {
-        return NIMCP_ERROR_NOT_FOUND;
-    }
+    NIMCP_CHECK_THROW(entry, NIMCP_ERROR_NOT_FOUND, "memory not found");
 
     /* Create replay entry */
     NimcpReplayEntry *replay = (NimcpReplayEntry *)nimcp_malloc(sizeof(NimcpReplayEntry));
-    if (!replay) {
-        return NIMCP_NO_MEMORY;
-    }
+    NIMCP_CHECK_THROW(replay, NIMCP_NO_MEMORY, "failed to allocate replay entry");
 
     replay->memory = entry;
     replay->replay_priority = priority;
@@ -938,7 +906,7 @@ static nimcp_result_t _schedule_replay_unlocked(
     /* Add to replay queue */
     if (nimcp_replay_heap_insert(memory->replay_queue, replay) != NIMCP_SUCCESS) {
         nimcp_free(replay);
-        return NIMCP_ERROR;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR, "failed to insert into replay queue");
     }
 
     LOG_DEBUG("Scheduled replay: %s (priority=%.3f)", memory_id, priority);
@@ -953,9 +921,7 @@ nimcp_result_t nimcp_swarm_memory_schedule_replay(
     NIMCP_VALIDATE_NOT_NULL(memory);
     NIMCP_VALIDATE_NOT_NULL(memory_id);
 
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
 
     nimcp_platform_mutex_lock(memory->mutex);
     nimcp_result_t result = _schedule_replay_unlocked(memory, memory_id, priority);
@@ -1045,9 +1011,7 @@ nimcp_result_t nimcp_swarm_memory_replay_cycle(
 {
     NIMCP_VALIDATE_NOT_NULL(memory);
 
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
 
     nimcp_platform_mutex_lock(memory->mutex);
     nimcp_result_t result = _replay_cycle_unlocked(memory, max_replays, replays_performed);
@@ -1094,9 +1058,7 @@ static nimcp_result_t _compress_unlocked(
     NimcpCompressedMemory *compressed)
 {
     NimcpMemoryEntry *entry = (NimcpMemoryEntry *)nimcp_hash_table_get(memory->memories, memory_id);
-    if (!entry) {
-        return NIMCP_ERROR_NOT_FOUND;
-    }
+    NIMCP_CHECK_THROW(entry, NIMCP_ERROR_NOT_FOUND, "memory entry not found for compression");
 
     /* Apply compression */
     void *compressed_data = NULL;
@@ -1143,9 +1105,7 @@ nimcp_result_t nimcp_swarm_memory_compress(
     NIMCP_VALIDATE_NOT_NULL(memory_id);
     NIMCP_VALIDATE_NOT_NULL(compressed);
 
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
 
     nimcp_platform_mutex_lock(memory->mutex);
     nimcp_result_t result = _compress_unlocked(memory, memory_id, compressed);
@@ -1164,9 +1124,8 @@ nimcp_result_t nimcp_swarm_memory_decompress(
     NIMCP_VALIDATE_NOT_NULL(compressed);
     NIMCP_VALIDATE_NOT_NULL(decompressed);
 
-    if (buffer_size < compressed->original_size) {
-        return NIMCP_ERROR_BUFFER_TOO_SMALL;
-    }
+    NIMCP_CHECK_THROW(buffer_size >= compressed->original_size, NIMCP_ERROR_BUFFER_TOO_SMALL,
+                      "buffer too small for decompressed data");
 
     return apply_decompression(compressed->compressed_data, compressed->compressed_size,
                               decompressed, buffer_size);
@@ -1181,9 +1140,7 @@ static nimcp_result_t _extract_pattern_unlocked(
     uint32_t *pattern_hash)
 {
     NimcpMemoryEntry *entry = (NimcpMemoryEntry *)nimcp_hash_table_get(memory->memories, memory_id);
-    if (!entry) {
-        return NIMCP_ERROR_NOT_FOUND;
-    }
+    NIMCP_CHECK_THROW(entry, NIMCP_ERROR_NOT_FOUND, "memory entry not found for pattern extraction");
 
     /* Simple hash-based pattern extraction (placeholder) */
     *pattern_hash = 0;
@@ -1207,9 +1164,7 @@ nimcp_result_t nimcp_swarm_memory_extract_pattern(
     NIMCP_VALIDATE_NOT_NULL(memory_id);
     NIMCP_VALIDATE_NOT_NULL(pattern_hash);
 
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
 
     nimcp_platform_mutex_lock(memory->mutex);
     nimcp_result_t result = _extract_pattern_unlocked(memory, memory_id, pattern_hash);
@@ -1230,9 +1185,8 @@ nimcp_result_t nimcp_swarm_memory_set_forgetting_curve(
     NIMCP_VALIDATE_NOT_NULL(memory);
     NIMCP_VALIDATE_NOT_NULL(curve);
 
-    if (type >= NIMCP_MEMORY_TYPE_COUNT) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(type < NIMCP_MEMORY_TYPE_COUNT, NIMCP_INVALID_PARAM,
+                      "invalid memory type for forgetting curve");
 
     nimcp_platform_mutex_lock(memory->mutex);
     memcpy(&memory->curves[type], curve, sizeof(NimcpForgettingCurve));
@@ -1286,9 +1240,7 @@ static nimcp_result_t _apply_forgetting_unlocked(
     /* Allocate array for memories to forget (limit to 100 per cycle) */
     const uint32_t MAX_FORGET = 100;
     char **to_forget = (char **)nimcp_malloc(sizeof(char *) * MAX_FORGET);
-    if (!to_forget) {
-        return NIMCP_NO_MEMORY;
-    }
+    NIMCP_CHECK_THROW(to_forget, NIMCP_NO_MEMORY, "failed to allocate forgetting array");
     uint32_t to_forget_count = 0;
 
     /* Set up context and iterate through all memories */
@@ -1334,9 +1286,7 @@ nimcp_result_t nimcp_swarm_memory_apply_forgetting(
 {
     NIMCP_VALIDATE_NOT_NULL(memory);
 
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
 
     nimcp_platform_mutex_lock(memory->mutex);
     nimcp_result_t result = _apply_forgetting_unlocked(memory, forgotten_count);
@@ -1373,9 +1323,7 @@ nimcp_result_t nimcp_swarm_memory_start_consolidation(
 {
     NIMCP_VALIDATE_NOT_NULL(memory);
 
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
 
     nimcp_platform_mutex_lock(memory->mutex);
 
@@ -1402,9 +1350,7 @@ nimcp_result_t nimcp_swarm_memory_consolidate(
 {
     NIMCP_VALIDATE_NOT_NULL(memory);
 
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
 
     nimcp_platform_mutex_lock(memory->mutex);
 
@@ -1532,9 +1478,7 @@ nimcp_result_t nimcp_swarm_memory_register_node(
     NIMCP_VALIDATE_NOT_NULL(memory);
     NIMCP_VALIDATE_NOT_NULL(node_id);
 
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
 
     nimcp_platform_mutex_lock(memory->mutex);
 
@@ -1542,7 +1486,7 @@ nimcp_result_t nimcp_swarm_memory_register_node(
     NimcpHippocampusNode *node = (NimcpHippocampusNode *)nimcp_malloc(sizeof(NimcpHippocampusNode));
     if (!node) {
         nimcp_platform_mutex_unlock(memory->mutex);
-        return NIMCP_NO_MEMORY;
+        NIMCP_CHECK_THROW(false, NIMCP_NO_MEMORY, "failed to allocate hippocampus node");
     }
 
     strncpy(node->node_id, node_id, sizeof(node->node_id) - 1);
@@ -1556,7 +1500,7 @@ nimcp_result_t nimcp_swarm_memory_register_node(
     if (nimcp_hash_table_insert(memory->hippocampus_nodes, node_id, node) != NIMCP_SUCCESS) {
         nimcp_free(node);
         nimcp_platform_mutex_unlock(memory->mutex);
-        return NIMCP_ERROR;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR, "failed to register hippocampus node");
     }
 
     memory->stats.active_nodes++;
@@ -1574,9 +1518,7 @@ nimcp_result_t nimcp_swarm_memory_unregister_node(
     NIMCP_VALIDATE_NOT_NULL(memory);
     NIMCP_VALIDATE_NOT_NULL(node_id);
 
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
 
     nimcp_platform_mutex_lock(memory->mutex);
 
@@ -1584,7 +1526,7 @@ nimcp_result_t nimcp_swarm_memory_unregister_node(
         memory->hippocampus_nodes, node_id);
     if (!node) {
         nimcp_platform_mutex_unlock(memory->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "hippocampus node not found");
     }
 
     nimcp_hash_table_remove(memory->hippocampus_nodes, node_id);
@@ -1606,9 +1548,7 @@ static nimcp_result_t _distribute_unlocked(
     uint32_t *replicas_created)
 {
     NimcpMemoryEntry *entry = (NimcpMemoryEntry *)nimcp_hash_table_get(memory->memories, memory_id);
-    if (!entry) {
-        return NIMCP_ERROR_NOT_FOUND;
-    }
+    NIMCP_CHECK_THROW(entry, NIMCP_ERROR_NOT_FOUND, "memory entry not found for distribution");
 
     /* Check if already distributed */
     if (entry->is_distributed && entry->replica_count >= memory->replication_factor) {
@@ -1621,9 +1561,7 @@ static nimcp_result_t _distribute_unlocked(
     /* Select nodes for replication */
     uint32_t target_replicas = memory->replication_factor - entry->replica_count;
     char **node_ids = (char **)nimcp_malloc(sizeof(char *) * target_replicas);
-    if (!node_ids) {
-        return NIMCP_NO_MEMORY;
-    }
+    NIMCP_CHECK_THROW(node_ids, NIMCP_NO_MEMORY, "failed to allocate node_ids array");
 
     for (uint32_t i = 0; i < target_replicas; i++) {
         node_ids[i] = (char *)nimcp_malloc(NIMCP_NODE_ID_MAX_LENGTH);
@@ -1675,9 +1613,7 @@ nimcp_result_t nimcp_swarm_memory_distribute(
     NIMCP_VALIDATE_NOT_NULL(memory);
     NIMCP_VALIDATE_NOT_NULL(memory_id);
 
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
 
     nimcp_platform_mutex_lock(memory->mutex);
     nimcp_result_t result = _distribute_unlocked(memory, memory_id, replicas_created);
@@ -1695,16 +1631,14 @@ nimcp_result_t nimcp_swarm_memory_verify_consensus(
     NIMCP_VALIDATE_NOT_NULL(memory_id);
     NIMCP_VALIDATE_NOT_NULL(has_consensus);
 
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
 
     nimcp_platform_mutex_lock(memory->mutex);
 
     NimcpMemoryEntry *entry = (NimcpMemoryEntry *)nimcp_hash_table_get(memory->memories, memory_id);
     if (!entry) {
         nimcp_platform_mutex_unlock(memory->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "memory entry not found for consensus");
     }
 
     /* Check if sufficient replicas exist */
@@ -1724,9 +1658,7 @@ nimcp_result_t nimcp_swarm_memory_sync_with_node(
     NIMCP_VALIDATE_NOT_NULL(memory);
     NIMCP_VALIDATE_NOT_NULL(node_id);
 
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
 
     nimcp_platform_mutex_lock(memory->mutex);
 
@@ -1734,7 +1666,7 @@ nimcp_result_t nimcp_swarm_memory_sync_with_node(
         memory->hippocampus_nodes, node_id);
     if (!node) {
         nimcp_platform_mutex_unlock(memory->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "hippocampus node not found for sync");
     }
 
     /* Send sync request */
@@ -1774,9 +1706,7 @@ nimcp_result_t nimcp_swarm_memory_abstract_pattern(
     NIMCP_VALIDATE_NOT_NULL(memory_ids);
     NIMCP_VALIDATE_NOT_NULL(pattern_hash);
 
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
 
     nimcp_platform_mutex_lock(memory->mutex);
 
@@ -1814,9 +1744,7 @@ nimcp_result_t nimcp_swarm_memory_generalize(
     NIMCP_VALIDATE_NOT_NULL(specific_ids);
     NIMCP_VALIDATE_NOT_NULL(generalized_id);
 
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
 
     /* Abstract pattern */
     uint32_t pattern_hash = 0;
@@ -1859,9 +1787,7 @@ nimcp_result_t nimcp_swarm_memory_build_hierarchy(
 {
     NIMCP_VALIDATE_NOT_NULL(memory);
 
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
 
     nimcp_platform_mutex_lock(memory->mutex);
 
@@ -1960,16 +1886,15 @@ nimcp_result_t nimcp_swarm_memory_send_memory(
     NIMCP_VALIDATE_NOT_NULL(memory_id);
     NIMCP_VALIDATE_NOT_NULL(target_node);
 
-    if (!memory->is_initialized || !memory->bio_async_enabled) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized && memory->bio_async_enabled, NIMCP_ERROR,
+                      "swarm memory not initialized or bio-async not enabled");
 
     nimcp_platform_mutex_lock(memory->mutex);
 
     NimcpMemoryEntry *entry = (NimcpMemoryEntry *)nimcp_hash_table_get(memory->memories, memory_id);
     if (!entry) {
         nimcp_platform_mutex_unlock(memory->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "memory entry not found for send");
     }
 
     /* Compress if needed */
@@ -2006,9 +1931,8 @@ nimcp_result_t nimcp_swarm_memory_request_memory(
     NIMCP_VALIDATE_NOT_NULL(memory_id);
     NIMCP_VALIDATE_NOT_NULL(source_node);
 
-    if (!memory->is_initialized || !memory->bio_async_enabled) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized && memory->bio_async_enabled, NIMCP_ERROR,
+                      "swarm memory not initialized or bio-async not enabled");
 
     /* Send request message */
     return send_bio_message(memory, NIMCP_MSG_MEMORY_REQUEST, source_node,
@@ -2021,9 +1945,8 @@ nimcp_result_t nimcp_swarm_memory_broadcast_consolidation(
 {
     NIMCP_VALIDATE_NOT_NULL(memory);
 
-    if (!memory->is_initialized || !memory->bio_async_enabled) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized && memory->bio_async_enabled, NIMCP_ERROR,
+                      "swarm memory not initialized or bio-async not enabled");
 
     return send_bio_message(memory, NIMCP_MSG_CONSOLIDATION_SIGNAL, "broadcast",
                            &mode, sizeof(mode));
@@ -2040,9 +1963,7 @@ nimcp_result_t nimcp_swarm_memory_get_statistics(
     NIMCP_VALIDATE_NOT_NULL(memory);
     NIMCP_VALIDATE_NOT_NULL(stats);
 
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
 
     memcpy(stats, &memory->stats, sizeof(NimcpMemoryStatistics));
     return NIMCP_SUCCESS;
@@ -2193,9 +2114,7 @@ nimcp_result_t swarm_memory_detect_pattern(
     NIMCP_VALIDATE_NOT_NULL(matched);
     NIMCP_VALIDATE(obs_size > 0);
 
-    if (!mem->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(mem->is_initialized, NIMCP_ERROR, "swarm memory not initialized");
 
     nimcp_platform_mutex_lock(mem->mutex);
 
@@ -2233,7 +2152,7 @@ nimcp_result_t swarm_memory_detect_pattern(
     }
 
     nimcp_platform_mutex_unlock(mem->mutex);
-    return NIMCP_ERROR_NOT_FOUND;
+    NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "no matching pattern detected");
 }
 
 nimcp_result_t swarm_memory_store_pattern(
@@ -2245,9 +2164,7 @@ nimcp_result_t swarm_memory_store_pattern(
     NIMCP_VALIDATE_NOT_NULL(pattern->signature);
     NIMCP_VALIDATE(pattern->signature_size > 0);
 
-    if (!mem->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(mem->is_initialized, NIMCP_ERROR, "swarm memory not initialized");
 
     nimcp_platform_mutex_lock(mem->mutex);
 
@@ -2262,7 +2179,7 @@ nimcp_result_t swarm_memory_store_pattern(
         sizeof(swarm_pattern_t));
     if (!new_pattern) {
         nimcp_platform_mutex_unlock(mem->mutex);
-        return NIMCP_NO_MEMORY;
+        NIMCP_CHECK_THROW(false, NIMCP_NO_MEMORY, "failed to allocate new pattern");
     }
 
     memcpy(new_pattern, pattern, sizeof(swarm_pattern_t));
@@ -2273,7 +2190,7 @@ nimcp_result_t swarm_memory_store_pattern(
     if (!new_pattern->signature) {
         nimcp_free(new_pattern);
         nimcp_platform_mutex_unlock(mem->mutex);
-        return NIMCP_NO_MEMORY;
+        NIMCP_CHECK_THROW(false, NIMCP_NO_MEMORY, "failed to allocate pattern signature");
     }
     memcpy(new_pattern->signature, pattern->signature,
            pattern->signature_size * sizeof(float));
@@ -2290,7 +2207,7 @@ nimcp_result_t swarm_memory_store_pattern(
     if (nimcp_hash_table_insert(mem->patterns, key, new_pattern) != NIMCP_SUCCESS) {
         free_pattern(new_pattern);
         nimcp_platform_mutex_unlock(mem->mutex);
-        return NIMCP_ERROR;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR, "failed to insert pattern into hash table");
     }
 
     /* Update statistics */
@@ -2323,9 +2240,7 @@ nimcp_result_t swarm_memory_retrieve_pattern(
     NIMCP_VALIDATE_NOT_NULL(mem);
     NIMCP_VALIDATE_NOT_NULL(out);
 
-    if (!mem->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(mem->is_initialized, NIMCP_ERROR, "swarm memory not initialized");
 
     nimcp_platform_mutex_lock(mem->mutex);
 
@@ -2337,7 +2252,7 @@ nimcp_result_t swarm_memory_retrieve_pattern(
 
     if (!pattern) {
         nimcp_platform_mutex_unlock(mem->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "pattern not found");
     }
 
     /* Copy pattern */
@@ -2368,9 +2283,7 @@ nimcp_result_t swarm_memory_get_similar_patterns(
     NIMCP_VALIDATE_NOT_NULL(count);
     NIMCP_VALIDATE(query_size > 0);
 
-    if (!mem->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(mem->is_initialized, NIMCP_ERROR, "swarm memory not initialized");
 
     nimcp_platform_mutex_lock(mem->mutex);
 
@@ -2380,7 +2293,7 @@ nimcp_result_t swarm_memory_get_similar_patterns(
         MAX_RESULTS * sizeof(swarm_pattern_t));
     if (!*results) {
         nimcp_platform_mutex_unlock(mem->mutex);
-        return NIMCP_NO_MEMORY;
+        NIMCP_CHECK_THROW(false, NIMCP_NO_MEMORY, "failed to allocate results array");
     }
 
     *count = 0;
@@ -2403,9 +2316,7 @@ nimcp_result_t swarm_memory_associate_pattern(
     NIMCP_VALIDATE_NOT_NULL(mem);
     NIMCP_VALIDATE(reward >= -1.0F && reward <= 1.0F);
 
-    if (!mem->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(mem->is_initialized, NIMCP_ERROR, "swarm memory not initialized");
 
     nimcp_platform_mutex_lock(mem->mutex);
 
@@ -2435,7 +2346,7 @@ nimcp_result_t swarm_memory_associate_pattern(
             sizeof(pattern_association_t));
         if (!assoc) {
             nimcp_platform_mutex_unlock(mem->mutex);
-            return NIMCP_NO_MEMORY;
+            NIMCP_CHECK_THROW(false, NIMCP_NO_MEMORY, "failed to allocate pattern association");
         }
 
         assoc->pattern_id = pattern_id;
@@ -2447,7 +2358,7 @@ nimcp_result_t swarm_memory_associate_pattern(
             NIMCP_SUCCESS) {
             nimcp_free(assoc);
             nimcp_platform_mutex_unlock(mem->mutex);
-            return NIMCP_ERROR;
+            NIMCP_CHECK_THROW(false, NIMCP_ERROR, "failed to insert pattern association");
         }
 
         mem->pattern_stats.total_associations++;
@@ -2471,9 +2382,7 @@ nimcp_result_t swarm_memory_predict_outcome(
     NIMCP_VALIDATE_NOT_NULL(predicted_outcome);
     NIMCP_VALIDATE_NOT_NULL(confidence);
 
-    if (!mem->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(mem->is_initialized, NIMCP_ERROR, "swarm memory not initialized");
 
     nimcp_platform_mutex_lock(mem->mutex);
 
@@ -2495,7 +2404,7 @@ nimcp_result_t swarm_memory_predict_outcome(
     }
 
     nimcp_platform_mutex_unlock(mem->mutex);
-    return NIMCP_ERROR_NOT_FOUND;
+    NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "no outcome prediction found");
 }
 
 nimcp_result_t swarm_memory_learn_sequence(
@@ -2507,9 +2416,7 @@ nimcp_result_t swarm_memory_learn_sequence(
     NIMCP_VALIDATE_NOT_NULL(pattern_sequence);
     NIMCP_VALIDATE(seq_length >= 2);
 
-    if (!mem->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(mem->is_initialized, NIMCP_ERROR, "swarm memory not initialized");
 
     nimcp_platform_mutex_lock(mem->mutex);
 
@@ -2532,7 +2439,7 @@ nimcp_result_t swarm_memory_learn_sequence(
             count_ptr = (uint32_t *)nimcp_malloc(sizeof(uint32_t));
             if (!count_ptr) {
                 nimcp_platform_mutex_unlock(mem->mutex);
-                return NIMCP_NO_MEMORY;
+                NIMCP_CHECK_THROW(false, NIMCP_NO_MEMORY, "failed to allocate transition count");
             }
 
             *count_ptr = 1;
@@ -2541,7 +2448,7 @@ nimcp_result_t swarm_memory_learn_sequence(
                                        count_ptr) != NIMCP_SUCCESS) {
                 nimcp_free(count_ptr);
                 nimcp_platform_mutex_unlock(mem->mutex);
-                return NIMCP_ERROR;
+                NIMCP_CHECK_THROW(false, NIMCP_ERROR, "failed to insert sequence transition");
             }
         }
     }
@@ -2572,9 +2479,7 @@ nimcp_result_t swarm_memory_predict_next(
     NIMCP_VALIDATE_NOT_NULL(confidence);
     NIMCP_VALIDATE(history_len > 0);
 
-    if (!mem->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(mem->is_initialized, NIMCP_ERROR, "swarm memory not initialized");
 
     nimcp_platform_mutex_lock(mem->mutex);
 
@@ -2600,7 +2505,7 @@ nimcp_result_t swarm_memory_predict_next(
     }
 
     nimcp_platform_mutex_unlock(mem->mutex);
-    return NIMCP_ERROR_NOT_FOUND;
+    NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "no next pattern prediction found");
 }
 
 nimcp_result_t swarm_memory_consolidate_patterns(
@@ -2609,9 +2514,7 @@ nimcp_result_t swarm_memory_consolidate_patterns(
 {
     NIMCP_VALIDATE_NOT_NULL(mem);
 
-    if (!mem->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(mem->is_initialized, NIMCP_ERROR, "swarm memory not initialized");
 
     nimcp_platform_mutex_lock(mem->mutex);
 
@@ -2641,9 +2544,7 @@ nimcp_result_t swarm_memory_forget_weak_patterns(
     NIMCP_VALIDATE_NOT_NULL(mem);
     NIMCP_VALIDATE(threshold >= 0.0F && threshold <= 1.0F);
 
-    if (!mem->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(mem->is_initialized, NIMCP_ERROR, "swarm memory not initialized");
 
     nimcp_platform_mutex_lock(mem->mutex);
 
@@ -2830,17 +2731,11 @@ nimcp_result_t swarm_memory_associate_patterns(
     uint32_t pattern_b,
     float strength)
 {
-    if (!memory) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(memory, NIMCP_INVALID_PARAM, "memory is NULL");
+    NIMCP_CHECK_THROW(strength >= 0.0F && strength <= 1.0F, NIMCP_INVALID_PARAM,
+                      "strength must be in range [0.0, 1.0]");
 
-    if (strength < 0.0F || strength > 1.0F) {
-        return NIMCP_INVALID_PARAM;
-    }
-
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
 
     nimcp_platform_mutex_lock(memory->mutex);
 
@@ -2860,7 +2755,7 @@ nimcp_result_t swarm_memory_associate_patterns(
         assoc_ab = (pattern_association_t *)nimcp_malloc(sizeof(pattern_association_t));
         if (!assoc_ab) {
             nimcp_platform_mutex_unlock(memory->mutex);
-            return NIMCP_NO_MEMORY;
+            NIMCP_CHECK_THROW(false, NIMCP_NO_MEMORY, "failed to allocate A->B association");
         }
 
         assoc_ab->pattern_id = pattern_a;
@@ -2872,7 +2767,7 @@ nimcp_result_t swarm_memory_associate_patterns(
             NIMCP_SUCCESS) {
             nimcp_free(assoc_ab);
             nimcp_platform_mutex_unlock(memory->mutex);
-            return NIMCP_ERROR;
+            NIMCP_CHECK_THROW(false, NIMCP_ERROR, "failed to insert A->B association");
         }
     }
 
@@ -2892,7 +2787,7 @@ nimcp_result_t swarm_memory_associate_patterns(
         assoc_ba = (pattern_association_t *)nimcp_malloc(sizeof(pattern_association_t));
         if (!assoc_ba) {
             nimcp_platform_mutex_unlock(memory->mutex);
-            return NIMCP_NO_MEMORY;
+            NIMCP_CHECK_THROW(false, NIMCP_NO_MEMORY, "failed to allocate B->A association");
         }
 
         assoc_ba->pattern_id = pattern_b;
@@ -2904,7 +2799,7 @@ nimcp_result_t swarm_memory_associate_patterns(
             NIMCP_SUCCESS) {
             nimcp_free(assoc_ba);
             nimcp_platform_mutex_unlock(memory->mutex);
-            return NIMCP_ERROR;
+            NIMCP_CHECK_THROW(false, NIMCP_ERROR, "failed to insert B->A association");
         }
 
         memory->pattern_stats.total_associations++;
@@ -2932,13 +2827,10 @@ nimcp_result_t swarm_memory_detect_temporal_pattern(
     size_t count,
     temporal_pattern_t *result)
 {
-    if (!memory || !signals || !timestamps || !result || count < 2) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(memory && signals && timestamps && result && count >= 2,
+                      NIMCP_INVALID_PARAM, "invalid parameters for temporal pattern detection");
 
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
 
     nimcp_platform_mutex_lock(memory->mutex);
 
@@ -2946,7 +2838,7 @@ nimcp_result_t swarm_memory_detect_temporal_pattern(
     result->sequence = (uint32_t *)nimcp_malloc(count * sizeof(uint32_t));
     if (!result->sequence) {
         nimcp_platform_mutex_unlock(memory->mutex);
-        return NIMCP_NO_MEMORY;
+        NIMCP_CHECK_THROW(false, NIMCP_NO_MEMORY, "failed to allocate temporal sequence");
     }
 
     /* Recognize patterns in sequence */
@@ -3006,13 +2898,9 @@ nimcp_result_t swarm_memory_detect_temporal_pattern(
 nimcp_result_t swarm_memory_consolidate_patterns_full(
     NimcpSwarmMemory *memory)
 {
-    if (!memory) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(memory, NIMCP_INVALID_PARAM, "memory is NULL");
 
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
 
     nimcp_platform_mutex_lock(memory->mutex);
 
@@ -3047,13 +2935,10 @@ nimcp_result_t swarm_memory_get_pattern_stats_by_id(
     uint32_t pattern_id,
     swarm_pattern_result_t *stats)
 {
-    if (!memory || !stats) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(memory, NIMCP_INVALID_PARAM, "memory is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_INVALID_PARAM, "stats is NULL");
 
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
 
     nimcp_platform_mutex_lock(memory->mutex);
 
@@ -3066,7 +2951,7 @@ nimcp_result_t swarm_memory_get_pattern_stats_by_id(
 
     if (!pattern) {
         nimcp_platform_mutex_unlock(memory->mutex);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "pattern not found by id");
     }
 
     /* Fill statistics */
@@ -3097,13 +2982,10 @@ nimcp_result_t swarm_memory_export_patterns(
     NimcpSwarmMemory *memory,
     const char *filepath)
 {
-    if (!memory || !filepath) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(memory, NIMCP_INVALID_PARAM, "memory is NULL");
+    NIMCP_CHECK_THROW(filepath, NIMCP_INVALID_PARAM, "filepath is NULL");
 
-    if (!memory->is_initialized) {
-        return NIMCP_ERROR;
-    }
+    NIMCP_CHECK_THROW(memory->is_initialized, NIMCP_ERROR, "swarm memory system not initialized");
 
     nimcp_platform_mutex_lock(memory->mutex);
 
@@ -3111,7 +2993,7 @@ nimcp_result_t swarm_memory_export_patterns(
     if (!fp) {
         nimcp_platform_mutex_unlock(memory->mutex);
         LOG_ERROR("Failed to open file for export: %s", filepath);
-        return NIMCP_ERROR;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR, "failed to open file for export");
     }
 
     /* Write magic header */
@@ -3392,9 +3274,7 @@ static nimcp_result_t apply_compression(
 {
     /* Simple compression placeholder - in real implementation use zlib, lz4, etc. */
     *compressed = nimcp_malloc(data_size);
-    if (!*compressed) {
-        return NIMCP_NO_MEMORY;
-    }
+    NIMCP_CHECK_THROW(*compressed, NIMCP_NO_MEMORY, "failed to allocate compressed buffer");
 
     memcpy(*compressed, data, data_size);
     *compressed_size = data_size;  /* No actual compression in placeholder */
@@ -3409,9 +3289,8 @@ static nimcp_result_t apply_decompression(
     size_t buffer_size)
 {
     /* Simple decompression placeholder */
-    if (buffer_size < compressed_size) {
-        return NIMCP_ERROR_BUFFER_TOO_SMALL;
-    }
+    NIMCP_CHECK_THROW(buffer_size >= compressed_size, NIMCP_ERROR_BUFFER_TOO_SMALL,
+                      "buffer too small for decompression");
 
     memcpy(decompressed, compressed, compressed_size);
     return NIMCP_SUCCESS;
@@ -3451,9 +3330,7 @@ static nimcp_result_t send_bio_message(
     /* Build bio-async message */
     size_t total_size = sizeof(bio_message_header_t) + payload_size;
     uint8_t *buffer = nimcp_malloc(total_size);
-    if (!buffer) {
-        return NIMCP_ERROR_MEMORY;
-    }
+    NIMCP_CHECK_THROW(buffer, NIMCP_ERROR_MEMORY, "failed to allocate bio message buffer");
 
     bio_message_header_t *header = (bio_message_header_t *)buffer;
     header->type = BIO_MSG_SWARM_MEMORY_SYNC;

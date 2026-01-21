@@ -59,7 +59,7 @@ static float compute_visual_free_energy(const omni_visual_area_state_t* areas,
  * ============================================================================ */
 
 int omni_occipital_default_config(omni_occipital_config_t* config) {
-    if (!config) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(config != NULL, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     memset(config, 0, sizeof(omni_occipital_config_t));
 
@@ -161,7 +161,7 @@ void omni_occipital_bridge_destroy(omni_occipital_bridge_t* bridge) {
 
 int omni_occipital_connect_jepa(omni_occipital_bridge_t* bridge,
                                  jepa_bidirectional_t* jepa) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->jepa = jepa;
     nimcp_mutex_unlock(bridge->mutex);
@@ -170,7 +170,7 @@ int omni_occipital_connect_jepa(omni_occipital_bridge_t* bridge,
 
 int omni_occipital_connect_pred_hier(omni_occipital_bridge_t* bridge,
                                       predictive_hierarchy_t* pred_hier) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->pred_hier = pred_hier;
     nimcp_mutex_unlock(bridge->mutex);
@@ -179,7 +179,7 @@ int omni_occipital_connect_pred_hier(omni_occipital_bridge_t* bridge,
 
 int omni_occipital_connect_hopfield(omni_occipital_bridge_t* bridge,
                                      hopfield_memory_t* hopfield) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->hopfield = hopfield;
     nimcp_mutex_unlock(bridge->mutex);
@@ -188,7 +188,7 @@ int omni_occipital_connect_hopfield(omni_occipital_bridge_t* bridge,
 
 int omni_occipital_connect_occipital(omni_occipital_bridge_t* bridge,
                                       occipital_adapter_t* occipital) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->occipital = occipital;
     /* Mark areas as active when occipital is connected */
@@ -204,7 +204,7 @@ int omni_occipital_connect_occipital(omni_occipital_bridge_t* bridge,
  * ============================================================================ */
 
 int omni_occipital_update(omni_occipital_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -277,12 +277,12 @@ int omni_occipital_update(omni_occipital_bridge_t* bridge) {
 }
 
 int omni_occipital_apply_to_occipital(omni_occipital_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     return NIMCP_SUCCESS;
 }
 
 int omni_occipital_apply_to_omni(omni_occipital_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     return NIMCP_SUCCESS;
 }
 
@@ -294,8 +294,10 @@ int omni_occipital_predict_area(omni_occipital_bridge_t* bridge,
                                  omni_visual_area_t area,
                                  float* prediction,
                                  uint32_t dim) {
-    if (!bridge || !prediction || dim == 0) return NIMCP_ERROR_INVALID_PARAM;
-    if (area >= OMNI_OCCIPITAL_NUM_AREAS) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL && prediction != NULL && dim > 0,
+                      NIMCP_ERROR_INVALID_PARAM, "Invalid parameters in predict_area");
+    NIMCP_CHECK_THROW(area < OMNI_OCCIPITAL_NUM_AREAS,
+                      NIMCP_ERROR_INVALID_PARAM, "Invalid visual area");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -316,8 +318,10 @@ int omni_occipital_compute_pe(omni_occipital_bridge_t* bridge,
                                const float* observation,
                                uint32_t dim,
                                float* pe) {
-    if (!bridge || !observation || !pe || dim == 0) return NIMCP_ERROR_INVALID_PARAM;
-    if (area >= OMNI_OCCIPITAL_NUM_AREAS) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL && observation != NULL && pe != NULL && dim > 0,
+                      NIMCP_ERROR_INVALID_PARAM, "Invalid parameters in compute_pe");
+    NIMCP_CHECK_THROW(area < OMNI_OCCIPITAL_NUM_AREAS,
+                      NIMCP_ERROR_INVALID_PARAM, "Invalid visual area");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -342,13 +346,13 @@ int omni_occipital_compute_pe(omni_occipital_bridge_t* bridge,
 }
 
 int omni_occipital_propagate_backward(omni_occipital_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     /* Backward propagation: V4/V5 → V2 → V1 */
     return NIMCP_SUCCESS;
 }
 
 int omni_occipital_propagate_forward(omni_occipital_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     /* Forward propagation: V1 → V2 → V4/V5 */
     return NIMCP_SUCCESS;
 }
@@ -359,7 +363,7 @@ int omni_occipital_propagate_forward(omni_occipital_bridge_t* bridge) {
 
 int omni_occipital_set_stream(omni_occipital_bridge_t* bridge,
                                omni_visual_stream_t stream) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->omni_effects.active_stream = stream;
     nimcp_mutex_unlock(bridge->mutex);
@@ -377,7 +381,7 @@ float omni_occipital_get_ventral_pe(const omni_occipital_bridge_t* bridge) {
 }
 
 int omni_occipital_bind_streams(omni_occipital_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     /* Bind dorsal (where) and ventral (what) streams */
     return NIMCP_SUCCESS;
 }
@@ -389,8 +393,9 @@ int omni_occipital_bind_streams(omni_occipital_bridge_t* bridge) {
 int omni_occipital_set_precision(omni_occipital_bridge_t* bridge,
                                   omni_visual_area_t area,
                                   float precision) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
-    if (area >= OMNI_OCCIPITAL_NUM_AREAS) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
+    NIMCP_CHECK_THROW(area < OMNI_OCCIPITAL_NUM_AREAS,
+                      NIMCP_ERROR_INVALID_PARAM, "Invalid visual area");
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->area_states[area].precision = fmaxf(0.0f, precision);
@@ -405,7 +410,7 @@ float omni_occipital_get_precision(const omni_occipital_bridge_t* bridge,
 }
 
 int omni_occipital_update_precision(omni_occipital_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
 
     /* Update precision based on PE (inverse relationship) */
     for (int i = 0; i < OMNI_OCCIPITAL_NUM_AREAS; i++) {
@@ -426,9 +431,8 @@ int omni_occipital_apply_spatial_attention(omni_occipital_bridge_t* bridge,
                                             const float* attention_map,
                                             uint32_t width,
                                             uint32_t height) {
-    if (!bridge || !attention_map || width == 0 || height == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL && attention_map != NULL && width > 0 && height > 0,
+                      NIMCP_ERROR_INVALID_PARAM, "Invalid parameters in apply_spatial_attention");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -453,7 +457,7 @@ int omni_occipital_apply_spatial_attention(omni_occipital_bridge_t* bridge,
 int omni_occipital_apply_feature_attention(omni_occipital_bridge_t* bridge,
                                             omni_visual_feature_t feature,
                                             float attention_weight) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -497,7 +501,8 @@ int omni_occipital_apply_feature_attention(omni_occipital_bridge_t* bridge,
 
 int omni_occipital_get_omni_effects(const omni_occipital_bridge_t* bridge,
                                      omni_to_occipital_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL && effects != NULL,
+                      NIMCP_ERROR_INVALID_PARAM, "NULL parameter in get_omni_effects");
     nimcp_mutex_lock(((omni_occipital_bridge_t*)bridge)->mutex);
     memcpy(effects, &bridge->omni_effects, sizeof(omni_to_occipital_effects_t));
     nimcp_mutex_unlock(((omni_occipital_bridge_t*)bridge)->mutex);
@@ -506,7 +511,8 @@ int omni_occipital_get_omni_effects(const omni_occipital_bridge_t* bridge,
 
 int omni_occipital_get_occipital_effects(const omni_occipital_bridge_t* bridge,
                                           occipital_to_omni_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL && effects != NULL,
+                      NIMCP_ERROR_INVALID_PARAM, "NULL parameter in get_occipital_effects");
     nimcp_mutex_lock(((omni_occipital_bridge_t*)bridge)->mutex);
     memcpy(effects, &bridge->occipital_effects, sizeof(occipital_to_omni_effects_t));
     nimcp_mutex_unlock(((omni_occipital_bridge_t*)bridge)->mutex);
@@ -516,8 +522,10 @@ int omni_occipital_get_occipital_effects(const omni_occipital_bridge_t* bridge,
 int omni_occipital_get_area_state(const omni_occipital_bridge_t* bridge,
                                    omni_visual_area_t area,
                                    omni_visual_area_state_t* state) {
-    if (!bridge || !state) return NIMCP_ERROR_INVALID_PARAM;
-    if (area >= OMNI_OCCIPITAL_NUM_AREAS) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL && state != NULL,
+                      NIMCP_ERROR_INVALID_PARAM, "NULL parameter in get_area_state");
+    NIMCP_CHECK_THROW(area < OMNI_OCCIPITAL_NUM_AREAS,
+                      NIMCP_ERROR_INVALID_PARAM, "Invalid visual area");
 
     nimcp_mutex_lock(((omni_occipital_bridge_t*)bridge)->mutex);
     memcpy(state, &bridge->area_states[area], sizeof(omni_visual_area_state_t));
@@ -527,7 +535,8 @@ int omni_occipital_get_area_state(const omni_occipital_bridge_t* bridge,
 
 int omni_occipital_get_stats(const omni_occipital_bridge_t* bridge,
                               omni_occipital_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL && stats != NULL,
+                      NIMCP_ERROR_INVALID_PARAM, "NULL parameter in get_stats");
     nimcp_mutex_lock(((omni_occipital_bridge_t*)bridge)->mutex);
     memcpy(stats, &bridge->stats, sizeof(omni_occipital_stats_t));
     nimcp_mutex_unlock(((omni_occipital_bridge_t*)bridge)->mutex);
@@ -535,7 +544,7 @@ int omni_occipital_get_stats(const omni_occipital_bridge_t* bridge,
 }
 
 int omni_occipital_reset_stats(omni_occipital_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     memset(&bridge->stats, 0, sizeof(omni_occipital_stats_t));
     nimcp_mutex_unlock(bridge->mutex);
@@ -553,7 +562,8 @@ static nimcp_error_t handle_occipital_predict_request(
     void* user_data)
 {
     omni_occipital_bridge_t* bridge = (omni_occipital_bridge_t*)user_data;
-    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL && msg != NULL,
+                      NIMCP_ERROR_INVALID_PARAM, "NULL parameter in predict_request handler");
 
     omni_occipital_update(bridge);
 
@@ -569,7 +579,8 @@ static nimcp_error_t handle_occipital_precision_update(
     void* user_data)
 {
     omni_occipital_bridge_t* bridge = (omni_occipital_bridge_t*)user_data;
-    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL && msg != NULL,
+                      NIMCP_ERROR_INVALID_PARAM, "NULL parameter in precision_update handler");
 
     omni_occipital_update_precision(bridge);
 
@@ -583,7 +594,7 @@ static nimcp_error_t handle_occipital_precision_update(
  * ============================================================================ */
 
 int omni_occipital_connect_bio_async(omni_occipital_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     if (bridge->bio_async_connected) return NIMCP_SUCCESS;
 
     bio_module_info_t info = {
@@ -594,9 +605,8 @@ int omni_occipital_connect_bio_async(omni_occipital_bridge_t* bridge) {
     };
 
     bio_module_context_t ctx = bio_router_register_module(&info);
-    if (!ctx) {
-        return NIMCP_ERROR_OPERATION_FAILED;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_OPERATION_FAILED,
+                      "Failed to register with bio-async router");
 
     bridge->bio_context = ctx;
 
@@ -610,7 +620,7 @@ int omni_occipital_connect_bio_async(omni_occipital_bridge_t* bridge) {
 }
 
 int omni_occipital_disconnect_bio_async(omni_occipital_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     if (!bridge->bio_async_connected) return NIMCP_SUCCESS;
 
     if (bridge->bio_context) {

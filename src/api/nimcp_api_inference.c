@@ -71,15 +71,13 @@ nimcp_status_t nimcp_brain_learn_example(
         if (!bbb_validate_input(brain->internal_brain->bbb_system,
                                features, num_features * sizeof(float), &result)) {
             LOG_WARN("BBB rejected features: %s", result.reason);
-            set_error("BBB rejected features: %s", result.reason);
-            return NIMCP_ERROR_INVALID;
+            NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID, "BBB rejected features: %s", result.reason);
         }
 
         // Validate label string (external string input)
         if (!bbb_validate_string(brain->internal_brain->bbb_system, label, &result)) {
             LOG_WARN("BBB rejected label: %s", result.reason);
-            set_error("BBB rejected label: %s", result.reason);
-            return NIMCP_ERROR_INVALID;
+            NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID, "BBB rejected label: %s", result.reason);
         }
         LOG_DEBUG("BBB validation passed");
     }
@@ -121,9 +119,7 @@ nimcp_status_t nimcp_brain_predict(
         // Validate features array (external input data)
         if (!bbb_validate_input(brain->internal_brain->bbb_system,
                                features, num_features * sizeof(float), &result)) {
-            set_error("BBB rejected features: %s", result.reason);
             NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "BBB rejected features: %s", result.reason);
-            return NIMCP_ERROR_INVALID;
         }
     }
 

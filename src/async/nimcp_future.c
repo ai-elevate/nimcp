@@ -641,7 +641,8 @@ nimcp_error_t nimcp_promise_complete(nimcp_promise_t promise, const void* result
         // Already completed/failed/cancelled - restore old result and free our copy
         shared->result = old_result;
         future_free(result_copy);
-        return NIMCP_ERROR_INVALID_STATE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_STATE,
+                          "nimcp_promise_complete: promise already completed/failed/cancelled");
     }
 
     // Update memory statistics after successful completion
@@ -729,7 +730,8 @@ nimcp_error_t nimcp_promise_fail(nimcp_promise_t promise, nimcp_error_t error)
     if (!nimcp_atomic_compare_exchange_u32(&shared->state, &expected, NIMCP_FUTURE_FAILED,
                                            NIMCP_MEMORY_ORDER_ACQ_REL)) {
         // Already completed/failed/cancelled
-        return NIMCP_ERROR_INVALID_STATE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_STATE,
+                          "nimcp_promise_fail: promise already completed/failed/cancelled");
     }
 
     // Store error code

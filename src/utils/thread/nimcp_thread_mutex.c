@@ -48,7 +48,7 @@ nimcp_result_t nimcp_mutex_init(nimcp_mutex_t* mutex, const mutex_attr_t* attr)
 {
     if (!mutex) {
         set_thread_error(NIMCP_ERROR_INVALID_PARAM, "Invalid mutex pointer");
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "invalid parameter");
     }
 
     // Translate NIMCP mutex types to platform layer
@@ -74,7 +74,7 @@ nimcp_result_t nimcp_mutex_init(nimcp_mutex_t* mutex, const mutex_attr_t* attr)
 
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Mutex initialization failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     return NIMCP_SUCCESS;
@@ -131,7 +131,7 @@ nimcp_result_t nimcp_mutex_destroy(nimcp_mutex_t* mutex)
     int result = nimcp_platform_mutex_destroy(mutex);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Mutex destruction failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     /* NOTE: Do NOT free mutex here - it may be embedded in another struct.
@@ -187,7 +187,7 @@ nimcp_result_t nimcp_mutex_lock(nimcp_mutex_t* mutex)
     int result = nimcp_platform_mutex_lock(mutex);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Mutex lock failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     return NIMCP_SUCCESS;
@@ -218,7 +218,7 @@ nimcp_result_t nimcp_mutex_trylock(nimcp_mutex_t* mutex)
         return NIMCP_BUSY;
     } else if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Mutex trylock failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     return NIMCP_SUCCESS;
@@ -245,7 +245,7 @@ nimcp_result_t nimcp_mutex_unlock(nimcp_mutex_t* mutex)
     int result = nimcp_platform_mutex_unlock(mutex);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Mutex unlock failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     return NIMCP_SUCCESS;
@@ -274,13 +274,13 @@ nimcp_result_t nimcp_spinlock_init(nimcp_spinlock_t* lock)
 {
     if (!lock) {
         set_thread_error(NIMCP_ERROR_INVALID_PARAM, "Invalid spinlock pointer");
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "invalid parameter");
     }
 
     int result = nimcp_platform_mutex_init(lock, false);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Spinlock initialization failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     return NIMCP_SUCCESS;
@@ -307,7 +307,7 @@ nimcp_result_t nimcp_spinlock_destroy(nimcp_spinlock_t* lock)
     int result = nimcp_platform_mutex_destroy(lock);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Spinlock destruction failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     return NIMCP_SUCCESS;
@@ -334,7 +334,7 @@ nimcp_result_t nimcp_spinlock_lock(nimcp_spinlock_t* lock)
     int result = nimcp_platform_mutex_lock(lock);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Spinlock lock failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     return NIMCP_SUCCESS;
@@ -361,7 +361,7 @@ nimcp_result_t nimcp_spinlock_unlock(nimcp_spinlock_t* lock)
     int result = nimcp_platform_mutex_unlock(lock);
     if (result != 0) {
         set_thread_error(NIMCP_ERROR_SYSTEM, "Spinlock unlock failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_SYSTEM, "system error");
     }
 
     return NIMCP_SUCCESS;

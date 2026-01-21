@@ -143,3 +143,7 @@ set_tests_properties(e2e_fault_tolerance_test_exception_recovery_scenarios_e2e P
 # Exception Stress E2E Tests (High Rate Exception Handling, Storm Prevention, Concurrent Threading)
 add_e2e_fault_tolerance_test(test_exception_stress_e2e)
 set_tests_properties(e2e_fault_tolerance_test_exception_stress_e2e PROPERTIES TIMEOUT 900)
+
+# Exception Module E2E Tests (Complete Exception Handling Pipelines for Converted Modules)
+add_e2e_fault_tolerance_test(test_exception_module_e2e)
+set_tests_properties(e2e_fault_tolerance_test_exception_module_e2e PROPERTIES TIMEOUT 900)

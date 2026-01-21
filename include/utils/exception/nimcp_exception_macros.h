@@ -126,6 +126,15 @@ extern "C" {
         } \
     } while (0)
 
+/**
+ * @brief Alias for NIMCP_CHECK_THROW with explicit MSG suffix
+ *
+ * Functionally identical to NIMCP_CHECK_THROW - provided for code clarity
+ * when the format message is the primary focus of the check.
+ */
+#define NIMCP_CHECK_THROW_MSG(cond, code, fmt, ...) \
+    NIMCP_CHECK_THROW((cond), (code), fmt, ##__VA_ARGS__)
+
 /* ============================================================================
  * Immune-Integrated Throw Macros
  * ============================================================================ */

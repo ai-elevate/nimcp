@@ -163,10 +163,10 @@ void action_history_destroy(action_history_t* history) {
 int action_history_record(action_history_t* history, const action_record_t* record) {
     /* Guard: validate inputs */
     if (!history) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
     if (!record) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Acquire mutex */
@@ -222,10 +222,10 @@ int action_history_get_recent(action_history_t* history,
                                uint32_t* out_count) {
     /* Guard: validate inputs */
     if (!history) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
     if (!out_records || !out_count) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     *out_count = 0;
@@ -269,10 +269,10 @@ int action_history_get_by_type(action_history_t* history,
                                 uint32_t* out_count) {
     /* Guard: validate inputs */
     if (!history) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
     if (!action_type || !out_records || !out_count) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     *out_count = 0;
@@ -306,10 +306,10 @@ int action_history_get_stats(action_history_t* history,
                               action_history_stats_t* stats) {
     /* Guard: validate inputs */
     if (!history) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
     if (!stats) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Initialize stats */
@@ -397,7 +397,7 @@ int action_history_get_stats(action_history_t* history,
 int action_history_prune(action_history_t* history, uint64_t older_than_ms) {
     /* Guard: validate inputs */
     if (!history) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Acquire mutex */
@@ -426,7 +426,7 @@ int action_history_prune(action_history_t* history, uint64_t older_than_ms) {
 int action_history_clear(action_history_t* history) {
     /* Guard: validate inputs */
     if (!history) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Acquire mutex */
@@ -452,7 +452,7 @@ int action_history_clear(action_history_t* history) {
 int action_history_connect_bio_async(action_history_t* history) {
     /* Guard: validate inputs */
     if (!history) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Guard: already connected */
@@ -477,14 +477,14 @@ int action_history_connect_bio_async(action_history_t* history) {
         return 0;
     } else {
         NIMCP_LOGGING_WARN("Bio-async router not available, skipping registration");
-        return NIMCP_ERROR_INVALID_STATE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_STATE, "invalid state");
     }
 }
 
 int action_history_disconnect_bio_async(action_history_t* history) {
     /* Guard: validate inputs */
     if (!history) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     /* Guard: not connected */

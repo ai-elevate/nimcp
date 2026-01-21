@@ -218,7 +218,7 @@ void microglia_immune_bridge_destroy(microglia_immune_bridge_t* bridge) {
 int microglia_immune_apply_cytokine_effects(microglia_immune_bridge_t* bridge) {
     /* Guard: validate parameters */
     if (!bridge || !bridge->immune_system || !bridge->microglia_network) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     if (!bridge->enable_cytokine_polarization) {
@@ -291,7 +291,7 @@ int microglia_immune_apply_cytokine_effects(microglia_immune_bridge_t* bridge) {
 int microglia_immune_apply_inflammation_effects(microglia_immune_bridge_t* bridge) {
     /* Guard: validate parameters */
     if (!bridge || !bridge->immune_system || !bridge->microglia_network) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     if (!bridge->enable_inflammation_activation) {
@@ -374,7 +374,7 @@ microglia_polarization_t microglia_immune_compute_polarization(
 int microglia_immune_release_m1_cytokines(microglia_immune_bridge_t* bridge) {
     /* Guard: validate parameters */
     if (!bridge || !bridge->immune_system || !bridge->microglia_network) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     if (!bridge->enable_m1_cytokine_production) {
@@ -434,7 +434,7 @@ int microglia_immune_release_m1_cytokines(microglia_immune_bridge_t* bridge) {
 int microglia_immune_release_m2_cytokines(microglia_immune_bridge_t* bridge) {
     /* Guard: validate parameters */
     if (!bridge || !bridge->immune_system || !bridge->microglia_network) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     if (!bridge->enable_m2_cytokine_production) {
@@ -474,7 +474,7 @@ int microglia_immune_release_m2_cytokines(microglia_immune_bridge_t* bridge) {
 int microglia_immune_present_damp_antigens(microglia_immune_bridge_t* bridge) {
     /* Guard: validate parameters */
     if (!bridge || !bridge->immune_system || !bridge->microglia_network) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     if (!bridge->enable_antigen_presentation) {
@@ -517,7 +517,7 @@ int microglia_immune_present_damp_antigens(microglia_immune_bridge_t* bridge) {
 int microglia_immune_report_complement_pruning(microglia_immune_bridge_t* bridge) {
     /* Guard: validate parameters */
     if (!bridge || !bridge->immune_system || !bridge->microglia_network) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     if (!bridge->enable_complement_reporting) {
@@ -563,7 +563,7 @@ int microglia_immune_report_complement_pruning(microglia_immune_bridge_t* bridge
 int microglia_immune_report_phagocytosis(microglia_immune_bridge_t* bridge) {
     /* Guard: validate parameters */
     if (!bridge || !bridge->immune_system || !bridge->microglia_network) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -594,7 +594,7 @@ int microglia_immune_bridge_update(
 ) {
     /* Guard: validate parameters */
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     (void)delta_ms; /* Currently unused but available for time-dependent dynamics */
@@ -627,7 +627,7 @@ int microglia_immune_get_cytokine_effects(
 ) {
     /* Guard: validate parameters */
     if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_microglia_effects_t));
@@ -640,7 +640,7 @@ int microglia_immune_get_inflammation_state(
 ) {
     /* Guard: validate parameters */
     if (!bridge || !state) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_microglia_state_t));
@@ -682,7 +682,7 @@ float microglia_immune_get_m2_fraction(const microglia_immune_bridge_t* bridge) 
 int microglia_immune_connect_bio_async(microglia_immune_bridge_t* bridge) {
     /* Guard: validate parameters */
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     if (bridge->base.bio_async_enabled) {
@@ -711,7 +711,7 @@ int microglia_immune_connect_bio_async(microglia_immune_bridge_t* bridge) {
 int microglia_immune_disconnect_bio_async(microglia_immune_bridge_t* bridge) {
     /* Guard: validate parameters */
     if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NULL_POINTER, "null pointer");
     }
 
     if (!bridge->base.bio_async_enabled) {

@@ -328,3 +328,33 @@ set_tests_properties(integration_exception_test_exception_cross_module
     LABELS "integration;exception;cross_module"
     TIMEOUT 180
 )
+
+# =============================================================================
+# Exception Cross-Module Flow Integration Tests
+# =============================================================================
+
+add_executable(integration_exception_test_exception_cross_module_flow
+    test_exception_cross_module_flow.cpp
+)
+
+target_link_libraries(integration_exception_test_exception_cross_module_flow
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_compile_features(integration_exception_test_exception_cross_module_flow PRIVATE cxx_std_17)
+
+add_test(
+    NAME integration_exception_test_exception_cross_module_flow
+    COMMAND integration_exception_test_exception_cross_module_flow
+)
+
+set_tests_properties(integration_exception_test_exception_cross_module_flow
+    PROPERTIES
+    LABELS "integration;exception;cross_module;flow;swarm;brain;training;perception;memory;bio_async"
+    TIMEOUT 300
+)
