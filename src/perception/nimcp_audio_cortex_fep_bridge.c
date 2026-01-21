@@ -28,11 +28,7 @@
  * HOW:  Set biologically-plausible thresholds and enable all features
  */
 int audio_cortex_fep_bridge_default_config(audio_cortex_fep_config_t* config) {
-    if (!config) {
-        NIMCP_LOGGING_ERROR(LOG_MODULE_AUDIO_FEP " NULL config pointer");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL config pointer in audio_cortex_fep_bridge_default_config");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "NULL config pointer in audio_cortex_fep_bridge_default_config");
 
     config->prediction_error_threshold = AUDIO_FEP_PE_THRESHOLD_MEDIUM;
     config->precision_tuning_factor = AUDIO_FEP_PRECISION_TUNING_DEFAULT;
@@ -61,7 +57,6 @@ audio_cortex_fep_bridge_t* audio_cortex_fep_bridge_create(
     audio_cortex_fep_bridge_t* bridge = (audio_cortex_fep_bridge_t*)
         nimcp_malloc(sizeof(audio_cortex_fep_bridge_t));
     if (!bridge) {
-        NIMCP_LOGGING_ERROR(LOG_MODULE_AUDIO_FEP " Failed to allocate bridge");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate audio_cortex_fep_bridge_t");
         return NULL;
     }
@@ -78,7 +73,6 @@ audio_cortex_fep_bridge_t* audio_cortex_fep_bridge_create(
     /* Create mutex */
     bridge->base.mutex = nimcp_platform_mutex_create();
     if (!bridge->base.mutex) {
-        NIMCP_LOGGING_ERROR(LOG_MODULE_AUDIO_FEP " Failed to create mutex");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to create mutex for audio_cortex_fep_bridge");
         nimcp_free(bridge);
         return NULL;
@@ -135,14 +129,8 @@ int audio_cortex_fep_bridge_connect_fep(
     audio_cortex_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge in audio_cortex_fep_bridge_connect_fep");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!fep) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL fep in audio_cortex_fep_bridge_connect_fep");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in audio_cortex_fep_bridge_connect_fep");
+    NIMCP_CHECK_THROW(fep, NIMCP_ERROR_NULL_POINTER, "NULL fep in audio_cortex_fep_bridge_connect_fep");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -161,14 +149,8 @@ int audio_cortex_fep_bridge_connect_audio_cortex(
     audio_cortex_fep_bridge_t* bridge,
     audio_cortex_t* audio
 ) {
-    if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge in audio_cortex_fep_bridge_connect_audio_cortex");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!audio) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL audio in audio_cortex_fep_bridge_connect_audio_cortex");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in audio_cortex_fep_bridge_connect_audio_cortex");
+    NIMCP_CHECK_THROW(audio, NIMCP_ERROR_NULL_POINTER, "NULL audio in audio_cortex_fep_bridge_connect_audio_cortex");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->audio_cortex = audio;
@@ -190,14 +172,8 @@ int audio_cortex_fep_bridge_connect_audio_cortex(
 int audio_cortex_fep_apply_temporal_predictions(
     audio_cortex_fep_bridge_t* bridge
 ) {
-    if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge in audio_cortex_fep_apply_temporal_predictions");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bridge->fep_system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "FEP system not connected in audio_cortex_fep_apply_temporal_predictions");
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in audio_cortex_fep_apply_temporal_predictions");
+    NIMCP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "FEP system not connected in audio_cortex_fep_apply_temporal_predictions");
     if (!bridge->config.enable_temporal_predictions) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -227,14 +203,8 @@ int audio_cortex_fep_apply_temporal_predictions(
 int audio_cortex_fep_apply_precision_tuning(
     audio_cortex_fep_bridge_t* bridge
 ) {
-    if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge in audio_cortex_fep_apply_precision_tuning");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bridge->fep_system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "FEP system not connected in audio_cortex_fep_apply_precision_tuning");
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in audio_cortex_fep_apply_precision_tuning");
+    NIMCP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "FEP system not connected in audio_cortex_fep_apply_precision_tuning");
     if (!bridge->config.enable_precision_tuning) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -278,18 +248,9 @@ int audio_cortex_fep_compute_prediction_error(
     uint32_t num_features,
     float* prediction_error
 ) {
-    if (!bridge || !audio_features || !prediction_error) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL parameter in audio_cortex_fep_compute_prediction_error");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bridge->fep_system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "FEP system not connected in audio_cortex_fep_compute_prediction_error");
-        return NIMCP_ERROR_INVALID_STATE;
-    }
-    if (num_features == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "num_features is 0 in audio_cortex_fep_compute_prediction_error");
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge && audio_features && prediction_error, NIMCP_ERROR_NULL_POINTER, "NULL parameter in audio_cortex_fep_compute_prediction_error");
+    NIMCP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "FEP system not connected in audio_cortex_fep_compute_prediction_error");
+    NIMCP_CHECK_THROW(num_features > 0, NIMCP_ERROR_INVALID_PARAM, "num_features is 0 in audio_cortex_fep_compute_prediction_error");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -332,19 +293,10 @@ int audio_cortex_fep_report_observations(
     const float* audio_features,
     uint32_t num_features
 ) {
-    if (!bridge || !audio_features) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL parameter in audio_cortex_fep_report_observations");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bridge->fep_system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "FEP system not connected in audio_cortex_fep_report_observations");
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge && audio_features, NIMCP_ERROR_NULL_POINTER, "NULL parameter in audio_cortex_fep_report_observations");
+    NIMCP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "FEP system not connected in audio_cortex_fep_report_observations");
     if (!bridge->config.enable_auditory_pe_updates) return NIMCP_SUCCESS;
-    if (num_features == 0) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "num_features is 0 in audio_cortex_fep_report_observations");
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(num_features > 0, NIMCP_ERROR_INVALID_PARAM, "num_features is 0 in audio_cortex_fep_report_observations");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -366,14 +318,8 @@ int audio_cortex_fep_report_temporal_events(
     bool onset_detected,
     bool offset_detected
 ) {
-    if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge in audio_cortex_fep_report_temporal_events");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bridge->fep_system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "FEP system not connected in audio_cortex_fep_report_temporal_events");
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in audio_cortex_fep_report_temporal_events");
+    NIMCP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "FEP system not connected in audio_cortex_fep_report_temporal_events");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -399,10 +345,7 @@ int audio_cortex_fep_bridge_update(
     audio_cortex_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge in audio_cortex_fep_bridge_update");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in audio_cortex_fep_bridge_update");
 
     /* Apply FEP effects to auditory processing */
     audio_cortex_fep_apply_temporal_predictions(bridge);
@@ -443,10 +386,7 @@ int audio_cortex_fep_bridge_get_state(
     const audio_cortex_fep_bridge_t* bridge,
     audio_cortex_fep_state_t* state
 ) {
-    if (!bridge || !state) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL parameter in audio_cortex_fep_bridge_get_state");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "NULL parameter in audio_cortex_fep_bridge_get_state");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -464,10 +404,7 @@ int audio_cortex_fep_bridge_get_stats(
     const audio_cortex_fep_bridge_t* bridge,
     audio_cortex_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL parameter in audio_cortex_fep_bridge_get_stats");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "NULL parameter in audio_cortex_fep_bridge_get_stats");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -488,10 +425,7 @@ int audio_cortex_fep_bridge_get_stats(
 int audio_cortex_fep_bridge_connect_bio_async(
     audio_cortex_fep_bridge_t* bridge
 ) {
-    if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge in audio_cortex_fep_bridge_connect_bio_async");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in audio_cortex_fep_bridge_connect_bio_async");
     if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     bio_module_info_t info = {
@@ -508,7 +442,6 @@ int audio_cortex_fep_bridge_connect_bio_async(
         return NIMCP_SUCCESS;
     }
 
-    NIMCP_LOGGING_WARN(LOG_MODULE_AUDIO_FEP " Bio-async router not available");
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Bio-async router not available for audio_cortex_fep_bridge");
     return -1;
 }
@@ -521,10 +454,7 @@ int audio_cortex_fep_bridge_connect_bio_async(
 int audio_cortex_fep_bridge_disconnect_bio_async(
     audio_cortex_fep_bridge_t* bridge
 ) {
-    if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL bridge in audio_cortex_fep_bridge_disconnect_bio_async");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "NULL bridge in audio_cortex_fep_bridge_disconnect_bio_async");
     if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     if (bridge->base.bio_ctx) {

@@ -17,7 +17,7 @@
  * ============================================================================ */
 
 int cortical_column_fep_default_config(cortical_column_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(*config));
     config->belief_to_activation_gain = 1.0f;
@@ -131,7 +131,7 @@ void cortical_column_fep_destroy(cortical_column_fep_bridge_t* bridge) {
  * ============================================================================ */
 
 int cortical_column_fep_update(cortical_column_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -180,7 +180,8 @@ int cortical_column_fep_process_observation(
     const float* observation,
     uint32_t observation_dim)
 {
-    if (!bridge || !observation) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(observation, NIMCP_ERROR_NULL_POINTER, "observation is NULL");
 
     /* Update beliefs */
     cortical_column_fep_update_beliefs(bridge, observation, observation_dim);
@@ -219,7 +220,9 @@ int cortical_column_fep_compute_error(
     uint32_t observation_dim,
     float* error)
 {
-    if (!bridge || !observation || !error) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(observation, NIMCP_ERROR_NULL_POINTER, "observation is NULL");
+    NIMCP_CHECK_THROW(error, NIMCP_ERROR_NULL_POINTER, "error is NULL");
 
     /* Compute prediction */
     float prediction[16];
@@ -246,7 +249,8 @@ int cortical_column_fep_update_beliefs(
     const float* observation,
     uint32_t observation_dim)
 {
-    if (!bridge || !observation) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(observation, NIMCP_ERROR_NULL_POINTER, "observation is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -280,7 +284,7 @@ int cortical_column_fep_update_beliefs(
 }
 
 int cortical_column_fep_update_precision(cortical_column_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_precision_learning) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -318,7 +322,7 @@ int cortical_column_fep_set_precision(
     cortical_column_fep_bridge_t* bridge,
     float precision)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->state.sensory_precision = fmaxf(FEP_MIN_PRECISION,
@@ -354,7 +358,7 @@ uint32_t cortical_column_fep_select_hypothesis(
 int cortical_column_fep_apply_lateral_inhibition(
     cortical_column_fep_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Precision modulates inhibition strength */
     float inhibition_strength = bridge->state.sensory_precision *
@@ -375,7 +379,8 @@ int cortical_column_fep_compute_free_energy(
     const cortical_column_fep_bridge_t* bridge,
     float* free_energy)
 {
-    if (!bridge || !free_energy) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(free_energy, NIMCP_ERROR_NULL_POINTER, "free_energy is NULL");
 
     /* Compute entropy of belief distribution */
     float entropy = 0.0f;
@@ -420,7 +425,8 @@ int cortical_column_fep_get_effects(
     const cortical_column_fep_bridge_t* bridge,
     cortical_column_fep_effects_t* effects)
 {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(effects, NIMCP_ERROR_NULL_POINTER, "effects is NULL");
     memcpy(effects, &bridge->fep_effects, sizeof(*effects));
     return 0;
 }
@@ -429,7 +435,8 @@ int cortical_column_fep_get_column_effects(
     const cortical_column_fep_bridge_t* bridge,
     fep_cortical_column_effects_t* effects)
 {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(effects, NIMCP_ERROR_NULL_POINTER, "effects is NULL");
     memcpy(effects, &bridge->column_effects, sizeof(*effects));
     return 0;
 }
@@ -438,7 +445,8 @@ int cortical_column_fep_get_stats(
     const cortical_column_fep_bridge_t* bridge,
     cortical_column_fep_stats_t* stats)
 {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
     memcpy(stats, &bridge->stats, sizeof(*stats));
     return 0;
 }

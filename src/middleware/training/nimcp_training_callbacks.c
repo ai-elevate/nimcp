@@ -291,9 +291,8 @@ uint32_t tcb_register_simple(
 }
 
 nimcp_result_t tcb_unregister(tcb_context_t* ctx, uint32_t callback_id) {
-    if (!ctx || callback_id == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(callback_id != 0, NIMCP_ERROR_INVALID_PARAM, "callback_id is 0");
 
     nimcp_platform_mutex_lock(&ctx->mutex);
 
@@ -310,9 +309,8 @@ nimcp_result_t tcb_unregister(tcb_context_t* ctx, uint32_t callback_id) {
 }
 
 nimcp_result_t tcb_set_enabled(tcb_context_t* ctx, uint32_t callback_id, bool enabled) {
-    if (!ctx || callback_id == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(callback_id != 0, NIMCP_ERROR_INVALID_PARAM, "callback_id is 0");
 
     nimcp_platform_mutex_lock(&ctx->mutex);
 
@@ -542,9 +540,8 @@ void tcb_update_metrics(
 }
 
 nimcp_result_t tcb_get_metrics(const tcb_context_t* ctx, tcb_metrics_t* metrics) {
-    if (!ctx || !metrics) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(metrics != NULL, NIMCP_ERROR_INVALID_PARAM, "metrics is NULL");
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&ctx->mutex);
     *metrics = ctx->metrics;
@@ -684,9 +681,8 @@ uint32_t tcb_get_steps_without_improvement(const tcb_context_t* ctx) {
 //=============================================================================
 
 nimcp_result_t tcb_get_stats(const tcb_context_t* ctx, tcb_stats_t* stats) {
-    if (!ctx || !stats) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(stats != NULL, NIMCP_ERROR_INVALID_PARAM, "stats is NULL");
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&ctx->mutex);
     *stats = ctx->stats;
@@ -806,21 +802,13 @@ const char* tcb_action_name(tcb_action_t action) {
 }
 
 nimcp_result_t tcb_validate_config(const tcb_config_t* config) {
-    if (!config) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (config->patience == 0 && config->enable_early_stopping) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (config->divergence_threshold <= 1.0F) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (config->max_callback_time_us == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config != NULL, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
+    NIMCP_CHECK_THROW(!(config->patience == 0 && config->enable_early_stopping),
+        NIMCP_ERROR_INVALID_PARAM, "patience must be > 0 when early stopping is enabled");
+    NIMCP_CHECK_THROW(config->divergence_threshold > 1.0F, NIMCP_ERROR_INVALID_PARAM,
+        "divergence_threshold must be > 1.0");
+    NIMCP_CHECK_THROW(config->max_callback_time_us > 0, NIMCP_ERROR_INVALID_PARAM,
+        "max_callback_time_us must be > 0");
 
     return NIMCP_SUCCESS;
 }

@@ -370,11 +370,7 @@ static security_language_threat_severity_t score_to_severity(float score) {
  * ============================================================================ */
 
 int security_language_default_config(security_language_bridge_config_t* config) {
-    /* Guard clause */
-    if (!config) {
-        NIMCP_LOGGING_ERROR("NULL config pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(security_language_bridge_config_t));
 
@@ -494,11 +490,7 @@ void security_language_bridge_destroy(security_language_bridge_t* bridge) {
 }
 
 int security_language_bridge_reset(security_language_bridge_t* bridge) {
-    /* Guard clause */
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -531,15 +523,8 @@ int security_language_connect_orchestrator(
     security_language_bridge_t* bridge,
     language_orchestrator_t* orchestrator
 ) {
-    /* Guard clauses */
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!orchestrator) {
-        NIMCP_LOGGING_ERROR("NULL orchestrator pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
 
     BRIDGE_LOCK(bridge);
     bridge->language_orchestrator = orchestrator;
@@ -551,11 +536,7 @@ int security_language_connect_orchestrator(
 }
 
 int security_language_disconnect_orchestrator(security_language_bridge_t* bridge) {
-    /* Guard clause */
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
     bridge->language_orchestrator = NULL;
@@ -573,15 +554,8 @@ int security_language_connect_bbb(
     security_language_bridge_t* bridge,
     bbb_system_t bbb
 ) {
-    /* Guard clauses */
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bbb) {
-        NIMCP_LOGGING_ERROR("NULL BBB pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bbb, NIMCP_ERROR_NULL_POINTER, "bbb is NULL");
 
     BRIDGE_LOCK(bridge);
     bridge->bbb_system = bbb;
@@ -595,15 +569,8 @@ int security_language_connect_pattern_db(
     security_language_bridge_t* bridge,
     nimcp_pattern_db_t pattern_db
 ) {
-    /* Guard clauses */
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!pattern_db) {
-        NIMCP_LOGGING_ERROR("NULL pattern DB pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(pattern_db, NIMCP_ERROR_NULL_POINTER, "pattern_db is NULL");
 
     BRIDGE_LOCK(bridge);
     bridge->pattern_db = pattern_db;
@@ -617,15 +584,8 @@ int security_language_connect_policy_engine(
     security_language_bridge_t* bridge,
     nimcp_policy_engine_t policy_engine
 ) {
-    /* Guard clauses */
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!policy_engine) {
-        NIMCP_LOGGING_ERROR("NULL policy engine pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(policy_engine, NIMCP_ERROR_NULL_POINTER, "policy_engine is NULL");
 
     BRIDGE_LOCK(bridge);
     bridge->policy_engine = policy_engine;
@@ -636,11 +596,7 @@ int security_language_connect_policy_engine(
 }
 
 int security_language_disconnect_security(security_language_bridge_t* bridge) {
-    /* Guard clause */
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
     bridge->bbb_system = NULL;
@@ -681,11 +637,9 @@ int security_language_sanitize_input_ex(
     const security_language_sanitize_config_t* config,
     security_language_sanitize_result_t* result
 ) {
-    /* Guard clauses */
-    if (!bridge || !input || !result) {
-        NIMCP_LOGGING_ERROR("Invalid parameters for sanitize_input");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(input, NIMCP_ERROR_NULL_POINTER, "input is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_NULL_POINTER, "result is NULL");
 
     uint64_t start_time = get_time_ns();
 
@@ -898,11 +852,9 @@ int security_language_detect_injection_type(
     security_language_injection_type_t type,
     security_language_detection_result_t* result
 ) {
-    /* Guard clauses */
-    if (!bridge || !input || !result) {
-        NIMCP_LOGGING_ERROR("Invalid parameters for detect_injection_type");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(input, NIMCP_ERROR_NULL_POINTER, "input is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_NULL_POINTER, "result is NULL");
 
     uint64_t start_time = get_time_ns();
 
@@ -950,11 +902,9 @@ int security_language_detect_injection_ex(
     const security_language_detection_config_t* config,
     security_language_detection_result_t* result
 ) {
-    /* Guard clauses */
-    if (!bridge || !input || !result) {
-        NIMCP_LOGGING_ERROR("Invalid parameters for detect_injection_ex");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(input, NIMCP_ERROR_NULL_POINTER, "input is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_NULL_POINTER, "result is NULL");
 
     uint64_t start_time = get_time_ns();
 
@@ -1092,11 +1042,9 @@ int security_language_check_content_policy(
     size_t content_len,
     security_language_policy_result_t* result
 ) {
-    /* Guard clauses */
-    if (!bridge || !content || !result) {
-        NIMCP_LOGGING_ERROR("Invalid parameters for check_content_policy");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(content, NIMCP_ERROR_NULL_POINTER, "content is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_NULL_POINTER, "result is NULL");
 
     uint64_t start_time = get_time_ns();
 
@@ -1228,11 +1176,10 @@ int security_language_check_policy_id(
     const char* policy_id,
     security_language_policy_result_t* result
 ) {
-    /* Guard clauses */
-    if (!bridge || !content || !policy_id || !result) {
-        NIMCP_LOGGING_ERROR("Invalid parameters for check_policy_id");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(content, NIMCP_ERROR_NULL_POINTER, "content is NULL");
+    NIMCP_CHECK_THROW(policy_id, NIMCP_ERROR_NULL_POINTER, "policy_id is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_NULL_POINTER, "result is NULL");
 
     /* For now, delegate to general policy check */
     /* In a full implementation, this would filter to specific policy */
@@ -1259,11 +1206,9 @@ int security_language_validate_output_ex(
     bool allow_modification,
     security_language_output_validation_t* result
 ) {
-    /* Guard clauses */
-    if (!bridge || !output || !result) {
-        NIMCP_LOGGING_ERROR("Invalid parameters for validate_output");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(output, NIMCP_ERROR_NULL_POINTER, "output is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_NULL_POINTER, "result is NULL");
 
     /* Initialize result */
     memset(result, 0, sizeof(security_language_output_validation_t));
@@ -1340,11 +1285,9 @@ int security_language_get_threat_score(
     size_t text_len,
     security_language_threat_score_t* score
 ) {
-    /* Guard clauses */
-    if (!bridge || !text || !score) {
-        NIMCP_LOGGING_ERROR("Invalid parameters for get_threat_score");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(text, NIMCP_ERROR_NULL_POINTER, "text is NULL");
+    NIMCP_CHECK_THROW(score, NIMCP_ERROR_NULL_POINTER, "score is NULL");
 
     /* Initialize result */
     memset(score, 0, sizeof(security_language_threat_score_t));
@@ -1458,11 +1401,7 @@ bool security_language_exceeds_threshold(
  * ============================================================================ */
 
 int security_language_update(security_language_bridge_t* bridge) {
-    /* Guard clause */
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1511,11 +1450,7 @@ int security_language_update(security_language_bridge_t* bridge) {
 }
 
 int security_language_apply_modulation(security_language_bridge_t* bridge) {
-    /* Guard clause */
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* This would push security effects to language orchestrator */
     /* For now, just ensure effects are current */
@@ -1527,11 +1462,7 @@ int security_language_query_effects(
     security_to_language_effects_t* security_effects,
     language_to_security_effects_t* language_effects
 ) {
-    /* Guard clause */
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (security_effects) {
         *security_effects = bridge->security_effects;
@@ -1555,11 +1486,7 @@ int security_language_set_threat_level(
     security_language_bridge_t* bridge,
     security_language_threat_severity_t level
 ) {
-    /* Guard clause */
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (level >= THREAT_SEVERITY_COUNT) {
         NIMCP_LOGGING_ERROR("Invalid threat level: %d", level);
@@ -1577,11 +1504,7 @@ int security_language_set_threat_level(
 }
 
 int security_language_enter_lockdown(security_language_bridge_t* bridge) {
-    /* Guard clause */
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1600,11 +1523,7 @@ int security_language_enter_lockdown(security_language_bridge_t* bridge) {
 }
 
 int security_language_exit_lockdown(security_language_bridge_t* bridge) {
-    /* Guard clause */
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1630,22 +1549,15 @@ int security_language_get_stats(
     const security_language_bridge_t* bridge,
     security_language_bridge_stats_t* stats
 ) {
-    /* Guard clauses */
-    if (!bridge || !stats) {
-        NIMCP_LOGGING_ERROR("Invalid parameters for get_stats");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     *stats = bridge->stats;
     return NIMCP_SUCCESS;
 }
 
 int security_language_reset_stats(security_language_bridge_t* bridge) {
-    /* Guard clause */
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
     memset(&bridge->stats, 0, sizeof(security_language_bridge_stats_t));
@@ -1659,11 +1571,8 @@ int security_language_get_state(
     const security_language_bridge_t* bridge,
     security_language_bridge_state_t* state
 ) {
-    /* Guard clauses */
-    if (!bridge || !state) {
-        NIMCP_LOGGING_ERROR("Invalid parameters for get_state");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL");
 
     *state = bridge->state;
     return NIMCP_SUCCESS;
@@ -1674,21 +1583,13 @@ int security_language_get_state(
  * ============================================================================ */
 
 int security_language_connect_bio_async(security_language_bridge_t* bridge) {
-    /* Guard clause */
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     return bridge_base_connect_bio_async(&bridge->base);
 }
 
 int security_language_disconnect_bio_async(security_language_bridge_t* bridge) {
-    /* Guard clause */
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     return bridge_base_disconnect_bio_async(&bridge->base);
 }
@@ -1720,11 +1621,8 @@ int security_language_broadcast_detection(
     security_language_bridge_t* bridge,
     const security_language_detection_t* detection
 ) {
-    /* Guard clauses */
-    if (!bridge || !detection) {
-        NIMCP_LOGGING_ERROR("Invalid parameters for broadcast_detection");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(detection, NIMCP_ERROR_NULL_POINTER, "detection is NULL");
 
     if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  /* Not an error, just not connected */

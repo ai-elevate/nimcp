@@ -462,12 +462,10 @@ nimcp_error_t override_controller_request_override(
     uint64_t* request_id
 ) {
     // Validate parameters
-    if (!is_valid_controller(controller)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (!request || !request_id) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(is_valid_controller(controller), NIMCP_ERROR_INVALID_PARAM,
+                      "invalid controller handle");
+    NIMCP_CHECK_THROW(request, NIMCP_ERROR_NULL_POINTER, "request is NULL");
+    NIMCP_CHECK_THROW(request_id, NIMCP_ERROR_NULL_POINTER, "request_id is NULL");
 
     // Validate override type
     if (request->type >= OVERRIDE_TYPE_COUNT) {
@@ -555,12 +553,9 @@ nimcp_error_t override_controller_execute_override(
     override_result_t* result
 ) {
     // Validate parameters
-    if (!is_valid_controller(controller)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (!result) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(is_valid_controller(controller), NIMCP_ERROR_INVALID_PARAM,
+                      "invalid controller handle");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_NULL_POINTER, "result is NULL");
 
     controller_lock(controller);
 
@@ -658,9 +653,8 @@ nimcp_error_t override_controller_cancel_request(
     override_controller_t controller,
     uint64_t request_id
 ) {
-    if (!is_valid_controller(controller)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(is_valid_controller(controller), NIMCP_ERROR_INVALID_PARAM,
+                      "invalid controller handle");
 
     controller_lock(controller);
 
@@ -696,12 +690,9 @@ nimcp_error_t override_controller_get_request_status(
     uint64_t request_id,
     override_request_t* request
 ) {
-    if (!is_valid_controller(controller)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (!request) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(is_valid_controller(controller), NIMCP_ERROR_INVALID_PARAM,
+                      "invalid controller handle");
+    NIMCP_CHECK_THROW(request, NIMCP_ERROR_NULL_POINTER, "request is NULL");
 
     controller_lock(controller);
 
@@ -724,12 +715,10 @@ nimcp_error_t override_controller_get_pending(
     uint32_t max_count,
     uint32_t* count
 ) {
-    if (!is_valid_controller(controller)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (!requests || !count) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(is_valid_controller(controller), NIMCP_ERROR_INVALID_PARAM,
+                      "invalid controller handle");
+    NIMCP_CHECK_THROW(requests, NIMCP_ERROR_NULL_POINTER, "requests is NULL");
+    NIMCP_CHECK_THROW(count, NIMCP_ERROR_NULL_POINTER, "count is NULL");
 
     controller_lock(controller);
 
@@ -758,15 +747,12 @@ nimcp_error_t override_controller_restore_capability(
     const char* operator_id,
     const char* reason
 ) {
-    if (!is_valid_controller(controller)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (capability >= CAPABILITY_TYPE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (!operator_id || !reason) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(is_valid_controller(controller), NIMCP_ERROR_INVALID_PARAM,
+                      "invalid controller handle");
+    NIMCP_CHECK_THROW(capability < CAPABILITY_TYPE_COUNT, NIMCP_ERROR_INVALID_PARAM,
+                      "invalid capability type");
+    NIMCP_CHECK_THROW(operator_id, NIMCP_ERROR_NULL_POINTER, "operator_id is NULL");
+    NIMCP_CHECK_THROW(reason, NIMCP_ERROR_NULL_POINTER, "reason is NULL");
 
     controller_lock(controller);
 
@@ -807,15 +793,11 @@ nimcp_error_t override_controller_get_capability_level(
     capability_type_t capability,
     float* level
 ) {
-    if (!is_valid_controller(controller)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (capability >= CAPABILITY_TYPE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (!level) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(is_valid_controller(controller), NIMCP_ERROR_INVALID_PARAM,
+                      "invalid controller handle");
+    NIMCP_CHECK_THROW(capability < CAPABILITY_TYPE_COUNT, NIMCP_ERROR_INVALID_PARAM,
+                      "invalid capability type");
+    NIMCP_CHECK_THROW(level, NIMCP_ERROR_NULL_POINTER, "level is NULL");
 
     controller_lock(controller);
 
@@ -845,12 +827,9 @@ nimcp_error_t override_controller_get_stats(
     override_controller_t controller,
     override_stats_t* stats
 ) {
-    if (!is_valid_controller(controller)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (!stats) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(is_valid_controller(controller), NIMCP_ERROR_INVALID_PARAM,
+                      "invalid controller handle");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     controller_lock(controller);
     memcpy(stats, &controller->stats, sizeof(override_stats_t));
@@ -861,9 +840,8 @@ nimcp_error_t override_controller_get_stats(
 }
 
 nimcp_error_t override_controller_reset_stats(override_controller_t controller) {
-    if (!is_valid_controller(controller)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(is_valid_controller(controller), NIMCP_ERROR_INVALID_PARAM,
+                      "invalid controller handle");
 
     controller_lock(controller);
 
@@ -933,15 +911,11 @@ nimcp_error_t override_request_init(
     const char* operator_id,
     const char* reason
 ) {
-    if (!request) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!operator_id || !reason) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (type >= OVERRIDE_TYPE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(request, NIMCP_ERROR_NULL_POINTER, "request is NULL");
+    NIMCP_CHECK_THROW(operator_id, NIMCP_ERROR_NULL_POINTER, "operator_id is NULL");
+    NIMCP_CHECK_THROW(reason, NIMCP_ERROR_NULL_POINTER, "reason is NULL");
+    NIMCP_CHECK_THROW(type < OVERRIDE_TYPE_COUNT, NIMCP_ERROR_INVALID_PARAM,
+                      "invalid override type");
 
     memset(request, 0, sizeof(override_request_t));
     request->type = type;
@@ -963,18 +937,13 @@ nimcp_error_t override_request_add_capability(
     float level,
     uint32_t duration_sec
 ) {
-    if (!request) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (capability >= CAPABILITY_TYPE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (level < 0.0f || level > 1.0f) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (request->capability_count >= NIMCP_OVERRIDE_MAX_CAPABILITY_PARAMS) {
-        return NIMCP_ERROR_BUFFER_OVERFLOW;
-    }
+    NIMCP_CHECK_THROW(request, NIMCP_ERROR_NULL_POINTER, "request is NULL");
+    NIMCP_CHECK_THROW(capability < CAPABILITY_TYPE_COUNT, NIMCP_ERROR_INVALID_PARAM,
+                      "invalid capability type");
+    NIMCP_CHECK_THROW(level >= 0.0f && level <= 1.0f, NIMCP_ERROR_INVALID_PARAM,
+                      "level must be in range [0.0, 1.0]");
+    NIMCP_CHECK_THROW(request->capability_count < NIMCP_OVERRIDE_MAX_CAPABILITY_PARAMS,
+                      NIMCP_ERROR_BUFFER_OVERFLOW, "capability count exceeds maximum");
 
     capability_reduction_t* cap = &request->capabilities[request->capability_count];
     cap->capability = capability;

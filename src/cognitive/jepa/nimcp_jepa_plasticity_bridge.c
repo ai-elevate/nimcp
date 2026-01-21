@@ -194,7 +194,7 @@ void jepa_plasticity_destroy(jepa_plasticity_bridge_t* bridge) {
 }
 
 int jepa_plasticity_reset(jepa_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -233,7 +233,7 @@ int jepa_plasticity_register_synapse(
     jepa_synapse_type_t type,
     float initial_weight
 ) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -275,7 +275,7 @@ int jepa_plasticity_unregister_synapse(
     jepa_plasticity_bridge_t* bridge,
     uint32_t synapse_id
 ) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -297,7 +297,7 @@ int jepa_plasticity_get_synapse(
     uint32_t synapse_id,
     jepa_plasticity_synapse_t* synapse
 ) {
-    if (!bridge || !synapse) return -1;
+    NIMCP_CHECK_THROW(bridge && synapse, -1, "bridge or synapse is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -318,7 +318,7 @@ int jepa_plasticity_protect_synapse(
     uint32_t synapse_id,
     bool protect
 ) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -345,7 +345,7 @@ int jepa_plasticity_learn(
     uint32_t synapse_id,
     float context
 ) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->state = JEPA_PLASTICITY_STATE_LEARNING;
@@ -511,7 +511,7 @@ int jepa_plasticity_apply_precision(
     jepa_plasticity_bridge_t* bridge,
     float precision
 ) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -541,8 +541,8 @@ int jepa_plasticity_update_bcm(
     jepa_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
-    if (dt_ms <= 0.0f) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
+    NIMCP_CHECK_THROW(dt_ms > 0.0f, -1, "dt_ms must be positive");
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->state = JEPA_PLASTICITY_STATE_UPDATING;
@@ -568,7 +568,7 @@ int jepa_plasticity_homeostatic_update(
     jepa_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->state = JEPA_PLASTICITY_STATE_UPDATING;
@@ -617,7 +617,7 @@ int jepa_plasticity_update_traces(
     jepa_plasticity_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -634,7 +634,7 @@ int jepa_plasticity_update_traces(
 }
 
 int jepa_plasticity_consolidate(jepa_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->state = JEPA_PLASTICITY_STATE_CONSOLIDATING;
@@ -705,7 +705,7 @@ int jepa_plasticity_get_prediction_state(
     jepa_plasticity_bridge_t* bridge,
     jepa_prediction_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    NIMCP_CHECK_THROW(bridge && state, -1, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     *state = bridge->prediction_state;
@@ -718,7 +718,7 @@ int jepa_plasticity_get_state(
     jepa_plasticity_bridge_t* bridge,
     jepa_plasticity_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    NIMCP_CHECK_THROW(bridge && state, -1, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -754,7 +754,7 @@ int jepa_plasticity_get_stats(
     jepa_plasticity_bridge_t* bridge,
     jepa_plasticity_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    NIMCP_CHECK_THROW(bridge && stats, -1, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     *stats = bridge->stats;
@@ -764,7 +764,7 @@ int jepa_plasticity_get_stats(
 }
 
 int jepa_plasticity_reset_stats(jepa_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     memset(&bridge->stats, 0, sizeof(jepa_plasticity_stats_t));
@@ -782,7 +782,7 @@ int jepa_plasticity_register_learn_callback(
     jepa_plasticity_learn_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->learn_callback = callback;
@@ -797,7 +797,7 @@ int jepa_plasticity_register_prediction_callback(
     jepa_plasticity_prediction_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->prediction_callback = callback;
@@ -812,8 +812,8 @@ int jepa_plasticity_register_prediction_callback(
 //=============================================================================
 
 int jepa_plasticity_bio_async_connect(jepa_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->config.enable_bio_async, -1, "bio_async not enabled");
 
     nimcp_mutex_lock(bridge->mutex);
     /* Bio-async connection would be implemented here */
@@ -824,7 +824,7 @@ int jepa_plasticity_bio_async_connect(jepa_plasticity_bridge_t* bridge) {
 }
 
 int jepa_plasticity_bio_async_disconnect(jepa_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->bio_async_connected = false;

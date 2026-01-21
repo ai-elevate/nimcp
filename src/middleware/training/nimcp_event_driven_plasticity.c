@@ -529,27 +529,15 @@ edp_config_t edp_config_biological(void)
 
 nimcp_result_t edp_validate_config(const edp_config_t* config)
 {
-    if (!config) return NIMCP_ERROR_INVALID_PARAM;
-
-    if (config->stdp_window_ms <= 0.0F || config->stdp_window_ms > 1000.0F) {
-        LOG_ERROR("Invalid STDP window: %.2f (must be 0-1000ms)", config->stdp_window_ms);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (config->ltp_rate < 0.0F || config->ltp_rate > 1.0F) {
-        LOG_ERROR("Invalid LTP rate: %.4f (must be 0-1)", config->ltp_rate);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (config->ltd_rate < 0.0F || config->ltd_rate > 1.0F) {
-        LOG_ERROR("Invalid LTD rate: %.4f (must be 0-1)", config->ltd_rate);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (config->eligibility_tau_ms <= 0.0F) {
-        LOG_ERROR("Invalid eligibility tau: %.2f (must be > 0)", config->eligibility_tau_ms);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config != NULL, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
+    NIMCP_CHECK_THROW(config->stdp_window_ms > 0.0F && config->stdp_window_ms <= 1000.0F,
+        NIMCP_ERROR_INVALID_PARAM, "Invalid STDP window: %.2f (must be 0-1000ms)", config->stdp_window_ms);
+    NIMCP_CHECK_THROW(config->ltp_rate >= 0.0F && config->ltp_rate <= 1.0F,
+        NIMCP_ERROR_INVALID_PARAM, "Invalid LTP rate: %.4f (must be 0-1)", config->ltp_rate);
+    NIMCP_CHECK_THROW(config->ltd_rate >= 0.0F && config->ltd_rate <= 1.0F,
+        NIMCP_ERROR_INVALID_PARAM, "Invalid LTD rate: %.4f (must be 0-1)", config->ltd_rate);
+    NIMCP_CHECK_THROW(config->eligibility_tau_ms > 0.0F,
+        NIMCP_ERROR_INVALID_PARAM, "Invalid eligibility tau: %.2f (must be > 0)", config->eligibility_tau_ms);
 
     return NIMCP_SUCCESS;
 }
@@ -786,8 +774,9 @@ void edp_destroy(edp_context_t* ctx)
 
 nimcp_result_t edp_process_event(edp_context_t* ctx, const brain_event_t* event)
 {
-    if (!ctx || !event) return NIMCP_ERROR_INVALID_PARAM;
-    if (!ctx->active) return NIMCP_NOT_INITIALIZED;
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(event != NULL, NIMCP_ERROR_INVALID_PARAM, "event is NULL");
+    NIMCP_CHECK_THROW(ctx->active, NIMCP_NOT_INITIALIZED, "EDP context is not active");
 
     uint64_t start_time = nimcp_time_monotonic_ns();
     nimcp_result_t result = NIMCP_SUCCESS;
@@ -901,7 +890,8 @@ nimcp_result_t edp_process_spike_burst(edp_context_t* ctx,
                                         const spike_burst_data_t* burst,
                                         uint32_t region_id)
 {
-    if (!ctx || !burst) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(burst != NULL, NIMCP_ERROR_INVALID_PARAM, "burst is NULL");
     if (burst->num_neurons == 0) return NIMCP_SUCCESS;  /* Nothing to process */
 
     uint64_t start_time = nimcp_time_monotonic_ns();
@@ -955,8 +945,9 @@ nimcp_result_t edp_process_prediction_error(edp_context_t* ctx,
                                              float prediction_error,
                                              uint32_t region_id)
 {
-    if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
-    if (!ctx->plasticity_bridge) return NIMCP_NOT_INITIALIZED;
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(ctx->plasticity_bridge != NULL, NIMCP_NOT_INITIALIZED,
+        "plasticity bridge not connected");
 
     uint64_t start_time = nimcp_time_monotonic_ns();
 
@@ -988,8 +979,9 @@ nimcp_result_t edp_process_prediction_error(edp_context_t* ctx,
 
 nimcp_result_t edp_process_reward(edp_context_t* ctx, float reward_signal)
 {
-    if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
-    if (!ctx->plasticity_bridge) return NIMCP_NOT_INITIALIZED;
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(ctx->plasticity_bridge != NULL, NIMCP_NOT_INITIALIZED,
+        "plasticity bridge not connected");
 
     uint64_t start_time = nimcp_time_monotonic_ns();
 
@@ -1032,8 +1024,9 @@ nimcp_result_t edp_process_novelty(edp_context_t* ctx,
                                     float novelty_score,
                                     uint32_t region_id)
 {
-    if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
-    if (!ctx->plasticity_bridge) return NIMCP_NOT_INITIALIZED;
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(ctx->plasticity_bridge != NULL, NIMCP_NOT_INITIALIZED,
+        "plasticity bridge not connected");
 
     uint64_t start_time = nimcp_time_monotonic_ns();
 
@@ -1069,7 +1062,7 @@ nimcp_result_t edp_process_novelty(edp_context_t* ctx,
 
 nimcp_result_t edp_update_eligibility(edp_context_t* ctx, float dt)
 {
-    if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
     if (!ctx->config.enable_eligibility) return NIMCP_SUCCESS;
 
     float decay = expf(-dt / ctx->config.eligibility_tau_ms);
@@ -1149,7 +1142,7 @@ uint32_t edp_consolidate_eligibility(edp_context_t* ctx, float reward)
 
 nimcp_result_t edp_clear_eligibility(edp_context_t* ctx)
 {
-    if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     nimcp_platform_rwlock_wrlock(&ctx->eligibility.rwlock);
 
@@ -1174,7 +1167,8 @@ nimcp_result_t edp_clear_eligibility(edp_context_t* ctx)
 
 nimcp_result_t edp_get_stats(const edp_context_t* ctx, edp_stats_t* stats)
 {
-    if (!ctx || !stats) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(stats != NULL, NIMCP_ERROR_INVALID_PARAM, "stats is NULL");
 
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)&ctx->stats_mutex);
     *stats = ctx->stats;
@@ -1194,7 +1188,7 @@ nimcp_result_t edp_get_stats(const edp_context_t* ctx, edp_stats_t* stats)
 
 nimcp_result_t edp_reset_stats(edp_context_t* ctx)
 {
-    if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     nimcp_platform_mutex_lock(&ctx->stats_mutex);
     memset(&ctx->stats, 0, sizeof(ctx->stats));
@@ -1243,8 +1237,8 @@ bool edp_is_active(const edp_context_t* ctx)
 
 nimcp_result_t edp_register_security(edp_context_t* ctx, nimcp_sec_integration_t* security_ctx)
 {
-    if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
-    if (!security_ctx) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(security_ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "security_ctx is NULL");
     if (ctx->security_registered) return NIMCP_SUCCESS;
 
     /* Register using the simple API */
@@ -1268,7 +1262,7 @@ nimcp_result_t edp_register_security(edp_context_t* ctx, nimcp_sec_integration_t
 
 nimcp_result_t edp_unregister_security(edp_context_t* ctx)
 {
-    if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
     if (!ctx->security_registered) return NIMCP_SUCCESS;
 
     if (ctx->security_ctx) {

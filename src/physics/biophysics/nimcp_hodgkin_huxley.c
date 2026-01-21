@@ -327,7 +327,7 @@ static void init_channel_h(nimcp_ion_channel_t* ch, float g_max, float E_rev, fl
 //=============================================================================
 
 nimcp_error_t nimcp_hh_config_default(nimcp_hh_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Standard conductances */
     config->g_Na = NIMCP_HH_DEFAULT_G_NA;
@@ -371,7 +371,8 @@ nimcp_error_t nimcp_hh_config_default(nimcp_hh_config_t* config) {
 }
 
 nimcp_error_t nimcp_hh_config_for_type(nimcp_hh_config_t* config, const char* type) {
-    if (!config || !type) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
+    NIMCP_CHECK_THROW(type, NIMCP_ERROR_NULL_POINTER, "type is NULL");
 
     /* Start with defaults */
     nimcp_hh_config_default(config);
@@ -428,7 +429,7 @@ nimcp_error_t nimcp_hh_config_for_type(nimcp_hh_config_t* config, const char* ty
 //=============================================================================
 
 nimcp_error_t nimcp_hh_neuron_init(nimcp_hh_neuron_t* neuron, const nimcp_hh_config_t* config) {
-    if (!neuron) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(neuron, NIMCP_ERROR_NULL_POINTER, "neuron is NULL");
 
     memset(neuron, 0, sizeof(*neuron));
 
@@ -509,7 +510,7 @@ nimcp_error_t nimcp_hh_neuron_init(nimcp_hh_neuron_t* neuron, const nimcp_hh_con
 
 nimcp_error_t nimcp_hh_neuron_create(nimcp_hh_neuron_t* neuron, brain_t brain,
                                       const nimcp_hh_config_t* config) {
-    if (!neuron) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(neuron, NIMCP_ERROR_NULL_POINTER, "neuron is NULL");
 
     nimcp_error_t err = nimcp_hh_neuron_init(neuron, config);
     if (err != NIMCP_SUCCESS) return err;
@@ -526,7 +527,7 @@ void nimcp_hh_neuron_destroy(nimcp_hh_neuron_t* neuron) {
 }
 
 nimcp_error_t nimcp_hh_neuron_reset(nimcp_hh_neuron_t* neuron) {
-    if (!neuron || !neuron->initialized) return NIMCP_ERROR_NOT_INITIALIZED;
+    NIMCP_CHECK_THROW(neuron && neuron->initialized, NIMCP_ERROR_NOT_INITIALIZED, "neuron not initialized");
 
     nimcp_hh_config_t config = neuron->config;
     return nimcp_hh_neuron_init(neuron, &config);
@@ -691,7 +692,7 @@ static void update_calcium(nimcp_hh_neuron_t* neuron, float dt) {
 }
 
 nimcp_error_t nimcp_hh_neuron_update(nimcp_hh_neuron_t* neuron, float I_ext, float dt) {
-    if (!neuron || !neuron->initialized) return NIMCP_ERROR_NOT_INITIALIZED;
+    NIMCP_CHECK_THROW(neuron && neuron->initialized, NIMCP_ERROR_NOT_INITIALIZED, "neuron not initialized");
 
     /* Use provided dt or default */
     if (dt <= 0.0f) dt = neuron->dt;
@@ -753,8 +754,9 @@ nimcp_error_t nimcp_hh_neuron_update(nimcp_hh_neuron_t* neuron, float I_ext, flo
 //=============================================================================
 
 nimcp_error_t nimcp_hh_neuron_get_spike(const nimcp_hh_neuron_t* neuron, bool* spiked) {
-    if (!neuron || !spiked) return NIMCP_ERROR_NULL_POINTER;
-    if (!neuron->initialized) return NIMCP_ERROR_NOT_INITIALIZED;
+    NIMCP_CHECK_THROW(neuron, NIMCP_ERROR_NULL_POINTER, "neuron is NULL");
+    NIMCP_CHECK_THROW(spiked, NIMCP_ERROR_NULL_POINTER, "spiked is NULL");
+    NIMCP_CHECK_THROW(neuron->initialized, NIMCP_ERROR_NOT_INITIALIZED, "neuron not initialized");
     *spiked = neuron->spiked;
     return NIMCP_SUCCESS;
 }
@@ -766,7 +768,7 @@ float nimcp_hh_neuron_get_voltage(const nimcp_hh_neuron_t* neuron) {
 
 nimcp_error_t nimcp_hh_neuron_inject_synaptic(nimcp_hh_neuron_t* neuron,
                                                float I_exc, float I_inh) {
-    if (!neuron || !neuron->initialized) return NIMCP_ERROR_NOT_INITIALIZED;
+    NIMCP_CHECK_THROW(neuron && neuron->initialized, NIMCP_ERROR_NOT_INITIALIZED, "neuron not initialized");
     neuron->I_syn_exc += I_exc;
     neuron->I_syn_inh += I_inh;
     return NIMCP_SUCCESS;
@@ -775,9 +777,11 @@ nimcp_error_t nimcp_hh_neuron_inject_synaptic(nimcp_hh_neuron_t* neuron,
 nimcp_error_t nimcp_hh_get_channel(const nimcp_hh_neuron_t* neuron,
                                     nimcp_ion_channel_type_t type,
                                     nimcp_ion_channel_t* channel) {
-    if (!neuron || !channel) return NIMCP_ERROR_NULL_POINTER;
-    if (!neuron->initialized) return NIMCP_ERROR_NOT_INITIALIZED;
-    if (type >= NIMCP_ION_CHANNEL_COUNT) return NIMCP_ERROR_INVALID_PARAMETER;
+    NIMCP_CHECK_THROW(neuron, NIMCP_ERROR_NULL_POINTER, "neuron is NULL");
+    NIMCP_CHECK_THROW(channel, NIMCP_ERROR_NULL_POINTER, "channel is NULL");
+    NIMCP_CHECK_THROW(neuron->initialized, NIMCP_ERROR_NOT_INITIALIZED, "neuron not initialized");
+    NIMCP_CHECK_THROW(type < NIMCP_ION_CHANNEL_COUNT, NIMCP_ERROR_INVALID_PARAMETER,
+                      "type %d >= NIMCP_ION_CHANNEL_COUNT", type);
 
     *channel = neuron->channels[type];
     return NIMCP_SUCCESS;
@@ -786,8 +790,9 @@ nimcp_error_t nimcp_hh_get_channel(const nimcp_hh_neuron_t* neuron,
 nimcp_error_t nimcp_hh_modulate_channel(nimcp_hh_neuron_t* neuron,
                                          nimcp_ion_channel_type_t type,
                                          float factor) {
-    if (!neuron || !neuron->initialized) return NIMCP_ERROR_NOT_INITIALIZED;
-    if (type >= NIMCP_ION_CHANNEL_COUNT) return NIMCP_ERROR_INVALID_PARAMETER;
+    NIMCP_CHECK_THROW(neuron && neuron->initialized, NIMCP_ERROR_NOT_INITIALIZED, "neuron not initialized");
+    NIMCP_CHECK_THROW(type < NIMCP_ION_CHANNEL_COUNT, NIMCP_ERROR_INVALID_PARAMETER,
+                      "type %d >= NIMCP_ION_CHANNEL_COUNT", type);
     if (factor < 0.0f) factor = 0.0f;
     if (factor > 2.0f) factor = 2.0f;
 
@@ -798,8 +803,9 @@ nimcp_error_t nimcp_hh_modulate_channel(nimcp_hh_neuron_t* neuron,
 nimcp_error_t nimcp_hh_set_channel_enabled(nimcp_hh_neuron_t* neuron,
                                             nimcp_ion_channel_type_t type,
                                             bool enable) {
-    if (!neuron || !neuron->initialized) return NIMCP_ERROR_NOT_INITIALIZED;
-    if (type >= NIMCP_ION_CHANNEL_COUNT) return NIMCP_ERROR_INVALID_PARAMETER;
+    NIMCP_CHECK_THROW(neuron && neuron->initialized, NIMCP_ERROR_NOT_INITIALIZED, "neuron not initialized");
+    NIMCP_CHECK_THROW(type < NIMCP_ION_CHANNEL_COUNT, NIMCP_ERROR_INVALID_PARAMETER,
+                      "type %d >= NIMCP_ION_CHANNEL_COUNT", type);
 
     neuron->channels[type].enabled = enable;
     return NIMCP_SUCCESS;
@@ -810,7 +816,7 @@ nimcp_error_t nimcp_hh_set_channel_enabled(nimcp_hh_neuron_t* neuron,
 //=============================================================================
 
 nimcp_error_t nimcp_hh_set_temperature(nimcp_hh_neuron_t* neuron, float temperature) {
-    if (!neuron || !neuron->initialized) return NIMCP_ERROR_NOT_INITIALIZED;
+    NIMCP_CHECK_THROW(neuron && neuron->initialized, NIMCP_ERROR_NOT_INITIALIZED, "neuron not initialized");
 
     neuron->temperature = temperature;
     neuron->phi = powf(NIMCP_HH_Q10_RATE,
@@ -830,8 +836,8 @@ float nimcp_hh_get_phi(const nimcp_hh_neuron_t* neuron) {
 nimcp_error_t nimcp_hh_population_create(nimcp_hh_population_t* population,
                                           uint32_t count,
                                           const nimcp_hh_config_t* config) {
-    if (!population) return NIMCP_ERROR_NULL_POINTER;
-    if (count == 0) return NIMCP_ERROR_INVALID_PARAMETER;
+    NIMCP_CHECK_THROW(population, NIMCP_ERROR_NULL_POINTER, "population is NULL");
+    NIMCP_CHECK_THROW(count > 0, NIMCP_ERROR_INVALID_PARAMETER, "count must be > 0");
 
     memset(population, 0, sizeof(*population));
 
@@ -888,7 +894,7 @@ void nimcp_hh_population_destroy(nimcp_hh_population_t* population) {
 nimcp_error_t nimcp_hh_population_update(nimcp_hh_population_t* population,
                                           const float* I_ext,
                                           float dt) {
-    if (!population || !population->initialized) return NIMCP_ERROR_NOT_INITIALIZED;
+    NIMCP_CHECK_THROW(population && population->initialized, NIMCP_ERROR_NOT_INITIALIZED, "population not initialized");
 
     uint32_t spike_count = 0;
     float voltage_sum = 0.0f;
@@ -911,16 +917,18 @@ nimcp_error_t nimcp_hh_population_update(nimcp_hh_population_t* population,
 
 nimcp_error_t nimcp_hh_population_get_rate(const nimcp_hh_population_t* population,
                                             float* rate) {
-    if (!population || !rate) return NIMCP_ERROR_NULL_POINTER;
-    if (!population->initialized) return NIMCP_ERROR_NOT_INITIALIZED;
+    NIMCP_CHECK_THROW(population, NIMCP_ERROR_NULL_POINTER, "population is NULL");
+    NIMCP_CHECK_THROW(rate, NIMCP_ERROR_NULL_POINTER, "rate is NULL");
+    NIMCP_CHECK_THROW(population->initialized, NIMCP_ERROR_NOT_INITIALIZED, "population not initialized");
     *rate = population->mean_firing_rate;
     return NIMCP_SUCCESS;
 }
 
 nimcp_error_t nimcp_hh_population_get_synchrony(const nimcp_hh_population_t* population,
                                                  float* synchrony) {
-    if (!population || !synchrony) return NIMCP_ERROR_NULL_POINTER;
-    if (!population->initialized) return NIMCP_ERROR_NOT_INITIALIZED;
+    NIMCP_CHECK_THROW(population, NIMCP_ERROR_NULL_POINTER, "population is NULL");
+    NIMCP_CHECK_THROW(synchrony, NIMCP_ERROR_NULL_POINTER, "synchrony is NULL");
+    NIMCP_CHECK_THROW(population->initialized, NIMCP_ERROR_NOT_INITIALIZED, "population not initialized");
     *synchrony = population->synchrony;
     return NIMCP_SUCCESS;
 }
@@ -980,9 +988,7 @@ nimcp_error_t nimcp_hh_population_update_parallel(
     float dt,
     uint32_t num_threads
 ) {
-    if (!population || !population->initialized) {
-        return NIMCP_ERROR_NOT_INITIALIZED;
-    }
+    NIMCP_CHECK_THROW(population && population->initialized, NIMCP_ERROR_NOT_INITIALIZED, "population not initialized");
 
     /* Auto-detect thread count */
     if (num_threads == 0) {
@@ -1107,9 +1113,11 @@ nimcp_error_t nimcp_hh_compute_fi_curve(nimcp_hh_neuron_t* neuron,
                                          float I_min, float I_max,
                                          uint32_t num_points,
                                          float* currents, float* rates) {
-    if (!neuron || !currents || !rates) return NIMCP_ERROR_NULL_POINTER;
-    if (!neuron->initialized) return NIMCP_ERROR_NOT_INITIALIZED;
-    if (num_points == 0) return NIMCP_ERROR_INVALID_PARAMETER;
+    NIMCP_CHECK_THROW(neuron, NIMCP_ERROR_NULL_POINTER, "neuron is NULL");
+    NIMCP_CHECK_THROW(currents, NIMCP_ERROR_NULL_POINTER, "currents is NULL");
+    NIMCP_CHECK_THROW(rates, NIMCP_ERROR_NULL_POINTER, "rates is NULL");
+    NIMCP_CHECK_THROW(neuron->initialized, NIMCP_ERROR_NOT_INITIALIZED, "neuron not initialized");
+    NIMCP_CHECK_THROW(num_points > 0, NIMCP_ERROR_INVALID_PARAMETER, "num_points must be > 0");
 
     float step = (I_max - I_min) / (float)(num_points - 1);
     float sim_time = 500.0f;  /* ms per current level */
@@ -1136,8 +1144,9 @@ nimcp_error_t nimcp_hh_compute_fi_curve(nimcp_hh_neuron_t* neuron,
 }
 
 nimcp_error_t nimcp_hh_compute_rheobase(nimcp_hh_neuron_t* neuron, float* rheobase) {
-    if (!neuron || !rheobase) return NIMCP_ERROR_NULL_POINTER;
-    if (!neuron->initialized) return NIMCP_ERROR_NOT_INITIALIZED;
+    NIMCP_CHECK_THROW(neuron, NIMCP_ERROR_NULL_POINTER, "neuron is NULL");
+    NIMCP_CHECK_THROW(rheobase, NIMCP_ERROR_NULL_POINTER, "rheobase is NULL");
+    NIMCP_CHECK_THROW(neuron->initialized, NIMCP_ERROR_NOT_INITIALIZED, "neuron not initialized");
 
     float I_low = 0.0f;
     float I_high = 50.0f;  /* uA/cm^2 */
@@ -1169,8 +1178,8 @@ nimcp_error_t nimcp_hh_compute_rheobase(nimcp_hh_neuron_t* neuron, float* rheoba
 
 nimcp_error_t nimcp_hh_get_stats(const nimcp_hh_neuron_t* neuron,
                                   float* firing_rate, float* tau_m, float* R_in) {
-    if (!neuron) return NIMCP_ERROR_NULL_POINTER;
-    if (!neuron->initialized) return NIMCP_ERROR_NOT_INITIALIZED;
+    NIMCP_CHECK_THROW(neuron, NIMCP_ERROR_NULL_POINTER, "neuron is NULL");
+    NIMCP_CHECK_THROW(neuron->initialized, NIMCP_ERROR_NOT_INITIALIZED, "neuron not initialized");
 
     if (firing_rate) *firing_rate = neuron->avg_firing_rate;
     if (tau_m) *tau_m = neuron->membrane_time_constant;

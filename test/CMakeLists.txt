@@ -1046,6 +1046,17 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/utils/exception")
     add_subdirectory(integration/utils/exception)
 endif()
 
+# Exception Macro Integration Tests
+# ============================================================================
+# WHAT: Tests for exception macro behavior across modules
+# WHY:  Verify NIMCP_CHECK_THROW, security exceptions, and swarm exceptions
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/exception")
+    message(STATUS "Adding exception macro integration unit tests...")
+    add_subdirectory(unit/exception)
+endif()
+
 # Utils Memory Tests
 # ============================================================================
 

@@ -615,17 +615,9 @@ nimcp_error_t nimcp_gt_tom_observe_action(
     uint32_t action,
     const nimcp_action_context_t* context
 ) {
-    if (!ctx || !context) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (action >= NIMCP_TOM_MAX_ACTIONS) {
-        return NIMCP_ERROR_OUT_OF_RANGE;
-    }
-
-    if (!ctx->active) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(ctx && context, NIMCP_ERROR_INVALID_PARAM, "ctx or context is NULL");
+    NIMCP_CHECK_THROW(action < NIMCP_TOM_MAX_ACTIONS, NIMCP_ERROR_OUT_OF_RANGE, "action out of range");
+    NIMCP_CHECK_THROW(ctx->active, NIMCP_ERROR_INVALID_STATE, "ctx is not active");
 
     // Lock if thread-safe
     if (ctx->thread_safe && ctx->mutex) {
@@ -697,13 +689,8 @@ nimcp_error_t nimcp_gt_tom_update_beliefs(
     nimcp_gt_tom_t ctx,
     nimcp_player_id_t opponent_id
 ) {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!ctx->active) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(ctx->active, NIMCP_ERROR_INVALID_STATE, "ctx is not active");
 
     if (ctx->thread_safe && ctx->mutex) {
         nimcp_mutex_lock(ctx->mutex);
@@ -743,13 +730,8 @@ nimcp_error_t nimcp_gt_tom_predict_action(
     const nimcp_action_context_t* situation,
     nimcp_action_prediction_t* prediction
 ) {
-    if (!ctx || !situation || !prediction) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!ctx->active) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(ctx && situation && prediction, NIMCP_ERROR_INVALID_PARAM, "ctx, situation, or prediction is NULL");
+    NIMCP_CHECK_THROW(ctx->active, NIMCP_ERROR_INVALID_STATE, "ctx is not active");
 
     if (ctx->thread_safe && ctx->mutex) {
         nimcp_mutex_lock(ctx->mutex);
@@ -782,13 +764,8 @@ nimcp_error_t nimcp_gt_tom_get_type_distribution(
     nimcp_player_id_t opponent_id,
     nimcp_type_distribution_t* dist
 ) {
-    if (!ctx || !dist) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!ctx->active) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(ctx && dist, NIMCP_ERROR_INVALID_PARAM, "ctx or dist is NULL");
+    NIMCP_CHECK_THROW(ctx->active, NIMCP_ERROR_INVALID_STATE, "ctx is not active");
 
     if (ctx->thread_safe && ctx->mutex) {
         nimcp_mutex_lock(ctx->mutex);
@@ -826,13 +803,8 @@ nimcp_error_t nimcp_gt_tom_infer_preferences(
     nimcp_player_id_t opponent_id,
     nimcp_opponent_preferences_t* preferences
 ) {
-    if (!ctx || !preferences) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!ctx->active) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(ctx && preferences, NIMCP_ERROR_INVALID_PARAM, "ctx or preferences is NULL");
+    NIMCP_CHECK_THROW(ctx->active, NIMCP_ERROR_INVALID_STATE, "ctx is not active");
 
     if (ctx->thread_safe && ctx->mutex) {
         nimcp_mutex_lock(ctx->mutex);
@@ -860,13 +832,8 @@ nimcp_error_t nimcp_gt_tom_infer_mental_state(
     nimcp_player_id_t opponent_id,
     nimcp_mental_state_t* state
 ) {
-    if (!ctx || !state) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!ctx->active) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(ctx && state, NIMCP_ERROR_INVALID_PARAM, "ctx or state is NULL");
+    NIMCP_CHECK_THROW(ctx->active, NIMCP_ERROR_INVALID_STATE, "ctx is not active");
 
     if (ctx->thread_safe && ctx->mutex) {
         nimcp_mutex_lock(ctx->mutex);
@@ -898,13 +865,8 @@ nimcp_error_t nimcp_gt_tom_what_do_they_think_i_will_do(
     nimcp_player_id_t opponent_id,
     nimcp_action_prediction_t* my_prediction
 ) {
-    if (!ctx || !my_prediction) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!ctx->active) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(ctx && my_prediction, NIMCP_ERROR_INVALID_PARAM, "ctx or my_prediction is NULL");
+    NIMCP_CHECK_THROW(ctx->active, NIMCP_ERROR_INVALID_STATE, "ctx is not active");
 
     if (ctx->thread_safe && ctx->mutex) {
         nimcp_mutex_lock(ctx->mutex);
@@ -955,13 +917,8 @@ nimcp_error_t nimcp_gt_tom_best_response_to_beliefs(
     nimcp_player_id_t opponent_id,
     uint32_t* my_action
 ) {
-    if (!ctx || !my_action) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!ctx->active) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(ctx && my_action, NIMCP_ERROR_INVALID_PARAM, "ctx or my_action is NULL");
+    NIMCP_CHECK_THROW(ctx->active, NIMCP_ERROR_INVALID_STATE, "ctx is not active");
 
     if (ctx->thread_safe && ctx->mutex) {
         nimcp_mutex_lock(ctx->mutex);
@@ -1020,9 +977,7 @@ nimcp_error_t nimcp_gt_tom_reset_opponent(
     nimcp_gt_tom_t ctx,
     nimcp_player_id_t opponent_id
 ) {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     if (ctx->thread_safe && ctx->mutex) {
         nimcp_mutex_lock(ctx->mutex);
@@ -1093,9 +1048,7 @@ nimcp_error_t nimcp_gt_tom_get_opponent_belief(
     nimcp_player_id_t opponent_id,
     nimcp_opponent_belief_t* belief
 ) {
-    if (!ctx || !belief) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx && belief, NIMCP_ERROR_INVALID_PARAM, "ctx or belief is NULL");
 
     if (ctx->thread_safe && ctx->mutex) {
         nimcp_mutex_lock(ctx->mutex);

@@ -353,7 +353,7 @@ void thalamus_destroy(thalamus_t* thal) {
 }
 
 int thalamus_reset(thalamus_t* thal) {
-    if (!thal) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(thal, NIMCP_ERROR_NULL_POINTER, "thal is NULL");
 
     thal->global_arousal = 1.0f;
     thal->global_attention = thal->config.attention_baseline;
@@ -396,7 +396,8 @@ int thalamus_reset(thalamus_t* thal) {
 //=============================================================================
 
 int thal_nucleus_process_input(thal_nucleus_t* nucleus, const float* input, uint32_t size) {
-    if (!nucleus || !input) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(nucleus, NIMCP_ERROR_NULL_POINTER, "nucleus is NULL");
+    NIMCP_CHECK_THROW(input, NIMCP_ERROR_NULL_POINTER, "input is NULL");
 
     uint32_t process_size = (size < nucleus->num_input_channels) ? size : nucleus->num_input_channels;
 
@@ -426,7 +427,7 @@ int thal_nucleus_process_input(thal_nucleus_t* nucleus, const float* input, uint
 }
 
 static int nucleus_compute_output(thal_nucleus_t* nucleus) {
-    if (!nucleus) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(nucleus, NIMCP_ERROR_NULL_POINTER, "nucleus is NULL");
 
     float total_activity = 0.0f;
 
@@ -455,10 +456,12 @@ int thalamus_relay(
     float* output,
     uint32_t output_size
 ) {
-    if (!thal || !input || !output) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(thal, NIMCP_ERROR_NULL_POINTER, "thal is NULL");
+    NIMCP_CHECK_THROW(input, NIMCP_ERROR_NULL_POINTER, "input is NULL");
+    NIMCP_CHECK_THROW(output, NIMCP_ERROR_NULL_POINTER, "output is NULL");
 
     thal_nucleus_t* nucleus = thalamus_get_nucleus(thal, nucleus_type);
-    if (!nucleus) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(nucleus, NIMCP_ERROR_INVALID_PARAM, "invalid nucleus type");
 
     /* Process input */
     int result = thal_nucleus_process_input(nucleus, input, input_size);
@@ -508,7 +511,9 @@ int thalamus_relay_motor(
     float* motor_output,
     uint32_t output_size
 ) {
-    if (!thal || !bg_input || !motor_output) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(thal, NIMCP_ERROR_NULL_POINTER, "thal is NULL");
+    NIMCP_CHECK_THROW(bg_input, NIMCP_ERROR_NULL_POINTER, "bg_input is NULL");
+    NIMCP_CHECK_THROW(motor_output, NIMCP_ERROR_NULL_POINTER, "motor_output is NULL");
 
     /* Motor relay uses VA (from BG) */
     return thalamus_relay(thal, THAL_NUCLEUS_VA, bg_input, bg_size, motor_output, output_size);
@@ -530,10 +535,11 @@ int thalamus_get_output(
     float* output,
     uint32_t size
 ) {
-    if (!thal || !output) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(thal, NIMCP_ERROR_NULL_POINTER, "thal is NULL");
+    NIMCP_CHECK_THROW(output, NIMCP_ERROR_NULL_POINTER, "output is NULL");
 
     const thal_nucleus_t* nucleus = thalamus_get_nucleus_const(thal, nucleus_type);
-    if (!nucleus) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(nucleus, NIMCP_ERROR_INVALID_PARAM, "invalid nucleus type");
 
     uint32_t copy_size = (size < nucleus->num_output_channels) ? size : nucleus->num_output_channels;
     memcpy(output, nucleus->output_buffer, sizeof(float) * copy_size);
@@ -550,10 +556,10 @@ int thalamus_set_attention(
     thal_nucleus_type_t nucleus_type,
     float attention
 ) {
-    if (!thal) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(thal, NIMCP_ERROR_NULL_POINTER, "thal is NULL");
 
     thal_nucleus_t* nucleus = thalamus_get_nucleus(thal, nucleus_type);
-    if (!nucleus) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(nucleus, NIMCP_ERROR_INVALID_PARAM, "invalid nucleus type");
 
     attention = clamp_f(attention, 0.0f, 1.0f);
     nucleus->attention_level = attention;
@@ -572,18 +578,18 @@ int thalamus_set_channel_attention(
     uint32_t channel,
     float attention
 ) {
-    if (!thal) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(thal, NIMCP_ERROR_NULL_POINTER, "thal is NULL");
 
     thal_nucleus_t* nucleus = thalamus_get_nucleus(thal, nucleus_type);
-    if (!nucleus) return NIMCP_ERROR_INVALID_PARAM;
-    if (channel >= nucleus->num_input_channels) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(nucleus, NIMCP_ERROR_INVALID_PARAM, "invalid nucleus type");
+    NIMCP_CHECK_THROW(channel < nucleus->num_input_channels, NIMCP_ERROR_INVALID_PARAM, "channel out of range");
 
     nucleus->channel_attention[channel] = clamp_f(attention, 0.0f, 1.0f);
     return 0;
 }
 
 int thalamus_set_arousal(thalamus_t* thal, float arousal) {
-    if (!thal) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(thal, NIMCP_ERROR_NULL_POINTER, "thal is NULL");
 
     thal->global_arousal = clamp_f(arousal, 0.0f, 1.0f);
 
@@ -625,10 +631,10 @@ int thalamus_apply_trn_inhibition(
     thal_nucleus_type_t nucleus_type,
     float inhibition
 ) {
-    if (!thal) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(thal, NIMCP_ERROR_NULL_POINTER, "thal is NULL");
 
     thal_nucleus_t* nucleus = thalamus_get_nucleus(thal, nucleus_type);
-    if (!nucleus) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(nucleus, NIMCP_ERROR_INVALID_PARAM, "invalid nucleus type");
 
     inhibition = clamp_f(inhibition, 0.0f, 1.0f);
     nucleus->trn_inhibition = inhibition;
@@ -649,11 +655,11 @@ int thalamus_apply_channel_inhibition(
     uint32_t channel,
     float inhibition
 ) {
-    if (!thal) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(thal, NIMCP_ERROR_NULL_POINTER, "thal is NULL");
 
     thal_nucleus_t* nucleus = thalamus_get_nucleus(thal, nucleus_type);
-    if (!nucleus) return NIMCP_ERROR_INVALID_PARAM;
-    if (channel >= nucleus->num_input_channels) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(nucleus, NIMCP_ERROR_INVALID_PARAM, "invalid nucleus type");
+    NIMCP_CHECK_THROW(channel < nucleus->num_input_channels, NIMCP_ERROR_INVALID_PARAM, "channel out of range");
 
     nucleus->channel_inhibition[channel] = clamp_f(inhibition, 0.0f, 1.0f);
     return 0;
@@ -668,10 +674,10 @@ int thalamus_set_mode(
     thal_nucleus_type_t nucleus_type,
     thal_firing_mode_t mode
 ) {
-    if (!thal) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(thal, NIMCP_ERROR_NULL_POINTER, "thal is NULL");
 
     thal_nucleus_t* nucleus = thalamus_get_nucleus(thal, nucleus_type);
-    if (!nucleus) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(nucleus, NIMCP_ERROR_INVALID_PARAM, "invalid nucleus type");
 
     nucleus->dominant_mode = mode;
 
@@ -699,10 +705,10 @@ thal_firing_mode_t thalamus_get_mode(
 }
 
 int thalamus_trigger_burst(thalamus_t* thal, thal_nucleus_type_t nucleus_type) {
-    if (!thal) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(thal, NIMCP_ERROR_NULL_POINTER, "thal is NULL");
 
     thal_nucleus_t* nucleus = thalamus_get_nucleus(thal, nucleus_type);
-    if (!nucleus) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(nucleus, NIMCP_ERROR_INVALID_PARAM, "invalid nucleus type");
 
     /* Activate T-type Ca2+ channels for burst */
     for (uint32_t i = 0; i < nucleus->num_cells; i++) {
@@ -736,7 +742,7 @@ float thalamus_get_tonic_fraction(
 //=============================================================================
 
 int thal_nucleus_step(thal_nucleus_t* nucleus, float dt) {
-    if (!nucleus) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(nucleus, NIMCP_ERROR_NULL_POINTER, "nucleus is NULL");
 
     float tonic_count = 0;
 
@@ -785,7 +791,8 @@ int thal_nucleus_step(thal_nucleus_t* nucleus, float dt) {
 }
 
 int thalamus_update_trn(thalamus_t* thal) {
-    if (!thal || !thal->trn) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(thal, NIMCP_ERROR_NULL_POINTER, "thal is NULL");
+    NIMCP_CHECK_THROW(thal->trn, NIMCP_ERROR_NULL_POINTER, "thal->trn is NULL");
 
     thalamic_reticular_nucleus_t* trn = thal->trn;
 
@@ -807,7 +814,7 @@ int thalamus_update_trn(thalamus_t* thal) {
 }
 
 int thalamus_step(thalamus_t* thal, float dt) {
-    if (!thal) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(thal, NIMCP_ERROR_NULL_POINTER, "thal is NULL");
 
     /* Step each nucleus */
     thal_nucleus_step(thal->lgn, dt);
@@ -854,7 +861,8 @@ int thalamus_connect_basal_ganglia(
     const float* bg_output,
     uint32_t size
 ) {
-    if (!thal || !bg_output) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(thal, NIMCP_ERROR_NULL_POINTER, "thal is NULL");
+    NIMCP_CHECK_THROW(bg_output, NIMCP_ERROR_NULL_POINTER, "bg_output is NULL");
 
     /* Route BG output through VA nucleus to motor cortex */
     return thal_nucleus_process_input(thal->va, bg_output, size);
@@ -865,7 +873,8 @@ int thalamus_pulvinar_attention(
     const float* attention_signal,
     uint32_t size
 ) {
-    if (!thal || !attention_signal) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(thal, NIMCP_ERROR_NULL_POINTER, "thal is NULL");
+    NIMCP_CHECK_THROW(attention_signal, NIMCP_ERROR_NULL_POINTER, "attention_signal is NULL");
 
     /* Process attention signal through pulvinar */
     int result = thal_nucleus_process_input(thal->pulvinar, attention_signal, size);
@@ -914,7 +923,7 @@ const thal_nucleus_t* thalamus_get_nucleus_const(
 //=============================================================================
 
 int thalamus_connect_bio_async(thalamus_t* thal) {
-    if (!thal) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(thal, NIMCP_ERROR_NULL_POINTER, "thal is NULL");
     if (thal->bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -936,7 +945,7 @@ int thalamus_connect_bio_async(thalamus_t* thal) {
 }
 
 int thalamus_disconnect_bio_async(thalamus_t* thal) {
-    if (!thal) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(thal, NIMCP_ERROR_NULL_POINTER, "thal is NULL");
     if (!thal->bio_async_enabled) return 0;
 
     if (thal->bio_ctx) {
@@ -957,7 +966,8 @@ bool thalamus_is_bio_async_connected(const thalamus_t* thal) {
 //=============================================================================
 
 int thalamus_get_stats(const thalamus_t* thal, thalamus_stats_t* stats) {
-    if (!thal || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(thal, NIMCP_ERROR_NULL_POINTER, "thal is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     *stats = thal->stats;
     return 0;

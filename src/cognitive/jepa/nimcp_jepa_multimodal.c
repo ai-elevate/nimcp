@@ -58,9 +58,7 @@ static float cosine_similarity(const float* a, const float* b, uint32_t dim);
 
 int jepa_multimodal_default_config(jepa_multimodal_config_t* config)
 {
-    if (!config) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     memset(config, 0, sizeof(*config));
 
@@ -231,9 +229,7 @@ void jepa_multimodal_destroy(jepa_multimodal_t* mm)
 
 int jepa_multimodal_reset(jepa_multimodal_t* mm)
 {
-    if (!mm) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
 
     /* Reset stats */
     memset(&mm->stats, 0, sizeof(mm->stats));
@@ -252,9 +248,8 @@ int jepa_multimodal_connect_visual(
     jepa_multimodal_t* mm,
     visual_jepa_bridge_t* visual)
 {
-    if (!mm || !visual) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
+    NIMCP_CHECK_THROW(visual, NIMCP_ERROR_INVALID_PARAM, "visual is NULL");
 
     mm->visual_encoder = visual;
 
@@ -267,9 +262,8 @@ int jepa_multimodal_connect_speech(
     jepa_multimodal_t* mm,
     speech_jepa_bridge_t* speech)
 {
-    if (!mm || !speech) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
+    NIMCP_CHECK_THROW(speech, NIMCP_ERROR_INVALID_PARAM, "speech is NULL");
 
     mm->speech_encoder = speech;
 
@@ -280,9 +274,7 @@ int jepa_multimodal_connect_speech(
 
 int jepa_multimodal_disconnect_all(jepa_multimodal_t* mm)
 {
-    if (!mm) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
 
     mm->visual_encoder = NULL;
     mm->speech_encoder = NULL;
@@ -305,9 +297,9 @@ int jepa_multimodal_encode_visual(
     const jepa_latent_t* visual_latent,
     jepa_latent_t* joint_latent)
 {
-    if (!mm || !visual_latent || !joint_latent) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
+    NIMCP_CHECK_THROW(visual_latent, NIMCP_ERROR_INVALID_PARAM, "visual_latent is NULL");
+    NIMCP_CHECK_THROW(joint_latent, NIMCP_ERROR_INVALID_PARAM, "joint_latent is NULL");
 
     /* Project to joint space */
     int rc = projection_forward(
@@ -356,9 +348,9 @@ int jepa_multimodal_encode_speech(
     const jepa_latent_t* speech_latent,
     jepa_latent_t* joint_latent)
 {
-    if (!mm || !speech_latent || !joint_latent) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
+    NIMCP_CHECK_THROW(speech_latent, NIMCP_ERROR_INVALID_PARAM, "speech_latent is NULL");
+    NIMCP_CHECK_THROW(joint_latent, NIMCP_ERROR_INVALID_PARAM, "joint_latent is NULL");
 
     /* Project to joint space */
     int rc = projection_forward(
@@ -408,9 +400,10 @@ int jepa_multimodal_fuse(
     const jepa_latent_t* speech_latent,
     jepa_latent_t* fused_latent)
 {
-    if (!mm || !visual_latent || !speech_latent || !fused_latent) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
+    NIMCP_CHECK_THROW(visual_latent, NIMCP_ERROR_INVALID_PARAM, "visual_latent is NULL");
+    NIMCP_CHECK_THROW(speech_latent, NIMCP_ERROR_INVALID_PARAM, "speech_latent is NULL");
+    NIMCP_CHECK_THROW(fused_latent, NIMCP_ERROR_INVALID_PARAM, "fused_latent is NULL");
 
     /* Project both to joint space */
     jepa_latent_t visual_joint = {0};
@@ -520,14 +513,10 @@ int jepa_multimodal_predict_speech_from_visual(
     const jepa_latent_t* visual_latent,
     jepa_latent_t* predicted_speech)
 {
-    if (!mm || !visual_latent || !predicted_speech) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!mm->visual_to_speech) {
-        NIMCP_LOGGING_WARN("V->S predictor not enabled");
-        return NIMCP_ERROR_NOT_INITIALIZED;
-    }
+    NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
+    NIMCP_CHECK_THROW(visual_latent, NIMCP_ERROR_INVALID_PARAM, "visual_latent is NULL");
+    NIMCP_CHECK_THROW(predicted_speech, NIMCP_ERROR_INVALID_PARAM, "predicted_speech is NULL");
+    NIMCP_CHECK_THROW(mm->visual_to_speech, NIMCP_ERROR_NOT_INITIALIZED, "V->S predictor not enabled");
 
     /* Project visual to joint space */
     jepa_latent_t visual_joint = {0};
@@ -566,14 +555,10 @@ int jepa_multimodal_predict_visual_from_speech(
     const jepa_latent_t* speech_latent,
     jepa_latent_t* predicted_visual)
 {
-    if (!mm || !speech_latent || !predicted_visual) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!mm->speech_to_visual) {
-        NIMCP_LOGGING_WARN("S->V predictor not enabled");
-        return NIMCP_ERROR_NOT_INITIALIZED;
-    }
+    NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
+    NIMCP_CHECK_THROW(speech_latent, NIMCP_ERROR_INVALID_PARAM, "speech_latent is NULL");
+    NIMCP_CHECK_THROW(predicted_visual, NIMCP_ERROR_INVALID_PARAM, "predicted_visual is NULL");
+    NIMCP_CHECK_THROW(mm->speech_to_visual, NIMCP_ERROR_NOT_INITIALIZED, "S->V predictor not enabled");
 
     /* Project speech to joint space */
     jepa_latent_t speech_joint = {0};
@@ -617,9 +602,10 @@ int jepa_multimodal_similarity(
     const jepa_latent_t* speech_latent,
     float* similarity)
 {
-    if (!mm || !visual_latent || !speech_latent || !similarity) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
+    NIMCP_CHECK_THROW(visual_latent, NIMCP_ERROR_INVALID_PARAM, "visual_latent is NULL");
+    NIMCP_CHECK_THROW(speech_latent, NIMCP_ERROR_INVALID_PARAM, "speech_latent is NULL");
+    NIMCP_CHECK_THROW(similarity, NIMCP_ERROR_INVALID_PARAM, "similarity is NULL");
 
     /* Check if both latents are already in joint space (multimodal) */
     if (visual_latent->modality == JEPA_MODALITY_MULTIMODAL &&
@@ -675,9 +661,10 @@ int jepa_multimodal_batch_similarity(
     uint32_t num_samples,
     float* similarity_matrix)
 {
-    if (!mm || !visual_latents || !speech_latents || !similarity_matrix) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
+    NIMCP_CHECK_THROW(visual_latents, NIMCP_ERROR_INVALID_PARAM, "visual_latents is NULL");
+    NIMCP_CHECK_THROW(speech_latents, NIMCP_ERROR_INVALID_PARAM, "speech_latents is NULL");
+    NIMCP_CHECK_THROW(similarity_matrix, NIMCP_ERROR_INVALID_PARAM, "similarity_matrix is NULL");
 
     if (num_samples == 0) {
         return NIMCP_SUCCESS;
@@ -754,9 +741,7 @@ int jepa_multimodal_batch_similarity(
 
 int jepa_multimodal_set_training(jepa_multimodal_t* mm, bool training)
 {
-    if (!mm) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
 
     mm->training_mode = training;
 
@@ -775,9 +760,9 @@ int jepa_multimodal_align_step(
     const jepa_mm_batch_t* batch,
     float* loss)
 {
-    if (!mm || !batch || !loss) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
+    NIMCP_CHECK_THROW(batch, NIMCP_ERROR_INVALID_PARAM, "batch is NULL");
+    NIMCP_CHECK_THROW(loss, NIMCP_ERROR_INVALID_PARAM, "loss is NULL");
 
     if (batch->num_pairs == 0) {
         *loss = 0.0f;
@@ -909,9 +894,10 @@ int jepa_multimodal_cross_pred_step(
     const jepa_latent_t* speech_latent,
     float* loss)
 {
-    if (!mm || !visual_latent || !speech_latent || !loss) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
+    NIMCP_CHECK_THROW(visual_latent, NIMCP_ERROR_INVALID_PARAM, "visual_latent is NULL");
+    NIMCP_CHECK_THROW(speech_latent, NIMCP_ERROR_INVALID_PARAM, "speech_latent is NULL");
+    NIMCP_CHECK_THROW(loss, NIMCP_ERROR_INVALID_PARAM, "loss is NULL");
 
     float total_loss = 0.0f;
     int count = 0;
@@ -1012,9 +998,9 @@ int jepa_mm_batch_add_pair(
     const jepa_latent_t* speech,
     bool is_matched)
 {
-    if (!batch || !visual || !speech) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(batch, NIMCP_ERROR_INVALID_PARAM, "batch is NULL");
+    NIMCP_CHECK_THROW(visual, NIMCP_ERROR_INVALID_PARAM, "visual is NULL");
+    NIMCP_CHECK_THROW(speech, NIMCP_ERROR_INVALID_PARAM, "speech is NULL");
 
     /* Store references (not copies) */
     batch->pairs[batch->num_pairs].visual = (jepa_latent_t*)visual;
@@ -1032,9 +1018,7 @@ int jepa_mm_batch_add_pair(
 
 int jepa_mm_batch_clear(jepa_mm_batch_t* batch)
 {
-    if (!batch) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(batch, NIMCP_ERROR_INVALID_PARAM, "batch is NULL");
 
     batch->num_pairs = 0;
     batch->num_positive = 0;
@@ -1050,9 +1034,8 @@ int jepa_multimodal_get_stats(
     const jepa_multimodal_t* mm,
     jepa_multimodal_stats_t* stats)
 {
-    if (!mm || !stats) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_INVALID_PARAM, "stats is NULL");
 
     memcpy(stats, &mm->stats, sizeof(jepa_multimodal_stats_t));
     return NIMCP_SUCCESS;
@@ -1060,9 +1043,7 @@ int jepa_multimodal_get_stats(
 
 int jepa_multimodal_reset_stats(jepa_multimodal_t* mm)
 {
-    if (!mm) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
 
     memset(&mm->stats, 0, sizeof(mm->stats));
     return NIMCP_SUCCESS;
@@ -1074,9 +1055,7 @@ int jepa_multimodal_reset_stats(jepa_multimodal_t* mm)
 
 int jepa_multimodal_connect_bio_async(jepa_multimodal_t* mm)
 {
-    if (!mm) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
 
     mm->base.bio_async_enabled = true;
 
@@ -1087,9 +1066,7 @@ int jepa_multimodal_connect_bio_async(jepa_multimodal_t* mm)
 
 int jepa_multimodal_disconnect_bio_async(jepa_multimodal_t* mm)
 {
-    if (!mm) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mm, NIMCP_ERROR_INVALID_PARAM, "mm is NULL");
 
     mm->base.bio_async_enabled = false;
 
@@ -1109,9 +1086,8 @@ static int projection_create(
     jepa_mm_projection_t** proj,
     const jepa_mm_projection_config_t* config)
 {
-    if (!proj || !config) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(proj, NIMCP_ERROR_INVALID_PARAM, "proj output pointer is NULL");
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     jepa_mm_projection_t* p = (jepa_mm_projection_t*)nimcp_calloc(
         1, sizeof(jepa_mm_projection_t));
@@ -1192,9 +1168,9 @@ static int projection_forward(
     const float* input,
     float* output)
 {
-    if (!proj || !input || !output) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(proj, NIMCP_ERROR_INVALID_PARAM, "proj is NULL");
+    NIMCP_CHECK_THROW(input, NIMCP_ERROR_INVALID_PARAM, "input is NULL");
+    NIMCP_CHECK_THROW(output, NIMCP_ERROR_INVALID_PARAM, "output is NULL");
 
     if (proj->hidden_dim > 0) {
         /* Two-layer MLP */

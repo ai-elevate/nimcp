@@ -43,14 +43,14 @@ void jepa_thalamic_bridge_destroy(jepa_thalamic_bridge_t* bridge) {
 }
 
 int jepa_thalamic_bridge_reset(jepa_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
     bridge->attention_weight = 1.0f;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return 0;
 }
 
 int jepa_thalamic_route_prediction(jepa_thalamic_bridge_t* bridge, const jepa_thalamic_signal_t* signal) {
-    if (!bridge || !signal) return -1;
+    NIMCP_CHECK_THROW(bridge && signal, -1, "bridge or signal is NULL");
     if (bridge->config.enable_attention_gating && signal->prediction_confidence < bridge->config.min_prediction_confidence) {
         return 0;
     }
@@ -67,25 +67,25 @@ int jepa_thalamic_route_prediction(jepa_thalamic_bridge_t* bridge, const jepa_th
 }
 
 int jepa_thalamic_route_error(jepa_thalamic_bridge_t* bridge, const void* error, float magnitude) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
     bridge->stats.errors_propagated++;
     return 0;
 }
 
 int jepa_thalamic_set_attention(jepa_thalamic_bridge_t* bridge, float attention) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
     bridge->attention_weight = attention < 0.0f ? 0.0f : (attention > 1.0f ? 1.0f : attention);
     return 0;
 }
 
 int jepa_thalamic_get_attention(const jepa_thalamic_bridge_t* bridge, float* attention) {
-    if (!bridge || !attention) return -1;
+    NIMCP_CHECK_THROW(bridge && attention, -1, "bridge or attention is NULL");
     *attention = bridge->attention_weight;
     return 0;
 }
 
 int jepa_thalamic_bridge_get_stats(const jepa_thalamic_bridge_t* bridge, jepa_thalamic_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    NIMCP_CHECK_THROW(bridge && stats, -1, "bridge or stats is NULL");
     *stats = bridge->stats;
     return 0;
 }

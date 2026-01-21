@@ -358,10 +358,10 @@ void plasticity_guard_destroy(plasticity_guard_t guard) {
 }
 
 int plasticity_guard_reset(plasticity_guard_t guard) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct plasticity_guard_internal* g = guard;
-    if (g->magic != LGSS_PLASTICITY_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_PLASTICITY_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid guard magic");
 
     /* Reset rate window */
     g->rate_window.head = 0;
@@ -381,32 +381,29 @@ int plasticity_guard_reset(plasticity_guard_t guard) {
 }
 
 int plasticity_guard_freeze_synapse(plasticity_guard_t guard, uint64_t synapse_id) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct plasticity_guard_internal* g = guard;
-    if (g->magic != LGSS_PLASTICITY_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
-
-    if (g->frozen_count >= LGSS_MAX_FROZEN_SYNAPSES) {
-        return NIMCP_ERROR_OUT_OF_RANGE;
-    }
+    NIMCP_CHECK_THROW(g->magic == LGSS_PLASTICITY_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid guard magic");
+    NIMCP_CHECK_THROW(g->frozen_count < LGSS_MAX_FROZEN_SYNAPSES, NIMCP_ERROR_OUT_OF_RANGE, "frozen synapse limit exceeded");
 
     if (!hashmap_insert(g->frozen_synapses, g->frozen_hashmap_size,
                        synapse_id, &g->frozen_count)) {
-        return NIMCP_ERROR_ALREADY_EXISTS;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_ALREADY_EXISTS, "synapse already frozen");
     }
 
     return NIMCP_SUCCESS;
 }
 
 int plasticity_guard_unfreeze_synapse(plasticity_guard_t guard, uint64_t synapse_id) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct plasticity_guard_internal* g = guard;
-    if (g->magic != LGSS_PLASTICITY_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_PLASTICITY_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid guard magic");
 
     if (!hashmap_remove(g->frozen_synapses, g->frozen_hashmap_size,
                        synapse_id, &g->frozen_count)) {
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "synapse not found in frozen list");
     }
 
     return NIMCP_SUCCESS;
@@ -422,19 +419,16 @@ bool plasticity_guard_is_frozen(plasticity_guard_t guard, uint64_t synapse_id) {
 }
 
 int plasticity_guard_freeze_pathway(plasticity_guard_t guard, uint32_t pathway_id) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct plasticity_guard_internal* g = guard;
-    if (g->magic != LGSS_PLASTICITY_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
-
-    if (g->frozen_pathway_count >= g->frozen_pathway_capacity) {
-        return NIMCP_ERROR_OUT_OF_RANGE;
-    }
+    NIMCP_CHECK_THROW(g->magic == LGSS_PLASTICITY_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid guard magic");
+    NIMCP_CHECK_THROW(g->frozen_pathway_count < g->frozen_pathway_capacity, NIMCP_ERROR_OUT_OF_RANGE, "frozen pathway limit exceeded");
 
     /* Check for duplicates */
     for (uint32_t i = 0; i < g->frozen_pathway_count; i++) {
         if (g->frozen_pathways[i] == pathway_id) {
-            return NIMCP_ERROR_ALREADY_EXISTS;
+            NIMCP_CHECK_THROW(false, NIMCP_ERROR_ALREADY_EXISTS, "pathway already frozen");
         }
     }
 
@@ -443,10 +437,10 @@ int plasticity_guard_freeze_pathway(plasticity_guard_t guard, uint32_t pathway_i
 }
 
 int plasticity_guard_unfreeze_pathway(plasticity_guard_t guard, uint32_t pathway_id) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct plasticity_guard_internal* g = guard;
-    if (g->magic != LGSS_PLASTICITY_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_PLASTICITY_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid guard magic");
 
     for (uint32_t i = 0; i < g->frozen_pathway_count; i++) {
         if (g->frozen_pathways[i] == pathway_id) {
@@ -459,7 +453,8 @@ int plasticity_guard_unfreeze_pathway(plasticity_guard_t guard, uint32_t pathway
         }
     }
 
-    return NIMCP_ERROR_NOT_FOUND;
+    NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "pathway not found in frozen list");
+    return 0; /* unreachable */
 }
 
 uint32_t plasticity_guard_freeze_bulk(
@@ -498,10 +493,11 @@ int plasticity_guard_check_update(
     float new_weight,
     plasticity_check_result_t* result
 ) {
-    if (!guard || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_NULL_POINTER, "result is NULL");
 
     struct plasticity_guard_internal* g = guard;
-    if (g->magic != LGSS_PLASTICITY_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_PLASTICITY_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid guard magic");
 
     /* Initialize result */
     memset(result, 0, sizeof(*result));
@@ -598,10 +594,11 @@ int plasticity_guard_apply_update(
     uint64_t synapse_id,
     float* weight_ptr
 ) {
-    if (!guard || !weight_ptr) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
+    NIMCP_CHECK_THROW(weight_ptr, NIMCP_ERROR_NULL_POINTER, "weight_ptr is NULL");
 
     struct plasticity_guard_internal* g = guard;
-    if (g->magic != LGSS_PLASTICITY_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_PLASTICITY_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid guard magic");
 
     uint64_t start_time = get_time_us();
 
@@ -699,10 +696,11 @@ int plasticity_guard_apply_update_with_lr(
     float* weight_ptr,
     float learning_rate
 ) {
-    if (!guard || !weight_ptr) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
+    NIMCP_CHECK_THROW(weight_ptr, NIMCP_ERROR_NULL_POINTER, "weight_ptr is NULL");
 
     struct plasticity_guard_internal* g = guard;
-    if (g->magic != LGSS_PLASTICITY_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_PLASTICITY_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid guard magic");
 
     /* Check learning rate bounds */
     if (learning_rate < g->config.min_learning_rate ||
@@ -745,36 +743,36 @@ uint32_t plasticity_guard_apply_batch(
 }
 
 int plasticity_guard_register_reward_synapse(plasticity_guard_t guard, uint64_t synapse_id) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct plasticity_guard_internal* g = guard;
-    if (g->magic != LGSS_PLASTICITY_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_PLASTICITY_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid guard magic");
 
     if (!hashmap_insert(g->reward_synapses, g->reward_hashmap_size,
                        synapse_id, &g->reward_synapse_count)) {
-        return NIMCP_ERROR_ALREADY_EXISTS;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_ALREADY_EXISTS, "reward synapse already registered");
     }
     return NIMCP_SUCCESS;
 }
 
 int plasticity_guard_register_self_reward_synapse(plasticity_guard_t guard, uint64_t synapse_id) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct plasticity_guard_internal* g = guard;
-    if (g->magic != LGSS_PLASTICITY_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_PLASTICITY_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid guard magic");
 
     if (!hashmap_insert(g->self_reward_synapses, g->self_reward_hashmap_size,
                        synapse_id, &g->self_reward_count)) {
-        return NIMCP_ERROR_ALREADY_EXISTS;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_ALREADY_EXISTS, "self-reward synapse already registered");
     }
     return NIMCP_SUCCESS;
 }
 
 int plasticity_guard_update_homeostatic_state(plasticity_guard_t guard, float current_activity) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct plasticity_guard_internal* g = guard;
-    if (g->magic != LGSS_PLASTICITY_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_PLASTICITY_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid guard magic");
 
     g->current_activity = current_activity;
 
@@ -786,10 +784,11 @@ int plasticity_guard_update_homeostatic_state(plasticity_guard_t guard, float cu
 }
 
 int plasticity_guard_get_homeostatic_scale(plasticity_guard_t guard, float* scale_out) {
-    if (!guard || !scale_out) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
+    NIMCP_CHECK_THROW(scale_out, NIMCP_ERROR_NULL_POINTER, "scale_out is NULL");
 
     struct plasticity_guard_internal* g = guard;
-    if (g->magic != LGSS_PLASTICITY_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_PLASTICITY_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid guard magic");
 
     /* Calculate scaling factor to move activity toward target */
     float error = g->config.homeostatic_target - g->activity_ewma;
@@ -803,10 +802,11 @@ int plasticity_guard_get_homeostatic_scale(plasticity_guard_t guard, float* scal
 }
 
 int plasticity_guard_get_stats(plasticity_guard_t guard, plasticity_guard_stats_t* stats) {
-    if (!guard || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     struct plasticity_guard_internal* g = guard;
-    if (g->magic != LGSS_PLASTICITY_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_PLASTICITY_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid guard magic");
 
     *stats = g->stats;
     stats->cumulative_drift = g->cumulative_drift;
@@ -821,10 +821,10 @@ int plasticity_guard_get_stats(plasticity_guard_t guard, plasticity_guard_stats_
 }
 
 int plasticity_guard_reset_stats(plasticity_guard_t guard) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct plasticity_guard_internal* g = guard;
-    if (g->magic != LGSS_PLASTICITY_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_PLASTICITY_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid guard magic");
 
     memset(&g->stats, 0, sizeof(g->stats));
     return NIMCP_SUCCESS;
@@ -835,10 +835,10 @@ int plasticity_guard_get_rate_state(
     float* current_rate,
     uint32_t* remaining
 ) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct plasticity_guard_internal* g = guard;
-    if (g->magic != LGSS_PLASTICITY_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_PLASTICITY_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid guard magic");
 
     uint64_t current_time = get_time_us();
     uint64_t window_us = (uint64_t)(g->config.rate_limit_window_sec * 1000000.0f);
@@ -856,17 +856,18 @@ int plasticity_guard_get_rate_state(
 }
 
 int plasticity_guard_get_drift(plasticity_guard_t guard, float* drift) {
-    if (!guard || !drift) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
+    NIMCP_CHECK_THROW(drift, NIMCP_ERROR_NULL_POINTER, "drift is NULL");
 
     struct plasticity_guard_internal* g = guard;
-    if (g->magic != LGSS_PLASTICITY_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_PLASTICITY_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE, "invalid guard magic");
 
     *drift = g->cumulative_drift;
     return NIMCP_SUCCESS;
 }
 
 int plasticity_guard_connect_bio_async(plasticity_guard_t guard) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
     /* Placeholder - would register with bio-async router */
     return NIMCP_SUCCESS;
 }

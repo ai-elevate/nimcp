@@ -229,6 +229,171 @@ set_tests_properties(regression_exception_performance
 )
 
 # =============================================================================
+# Exception API Compatibility Tests (NEW)
+# Tests that all public API functions return documented error codes:
+# - NULL inputs return NIMCP_ERROR_NULL_POINTER
+# - Invalid params return NIMCP_ERROR_INVALID_PARAM
+# - Security, cognitive, perception, and core module APIs
+# =============================================================================
+
+add_executable(regression_exception_api_compatibility
+    test_exception_api_compatibility.cpp
+)
+
+target_link_libraries(regression_exception_api_compatibility
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        pthread
+        m
+)
+
+target_compile_features(regression_exception_api_compatibility PRIVATE cxx_std_17)
+
+add_test(
+    NAME regression_exception_api_compatibility
+    COMMAND regression_exception_api_compatibility
+)
+
+set_tests_properties(regression_exception_api_compatibility
+    PROPERTIES
+    LABELS "regression;exception;api;compatibility"
+    TIMEOUT 120
+)
+
+# =============================================================================
+# Exception Error Code Stability Tests (NEW)
+# Verify error code numeric values haven't changed:
+# - All NIMCP_ERROR_* codes have expected values
+# - Error code ranges are correct
+# - Backward compatibility maintained
+# =============================================================================
+
+add_executable(regression_exception_error_code_stability
+    test_exception_error_code_stability.cpp
+)
+
+target_link_libraries(regression_exception_error_code_stability
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        pthread
+        m
+)
+
+target_compile_features(regression_exception_error_code_stability PRIVATE cxx_std_17)
+
+add_test(
+    NAME regression_exception_error_code_stability
+    COMMAND regression_exception_error_code_stability
+)
+
+set_tests_properties(regression_exception_error_code_stability
+    PROPERTIES
+    LABELS "regression;exception;stability;error_codes"
+    TIMEOUT 120
+)
+
+# =============================================================================
+# Exception Performance Regression Tests (NEW)
+# Benchmark exception handling overhead:
+# - Error check macro overhead vs direct returns
+# - Hot path performance (< 1% overhead)
+# - Memory allocation patterns on error paths
+# - Error string conversion performance
+# =============================================================================
+
+add_executable(regression_exception_performance_regression
+    test_exception_performance_regression.cpp
+)
+
+target_link_libraries(regression_exception_performance_regression
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        pthread
+        m
+)
+
+target_compile_features(regression_exception_performance_regression PRIVATE cxx_std_17)
+
+add_test(
+    NAME regression_exception_performance_regression
+    COMMAND regression_exception_performance_regression
+)
+
+set_tests_properties(regression_exception_performance_regression
+    PROPERTIES
+    LABELS "regression;exception;performance;overhead"
+    TIMEOUT 300
+)
+
+# =============================================================================
+# Typed Exception Regression Tests
+# Tests type-safe exception wrapping and propagation
+# =============================================================================
+
+add_executable(regression_exception_typed_regression
+    test_typed_exception_regression.cpp
+)
+
+target_link_libraries(regression_exception_typed_regression
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        pthread
+        m
+)
+
+target_compile_features(regression_exception_typed_regression PRIVATE cxx_std_17)
+
+add_test(
+    NAME regression_exception_typed_regression
+    COMMAND regression_exception_typed_regression
+)
+
+set_tests_properties(regression_exception_typed_regression
+    PROPERTIES
+    LABELS "regression;exception;typed"
+    TIMEOUT 120
+)
+
+# =============================================================================
+# Exception Macro Regression Tests
+# Tests exception handling macros (NIMCP_CHECK, NIMCP_PROPAGATE_ERROR, etc.)
+# =============================================================================
+
+add_executable(regression_exception_macro_regression
+    test_exception_macro_regression.cpp
+)
+
+target_link_libraries(regression_exception_macro_regression
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        pthread
+        m
+)
+
+target_compile_features(regression_exception_macro_regression PRIVATE cxx_std_17)
+
+add_test(
+    NAME regression_exception_macro_regression
+    COMMAND regression_exception_macro_regression
+)
+
+set_tests_properties(regression_exception_macro_regression
+    PROPERTIES
+    LABELS "regression;exception;macro"
+    TIMEOUT 120
+)
+
+# =============================================================================
 # Custom Target: Run All Exception Regression Tests
 # =============================================================================
 add_custom_target(test_exception_regression
@@ -241,6 +406,11 @@ add_custom_target(test_exception_regression
         regression_exception_api_stability
         regression_exception_error_codes
         regression_exception_performance
+        regression_exception_api_compatibility
+        regression_exception_error_code_stability
+        regression_exception_performance_regression
+        regression_exception_typed_regression
+        regression_exception_macro_regression
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "Running all exception regression tests"
 )
@@ -253,6 +423,7 @@ add_custom_target(test_exception_stability
     DEPENDS
         regression_exception_api_stability
         regression_exception_error_codes
+        regression_exception_error_code_stability
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "Running exception stability tests"
 )
@@ -264,6 +435,7 @@ add_custom_target(test_exception_performance_only
     COMMAND ${CMAKE_CTEST_COMMAND} -L "performance" -L "exception" --output-on-failure
     DEPENDS
         regression_exception_performance
+        regression_exception_performance_regression
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "Running exception performance benchmarks"
 )

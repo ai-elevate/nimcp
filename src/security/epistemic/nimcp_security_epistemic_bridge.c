@@ -213,10 +213,7 @@ static float calculate_confidence_variance(const security_epist_bridge_t* bridge
 
 int security_epist_default_config(security_epist_config_t* config)
 {
-    if (!config) {
-        NIMCP_LOGGING_ERROR("NULL config pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(security_epist_config_t));
 
@@ -380,9 +377,7 @@ void security_epist_bridge_destroy(security_epist_bridge_t* bridge)
 
 int security_epist_bridge_reset(security_epist_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -432,12 +427,8 @@ int security_epist_connect_filter(
     epistemic_filter_t epistemic_filter
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!epistemic_filter) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(epistemic_filter, NIMCP_ERROR_NULL_POINTER, "epistemic_filter is NULL");
 
     BRIDGE_LOCK(bridge);
     bridge->epistemic_filter = epistemic_filter;
@@ -454,12 +445,8 @@ int security_epist_connect_bbb(
     bbb_system_t bbb
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bbb) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bbb, NIMCP_ERROR_NULL_POINTER, "bbb is NULL");
 
     BRIDGE_LOCK(bridge);
     bridge->bbb = bbb;
@@ -472,9 +459,7 @@ int security_epist_connect_bbb(
 
 int security_epist_disconnect_all(security_epist_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -579,9 +564,8 @@ int security_epist_correct_confidence(
     float* corrected_out
 )
 {
-    if (!bridge || !corrected_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(corrected_out, NIMCP_ERROR_NULL_POINTER, "corrected_out is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -616,14 +600,11 @@ int security_epist_set_confidence_bounds(
     float max_confidence
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-    if (min_confidence < 0.0f || max_confidence > 1.0f ||
-        min_confidence >= max_confidence) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(min_confidence >= 0.0f && max_confidence <= 1.0f &&
+                     min_confidence < max_confidence,
+                     NIMCP_ERROR_INVALID_PARAMETER, "invalid confidence bounds");
 
     BRIDGE_LOCK(bridge);
 
@@ -716,15 +697,13 @@ int security_epist_register_belief(
     float initial_confidence
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
     if (!bridge->security_effects.accepting_new_beliefs) {
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_PERMISSION_DENIED;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_PERMISSION_DENIED, "not accepting new beliefs");
     }
 
     int idx = find_belief_index(bridge, belief_id);
@@ -738,7 +717,7 @@ int security_epist_register_belief(
 
     if (bridge->num_beliefs >= SEC_EPIST_MAX_BELIEFS) {
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_OUT_OF_RANGE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_OUT_OF_RANGE, "max beliefs reached");
     }
 
     security_epist_belief_t* belief = &bridge->beliefs[bridge->num_beliefs++];
@@ -764,23 +743,21 @@ int security_epist_update_belief(
     uint64_t new_hash
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
     int idx = find_belief_index(bridge, belief_id);
     if (idx < 0) {
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "belief_id not found");
     }
 
     security_epist_belief_t* belief = &bridge->beliefs[idx];
 
     if (belief->is_locked) {
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_PERMISSION_DENIED;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_PERMISSION_DENIED, "belief is locked");
     }
 
     belief->current_confidence = clamp_float(
@@ -805,16 +782,14 @@ int security_epist_lock_belief(
     uint64_t belief_id
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
     int idx = find_belief_index(bridge, belief_id);
     if (idx < 0) {
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "belief_id not found");
     }
 
     bridge->beliefs[idx].is_locked = true;
@@ -830,16 +805,14 @@ int security_epist_revoke_belief(
     uint64_t belief_id
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
     int idx = find_belief_index(bridge, belief_id);
     if (idx < 0) {
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "belief_id not found");
     }
 
     for (uint32_t i = (uint32_t)idx; i < bridge->num_beliefs - 1; i++) {
@@ -862,9 +835,8 @@ int security_epist_enforce_uncertainty(
     bool* is_valid_out
 )
 {
-    if (!bridge || !is_valid_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(is_valid_out, NIMCP_ERROR_NULL_POINTER, "is_valid_out is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -896,9 +868,8 @@ int security_epist_adjust_uncertainty(
     float* adjusted_out
 )
 {
-    if (!bridge || !adjusted_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(adjusted_out, NIMCP_ERROR_NULL_POINTER, "adjusted_out is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -925,14 +896,11 @@ int security_epist_set_uncertainty_bounds(
     float max_uncertainty
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-    if (min_uncertainty < 0.0f || max_uncertainty > 1.0f ||
-        min_uncertainty > max_uncertainty) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(min_uncertainty >= 0.0f && max_uncertainty <= 1.0f &&
+                     min_uncertainty <= max_uncertainty,
+                     NIMCP_ERROR_INVALID_PARAMETER, "invalid uncertainty bounds");
 
     BRIDGE_LOCK(bridge);
 
@@ -1053,9 +1021,9 @@ int security_epist_calculate_chain_reliability(
     float* reliability_out
 )
 {
-    if (!bridge || !chain || !reliability_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(chain, NIMCP_ERROR_NULL_POINTER, "chain is NULL");
+    NIMCP_CHECK_THROW(reliability_out, NIMCP_ERROR_NULL_POINTER, "reliability_out is NULL");
 
     if (chain->link_count == 0) {
         *reliability_out = 0.0f;
@@ -1078,16 +1046,14 @@ int security_epist_register_source(
     float reliability
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
     security_epist_internal_t* internal = (security_epist_internal_t*)bridge->base.system_b;
     if (!internal) {
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_INVALID_STATE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_STATE, "internal state is NULL");
     }
 
     int idx = find_source_index(internal, source_id);
@@ -1100,7 +1066,7 @@ int security_epist_register_source(
 
     if (internal->source_count >= MAX_SOURCES) {
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_OUT_OF_RANGE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_OUT_OF_RANGE, "max sources reached");
     }
 
     source_entry_t* source = &internal->sources[internal->source_count++];
@@ -1121,22 +1087,20 @@ int security_epist_update_source(
     bool correct
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
     security_epist_internal_t* internal = (security_epist_internal_t*)bridge->base.system_b;
     if (!internal) {
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_INVALID_STATE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_STATE, "internal state is NULL");
     }
 
     int idx = find_source_index(internal, source_id);
     if (idx < 0) {
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "source_id not found");
     }
 
     source_entry_t* source = &internal->sources[idx];
@@ -1282,9 +1246,7 @@ int security_epist_report_false_positive(
     security_epist_attack_t attack_type
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1310,9 +1272,7 @@ int security_epist_bridge_update(
     uint64_t delta_ms
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1342,9 +1302,7 @@ int security_epist_bridge_update(
 
 int security_epist_apply_security_effects(security_epist_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     bridge->security_effects.enforced_min_confidence = bridge->config.min_confidence;
     bridge->security_effects.enforced_max_confidence = bridge->config.max_confidence;
@@ -1369,9 +1327,7 @@ int security_epist_apply_security_effects(security_epist_bridge_t* bridge)
 
 int security_epist_gather_epist_effects(security_epist_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (bridge->history_count > 0) {
         float sum = 0.0f;
@@ -1420,9 +1376,8 @@ int security_epist_get_security_effects(
     security_to_epist_effects_t* effects_out
 )
 {
-    if (!bridge || !effects_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(effects_out, NIMCP_ERROR_NULL_POINTER, "effects_out is NULL");
 
     *effects_out = bridge->security_effects;
     return 0;
@@ -1433,9 +1388,8 @@ int security_epist_get_epist_effects(
     epist_to_security_effects_t* effects_out
 )
 {
-    if (!bridge || !effects_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(effects_out, NIMCP_ERROR_NULL_POINTER, "effects_out is NULL");
 
     *effects_out = bridge->epist_effects;
     return 0;
@@ -1446,9 +1400,8 @@ int security_epist_get_state(
     security_epist_state_info_t* state_out
 )
 {
-    if (!bridge || !state_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(state_out, NIMCP_ERROR_NULL_POINTER, "state_out is NULL");
 
     *state_out = bridge->state;
     return 0;
@@ -1459,9 +1412,8 @@ int security_epist_get_stats(
     security_epist_stats_t* stats_out
 )
 {
-    if (!bridge || !stats_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats_out, NIMCP_ERROR_NULL_POINTER, "stats_out is NULL");
 
     *stats_out = bridge->stats;
     return 0;
@@ -1469,9 +1421,7 @@ int security_epist_get_stats(
 
 int security_epist_reset_stats(security_epist_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
     memset(&bridge->stats, 0, sizeof(security_epist_stats_t));
@@ -1494,12 +1444,9 @@ int security_epist_audit_event(
     const char* details
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bridge->config.enable_audit || !bridge->audit_log) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->config.enable_audit && bridge->audit_log,
+                     NIMCP_ERROR_INVALID_STATE, "audit not enabled or audit_log is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1546,12 +1493,10 @@ int security_epist_get_audit_log(
     size_t* count_out
 )
 {
-    if (!bridge || !entries_out || !count_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bridge->audit_log) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(entries_out, NIMCP_ERROR_NULL_POINTER, "entries_out is NULL");
+    NIMCP_CHECK_THROW(count_out, NIMCP_ERROR_NULL_POINTER, "count_out is NULL");
+    NIMCP_CHECK_THROW(bridge->audit_log, NIMCP_ERROR_INVALID_STATE, "audit_log is NULL");
 
     size_t to_copy = (bridge->audit_log_count < max_entries) ?
                      bridge->audit_log_count : max_entries;
@@ -1568,9 +1513,7 @@ int security_epist_get_audit_log(
 
 int security_epist_clear_audit_log(security_epist_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1589,18 +1532,14 @@ int security_epist_clear_audit_log(security_epist_bridge_t* bridge)
 
 int security_epist_connect_bio_async(security_epist_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     return bridge_base_connect_bio_async(&bridge->base);
 }
 
 int security_epist_disconnect_bio_async(security_epist_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     return bridge_base_disconnect_bio_async(&bridge->base);
 }

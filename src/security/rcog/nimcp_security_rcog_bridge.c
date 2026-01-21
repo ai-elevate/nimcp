@@ -63,9 +63,7 @@ static uint64_t generate_request_id(void);
  * @brief Get default security-rcog bridge configuration
  */
 int security_rcog_default_config(security_rcog_config_t* config) {
-    if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(security_rcog_config_t));
 
@@ -199,12 +197,8 @@ int security_rcog_connect_engine(
     security_rcog_bridge_t* bridge,
     struct rcog_engine* engine
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!engine) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(engine, NIMCP_ERROR_NULL_POINTER, "engine is NULL");
 
     BRIDGE_LOCK(bridge);
     bridge->rcog_engine = engine;
@@ -221,12 +215,8 @@ int security_rcog_connect_tool_router(
     security_rcog_bridge_t* bridge,
     struct rcog_tool_router* router
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!router) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(router, NIMCP_ERROR_NULL_POINTER, "router is NULL");
 
     BRIDGE_LOCK(bridge);
     bridge->tool_router = router;
@@ -243,12 +233,8 @@ int security_rcog_connect_policy_engine(
     security_rcog_bridge_t* bridge,
     nimcp_policy_engine_t policy_engine
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!policy_engine) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(policy_engine, NIMCP_ERROR_NULL_POINTER, "policy_engine is NULL");
 
     BRIDGE_LOCK(bridge);
     bridge->policy_engine = policy_engine;
@@ -265,12 +251,8 @@ int security_rcog_connect_rate_limiter(
     security_rcog_bridge_t* bridge,
     nimcp_rate_limiter_t rate_limiter
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!rate_limiter) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(rate_limiter, NIMCP_ERROR_NULL_POINTER, "rate_limiter is NULL");
 
     BRIDGE_LOCK(bridge);
     bridge->rate_limiter = rate_limiter;
@@ -343,13 +325,9 @@ int security_rcog_whitelist_tool(
     security_rcog_bridge_t* bridge,
     const security_rcog_tool_permission_t* permission
 ) {
-    if (!bridge || !permission) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (permission->tool_name[0] == '\0') {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(permission, NIMCP_ERROR_NULL_POINTER, "permission is NULL");
+    NIMCP_CHECK_THROW(permission->tool_name[0] != '\0', NIMCP_ERROR_INVALID_PARAMETER, "tool_name is empty");
 
     BRIDGE_LOCK(bridge);
 
@@ -365,7 +343,7 @@ int security_rcog_whitelist_tool(
     /* Check capacity */
     if (bridge->whitelist_count >= bridge->whitelist_capacity) {
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_OUT_OF_RANGE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_OUT_OF_RANGE, "whitelist capacity exceeded");
     }
 
     /* Add new entry */
@@ -388,16 +366,15 @@ int security_rcog_unwhitelist_tool(
     security_rcog_bridge_t* bridge,
     const char* tool_name
 ) {
-    if (!bridge || !tool_name) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(tool_name, NIMCP_ERROR_NULL_POINTER, "tool_name is NULL");
 
     BRIDGE_LOCK(bridge);
 
     size_t index;
     if (find_whitelist_entry(bridge, tool_name, &index) != NIMCP_SUCCESS) {
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "tool not found in whitelist");
     }
 
     /* Shift remaining entries */
@@ -426,16 +403,15 @@ int security_rcog_get_tool_permission(
     const char* tool_name,
     security_rcog_tool_permission_t* permission
 ) {
-    if (!bridge || !tool_name) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(tool_name, NIMCP_ERROR_NULL_POINTER, "tool_name is NULL");
 
     BRIDGE_LOCK((security_rcog_bridge_t*)bridge);
 
     size_t index;
     if (find_whitelist_entry(bridge, tool_name, &index) != NIMCP_SUCCESS) {
         BRIDGE_UNLOCK((security_rcog_bridge_t*)bridge);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "tool not found in whitelist");
     }
 
     if (permission) {
@@ -581,9 +557,9 @@ int security_rcog_execute_with_sandbox(
     size_t* actual_output_size,
     security_rcog_execution_result_t* result
 ) {
-    if (!bridge || !tool_name || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(tool_name, NIMCP_ERROR_NULL_POINTER, "tool_name is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_NULL_POINTER, "result is NULL");
 
     /* Initialize result */
     memset(result, 0, sizeof(security_rcog_execution_result_t));
@@ -749,9 +725,7 @@ int security_rcog_track_resource_usage(
     const char* tool_name,
     uint64_t resources_used
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->config.enable_resource_tracking) {
         return NIMCP_SUCCESS;
@@ -784,7 +758,7 @@ int security_rcog_track_resource_usage(
         bridge->security_effects.effective_resource_budget) {
         bridge->stats.resource_limit_hits++;
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_OUT_OF_RANGE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_OUT_OF_RANGE, "resource budget exceeded");
     }
 
     BRIDGE_UNLOCK(bridge);
@@ -903,16 +877,14 @@ int security_rcog_resolve_approval(
     uint64_t request_id,
     security_rcog_approval_status_t status
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
     size_t index;
     if (find_approval_request(bridge, request_id, &index) != NIMCP_SUCCESS) {
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "approval request not found");
     }
 
     bridge->approval_queue[index].status = status;
@@ -950,9 +922,7 @@ int security_rcog_resolve_approval(
  * @brief Update security effects on rcog (outbound)
  */
 int security_rcog_update_security_effects(security_rcog_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1015,9 +985,7 @@ int security_rcog_update_security_effects(security_rcog_bridge_t* bridge) {
  * @brief Update rcog effects on security (inbound)
  */
 int security_rcog_update_rcog_effects(security_rcog_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1049,9 +1017,7 @@ int security_rcog_bridge_update(
     security_rcog_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Update both directions */
     int result = security_rcog_update_security_effects(bridge);
@@ -1108,9 +1074,8 @@ int security_rcog_get_security_effects(
     const security_rcog_bridge_t* bridge,
     security_to_rcog_effects_t* effects
 ) {
-    if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(effects, NIMCP_ERROR_NULL_POINTER, "effects is NULL");
 
     BRIDGE_LOCK((security_rcog_bridge_t*)bridge);
     *effects = bridge->security_effects;
@@ -1126,9 +1091,8 @@ int security_rcog_get_rcog_effects(
     const security_rcog_bridge_t* bridge,
     rcog_to_security_effects_t* effects
 ) {
-    if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(effects, NIMCP_ERROR_NULL_POINTER, "effects is NULL");
 
     BRIDGE_LOCK((security_rcog_bridge_t*)bridge);
     *effects = bridge->rcog_effects;
@@ -1144,9 +1108,8 @@ int security_rcog_get_state(
     const security_rcog_bridge_t* bridge,
     security_rcog_state_t* state
 ) {
-    if (!bridge || !state) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL");
 
     BRIDGE_LOCK((security_rcog_bridge_t*)bridge);
     *state = bridge->state;
@@ -1162,9 +1125,8 @@ int security_rcog_get_stats(
     const security_rcog_bridge_t* bridge,
     security_rcog_stats_t* stats
 ) {
-    if (!bridge || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     BRIDGE_LOCK((security_rcog_bridge_t*)bridge);
     *stats = bridge->stats;
@@ -1177,9 +1139,7 @@ int security_rcog_get_stats(
  * @brief Reset bridge statistics
  */
 int security_rcog_reset_stats(security_rcog_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
     memset(&bridge->stats, 0, sizeof(security_rcog_stats_t));
@@ -1196,9 +1156,7 @@ int security_rcog_reset_stats(security_rcog_bridge_t* bridge) {
  * @brief Enter emergency tool lockdown
  */
 int security_rcog_enter_lockdown(security_rcog_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1221,9 +1179,7 @@ int security_rcog_enter_lockdown(security_rcog_bridge_t* bridge) {
  * @brief Exit emergency tool lockdown
  */
 int security_rcog_exit_lockdown(security_rcog_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1263,9 +1219,7 @@ int security_rcog_begin_request(
     security_rcog_bridge_t* bridge,
     uint64_t request_id
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1287,16 +1241,14 @@ int security_rcog_end_request(
     security_rcog_bridge_t* bridge,
     uint64_t request_id
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
     /* Verify request ID matches */
     if (bridge->current_request_id != request_id) {
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_INVALID_PARAMETER;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAMETER, "request ID mismatch");
     }
 
     /* Update averages */
@@ -1325,9 +1277,9 @@ static int find_whitelist_entry(
     const char* tool_name,
     size_t* index
 ) {
-    if (!bridge || !tool_name || !index) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(tool_name, NIMCP_ERROR_NULL_POINTER, "tool_name is NULL");
+    NIMCP_CHECK_THROW(index, NIMCP_ERROR_NULL_POINTER, "index is NULL");
 
     for (size_t i = 0; i < bridge->whitelist_count; i++) {
         if (strncmp(bridge->whitelist[i].tool_name, tool_name,
@@ -1348,9 +1300,8 @@ static int find_approval_request(
     uint64_t request_id,
     size_t* index
 ) {
-    if (!bridge || !index) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(index, NIMCP_ERROR_NULL_POINTER, "index is NULL");
 
     for (size_t i = 0; i < bridge->approval_queue_count; i++) {
         if (bridge->approval_queue[i].request_id == request_id) {

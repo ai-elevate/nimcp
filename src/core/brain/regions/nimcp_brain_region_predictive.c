@@ -195,18 +195,9 @@ nimcp_result_t brain_region_enable_predictive(brain_region_t* region,
      */
 
     // Guard clauses
-    if (!region) {
-        LOG_MODULE_ERROR(LOG_MODULE, "NULL region in brain_region_enable_predictive");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!config) {
-        LOG_MODULE_ERROR(LOG_MODULE, "NULL config in brain_region_enable_predictive");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (region->total_neurons == 0) {
-        LOG_MODULE_ERROR(LOG_MODULE, "Region has zero neurons");
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(region, NIMCP_ERROR_NULL_POINTER, "region is NULL in brain_region_enable_predictive");
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL in brain_region_enable_predictive");
+    NIMCP_CHECK_THROW(region->total_neurons > 0, NIMCP_ERROR_INVALID_PARAM, "Region has zero neurons");
 
     // Check if already enabled
     if (has_predictive_extension(region)) {
@@ -449,13 +440,13 @@ nimcp_result_t brain_region_predict_lower(brain_region_t* region,
      */
 
     // Guard clauses
-    NIMCP_CHECK_THROW(region && prediction, NIMCP_ERROR_NULL_POINTER, "region or prediction is NULL");
+    NIMCP_CHECK_THROW(region, NIMCP_ERROR_NULL_POINTER, "region is NULL");
+    NIMCP_CHECK_THROW(prediction, NIMCP_ERROR_NULL_POINTER, "prediction is NULL");
     NIMCP_CHECK_THROW(has_predictive_extension(region), NIMCP_ERROR_NOT_INITIALIZED, "predictive extension not initialized");
 
     brain_region_predictive_t* pred = region->predictive_extension;
-    if (!pred->config.generate_predictions) {
-        return NIMCP_ERROR_INVALID_STATE;  // Region not configured to generate predictions
-    }
+    NIMCP_CHECK_THROW(pred->config.generate_predictions, NIMCP_ERROR_INVALID_STATE,
+                      "Region not configured to generate predictions");
 
     nimcp_mutex_lock(&pred->lock);
 
@@ -519,15 +510,12 @@ nimcp_result_t brain_region_compute_error(brain_region_t* region,
      */
 
     // Guard clauses
-    if (!region || !actual || !predicted || !error) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!has_predictive_extension(region)) {
-        return NIMCP_ERROR_NOT_INITIALIZED;
-    }
-    if (!validate_buffer_size(region, error_size)) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(region, NIMCP_ERROR_NULL_POINTER, "region is NULL");
+    NIMCP_CHECK_THROW(actual, NIMCP_ERROR_NULL_POINTER, "actual is NULL");
+    NIMCP_CHECK_THROW(predicted, NIMCP_ERROR_NULL_POINTER, "predicted is NULL");
+    NIMCP_CHECK_THROW(error, NIMCP_ERROR_NULL_POINTER, "error is NULL");
+    NIMCP_CHECK_THROW(has_predictive_extension(region), NIMCP_ERROR_NOT_INITIALIZED, "predictive extension not initialized");
+    NIMCP_CHECK_THROW(validate_buffer_size(region, error_size), NIMCP_ERROR_INVALID_PARAM, "invalid buffer size");
 
     brain_region_predictive_t* pred = region->predictive_extension;
 
@@ -570,7 +558,8 @@ nimcp_result_t brain_region_update_from_error(brain_region_t* region,
      */
 
     // Guard clauses
-    NIMCP_CHECK_THROW(region && error, NIMCP_ERROR_NULL_POINTER, "region or error is NULL");
+    NIMCP_CHECK_THROW(region, NIMCP_ERROR_NULL_POINTER, "region is NULL");
+    NIMCP_CHECK_THROW(error, NIMCP_ERROR_NULL_POINTER, "error is NULL");
     NIMCP_CHECK_THROW(has_predictive_extension(region), NIMCP_ERROR_NOT_INITIALIZED, "predictive extension not initialized");
     NIMCP_CHECK_THROW(dt > 0.0f, NIMCP_ERROR_INVALID_PARAM, "dt must be positive");
 
@@ -699,9 +688,8 @@ uint32_t brain_region_hierarchical_converge(brain_region_t* region,
      * HOW:  Iterate until free energy stabilizes
      */
 
-    // Guard clauses
-    if (!region) return 0;
-    if (!has_predictive_extension(region)) return 0;
+    // Guard clauses - return 0 iterations for invalid inputs
+    if (!region || !has_predictive_extension(region)) return 0;
 
     brain_region_predictive_t* pred = region->predictive_extension;
 
@@ -795,7 +783,8 @@ nimcp_result_t brain_region_get_precision(brain_region_t* region,
      */
 
     // Guard clauses
-    NIMCP_CHECK_THROW(region && precisions, NIMCP_ERROR_NULL_POINTER, "region or precisions is NULL");
+    NIMCP_CHECK_THROW(region, NIMCP_ERROR_NULL_POINTER, "region is NULL");
+    NIMCP_CHECK_THROW(precisions, NIMCP_ERROR_NULL_POINTER, "precisions is NULL");
     NIMCP_CHECK_THROW(has_predictive_extension(region), NIMCP_ERROR_NOT_INITIALIZED, "predictive extension not initialized");
     NIMCP_CHECK_THROW(validate_buffer_size(region, precision_size), NIMCP_ERROR_INVALID_PARAM, "invalid precision buffer size");
 
@@ -874,7 +863,8 @@ nimcp_result_t brain_region_connect_predictive(brain_region_t* higher_region,
      */
 
     // Guard clauses
-    NIMCP_CHECK_THROW(higher_region && lower_region, NIMCP_ERROR_NULL_POINTER, "higher_region or lower_region is NULL");
+    NIMCP_CHECK_THROW(higher_region, NIMCP_ERROR_NULL_POINTER, "higher_region is NULL");
+    NIMCP_CHECK_THROW(lower_region, NIMCP_ERROR_NULL_POINTER, "lower_region is NULL");
     // CRITICAL: Prevent deadlock from double-locking same region
     NIMCP_CHECK_THROW(higher_region != lower_region, NIMCP_ERROR_INVALID_PARAM, "cannot connect region to itself");
     NIMCP_CHECK_THROW(has_predictive_extension(higher_region) && has_predictive_extension(lower_region),
@@ -934,7 +924,8 @@ nimcp_result_t brain_region_disconnect_predictive(brain_region_t* higher_region,
      */
 
     // Guard clauses
-    NIMCP_CHECK_THROW(higher_region && lower_region, NIMCP_ERROR_NULL_POINTER, "higher_region or lower_region is NULL");
+    NIMCP_CHECK_THROW(higher_region, NIMCP_ERROR_NULL_POINTER, "higher_region is NULL");
+    NIMCP_CHECK_THROW(lower_region, NIMCP_ERROR_NULL_POINTER, "lower_region is NULL");
     // CRITICAL: Prevent deadlock from double-locking same region
     NIMCP_CHECK_THROW(higher_region != lower_region, NIMCP_ERROR_INVALID_PARAM, "cannot disconnect region from itself");
     NIMCP_CHECK_THROW(has_predictive_extension(higher_region) && has_predictive_extension(lower_region),
@@ -1049,7 +1040,8 @@ nimcp_result_t brain_region_broadcast_prediction(brain_region_t* region,
      */
 
     // Guard clauses
-    NIMCP_CHECK_THROW(region && prediction, NIMCP_ERROR_NULL_POINTER, "region or prediction is NULL");
+    NIMCP_CHECK_THROW(region, NIMCP_ERROR_NULL_POINTER, "region is NULL");
+    NIMCP_CHECK_THROW(prediction, NIMCP_ERROR_NULL_POINTER, "prediction is NULL");
     NIMCP_CHECK_THROW(has_predictive_extension(region), NIMCP_ERROR_NOT_INITIALIZED, "predictive extension not initialized");
 
     brain_region_predictive_t* pred = region->predictive_extension;
@@ -1076,7 +1068,8 @@ nimcp_result_t brain_region_broadcast_error(brain_region_t* region,
      */
 
     // Guard clauses
-    NIMCP_CHECK_THROW(region && error, NIMCP_ERROR_NULL_POINTER, "region or error is NULL");
+    NIMCP_CHECK_THROW(region, NIMCP_ERROR_NULL_POINTER, "region is NULL");
+    NIMCP_CHECK_THROW(error, NIMCP_ERROR_NULL_POINTER, "error is NULL");
     NIMCP_CHECK_THROW(has_predictive_extension(region), NIMCP_ERROR_NOT_INITIALIZED, "predictive extension not initialized");
 
     brain_region_predictive_t* pred = region->predictive_extension;
@@ -1106,7 +1099,8 @@ nimcp_result_t brain_region_get_prediction(brain_region_t* region,
      */
 
     // Guard clauses
-    NIMCP_CHECK_THROW(region && prediction, NIMCP_ERROR_NULL_POINTER, "region or prediction is NULL");
+    NIMCP_CHECK_THROW(region, NIMCP_ERROR_NULL_POINTER, "region is NULL");
+    NIMCP_CHECK_THROW(prediction, NIMCP_ERROR_NULL_POINTER, "prediction is NULL");
     NIMCP_CHECK_THROW(has_predictive_extension(region), NIMCP_ERROR_NOT_INITIALIZED, "predictive extension not initialized");
     NIMCP_CHECK_THROW(validate_buffer_size(region, size), NIMCP_ERROR_INVALID_PARAM, "invalid buffer size");
 
@@ -1127,7 +1121,8 @@ nimcp_result_t brain_region_get_prediction_error(brain_region_t* region,
      */
 
     // Guard clauses
-    NIMCP_CHECK_THROW(region && error, NIMCP_ERROR_NULL_POINTER, "region or error is NULL");
+    NIMCP_CHECK_THROW(region, NIMCP_ERROR_NULL_POINTER, "region is NULL");
+    NIMCP_CHECK_THROW(error, NIMCP_ERROR_NULL_POINTER, "error is NULL");
     NIMCP_CHECK_THROW(has_predictive_extension(region), NIMCP_ERROR_NOT_INITIALIZED, "predictive extension not initialized");
     NIMCP_CHECK_THROW(validate_buffer_size(region, size), NIMCP_ERROR_INVALID_PARAM, "invalid buffer size");
 
@@ -1164,7 +1159,8 @@ nimcp_result_t brain_region_get_predictive_stats(brain_region_t* region,
      */
 
     // Guard clauses
-    NIMCP_CHECK_THROW(region && stats, NIMCP_ERROR_NULL_POINTER, "region or stats is NULL");
+    NIMCP_CHECK_THROW(region, NIMCP_ERROR_NULL_POINTER, "region is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
     NIMCP_CHECK_THROW(has_predictive_extension(region), NIMCP_ERROR_NOT_INITIALIZED, "predictive extension not initialized");
 
     brain_region_predictive_t* pred = region->predictive_extension;
@@ -1222,19 +1218,11 @@ nimcp_result_t brain_region_set_hierarchy_pe(brain_region_t* region,
      */
 
     // Guard clauses
-    if (!region) {
-        LOG_MODULE_ERROR(LOG_MODULE, "NULL region in brain_region_set_hierarchy_pe");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!has_predictive_extension(region)) {
-        LOG_MODULE_ERROR(LOG_MODULE, "Region %u does not have predictive extension enabled", region->id);
-        return NIMCP_ERROR_NOT_INITIALIZED;
-    }
-    if (hierarchy_level >= MAX_HIERARCHY_LEVELS) {
-        LOG_MODULE_ERROR(LOG_MODULE, "Hierarchy level %u exceeds maximum %u",
-                         hierarchy_level, MAX_HIERARCHY_LEVELS);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(region, NIMCP_ERROR_NULL_POINTER, "region is NULL in brain_region_set_hierarchy_pe");
+    NIMCP_CHECK_THROW(has_predictive_extension(region), NIMCP_ERROR_NOT_INITIALIZED,
+                      "Region does not have predictive extension enabled");
+    NIMCP_CHECK_THROW(hierarchy_level < MAX_HIERARCHY_LEVELS, NIMCP_ERROR_INVALID_PARAM,
+                      "Hierarchy level exceeds maximum");
 
     brain_region_predictive_t* pred = region->predictive_extension;
 
@@ -1296,18 +1284,12 @@ nimcp_result_t brain_region_encode_prediction_sequence(brain_region_t* region,
      */
 
     // Guard clauses
-    if (!region || !prediction_sequence || !output) {
-        LOG_MODULE_ERROR(LOG_MODULE, "NULL parameter in brain_region_encode_prediction_sequence");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!has_predictive_extension(region)) {
-        LOG_MODULE_ERROR(LOG_MODULE, "Region %u does not have predictive extension enabled", region->id);
-        return NIMCP_ERROR_NOT_INITIALIZED;
-    }
-    if (seq_length == 0) {
-        LOG_MODULE_ERROR(LOG_MODULE, "Invalid sequence length 0");
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(region, NIMCP_ERROR_NULL_POINTER, "region is NULL");
+    NIMCP_CHECK_THROW(prediction_sequence, NIMCP_ERROR_NULL_POINTER, "prediction_sequence is NULL");
+    NIMCP_CHECK_THROW(output, NIMCP_ERROR_NULL_POINTER, "output is NULL");
+    NIMCP_CHECK_THROW(has_predictive_extension(region), NIMCP_ERROR_NOT_INITIALIZED,
+                      "Region does not have predictive extension enabled");
+    NIMCP_CHECK_THROW(seq_length > 0, NIMCP_ERROR_INVALID_PARAM, "Invalid sequence length 0");
 
     brain_region_predictive_t* pred = region->predictive_extension;
 
@@ -1380,19 +1362,12 @@ nimcp_result_t brain_region_get_level_embedding(brain_region_t* region,
      */
 
     // Guard clauses
-    if (!region || !embedding) {
-        LOG_MODULE_ERROR(LOG_MODULE, "NULL parameter in brain_region_get_level_embedding");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!has_predictive_extension(region)) {
-        LOG_MODULE_ERROR(LOG_MODULE, "Region %u does not have predictive extension enabled", region->id);
-        return NIMCP_ERROR_NOT_INITIALIZED;
-    }
-    if (hierarchy_level >= MAX_HIERARCHY_LEVELS) {
-        LOG_MODULE_ERROR(LOG_MODULE, "Hierarchy level %u exceeds maximum %u",
-                         hierarchy_level, MAX_HIERARCHY_LEVELS);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(region, NIMCP_ERROR_NULL_POINTER, "region is NULL");
+    NIMCP_CHECK_THROW(embedding, NIMCP_ERROR_NULL_POINTER, "embedding is NULL");
+    NIMCP_CHECK_THROW(has_predictive_extension(region), NIMCP_ERROR_NOT_INITIALIZED,
+                      "Region does not have predictive extension enabled");
+    NIMCP_CHECK_THROW(hierarchy_level < MAX_HIERARCHY_LEVELS, NIMCP_ERROR_INVALID_PARAM,
+                      "Hierarchy level exceeds maximum");
 
     brain_region_predictive_t* pred = region->predictive_extension;
 

@@ -1222,7 +1222,7 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
             nimcp_platform_mutex_lock(&g_router->stats_mutex);
             g_router->stats.messages_dropped++;
             nimcp_platform_mutex_unlock(&g_router->stats_mutex);
-            return NIMCP_ERROR_NOT_INITIALIZED;
+            NIMCP_THROW(NIMCP_ERROR_NOT_INITIALIZED, "KG dispatch requested but brain_kg not set");
         }
 
         int dispatched = bio_router_kg_dispatch_internal(msg, msg_size, timeout_ms);

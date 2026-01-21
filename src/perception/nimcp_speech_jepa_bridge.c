@@ -801,9 +801,7 @@ cleanup:
 
 int speech_jepa_bridge_update_target_encoder(speech_jepa_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "NULL bridge in speech_jepa_bridge_update_target_encoder");
 
     if (!bridge->target_encoder) {
         return NIMCP_SUCCESS;  /* No target encoder */
@@ -827,9 +825,7 @@ int speech_jepa_bridge_predict_next(
     const jepa_latent_t* context,
     jepa_latent_t* predicted_latent)
 {
-    if (!bridge || !context || !predicted_latent) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge && context && predicted_latent, NIMCP_ERROR_INVALID_PARAM, "NULL parameter in speech_jepa_bridge_predict_next");
 
     int rc = jepa_predictor_predict(bridge->predictor, context, predicted_latent);
     if (rc == NIMCP_SUCCESS) {
@@ -848,9 +844,7 @@ int speech_jepa_bridge_predict_masked(
     jepa_latent_t** predictions,
     uint32_t* num_predictions)
 {
-    if (!bridge || !context_latents || !mask || !predictions || !num_predictions) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge && context_latents && mask && predictions && num_predictions, NIMCP_ERROR_INVALID_PARAM, "NULL parameter in speech_jepa_bridge_predict_masked");
 
     if (num_context == 0) {
         *num_predictions = 0;
@@ -863,9 +857,7 @@ int speech_jepa_bridge_predict_masked(
     jepa_latent_t pooled_context = {0};
     pooled_context.embedding = (float*)nimcp_calloc(latent_dim, sizeof(float));
     pooled_context.latent_dim = latent_dim;
-    if (!pooled_context.embedding) {
-        return NIMCP_ERROR_NO_MEMORY;
-    }
+    NIMCP_CHECK_THROW(pooled_context.embedding, NIMCP_ERROR_NO_MEMORY, "Failed to allocate pooled_context.embedding in speech_jepa_bridge_predict_masked");
 
     for (uint32_t i = 0; i < num_context; i++) {
         if (context_latents[i]) {
@@ -951,13 +943,9 @@ int speech_jepa_sequence_add_frame(
     speech_jepa_sequence_t* sequence,
     const speech_jepa_frame_t* frame)
 {
-    if (!sequence || !frame) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(sequence && frame, NIMCP_ERROR_INVALID_PARAM, "NULL parameter in speech_jepa_sequence_add_frame");
 
-    if (sequence->num_frames >= sequence->max_frames) {
-        return NIMCP_ERROR_BUFFER_TOO_SMALL;
-    }
+    NIMCP_CHECK_THROW(sequence->num_frames < sequence->max_frames, NIMCP_ERROR_BUFFER_TOO_SMALL, "Sequence buffer full in speech_jepa_sequence_add_frame");
 
     memcpy(&sequence->frames[sequence->num_frames], frame, sizeof(speech_jepa_frame_t));
 
@@ -974,9 +962,7 @@ int speech_jepa_sequence_add_frame(
 
 int speech_jepa_sequence_clear(speech_jepa_sequence_t* sequence)
 {
-    if (!sequence) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(sequence, NIMCP_ERROR_INVALID_PARAM, "NULL sequence in speech_jepa_sequence_clear");
 
     sequence->num_frames = 0;
     sequence->start_time_ms = 0;
@@ -993,9 +979,7 @@ int speech_jepa_bridge_get_stats(
     const speech_jepa_bridge_t* bridge,
     speech_jepa_stats_t* stats)
 {
-    if (!bridge || !stats) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_INVALID_PARAM, "NULL parameter in speech_jepa_bridge_get_stats");
 
     memcpy(stats, &bridge->stats, sizeof(speech_jepa_stats_t));
     return NIMCP_SUCCESS;
@@ -1003,9 +987,7 @@ int speech_jepa_bridge_get_stats(
 
 int speech_jepa_bridge_reset_stats(speech_jepa_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "NULL bridge in speech_jepa_bridge_reset_stats");
 
     memset(&bridge->stats, 0, sizeof(speech_jepa_stats_t));
     return NIMCP_SUCCESS;
@@ -1017,9 +999,7 @@ int speech_jepa_bridge_reset_stats(speech_jepa_bridge_t* bridge)
 
 int speech_jepa_bridge_connect_bio_async(speech_jepa_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "NULL bridge in speech_jepa_bridge_connect_bio_async");
 
     /* Register with bio-async system */
     bridge->base.bio_async_enabled = true;
@@ -1031,9 +1011,7 @@ int speech_jepa_bridge_connect_bio_async(speech_jepa_bridge_t* bridge)
 
 int speech_jepa_bridge_disconnect_bio_async(speech_jepa_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "NULL bridge in speech_jepa_bridge_disconnect_bio_async");
 
     bridge->base.bio_async_enabled = false;
 
@@ -1070,9 +1048,7 @@ int speech_jepa_decode_phoneme(
     phoneme_t* phoneme,
     float* confidence)
 {
-    if (!bridge || !latent || !phoneme || !confidence) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge && latent && phoneme && confidence, NIMCP_ERROR_INVALID_PARAM, "NULL parameter in speech_jepa_decode_phoneme");
 
     /* Simple approach: find nearest phoneme embedding */
     /* This is a placeholder - real implementation would use a learned decoder */
@@ -1148,15 +1124,11 @@ static int speech_encoder_create(
     speech_jepa_encoder_t** encoder,
     const speech_jepa_encoder_config_t* config)
 {
-    if (!encoder || !config) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(encoder && config, NIMCP_ERROR_INVALID_PARAM, "NULL parameter in speech_encoder_create");
 
     speech_jepa_encoder_t* enc = (speech_jepa_encoder_t*)nimcp_calloc(
         1, sizeof(speech_jepa_encoder_t));
-    if (!enc) {
-        return NIMCP_ERROR_NO_MEMORY;
-    }
+    NIMCP_CHECK_THROW(enc, NIMCP_ERROR_NO_MEMORY, "Failed to allocate speech_jepa_encoder_t");
 
     enc->input_dim = config->input_dim;
     enc->hidden_dim = config->hidden_dim;
@@ -1214,15 +1186,11 @@ static int speech_encoder_forward(
     const float* input,
     float* output)
 {
-    if (!encoder || !input || !output) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(encoder && input && output, NIMCP_ERROR_INVALID_PARAM, "NULL parameter in speech_encoder_forward");
 
     /* Allocate hidden */
     float* hidden = (float*)nimcp_calloc(encoder->hidden_dim, sizeof(float));
-    if (!hidden) {
-        return NIMCP_ERROR_NO_MEMORY;
-    }
+    NIMCP_CHECK_THROW(hidden, NIMCP_ERROR_NO_MEMORY, "Failed to allocate hidden in speech_encoder_forward");
 
     /* Layer 1: hidden = GELU(input @ W1 + b1) */
     for (uint32_t j = 0; j < encoder->hidden_dim; j++) {
@@ -1259,15 +1227,11 @@ static int speech_encoder_copy(
     speech_jepa_encoder_t* dst,
     const speech_jepa_encoder_t* src)
 {
-    if (!dst || !src) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(dst && src, NIMCP_ERROR_INVALID_PARAM, "NULL parameter in speech_encoder_copy");
 
-    if (dst->input_dim != src->input_dim ||
-        dst->hidden_dim != src->hidden_dim ||
-        dst->output_dim != src->output_dim) {
-        return NIMCP_ERROR_DIMENSION_MISMATCH;
-    }
+    NIMCP_CHECK_THROW(dst->input_dim == src->input_dim &&
+        dst->hidden_dim == src->hidden_dim &&
+        dst->output_dim == src->output_dim, NIMCP_ERROR_DIMENSION_MISMATCH, "Encoder dimension mismatch in speech_encoder_copy");
 
     memcpy(dst->weights_1, src->weights_1,
            src->input_dim * src->hidden_dim * sizeof(float));

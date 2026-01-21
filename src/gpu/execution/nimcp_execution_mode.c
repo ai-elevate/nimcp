@@ -475,12 +475,14 @@ execution_context_t execution_context_create(const execution_config_t* config)
 {
     // Guard: Validate config
     if (!config) {
+        NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "config is NULL in execution_context_create");
         return NULL;
     }
 
     // Allocate context
     execution_context_t ctx = (execution_context_t)nimcp_calloc(1, sizeof(struct execution_context_struct));
     if (!ctx) {
+        NIMCP_THROW(NIMCP_ERROR_NO_MEMORY, "Failed to allocate execution context");
         return NULL;
     }
 

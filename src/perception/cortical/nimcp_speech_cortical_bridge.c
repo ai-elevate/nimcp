@@ -516,13 +516,10 @@ int speech_cortical_process(
     uint32_t num_samples,
     speech_cortical_phoneme_result_t* result)
 {
-    if (!bridge || !audio_data || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (num_samples == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge && audio_data && result, NIMCP_ERROR_NULL_POINTER,
+        "NULL parameter in speech_cortical_process");
+    NIMCP_CHECK_THROW(num_samples > 0, NIMCP_ERROR_INVALID_PARAM,
+        "Invalid num_samples in speech_cortical_process");
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
@@ -682,13 +679,10 @@ int speech_cortical_process_segment(
     float tono_y,
     speech_cortical_phoneme_result_t* result)
 {
-    if (!bridge || !audio_segment || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (num_samples == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge && audio_segment && result, NIMCP_ERROR_NULL_POINTER,
+        "NULL parameter in speech_cortical_process_segment");
+    NIMCP_CHECK_THROW(num_samples > 0, NIMCP_ERROR_INVALID_PARAM,
+        "Invalid num_samples in speech_cortical_process_segment");
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
@@ -775,13 +769,10 @@ int speech_cortical_get_phoneme_map(
     phoneme_t* phoneme_map,
     float* selectivity_map)
 {
-    if (!bridge || !audio_data || !phoneme_map) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (num_samples == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge && audio_data && phoneme_map, NIMCP_ERROR_NULL_POINTER,
+        "NULL parameter in speech_cortical_get_phoneme_map");
+    NIMCP_CHECK_THROW(num_samples > 0, NIMCP_ERROR_INVALID_PARAM,
+        "Invalid num_samples in speech_cortical_get_phoneme_map");
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 

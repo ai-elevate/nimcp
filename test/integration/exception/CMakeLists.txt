@@ -238,3 +238,93 @@ set_tests_properties(integration_exception_test_exception_cognitive_integration
     LABELS "integration;exception;cognitive"
     TIMEOUT 180
 )
+
+# =============================================================================
+# Exception Bio-Async Flow Integration Tests
+# =============================================================================
+
+add_executable(integration_exception_test_exception_bio_async_flow
+    test_exception_bio_async_flow.cpp
+)
+
+target_link_libraries(integration_exception_test_exception_bio_async_flow
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_compile_features(integration_exception_test_exception_bio_async_flow PRIVATE cxx_std_17)
+
+add_test(
+    NAME integration_exception_test_exception_bio_async_flow
+    COMMAND integration_exception_test_exception_bio_async_flow
+)
+
+set_tests_properties(integration_exception_test_exception_bio_async_flow
+    PROPERTIES
+    LABELS "integration;exception;bio_async;router"
+    TIMEOUT 180
+)
+
+# =============================================================================
+# Exception Health Integration Tests
+# =============================================================================
+
+add_executable(integration_exception_test_exception_health_integration
+    test_exception_health_integration.cpp
+)
+
+target_link_libraries(integration_exception_test_exception_health_integration
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_compile_features(integration_exception_test_exception_health_integration PRIVATE cxx_std_17)
+
+add_test(
+    NAME integration_exception_test_exception_health_integration
+    COMMAND integration_exception_test_exception_health_integration
+)
+
+set_tests_properties(integration_exception_test_exception_health_integration
+    PROPERTIES
+    LABELS "integration;exception;health;self_repair"
+    TIMEOUT 180
+)
+
+# =============================================================================
+# Exception Cross-Module Integration Tests
+# =============================================================================
+
+add_executable(integration_exception_test_exception_cross_module
+    test_exception_cross_module.cpp
+)
+
+target_link_libraries(integration_exception_test_exception_cross_module
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_compile_features(integration_exception_test_exception_cross_module PRIVATE cxx_std_17)
+
+add_test(
+    NAME integration_exception_test_exception_cross_module
+    COMMAND integration_exception_test_exception_cross_module
+)
+
+set_tests_properties(integration_exception_test_exception_cross_module
+    PROPERTIES
+    LABELS "integration;exception;cross_module"
+    TIMEOUT 180
+)

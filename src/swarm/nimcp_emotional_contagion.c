@@ -354,7 +354,7 @@ void emotional_contagion_get_default_config(emotional_contagion_config_t* out_co
 nimcp_result_t emotional_contagion_validate_config(
     const emotional_contagion_config_t* config) {
 
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Validate rates */
     if (config->contagion_rate < 0.0F || config->contagion_rate > 1.0F) {
@@ -473,7 +473,7 @@ nimcp_result_t emotional_contagion_reset(
     emotional_contagion_t* ec,
     bool clear_connections) {
 
-    if (!ec) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
 
     nimcp_platform_mutex_lock(&ec->mutex);
 
@@ -526,7 +526,7 @@ nimcp_result_t emotional_contagion_register_agent(
     float susceptibility) {
 
     /* Validate parameters */
-    if (!ec) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
 
     if (susceptibility < 0.0F || susceptibility > 1.0F) {
         LOG_ERROR(CONTAGION_MODULE, "Invalid susceptibility: %.2f", susceptibility);
@@ -588,7 +588,7 @@ nimcp_result_t emotional_contagion_unregister_agent(
     emotional_contagion_t* ec,
     uint32_t agent_id) {
 
-    if (!ec) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
 
     nimcp_platform_mutex_lock(&ec->mutex);
 
@@ -636,7 +636,7 @@ nimcp_result_t emotional_contagion_set_emotion(
     float intensity) {
 
     /* Validate parameters */
-    if (!ec) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
 
     if (emotion >= EMOTION_TYPE_COUNT) {
         LOG_ERROR(CONTAGION_MODULE, "Invalid emotion type: %d", emotion);
@@ -695,7 +695,8 @@ nimcp_result_t emotional_contagion_get_emotional_state(
     uint32_t agent_id,
     agent_emotional_state_t* state) {
 
-    if (!ec || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state output pointer is NULL");
 
     nimcp_platform_mutex_lock(&ec->mutex);
 
@@ -717,11 +718,8 @@ nimcp_result_t emotional_contagion_set_susceptibility(
     uint32_t agent_id,
     float susceptibility) {
 
-    if (!ec) return NIMCP_ERROR_NULL_POINTER;
-
-    if (susceptibility < 0.0F || susceptibility > 1.0F) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
+    NIMCP_CHECK_THROW(susceptibility >= 0.0F && susceptibility <= 1.0F, NIMCP_ERROR_INVALID_PARAM, "susceptibility must be in range [0.0, 1.0]");
 
     nimcp_platform_mutex_lock(&ec->mutex);
 
@@ -749,12 +747,9 @@ nimcp_result_t emotional_contagion_add_connection(
     float connection_strength,
     float proximity) {
 
-    if (!ec) return NIMCP_ERROR_NULL_POINTER;
-
-    if (connection_strength < 0.0F || connection_strength > 1.0F ||
-        proximity < 0.0F || proximity > 1.0F) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
+    NIMCP_CHECK_THROW(connection_strength >= 0.0F && connection_strength <= 1.0F, NIMCP_ERROR_INVALID_PARAM, "connection_strength must be in range [0.0, 1.0]");
+    NIMCP_CHECK_THROW(proximity >= 0.0F && proximity <= 1.0F, NIMCP_ERROR_INVALID_PARAM, "proximity must be in range [0.0, 1.0]");
 
     nimcp_platform_mutex_lock(&ec->mutex);
 
@@ -827,7 +822,7 @@ nimcp_result_t emotional_contagion_remove_connection(
     uint32_t from_agent,
     uint32_t to_agent) {
 
-    if (!ec) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
 
     nimcp_platform_mutex_lock(&ec->mutex);
 
@@ -866,12 +861,9 @@ nimcp_result_t emotional_contagion_update_connection(
     float new_strength,
     float new_proximity) {
 
-    if (!ec) return NIMCP_ERROR_NULL_POINTER;
-
-    if (new_strength < 0.0F || new_strength > 1.0F ||
-        new_proximity < 0.0F || new_proximity > 1.0F) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
+    NIMCP_CHECK_THROW(new_strength >= 0.0F && new_strength <= 1.0F, NIMCP_ERROR_INVALID_PARAM, "new_strength must be in range [0.0, 1.0]");
+    NIMCP_CHECK_THROW(new_proximity >= 0.0F && new_proximity <= 1.0F, NIMCP_ERROR_INVALID_PARAM, "new_proximity must be in range [0.0, 1.0]");
 
     nimcp_platform_mutex_lock(&ec->mutex);
 
@@ -905,7 +897,7 @@ nimcp_result_t emotional_contagion_propagate(
     emotional_contagion_t* ec,
     uint64_t delta_ms) {
 
-    if (!ec) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
 
     nimcp_platform_mutex_lock(&ec->mutex);
 
@@ -1027,7 +1019,7 @@ nimcp_result_t emotional_contagion_apply_decay(
     emotional_contagion_t* ec,
     uint64_t delta_ms) {
 
-    if (!ec) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
 
     /* Already locked by propagate function, or lock here if called directly */
 
@@ -1064,7 +1056,9 @@ nimcp_result_t emotional_contagion_get_dominant_emotion(
     emotion_type_t* emotion,
     float* avg_intensity) {
 
-    if (!ec || !emotion || !avg_intensity) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
+    NIMCP_CHECK_THROW(emotion, NIMCP_ERROR_NULL_POINTER, "emotion output pointer is NULL");
+    NIMCP_CHECK_THROW(avg_intensity, NIMCP_ERROR_NULL_POINTER, "avg_intensity output pointer is NULL");
 
     nimcp_platform_mutex_lock(&ec->mutex);
 
@@ -1084,7 +1078,8 @@ nimcp_result_t emotional_contagion_get_collective_state(
     emotional_contagion_t* ec,
     collective_emotion_state_t* state) {
 
-    if (!ec || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state output pointer is NULL");
 
     nimcp_platform_mutex_lock(&ec->mutex);
 
@@ -1107,7 +1102,8 @@ nimcp_result_t emotional_contagion_get_stats(
     emotional_contagion_t* ec,
     emotional_contagion_stats_t* stats) {
 
-    if (!ec || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats output pointer is NULL");
 
     nimcp_platform_mutex_lock(&ec->mutex);
     *stats = ec->stats;
@@ -1154,9 +1150,7 @@ nimcp_result_t emotional_contagion_trigger_outbreak(
     uint32_t max_depth) {
 
     /* Guard: validate parameters */
-    if (!ec) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
 
     if (emotion >= EMOTION_TYPE_COUNT) {
         LOG_ERROR(CONTAGION_MODULE, "Invalid emotion type: %d", emotion);
@@ -1293,7 +1287,8 @@ nimcp_result_t emotional_contagion_register_bioasync(
     emotional_contagion_t* ec,
     bio_router_t* router) {
 
-    if (!ec || !router) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
+    NIMCP_CHECK_THROW(router, NIMCP_ERROR_NULL_POINTER, "bio router is NULL");
 
     ec->bio_router = router;
     ec->bio_async_registered = true;
@@ -1307,9 +1302,9 @@ nimcp_result_t emotional_contagion_broadcast_spread(
     emotional_contagion_t* ec,
     const emotional_propagation_event_t* event) {
 
-    if (!ec || !event || !ec->bio_async_registered) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
+    NIMCP_CHECK_THROW(event, NIMCP_ERROR_NULL_POINTER, "propagation event is NULL");
+    NIMCP_CHECK_THROW(ec->bio_async_registered, NIMCP_ERROR_NULL_POINTER, "bio-async not registered");
 
     /* Would send bio-async message here */
     ec->stats.bio_broadcasts_sent++;
@@ -1320,9 +1315,8 @@ nimcp_result_t emotional_contagion_broadcast_spread(
 nimcp_result_t emotional_contagion_broadcast_collective(
     emotional_contagion_t* ec) {
 
-    if (!ec || !ec->bio_async_registered) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
+    NIMCP_CHECK_THROW(ec->bio_async_registered, NIMCP_ERROR_NULL_POINTER, "bio-async not registered");
 
     /* Would send collective state via bio-async */
     ec->stats.bio_broadcasts_sent++;
@@ -1349,7 +1343,8 @@ nimcp_result_t emotional_contagion_get_coherence(
     emotional_contagion_t* ec,
     float* coherence
 ) {
-    if (!ec || !coherence) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(ec, NIMCP_ERROR_NULL_POINTER, "emotional contagion context is NULL");
+    NIMCP_CHECK_THROW(coherence, NIMCP_ERROR_NULL_POINTER, "coherence output pointer is NULL");
 
     nimcp_platform_mutex_lock(&ec->mutex);
 

@@ -401,9 +401,7 @@ int swarm_brain_create_for_agent(
     uint32_t agent_id,
     uint32_t brain_size
 ) {
-    if (!mgr) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mgr, NIMCP_ERROR_INVALID_PARAM, "swarm brain manager is NULL");
 
     /* Use default if brain_size is 0 */
     if (brain_size == 0) {
@@ -722,9 +720,8 @@ int swarm_brain_create_for_agent_with_template(
     uint32_t agent_id,
     const drone_brain_template_t* templ
 ) {
-    if (!mgr || !templ) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mgr, NIMCP_ERROR_INVALID_PARAM, "swarm brain manager is NULL");
+    NIMCP_CHECK_THROW(templ, NIMCP_ERROR_INVALID_PARAM, "drone brain template is NULL");
 
     nimcp_platform_mutex_lock(&mgr->mutex);
 
@@ -881,9 +878,7 @@ int swarm_brain_destroy_for_agent(
     swarm_brain_manager_t* mgr,
     uint32_t agent_id
 ) {
-    if (!mgr) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mgr, NIMCP_ERROR_INVALID_PARAM, "swarm brain manager is NULL");
 
     nimcp_platform_mutex_lock(&mgr->mutex);
 
@@ -966,9 +961,9 @@ int swarm_brain_local_learn(
     const float* target,
     uint32_t target_size
 ) {
-    if (!mgr || !input || !target) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mgr, NIMCP_ERROR_INVALID_PARAM, "swarm brain manager is NULL");
+    NIMCP_CHECK_THROW(input, NIMCP_ERROR_INVALID_PARAM, "input array is NULL");
+    NIMCP_CHECK_THROW(target, NIMCP_ERROR_INVALID_PARAM, "target array is NULL");
 
     nimcp_platform_mutex_lock(&mgr->mutex);
 
@@ -1006,9 +1001,10 @@ int swarm_brain_local_process(
     float* output,
     uint32_t* output_size
 ) {
-    if (!mgr || !input || !output || !output_size) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mgr, NIMCP_ERROR_INVALID_PARAM, "swarm brain manager is NULL");
+    NIMCP_CHECK_THROW(input, NIMCP_ERROR_INVALID_PARAM, "input array is NULL");
+    NIMCP_CHECK_THROW(output, NIMCP_ERROR_INVALID_PARAM, "output array is NULL");
+    NIMCP_CHECK_THROW(output_size, NIMCP_ERROR_INVALID_PARAM, "output_size pointer is NULL");
 
     nimcp_platform_mutex_lock(&mgr->mutex);
 
@@ -1039,9 +1035,7 @@ int swarm_brain_local_sync_weights(
     swarm_brain_manager_t* mgr,
     uint32_t agent_id
 ) {
-    if (!mgr) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mgr, NIMCP_ERROR_INVALID_PARAM, "swarm brain manager is NULL");
 
     nimcp_platform_mutex_lock(&mgr->mutex);
 
@@ -1117,9 +1111,7 @@ int swarm_brain_local_sync_weights(
 }
 
 int swarm_brain_sync_all(swarm_brain_manager_t* mgr) {
-    if (!mgr) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mgr, NIMCP_ERROR_INVALID_PARAM, "swarm brain manager is NULL");
 
     nimcp_platform_mutex_lock(&mgr->mutex);
 
@@ -1148,9 +1140,9 @@ int swarm_brain_get_consensus_weights(
     float** weights,
     uint32_t* num_weights
 ) {
-    if (!mgr || !weights || !num_weights) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mgr, NIMCP_ERROR_INVALID_PARAM, "swarm brain manager is NULL");
+    NIMCP_CHECK_THROW(weights, NIMCP_ERROR_INVALID_PARAM, "weights output pointer is NULL");
+    NIMCP_CHECK_THROW(num_weights, NIMCP_ERROR_INVALID_PARAM, "num_weights output pointer is NULL");
 
     nimcp_platform_mutex_lock(&mgr->mutex);
 
@@ -1209,9 +1201,9 @@ int swarm_brain_get_divergent_agents(
     uint32_t** agents,
     uint32_t* count
 ) {
-    if (!mgr || !agents || !count) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mgr, NIMCP_ERROR_INVALID_PARAM, "swarm brain manager is NULL");
+    NIMCP_CHECK_THROW(agents, NIMCP_ERROR_INVALID_PARAM, "agents output pointer is NULL");
+    NIMCP_CHECK_THROW(count, NIMCP_ERROR_INVALID_PARAM, "count output pointer is NULL");
 
     nimcp_platform_mutex_lock(&mgr->mutex);
 
@@ -1272,9 +1264,8 @@ int swarm_brain_local_get_stats(
     swarm_brain_manager_t* mgr,
     swarm_brain_stats_t* stats
 ) {
-    if (!mgr || !stats) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mgr, NIMCP_ERROR_INVALID_PARAM, "swarm brain manager is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_INVALID_PARAM, "stats output pointer is NULL");
 
     nimcp_platform_mutex_lock(&mgr->mutex);
 
@@ -1314,9 +1305,7 @@ int swarm_brain_local_get_stats(
 }
 
 int swarm_brain_local_reset_stats(swarm_brain_manager_t* mgr) {
-    if (!mgr) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mgr, NIMCP_ERROR_INVALID_PARAM, "swarm brain manager is NULL");
 
     nimcp_platform_mutex_lock(&mgr->mutex);
 
@@ -1375,9 +1364,9 @@ int swarm_brain_get_all_agents(
     uint32_t** agents,
     uint32_t* count
 ) {
-    if (!mgr || !agents || !count) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mgr, NIMCP_ERROR_INVALID_PARAM, "swarm brain manager is NULL");
+    NIMCP_CHECK_THROW(agents, NIMCP_ERROR_INVALID_PARAM, "agents output pointer is NULL");
+    NIMCP_CHECK_THROW(count, NIMCP_ERROR_INVALID_PARAM, "count output pointer is NULL");
 
     nimcp_platform_mutex_lock(&mgr->mutex);
 
@@ -1520,9 +1509,9 @@ int swarm_brain_train_with_role(
     uint32_t target_size,
     const role_training_config_t* config
 ) {
-    if (!mgr || !input || !target) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mgr, NIMCP_ERROR_INVALID_PARAM, "swarm brain manager is NULL");
+    NIMCP_CHECK_THROW(input, NIMCP_ERROR_INVALID_PARAM, "input array is NULL");
+    NIMCP_CHECK_THROW(target, NIMCP_ERROR_INVALID_PARAM, "target array is NULL");
 
     /* Use default config if not provided */
     role_training_config_t train_config;
@@ -1572,9 +1561,7 @@ int swarm_brain_sync_role_group(
     swarm_brain_manager_t* mgr,
     drone_role_t role
 ) {
-    if (!mgr) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mgr, NIMCP_ERROR_INVALID_PARAM, "swarm brain manager is NULL");
 
     nimcp_platform_mutex_lock(&mgr->mutex);
 
@@ -1621,9 +1608,9 @@ int swarm_brain_get_agents_by_role(
     uint32_t** agents,
     uint32_t* count
 ) {
-    if (!mgr || !agents || !count) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mgr, NIMCP_ERROR_INVALID_PARAM, "swarm brain manager is NULL");
+    NIMCP_CHECK_THROW(agents, NIMCP_ERROR_INVALID_PARAM, "agents output pointer is NULL");
+    NIMCP_CHECK_THROW(count, NIMCP_ERROR_INVALID_PARAM, "count output pointer is NULL");
 
     nimcp_platform_mutex_lock(&mgr->mutex);
 
@@ -1677,9 +1664,8 @@ int swarm_brain_transfer_role_knowledge(
     drone_role_t from_role,
     float transfer_weight
 ) {
-    if (!mgr || transfer_weight < 0.0F || transfer_weight > 1.0F) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mgr, NIMCP_ERROR_INVALID_PARAM, "swarm brain manager is NULL");
+    NIMCP_CHECK_THROW(transfer_weight >= 0.0F && transfer_weight <= 1.0F, NIMCP_ERROR_INVALID_PARAM, "transfer_weight must be in range [0.0, 1.0]");
 
     nimcp_platform_mutex_lock(&mgr->mutex);
 
@@ -1724,9 +1710,7 @@ int swarm_brain_set_agent_role(
     uint32_t agent_id,
     drone_role_t role
 ) {
-    if (!mgr) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mgr, NIMCP_ERROR_INVALID_PARAM, "swarm brain manager is NULL");
 
     nimcp_platform_mutex_lock(&mgr->mutex);
 

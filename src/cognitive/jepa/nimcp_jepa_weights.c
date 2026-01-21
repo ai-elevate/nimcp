@@ -265,9 +265,7 @@ int jepa_weights_validate(const char* path, uint32_t expected_latent_dim) {
 }
 
 int jepa_weights_info(const char* path, jepa_weights_header_t* header) {
-    if (!path) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(path, NIMCP_ERROR_NULL_POINTER, "path is NULL");
 
     FILE* fp = fopen(path, "rb");
     if (!fp) {
@@ -412,9 +410,7 @@ int jepa_weights_load_tensor(jepa_weights_t* weights,
                               const char* layer_name,
                               float* output,
                               uint64_t expected_size) {
-    if (!weights || !layer_name || !output) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(weights && layer_name && output, NIMCP_ERROR_NULL_POINTER, "weights, layer_name, or output is NULL");
 
     const jepa_tensor_desc_t* tensor = jepa_weights_get_tensor(weights, layer_name);
     if (!tensor) {
@@ -455,9 +451,7 @@ int jepa_weights_save_with_meta(const char* path,
                                  const char* extra_metadata) {
     (void)extra_metadata;  /* Reserved for future use */
 
-    if (!path || !predictor) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(path && predictor, NIMCP_ERROR_NULL_POINTER, "path or predictor is NULL");
 
     if (predictor->type != JEPA_PREDICTOR_MLP &&
         predictor->type != JEPA_PREDICTOR_LINEAR) {

@@ -65,9 +65,7 @@ static uint64_t generate_sandbox_id(void);
  * @brief Get default security-imagination bridge configuration
  */
 int security_imagination_default_config(security_imagination_config_t* config) {
-    if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(security_imagination_config_t));
 
@@ -193,12 +191,8 @@ int security_imagination_connect_engine(
     security_imagination_bridge_t* bridge,
     struct imagination_engine* engine
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!engine) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(engine, NIMCP_ERROR_NULL_POINTER, "engine is NULL");
 
     BRIDGE_LOCK(bridge);
     bridge->imagination_engine = engine;
@@ -215,12 +209,8 @@ int security_imagination_connect_workspace(
     security_imagination_bridge_t* bridge,
     struct imagination_workspace* workspace
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!workspace) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(workspace, NIMCP_ERROR_NULL_POINTER, "workspace is NULL");
 
     BRIDGE_LOCK(bridge);
     bridge->workspace = workspace;
@@ -255,9 +245,7 @@ int security_imagination_sandbox_workspace(
     sandbox_isolation_level_t isolation_level,
     uint64_t* sandbox_id
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Check if new scenarios are blocked */
     if (bridge->state.new_scenarios_blocked) {
@@ -317,9 +305,7 @@ int security_imagination_release_sandbox(
     security_imagination_bridge_t* bridge,
     uint64_t sandbox_id
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -357,9 +343,8 @@ int security_imagination_get_sandbox(
     uint64_t sandbox_id,
     security_imagination_sandbox_t* sandbox
 ) {
-    if (!bridge || !sandbox) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(sandbox, NIMCP_ERROR_NULL_POINTER, "sandbox is NULL");
 
     BRIDGE_LOCK((security_imagination_bridge_t*)bridge);
 
@@ -389,9 +374,8 @@ int security_imagination_detect_confabulation(
     size_t content_size,
     security_imagination_confab_result_t* result
 ) {
-    if (!bridge || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_NULL_POINTER, "result is NULL");
 
     /* Skip detection if disabled */
     if (!bridge->config.enable_confabulation_detection) {
@@ -442,9 +426,8 @@ int security_imagination_check_scenario_confabulation(
     uint64_t sandbox_id,
     security_imagination_confab_result_t* result
 ) {
-    if (!bridge || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_NULL_POINTER, "result is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -561,9 +544,8 @@ int security_imagination_ground_reality(
     uint64_t sandbox_id,
     security_imagination_grounding_result_t* result
 ) {
-    if (!bridge || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_NULL_POINTER, "result is NULL");
 
     /* Skip if disabled */
     if (!bridge->config.enable_reality_grounding) {
@@ -658,9 +640,8 @@ int security_imagination_verify_simulation(
     uint64_t sandbox_id,
     security_imagination_integrity_result_t* result
 ) {
-    if (!bridge || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_NULL_POINTER, "result is NULL");
 
     /* Skip if disabled */
     if (!bridge->config.enable_simulation_integrity) {
@@ -719,9 +700,8 @@ int security_imagination_check_adversarial(
     uint64_t sandbox_id,
     float* adversarial_score
 ) {
-    if (!bridge || !adversarial_score) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(adversarial_score, NIMCP_ERROR_NULL_POINTER, "adversarial_score is NULL");
 
     /* Skip if disabled */
     if (!bridge->config.enable_adversarial_detection) {
@@ -773,9 +753,7 @@ int security_imagination_track_resources(
     uint64_t sandbox_id,
     uint64_t resources_used
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->config.enable_resource_tracking) {
         return NIMCP_SUCCESS;
@@ -857,9 +835,7 @@ uint64_t security_imagination_get_resources(
 int security_imagination_update_security_effects(
     security_imagination_bridge_t* bridge
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -914,9 +890,7 @@ int security_imagination_update_security_effects(
 int security_imagination_update_imagination_effects(
     security_imagination_bridge_t* bridge
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -958,9 +932,7 @@ int security_imagination_bridge_update(
     security_imagination_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Update both directions */
     int result = security_imagination_update_security_effects(bridge);
@@ -994,9 +966,8 @@ int security_imagination_get_security_effects(
     const security_imagination_bridge_t* bridge,
     security_to_imagination_effects_t* effects
 ) {
-    if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(effects, NIMCP_ERROR_NULL_POINTER, "effects is NULL");
 
     BRIDGE_LOCK((security_imagination_bridge_t*)bridge);
     *effects = bridge->security_effects;
@@ -1012,9 +983,8 @@ int security_imagination_get_imagination_effects(
     const security_imagination_bridge_t* bridge,
     imagination_to_security_effects_t* effects
 ) {
-    if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(effects, NIMCP_ERROR_NULL_POINTER, "effects is NULL");
 
     BRIDGE_LOCK((security_imagination_bridge_t*)bridge);
     *effects = bridge->imagination_effects;
@@ -1030,9 +1000,8 @@ int security_imagination_get_state(
     const security_imagination_bridge_t* bridge,
     security_imagination_state_t* state
 ) {
-    if (!bridge || !state) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL");
 
     BRIDGE_LOCK((security_imagination_bridge_t*)bridge);
     *state = bridge->state;
@@ -1048,9 +1017,8 @@ int security_imagination_get_stats(
     const security_imagination_bridge_t* bridge,
     security_imagination_stats_t* stats
 ) {
-    if (!bridge || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     BRIDGE_LOCK((security_imagination_bridge_t*)bridge);
     *stats = bridge->stats;
@@ -1063,9 +1031,7 @@ int security_imagination_get_stats(
  * @brief Reset bridge statistics
  */
 int security_imagination_reset_stats(security_imagination_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
     memset(&bridge->stats, 0, sizeof(security_imagination_stats_t));
@@ -1082,9 +1048,7 @@ int security_imagination_reset_stats(security_imagination_bridge_t* bridge) {
  * @brief Restrict imagination capabilities
  */
 int security_imagination_enter_restricted(security_imagination_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1108,9 +1072,7 @@ int security_imagination_enter_restricted(security_imagination_bridge_t* bridge)
  * @brief Restore normal imagination capabilities
  */
 int security_imagination_exit_restricted(security_imagination_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1147,9 +1109,7 @@ bool security_imagination_is_restricted(
 int security_imagination_block_new_scenarios(
     security_imagination_bridge_t* bridge
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
     bridge->state.new_scenarios_blocked = true;
@@ -1165,9 +1125,7 @@ int security_imagination_block_new_scenarios(
 int security_imagination_allow_new_scenarios(
     security_imagination_bridge_t* bridge
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
     bridge->state.new_scenarios_blocked = false;
@@ -1189,9 +1147,8 @@ static int find_sandbox_by_id(
     uint64_t sandbox_id,
     size_t* index
 ) {
-    if (!bridge || !index) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(index, NIMCP_ERROR_NULL_POINTER, "index is NULL");
 
     for (size_t i = 0; i < bridge->sandbox_capacity; i++) {
         if (bridge->sandboxes[i].is_active &&

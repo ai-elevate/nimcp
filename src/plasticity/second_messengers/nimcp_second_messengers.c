@@ -140,19 +140,13 @@ second_messenger_config_t second_messenger_default_config(void) {
  * @brief Validate configuration
  */
 nimcp_result_t second_messenger_validate_config(const second_messenger_config_t* config) {
-    if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (config->dt_ms <= 0.0F || config->dt_ms > 100.0F) {
-        LOG_MODULE_WARN(LOG_MODULE, "Invalid dt_ms: %.2f", config->dt_ms);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (config->camp_synthesis_rate < 0.0F || config->camp_degradation_rate < 0.0F) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (config->pka_activation_threshold <= 0.0F) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
+    NIMCP_CHECK_THROW(config->dt_ms > 0.0F && config->dt_ms <= 100.0F,
+                      NIMCP_ERROR_INVALID_PARAM, "Invalid dt_ms: %.2f", config->dt_ms);
+    NIMCP_CHECK_THROW(config->camp_synthesis_rate >= 0.0F && config->camp_degradation_rate >= 0.0F,
+                      NIMCP_ERROR_INVALID_PARAM, "camp synthesis/degradation rates must be non-negative");
+    NIMCP_CHECK_THROW(config->pka_activation_threshold > 0.0F,
+                      NIMCP_ERROR_INVALID_PARAM, "pka_activation_threshold must be positive");
     return NIMCP_SUCCESS;
 }
 
@@ -318,12 +312,8 @@ nimcp_result_t second_messenger_register_bioasync(
     second_messenger_system_t* system,
     bio_router_t router
 ) {
-    if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!router) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
+    NIMCP_CHECK_THROW(router, NIMCP_ERROR_NULL_POINTER, "router is NULL");
     if (!bio_router_is_initialized()) {
         LOG_MODULE_DEBUG(LOG_MODULE, "Bio-router not initialized, skipping registration");
         return NIMCP_SUCCESS;
@@ -401,9 +391,7 @@ nimcp_result_t second_messenger_broadcast_state(
     second_messenger_system_t* system,
     uint32_t neuron_id
 ) {
-    if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
     if (!system->bio_async_enabled) {
         return NIMCP_SUCCESS; /* Silent success if bio-async disabled */
     }
@@ -422,7 +410,9 @@ nimcp_result_t second_messenger_broadcast_state(
         msg.pkc_activity = 0.0F;
         msg.camkii_activity = system->stats.avg_camkii_activity;
         msg.creb_phosphorylation = system->stats.avg_creb_phosphorylation;
-    } else if (neuron_id < system->max_neurons && system->neuron_active[neuron_id]) {
+    } else {
+        NIMCP_CHECK_THROW(neuron_id < system->max_neurons && system->neuron_active[neuron_id],
+                          NIMCP_ERROR_INVALID_PARAM, "Invalid neuron_id %u or neuron not active", neuron_id);
         /* Broadcast specific neuron state */
         second_messenger_state_t* state = &system->states[neuron_id];
         msg.neuron_id = neuron_id;
@@ -432,8 +422,6 @@ nimcp_result_t second_messenger_broadcast_state(
         msg.creb_phosphorylation = state->gene_expr.creb_phosphorylation;
         msg.camp_concentration = state->camp.camp_concentration;
         msg.calcium_concentration = state->calcium.ca_cytoplasmic;
-    } else {
-        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     msg.header.timestamp_us = nimcp_platform_time_monotonic_us();
@@ -462,9 +450,8 @@ static nimcp_result_t bio_message_handler(
 ) {
     (void)response_promise; /* Unused for now */
 
-    if (!msg || !user_data) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(msg, NIMCP_ERROR_NULL_POINTER, "msg is NULL");
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     second_messenger_system_t* system = (second_messenger_system_t*)user_data;
     const bio_message_header_t* header = (const bio_message_header_t*)msg;
@@ -472,9 +459,8 @@ static nimcp_result_t bio_message_handler(
     switch (header->type) {
         case BIO_MSG_NEUROMODULATOR_RELEASE: {
             /* Handle neuromodulator release -> cascade activation */
-            if (msg_size < sizeof(bio_msg_neuromodulator_release_t)) {
-                return NIMCP_ERROR_INVALID_SIZE;
-            }
+            NIMCP_CHECK_THROW(msg_size >= sizeof(bio_msg_neuromodulator_release_t),
+                              NIMCP_ERROR_INVALID_SIZE, "msg_size too small for neuromodulator_release");
             const bio_msg_neuromodulator_release_t* nm_msg =
                 (const bio_msg_neuromodulator_release_t*)msg;
 
@@ -522,15 +508,14 @@ nimcp_result_t second_messenger_activate_receptor(
     second_messenger_system_t* system,
     const receptor_activation_event_t* event
 ) {
-    if (!system || !event) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (event->neuron_id >= system->max_neurons) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (event->occupancy < 0.0F || event->occupancy > 1.0F) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
+    NIMCP_CHECK_THROW(event, NIMCP_ERROR_NULL_POINTER, "event is NULL");
+    NIMCP_CHECK_THROW(event->neuron_id < system->max_neurons,
+                      NIMCP_ERROR_INVALID_PARAM, "neuron_id %u >= max_neurons %u",
+                      event->neuron_id, system->max_neurons);
+    NIMCP_CHECK_THROW(event->occupancy >= 0.0F && event->occupancy <= 1.0F,
+                      NIMCP_ERROR_INVALID_PARAM, "occupancy %.2f out of range [0,1]",
+                      event->occupancy);
 
     /* Route to appropriate pathway based on coupling */
     switch (event->coupling) {
@@ -558,12 +543,10 @@ nimcp_result_t second_messenger_activate_gs(
     float occupancy,
     uint64_t timestamp_ms
 ) {
-    if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (neuron_id >= system->max_neurons) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
+    NIMCP_CHECK_THROW(neuron_id < system->max_neurons,
+                      NIMCP_ERROR_INVALID_PARAM, "neuron_id %u >= max_neurons %u",
+                      neuron_id, system->max_neurons);
 
     /* Lock for thread safety */
     if (system->mutex_initialized) {
@@ -608,12 +591,10 @@ nimcp_result_t second_messenger_activate_gi(
     float occupancy,
     uint64_t timestamp_ms
 ) {
-    if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (neuron_id >= system->max_neurons) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
+    NIMCP_CHECK_THROW(neuron_id < system->max_neurons,
+                      NIMCP_ERROR_INVALID_PARAM, "neuron_id %u >= max_neurons %u",
+                      neuron_id, system->max_neurons);
 
     if (system->mutex_initialized) {
         nimcp_platform_mutex_lock(&system->mutex);
@@ -656,12 +637,10 @@ nimcp_result_t second_messenger_activate_gq(
     float occupancy,
     uint64_t timestamp_ms
 ) {
-    if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (neuron_id >= system->max_neurons) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
+    NIMCP_CHECK_THROW(neuron_id < system->max_neurons,
+                      NIMCP_ERROR_INVALID_PARAM, "neuron_id %u >= max_neurons %u",
+                      neuron_id, system->max_neurons);
 
     if (system->mutex_initialized) {
         nimcp_platform_mutex_lock(&system->mutex);
@@ -707,12 +686,8 @@ nimcp_result_t second_messenger_update(
     float dt_ms,
     uint64_t timestamp_ms
 ) {
-    if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (dt_ms <= 0.0F) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
+    NIMCP_CHECK_THROW(dt_ms > 0.0F, NIMCP_ERROR_INVALID_PARAM, "dt_ms must be positive, got %.2f", dt_ms);
 
     if (system->mutex_initialized) {
         nimcp_platform_mutex_lock(&system->mutex);
@@ -783,12 +758,10 @@ nimcp_result_t second_messenger_update_neuron(
     float dt_ms,
     uint64_t timestamp_ms
 ) {
-    if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (neuron_id >= system->max_neurons) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
+    NIMCP_CHECK_THROW(neuron_id < system->max_neurons,
+                      NIMCP_ERROR_INVALID_PARAM, "neuron_id %u >= max_neurons %u",
+                      neuron_id, system->max_neurons);
     if (!system->neuron_active[neuron_id]) {
         return NIMCP_SUCCESS; /* Nothing to update */
     }
@@ -824,15 +797,11 @@ nimcp_result_t second_messenger_inject_calcium(
     float ca_nm,
     uint64_t timestamp_ms
 ) {
-    if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (neuron_id >= system->max_neurons) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (ca_nm < 0.0F) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
+    NIMCP_CHECK_THROW(neuron_id < system->max_neurons,
+                      NIMCP_ERROR_INVALID_PARAM, "neuron_id %u >= max_neurons %u",
+                      neuron_id, system->max_neurons);
+    NIMCP_CHECK_THROW(ca_nm >= 0.0F, NIMCP_ERROR_INVALID_PARAM, "ca_nm must be non-negative, got %.2f", ca_nm);
 
     if (system->mutex_initialized) {
         nimcp_platform_mutex_lock(&system->mutex);
@@ -877,12 +846,11 @@ nimcp_result_t second_messenger_get_state(
     uint32_t neuron_id,
     second_messenger_state_t* state
 ) {
-    if (!system || !state) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (neuron_id >= system->max_neurons) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL");
+    NIMCP_CHECK_THROW(neuron_id < system->max_neurons,
+                      NIMCP_ERROR_INVALID_PARAM, "neuron_id %u >= max_neurons %u",
+                      neuron_id, system->max_neurons);
 
     *state = system->states[neuron_id];
     return NIMCP_SUCCESS;
@@ -896,12 +864,11 @@ nimcp_result_t second_messenger_get_effects(
     uint32_t neuron_id,
     cascade_effects_t* effects
 ) {
-    if (!system || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (neuron_id >= system->max_neurons) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
+    NIMCP_CHECK_THROW(effects, NIMCP_ERROR_NULL_POINTER, "effects is NULL");
+    NIMCP_CHECK_THROW(neuron_id < system->max_neurons,
+                      NIMCP_ERROR_INVALID_PARAM, "neuron_id %u >= max_neurons %u",
+                      neuron_id, system->max_neurons);
 
     memset(effects, 0, sizeof(cascade_effects_t));
 
@@ -1041,9 +1008,7 @@ nimcp_result_t second_messenger_integrate_neuromodulator(
     second_messenger_system_t* system,
     neuromodulator_system_t neuromod
 ) {
-    if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
 
     system->neuromod = neuromod;
     system->neuromod_connected = (neuromod != NULL);
@@ -1100,9 +1065,7 @@ nimcp_result_t second_messenger_reset(
     second_messenger_system_t* system,
     uint32_t neuron_id
 ) {
-    if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
 
     uint64_t now_ms = nimcp_platform_time_monotonic_ms();
 
@@ -1118,7 +1081,16 @@ nimcp_result_t second_messenger_reset(
         }
         system->active_count = 0;
         LOG_MODULE_INFO(LOG_MODULE, "Reset all cascade states");
-    } else if (neuron_id < system->max_neurons) {
+    } else {
+        /* Validate neuron_id before reset */
+        if (neuron_id >= system->max_neurons) {
+            if (system->mutex_initialized) {
+                nimcp_platform_mutex_unlock(&system->mutex);
+            }
+            NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "neuron_id %u >= max_neurons %u",
+                        neuron_id, system->max_neurons);
+            return NIMCP_ERROR_INVALID_PARAM;
+        }
         /* Reset specific neuron */
         init_state_baseline(&system->states[neuron_id], neuron_id, now_ms);
         if (system->neuron_active[neuron_id]) {
@@ -1126,11 +1098,6 @@ nimcp_result_t second_messenger_reset(
             system->active_count--;
         }
         LOG_MODULE_DEBUG(LOG_MODULE, "Reset cascade state for neuron %u", neuron_id);
-    } else {
-        if (system->mutex_initialized) {
-            nimcp_platform_mutex_unlock(&system->mutex);
-        }
-        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (system->mutex_initialized) {
@@ -1147,9 +1114,8 @@ nimcp_result_t second_messenger_get_stats(
     const second_messenger_system_t* system,
     second_messenger_stats_t* stats
 ) {
-    if (!system || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     *stats = system->stats;
     return NIMCP_SUCCESS;
@@ -1159,9 +1125,7 @@ nimcp_result_t second_messenger_get_stats(
  * @brief Reset statistics
  */
 nimcp_result_t second_messenger_reset_stats(second_messenger_system_t* system) {
-    if (!system) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
 
     memset(&system->stats, 0, sizeof(second_messenger_stats_t));
     return NIMCP_SUCCESS;

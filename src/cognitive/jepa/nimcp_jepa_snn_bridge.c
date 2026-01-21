@@ -235,7 +235,7 @@ void jepa_snn_destroy(jepa_snn_bridge_t* bridge) {
 }
 
 int jepa_snn_reset(jepa_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -283,8 +283,8 @@ int jepa_snn_encode_state(
     const float* dimensions,
     uint32_t num_dims
 ) {
-    if (!bridge || !dimensions) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    NIMCP_CHECK_THROW(bridge && dimensions, -1, "bridge or dimensions is NULL");
+    NIMCP_CHECK_THROW(num_dims > 0 && num_dims <= bridge->config.num_dimensions, -1, "invalid num_dims");
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->state = JEPA_SNN_STATE_ENCODING;
@@ -340,7 +340,7 @@ int jepa_snn_encode_latent(
     float context,
     float target
 ) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -361,7 +361,7 @@ int jepa_snn_encode_prediction_error(
     float error_magnitude,
     uint32_t error_dimension
 ) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -381,7 +381,7 @@ int jepa_snn_encode_context(
     float context_strength,
     uint32_t context_type
 ) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -412,8 +412,8 @@ int jepa_snn_encode_context(
 //=============================================================================
 
 int jepa_snn_simulate(jepa_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge) return -1;
-    if (duration_ms <= 0.0f) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
+    NIMCP_CHECK_THROW(duration_ms > 0.0f, -1, "duration_ms must be positive");
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->state = JEPA_SNN_STATE_SIMULATING;
@@ -483,7 +483,7 @@ int jepa_snn_simulate(jepa_snn_bridge_t* bridge, float duration_ms) {
 }
 
 int jepa_snn_step(jepa_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
     return jepa_snn_simulate(bridge, bridge->config.dt_ms);
 }
 
@@ -492,7 +492,7 @@ int jepa_snn_forward(
     const float* inputs,
     uint32_t input_count
 ) {
-    if (!bridge || !inputs) return -1;
+    NIMCP_CHECK_THROW(bridge && inputs, -1, "bridge or inputs is NULL");
 
     int spike_count = jepa_snn_encode_state(bridge, inputs, input_count);
     if (spike_count < 0) return -1;
@@ -512,7 +512,7 @@ int jepa_snn_get_prediction(
     jepa_snn_bridge_t* bridge,
     jepa_prediction_output_t* output
 ) {
-    if (!bridge || !output) return -1;
+    NIMCP_CHECK_THROW(bridge && output, -1, "bridge or output is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     *output = bridge->last_prediction;
@@ -526,8 +526,8 @@ int jepa_snn_get_activations(
     float* activations,
     uint32_t num_dims
 ) {
-    if (!bridge || !activations) return -1;
-    if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
+    NIMCP_CHECK_THROW(bridge && activations, -1, "bridge or activations is NULL");
+    NIMCP_CHECK_THROW(num_dims > 0 && num_dims <= bridge->config.num_dimensions, -1, "invalid num_dims");
 
     nimcp_mutex_lock(bridge->mutex);
     for (uint32_t d = 0; d < num_dims; d++) {
@@ -605,8 +605,8 @@ int jepa_snn_get_dim_state(
     uint32_t dim,
     jepa_dim_state_t* state
 ) {
-    if (!bridge || !state) return -1;
-    if (dim >= bridge->config.num_dimensions) return -1;
+    NIMCP_CHECK_THROW(bridge && state, -1, "bridge or state is NULL");
+    NIMCP_CHECK_THROW(dim < bridge->config.num_dimensions, -1, "dim out of range");
 
     nimcp_mutex_lock(bridge->mutex);
     *state = bridge->dim_states[dim];
@@ -619,7 +619,7 @@ int jepa_snn_get_state(
     jepa_snn_bridge_t* bridge,
     jepa_snn_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    NIMCP_CHECK_THROW(bridge && state, -1, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -643,7 +643,7 @@ int jepa_snn_get_state(
 }
 
 int jepa_snn_get_stats(jepa_snn_bridge_t* bridge, jepa_snn_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    NIMCP_CHECK_THROW(bridge && stats, -1, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     *stats = bridge->stats;
@@ -653,7 +653,7 @@ int jepa_snn_get_stats(jepa_snn_bridge_t* bridge, jepa_snn_stats_t* stats) {
 }
 
 int jepa_snn_reset_stats(jepa_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     memset(&bridge->stats, 0, sizeof(jepa_snn_stats_t));
@@ -694,7 +694,7 @@ int jepa_snn_register_error_callback(
     jepa_snn_error_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->error_callback = callback;
@@ -709,7 +709,7 @@ int jepa_snn_register_prediction_callback(
     jepa_snn_prediction_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->prediction_callback = callback;
@@ -724,7 +724,7 @@ int jepa_snn_register_confidence_callback(
     jepa_snn_confidence_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->confidence_callback = callback;
@@ -739,8 +739,8 @@ int jepa_snn_register_confidence_callback(
 //=============================================================================
 
 int jepa_snn_bio_async_connect(jepa_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
-    if (!bridge->config.enable_bio_async) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->config.enable_bio_async, -1, "bio_async not enabled");
 
     nimcp_mutex_lock(bridge->mutex);
     /* Bio-async connection would be implemented here */
@@ -751,7 +751,7 @@ int jepa_snn_bio_async_connect(jepa_snn_bridge_t* bridge) {
 }
 
 int jepa_snn_bio_async_disconnect(jepa_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->bio_async_connected = false;

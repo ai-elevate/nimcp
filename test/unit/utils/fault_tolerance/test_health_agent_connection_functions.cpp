@@ -335,7 +335,7 @@ TEST_F(HealthAgentConnectionTest, ConnectAllCognitiveModules_WithCustomConfigs) 
     health_agent_wellbeing_config_t wellbeing_cfg = {true, true, true, 0.6f};
     health_agent_collective_config_t collective_cfg = {true, true, true, 0.7f, 3000};
     health_agent_rcog_config_t rcog_cfg = {true, true, true, 15000, 0.75f};
-    health_agent_gpu_config_t gpu_cfg = {true, true, true, true, 500};
+    health_agent_gpu_config_t gpu_cfg = {true, true, true, true, true, true, 500u, 70.0f, 85.0f, 0.8f, 0.95f};
 
     EXPECT_EQ(nimcp_health_agent_connect_failure_prediction(agent, nullptr, &pred_cfg), 0);
     EXPECT_EQ(nimcp_health_agent_connect_metacognition(agent, nullptr, &meta_cfg), 0);

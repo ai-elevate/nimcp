@@ -63,10 +63,10 @@ extern "C" {
  * Forward Declarations
  * ============================================================================ */
 
-/* Health monitor */
+/* Health monitor - must match health_monitor.h */
 #ifndef NIMCP_HEALTH_MONITOR_H
-struct health_monitor;
-typedef struct health_monitor health_monitor_t;
+struct health_monitor_internal;
+typedef struct health_monitor_internal* health_monitor_t;
 #endif
 
 /* Bio-async router */

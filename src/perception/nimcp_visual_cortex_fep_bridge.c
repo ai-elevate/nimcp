@@ -28,10 +28,7 @@
  * HOW:  Set biologically-plausible thresholds and enable all features
  */
 int visual_cortex_fep_bridge_default_config(visual_cortex_fep_config_t* config) {
-    if (!config) {
-        NIMCP_LOGGING_ERROR(LOG_MODULE_VISUAL_FEP " NULL config pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     config->prediction_error_threshold = VISUAL_FEP_PE_THRESHOLD_MEDIUM;
     config->precision_gain_factor = VISUAL_FEP_PRECISION_GAIN_DEFAULT;

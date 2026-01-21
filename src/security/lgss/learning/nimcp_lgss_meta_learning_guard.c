@@ -474,10 +474,11 @@ void meta_learning_guard_destroy(meta_learning_guard_t guard) {
 }
 
 int meta_learning_guard_reset(meta_learning_guard_t guard) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct meta_learning_guard_internal* g = guard;
-    if (g->magic != LGSS_META_LEARNING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_META_LEARNING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE,
+                     "invalid guard magic");
 
     /* Reset rate window */
     g->rate_window.head = 0;
@@ -518,18 +519,18 @@ int meta_learning_guard_register_param(
     meta_learning_guard_t guard,
     const meta_param_info_t* info
 ) {
-    if (!guard || !info) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
+    NIMCP_CHECK_THROW(info, NIMCP_ERROR_NULL_POINTER, "info is NULL");
 
     struct meta_learning_guard_internal* g = guard;
-    if (g->magic != LGSS_META_LEARNING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_META_LEARNING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE,
+                     "invalid guard magic");
 
-    if (info->param_id >= g->param_capacity) {
-        return NIMCP_ERROR_OUT_OF_RANGE;
-    }
+    NIMCP_CHECK_THROW(info->param_id < g->param_capacity, NIMCP_ERROR_OUT_OF_RANGE,
+                     "param_id %u out of range", info->param_id);
 
-    if (g->params[info->param_id].registered) {
-        return NIMCP_ERROR_ALREADY_EXISTS;
-    }
+    NIMCP_CHECK_THROW(!g->params[info->param_id].registered, NIMCP_ERROR_ALREADY_EXISTS,
+                     "param_id %u already registered", info->param_id);
 
     /* Copy parameter info */
     g->params[info->param_id].info = *info;
@@ -550,18 +551,17 @@ int meta_learning_guard_unregister_param(
     meta_learning_guard_t guard,
     uint32_t param_id
 ) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct meta_learning_guard_internal* g = guard;
-    if (g->magic != LGSS_META_LEARNING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_META_LEARNING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE,
+                     "invalid guard magic");
 
-    if (param_id >= g->param_capacity) {
-        return NIMCP_ERROR_OUT_OF_RANGE;
-    }
+    NIMCP_CHECK_THROW(param_id < g->param_capacity, NIMCP_ERROR_OUT_OF_RANGE,
+                     "param_id %u out of range", param_id);
 
-    if (!g->params[param_id].registered) {
-        return NIMCP_ERROR_NOT_FOUND;
-    }
+    NIMCP_CHECK_THROW(g->params[param_id].registered, NIMCP_ERROR_NOT_FOUND,
+                     "param_id %u not registered", param_id);
 
     /* Clear registration */
     g->params[param_id].registered = false;
@@ -577,15 +577,15 @@ int meta_learning_guard_get_param_info(
     uint32_t param_id,
     meta_param_info_t* info
 ) {
-    if (!guard || !info) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
+    NIMCP_CHECK_THROW(info, NIMCP_ERROR_NULL_POINTER, "info is NULL");
 
     struct meta_learning_guard_internal* g = guard;
-    if (g->magic != LGSS_META_LEARNING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_META_LEARNING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE,
+                     "invalid guard magic");
 
     param_registry_entry_t* param = find_param(g, param_id);
-    if (!param) {
-        return NIMCP_ERROR_NOT_FOUND;
-    }
+    NIMCP_CHECK_THROW(param, NIMCP_ERROR_NOT_FOUND, "param_id %u not found", param_id);
 
     *info = param->info;
     return NIMCP_SUCCESS;
@@ -596,10 +596,13 @@ int meta_learning_guard_propose_update(
     const meta_update_proposal_t* proposal,
     meta_update_result_t* result
 ) {
-    if (!guard || !proposal || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
+    NIMCP_CHECK_THROW(proposal, NIMCP_ERROR_NULL_POINTER, "proposal is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_NULL_POINTER, "result is NULL");
 
     struct meta_learning_guard_internal* g = guard;
-    if (g->magic != LGSS_META_LEARNING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_META_LEARNING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE,
+                     "invalid guard magic");
 
     uint64_t start_time = get_time_us();
 
@@ -824,15 +827,14 @@ int meta_learning_guard_commit_update(
     uint32_t param_id,
     float new_value
 ) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct meta_learning_guard_internal* g = guard;
-    if (g->magic != LGSS_META_LEARNING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_META_LEARNING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE,
+                     "invalid guard magic");
 
     param_registry_entry_t* param = find_param(g, param_id);
-    if (!param) {
-        return NIMCP_ERROR_NOT_FOUND;
-    }
+    NIMCP_CHECK_THROW(param, NIMCP_ERROR_NOT_FOUND, "param_id %u not found", param_id);
 
     uint64_t current_time = get_time_us();
 
@@ -903,22 +905,20 @@ uint32_t meta_learning_guard_propose_batch(
 }
 
 int meta_learning_guard_freeze_param(meta_learning_guard_t guard, uint32_t param_id) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct meta_learning_guard_internal* g = guard;
-    if (g->magic != LGSS_META_LEARNING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_META_LEARNING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE,
+                     "invalid guard magic");
 
-    if (param_id >= g->param_capacity) {
-        return NIMCP_ERROR_OUT_OF_RANGE;
-    }
+    NIMCP_CHECK_THROW(param_id < g->param_capacity, NIMCP_ERROR_OUT_OF_RANGE,
+                     "param_id %u out of range", param_id);
 
-    if (!g->params[param_id].registered) {
-        return NIMCP_ERROR_NOT_FOUND;
-    }
+    NIMCP_CHECK_THROW(g->params[param_id].registered, NIMCP_ERROR_NOT_FOUND,
+                     "param_id %u not registered", param_id);
 
-    if (g->frozen_flags[param_id]) {
-        return NIMCP_ERROR_ALREADY_EXISTS;
-    }
+    NIMCP_CHECK_THROW(!g->frozen_flags[param_id], NIMCP_ERROR_ALREADY_EXISTS,
+                     "param_id %u already frozen", param_id);
 
     g->frozen_flags[param_id] = true;
     g->params[param_id].info.is_frozen = true;
@@ -929,18 +929,17 @@ int meta_learning_guard_freeze_param(meta_learning_guard_t guard, uint32_t param
 }
 
 int meta_learning_guard_unfreeze_param(meta_learning_guard_t guard, uint32_t param_id) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct meta_learning_guard_internal* g = guard;
-    if (g->magic != LGSS_META_LEARNING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_META_LEARNING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE,
+                     "invalid guard magic");
 
-    if (param_id >= g->param_capacity) {
-        return NIMCP_ERROR_OUT_OF_RANGE;
-    }
+    NIMCP_CHECK_THROW(param_id < g->param_capacity, NIMCP_ERROR_OUT_OF_RANGE,
+                     "param_id %u out of range", param_id);
 
-    if (!g->frozen_flags[param_id]) {
-        return NIMCP_ERROR_NOT_FOUND;
-    }
+    NIMCP_CHECK_THROW(g->frozen_flags[param_id], NIMCP_ERROR_NOT_FOUND,
+                     "param_id %u not frozen", param_id);
 
     g->frozen_flags[param_id] = false;
     g->params[param_id].info.is_frozen = false;
@@ -990,10 +989,12 @@ int meta_learning_guard_get_stability(
     meta_learning_guard_t guard,
     meta_stability_state_t* state
 ) {
-    if (!guard || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL");
 
     struct meta_learning_guard_internal* g = guard;
-    if (g->magic != LGSS_META_LEARNING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_META_LEARNING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE,
+                     "invalid guard magic");
 
     *state = g->stability.current_state;
     return NIMCP_SUCCESS;
@@ -1003,10 +1004,11 @@ int meta_learning_guard_update_stability(
     meta_learning_guard_t guard,
     float jacobian_estimate
 ) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct meta_learning_guard_internal* g = guard;
-    if (g->magic != LGSS_META_LEARNING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_META_LEARNING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE,
+                     "invalid guard magic");
 
     /* Add to stability history with EWMA update */
     float alpha = 0.1f;
@@ -1035,10 +1037,12 @@ int meta_learning_guard_get_eigenvalue(
     meta_learning_guard_t guard,
     float* eigenvalue
 ) {
-    if (!guard || !eigenvalue) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
+    NIMCP_CHECK_THROW(eigenvalue, NIMCP_ERROR_NULL_POINTER, "eigenvalue is NULL");
 
     struct meta_learning_guard_internal* g = guard;
-    if (g->magic != LGSS_META_LEARNING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_META_LEARNING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE,
+                     "invalid guard magic");
 
     *eigenvalue = g->stability.current_eigenvalue;
     return NIMCP_SUCCESS;
@@ -1049,10 +1053,13 @@ int meta_learning_guard_predict_stability_impact(
     const meta_update_proposal_t* proposal,
     meta_stability_state_t* predicted_stability
 ) {
-    if (!guard || !proposal || !predicted_stability) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
+    NIMCP_CHECK_THROW(proposal, NIMCP_ERROR_NULL_POINTER, "proposal is NULL");
+    NIMCP_CHECK_THROW(predicted_stability, NIMCP_ERROR_NULL_POINTER, "predicted_stability is NULL");
 
     struct meta_learning_guard_internal* g = guard;
-    if (g->magic != LGSS_META_LEARNING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_META_LEARNING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE,
+                     "invalid guard magic");
 
     /* Simple prediction: larger updates may destabilize */
     param_registry_entry_t* param = find_param(g, proposal->param_id);
@@ -1092,20 +1099,23 @@ int meta_learning_guard_predict_stability_impact(
 }
 
 int meta_learning_guard_get_drift(meta_learning_guard_t guard, float* drift) {
-    if (!guard || !drift) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
+    NIMCP_CHECK_THROW(drift, NIMCP_ERROR_NULL_POINTER, "drift is NULL");
 
     struct meta_learning_guard_internal* g = guard;
-    if (g->magic != LGSS_META_LEARNING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_META_LEARNING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE,
+                     "invalid guard magic");
 
     *drift = g->drift.current_drift;
     return NIMCP_SUCCESS;
 }
 
 int meta_learning_guard_reset_drift_baseline(meta_learning_guard_t guard) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct meta_learning_guard_internal* g = guard;
-    if (g->magic != LGSS_META_LEARNING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_META_LEARNING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE,
+                     "invalid guard magic");
 
     /* Set initial values to current values */
     for (uint32_t i = 0; i < g->param_capacity; i++) {
@@ -1128,10 +1138,12 @@ int meta_learning_guard_get_drift_rate(
     meta_learning_guard_t guard,
     float* drift_rate
 ) {
-    if (!guard || !drift_rate) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
+    NIMCP_CHECK_THROW(drift_rate, NIMCP_ERROR_NULL_POINTER, "drift_rate is NULL");
 
     struct meta_learning_guard_internal* g = guard;
-    if (g->magic != LGSS_META_LEARNING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_META_LEARNING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE,
+                     "invalid guard magic");
 
     /* Calculate drift rate from recent history */
     if (g->drift.drift_samples < 2) {
@@ -1149,15 +1161,14 @@ int meta_learning_guard_set_approval_level(
     uint32_t param_id,
     uint32_t approval_level
 ) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct meta_learning_guard_internal* g = guard;
-    if (g->magic != LGSS_META_LEARNING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_META_LEARNING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE,
+                     "invalid guard magic");
 
     param_registry_entry_t* param = find_param(g, param_id);
-    if (!param) {
-        return NIMCP_ERROR_NOT_FOUND;
-    }
+    NIMCP_CHECK_THROW(param, NIMCP_ERROR_NOT_FOUND, "param_id %u not found", param_id);
 
     param->info.requires_approval = true;
     param->info.approval_level = approval_level;
@@ -1170,15 +1181,15 @@ int meta_learning_guard_get_approval_level(
     uint32_t param_id,
     uint32_t* approval_level
 ) {
-    if (!guard || !approval_level) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
+    NIMCP_CHECK_THROW(approval_level, NIMCP_ERROR_NULL_POINTER, "approval_level is NULL");
 
     struct meta_learning_guard_internal* g = guard;
-    if (g->magic != LGSS_META_LEARNING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_META_LEARNING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE,
+                     "invalid guard magic");
 
     param_registry_entry_t* param = find_param(g, param_id);
-    if (!param) {
-        return NIMCP_ERROR_NOT_FOUND;
-    }
+    NIMCP_CHECK_THROW(param, NIMCP_ERROR_NOT_FOUND, "param_id %u not found", param_id);
 
     *approval_level = param->info.requires_approval ? param->info.approval_level : 0;
     return NIMCP_SUCCESS;
@@ -1188,10 +1199,12 @@ int meta_learning_guard_get_stats(
     meta_learning_guard_t guard,
     meta_learning_guard_stats_t* stats
 ) {
-    if (!guard || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     struct meta_learning_guard_internal* g = guard;
-    if (g->magic != LGSS_META_LEARNING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_META_LEARNING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE,
+                     "invalid guard magic");
 
     *stats = g->stats;
 
@@ -1205,10 +1218,11 @@ int meta_learning_guard_get_stats(
 }
 
 int meta_learning_guard_reset_stats(meta_learning_guard_t guard) {
-    if (!guard) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(guard, NIMCP_ERROR_NULL_POINTER, "guard is NULL");
 
     struct meta_learning_guard_internal* g = guard;
-    if (g->magic != LGSS_META_LEARNING_GUARD_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(g->magic == LGSS_META_LEARNING_GUARD_MAGIC, NIMCP_ERROR_INVALID_STATE,
+                     "invalid guard magic");
 
     memset(&g->stats, 0, sizeof(g->stats));
     g->stats.frozen_param_count = g->frozen_count;

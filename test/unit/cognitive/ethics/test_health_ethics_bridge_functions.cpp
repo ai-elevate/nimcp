@@ -77,10 +77,10 @@ TEST_F(HealthEthicsBridgeTest, DefaultPsychConfig_HandlesNullPointer) {
 //=============================================================================
 
 TEST_F(HealthEthicsBridgeTest, ActionContextInit_SetsBasicFields) {
-    health_action_context_init(&context, 42, HEALTH_EXCEPTION_RECOVERY_REDUCE_LOAD, 0.5f);
+    health_action_context_init(&context, 42, HEALTH_RECOVERY_ACTION_REDUCE_LOAD, 0.5f);
 
     EXPECT_EQ(context.anomaly_type, 42u);
-    EXPECT_EQ(context.proposed_action, HEALTH_EXCEPTION_RECOVERY_REDUCE_LOAD);
+    EXPECT_EQ(context.proposed_action, HEALTH_RECOVERY_ACTION_REDUCE_LOAD);
     EXPECT_FLOAT_EQ(context.threat_severity, 0.5f);
     EXPECT_EQ(context.action_severity, HEALTH_ACTION_SEVERITY_LOW);
 }
@@ -102,7 +102,7 @@ TEST_F(HealthEthicsBridgeTest, ActionContextInit_NonEmergencyForLowThreat) {
 
 TEST_F(HealthEthicsBridgeTest, ActionContextInit_HandlesNullPointer) {
     // Should not crash
-    health_action_context_init(nullptr, 1, HEALTH_EXCEPTION_RECOVERY_NONE, 0.5f);
+    health_action_context_init(nullptr, 1, HEALTH_RECOVERY_ACTION_NONE, 0.5f);
 }
 
 //=============================================================================
@@ -150,7 +150,7 @@ TEST_F(HealthEthicsBridgeTest, AsimovCheck_ViolatesZerothLawOnMassiveImpact) {
 }
 
 TEST_F(HealthEthicsBridgeTest, AsimovCheck_PassesForProportionalAction) {
-    health_action_context_init(&context, 1, HEALTH_EXCEPTION_RECOVERY_CLEAR_CACHE, 0.3f);
+    health_action_context_init(&context, 1, HEALTH_RECOVERY_ACTION_CLEAR_CACHE, 0.3f);
     context.service_disruption = 0.1f;
     context.data_loss_risk = 0.0f;
 
@@ -257,7 +257,7 @@ TEST_F(HealthEthicsBridgeTest, Proportionality_HandlesNullContext) {
 //=============================================================================
 
 TEST_F(HealthEthicsBridgeTest, FullEvaluation_PermitsGoodAction) {
-    health_action_context_init(&context, 1, HEALTH_EXCEPTION_RECOVERY_REDUCE_LOAD, 0.4f);
+    health_action_context_init(&context, 1, HEALTH_RECOVERY_ACTION_REDUCE_LOAD, 0.4f);
     context.service_disruption = 0.1f;
     context.data_loss_risk = 0.0f;
 
@@ -292,7 +292,7 @@ TEST_F(HealthEthicsBridgeTest, FullEvaluation_FirstLawOverride) {
 }
 
 TEST_F(HealthEthicsBridgeTest, FullEvaluation_GeneratesJustification) {
-    health_action_context_init(&context, 1, HEALTH_EXCEPTION_RECOVERY_CLEAR_CACHE, 0.3f);
+    health_action_context_init(&context, 1, HEALTH_RECOVERY_ACTION_CLEAR_CACHE, 0.3f);
 
     health_ethics_evaluate_action(nullptr, &context, &evaluation);
 
@@ -444,7 +444,7 @@ TEST_F(HealthEthicsBridgeTest, PsychConfidenceThreshold_IncreasesWithStress) {
 
 TEST_F(HealthEthicsBridgeTest, GetActionSeverity_ReturnsCorrectValues) {
     EXPECT_EQ(health_action_get_severity(HEALTH_RECOVERY_ACTION_LOG_ONLY), HEALTH_ACTION_SEVERITY_MINIMAL);
-    EXPECT_EQ(health_action_get_severity(HEALTH_EXCEPTION_RECOVERY_CLEAR_CACHE), HEALTH_ACTION_SEVERITY_LOW);
+    EXPECT_EQ(health_action_get_severity(HEALTH_RECOVERY_ACTION_CLEAR_CACHE), HEALTH_ACTION_SEVERITY_LOW);
     EXPECT_EQ(health_action_get_severity(HEALTH_RECOVERY_ACTION_PARTIAL_RESTART), HEALTH_ACTION_SEVERITY_MODERATE);
     EXPECT_EQ(health_action_get_severity(HEALTH_RECOVERY_ACTION_FULL_RESTART), HEALTH_ACTION_SEVERITY_HIGH);
     EXPECT_EQ(health_action_get_severity(HEALTH_RECOVERY_ACTION_EMERGENCY_SHUTDOWN), HEALTH_ACTION_SEVERITY_EXTREME);
@@ -456,6 +456,6 @@ TEST_F(HealthEthicsBridgeTest, SeverityName_ReturnsReadableStrings) {
 }
 
 TEST_F(HealthEthicsBridgeTest, ActionName_ReturnsReadableStrings) {
-    EXPECT_STREQ(health_recovery_action_name(HEALTH_EXCEPTION_RECOVERY_NONE), "None");
+    EXPECT_STREQ(health_recovery_action_name(HEALTH_RECOVERY_ACTION_NONE), "None");
     EXPECT_STREQ(health_recovery_action_name(HEALTH_RECOVERY_ACTION_EMERGENCY_SHUTDOWN), "Emergency Shutdown");
 }

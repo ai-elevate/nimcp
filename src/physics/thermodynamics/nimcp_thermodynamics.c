@@ -179,9 +179,7 @@ nimcp_error_t nimcp_thermo_init(
      */
 
     /* Guard: validate input */
-    if (!state) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL in nimcp_thermo_init");
 
     /* Initialize with defaults if no config provided */
     nimcp_thermo_config_t effective_config;
@@ -192,10 +190,10 @@ nimcp_error_t nimcp_thermo_init(
     }
 
     /* Validate temperature range */
-    if (effective_config.temperature_k < MIN_VALID_TEMP_K ||
-        effective_config.temperature_k > MAX_VALID_TEMP_K) {
-        return NIMCP_ERROR_OUT_OF_RANGE;
-    }
+    NIMCP_CHECK_THROW(effective_config.temperature_k >= MIN_VALID_TEMP_K &&
+                      effective_config.temperature_k <= MAX_VALID_TEMP_K,
+                      NIMCP_ERROR_OUT_OF_RANGE, "Temperature %.2f K out of valid range [%.0f, %.0f]",
+                      effective_config.temperature_k, MIN_VALID_TEMP_K, MAX_VALID_TEMP_K);
 
     /* Clear state */
     memset(state, 0, sizeof(*state));
@@ -238,18 +236,11 @@ nimcp_error_t nimcp_thermo_reset(nimcp_thermodynamic_state_t* state) {
      * HOW:  Zero counters, restore initial ATP
      */
 
-    if (!state) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (!state->initialized) {
-        return NIMCP_ERROR_NOT_INITIALIZED;
-    }
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL in nimcp_thermo_reset");
+    NIMCP_CHECK_THROW(state->initialized, NIMCP_ERROR_NOT_INITIALIZED, "state not initialized in nimcp_thermo_reset");
 
     nimcp_thermo_internal_t* internal = get_internal_state(state);
-    if (!internal) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(internal, NIMCP_ERROR_INVALID_STATE, "internal state is NULL in nimcp_thermo_reset");
 
     /* Reset cumulative values */
     state->total_energy_consumed = 0.0;
@@ -323,22 +314,12 @@ nimcp_error_t nimcp_thermo_update(
      */
 
     /* Guard: validate inputs */
-    if (!state) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (!state->initialized) {
-        return NIMCP_ERROR_NOT_INITIALIZED;
-    }
-
-    if (dt <= 0.0) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL in nimcp_thermo_update");
+    NIMCP_CHECK_THROW(state->initialized, NIMCP_ERROR_NOT_INITIALIZED, "state not initialized in nimcp_thermo_update");
+    NIMCP_CHECK_THROW(dt > 0.0, NIMCP_ERROR_INVALID_PARAMETER, "dt must be positive, got %.6f", dt);
 
     nimcp_thermo_internal_t* internal = get_internal_state(state);
-    if (!internal) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(internal, NIMCP_ERROR_INVALID_STATE, "internal state is NULL in nimcp_thermo_update");
 
     /* Clamp power to reasonable range */
     power_consumed = clamp_double(power_consumed, 0.0, 1e6);
@@ -459,18 +440,11 @@ nimcp_error_t nimcp_thermo_record_energy(
      * - Housekeeping (protein synthesis, etc.): ~25%
      */
 
-    if (!state) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (!state->initialized) {
-        return NIMCP_ERROR_NOT_INITIALIZED;
-    }
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL in nimcp_thermo_record_energy");
+    NIMCP_CHECK_THROW(state->initialized, NIMCP_ERROR_NOT_INITIALIZED, "state not initialized in nimcp_thermo_record_energy");
 
     nimcp_thermo_internal_t* internal = get_internal_state(state);
-    if (!internal) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(internal, NIMCP_ERROR_INVALID_STATE, "internal state is NULL in nimcp_thermo_record_energy");
 
     /* Update budget categories */
     internal->budget.ion_pumping += ion_pump;
@@ -503,22 +477,12 @@ nimcp_error_t nimcp_thermo_replenish_atp(
      * - Oxidative phosphorylation (aerobic, ~36 ATP/glucose)
      */
 
-    if (!state) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (!state->initialized) {
-        return NIMCP_ERROR_NOT_INITIALIZED;
-    }
-
-    if (atp_moles < 0.0) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL in nimcp_thermo_replenish_atp");
+    NIMCP_CHECK_THROW(state->initialized, NIMCP_ERROR_NOT_INITIALIZED, "state not initialized in nimcp_thermo_replenish_atp");
+    NIMCP_CHECK_THROW(atp_moles >= 0.0, NIMCP_ERROR_INVALID_PARAMETER, "atp_moles must be non-negative, got %.6f", atp_moles);
 
     nimcp_thermo_internal_t* internal = get_internal_state(state);
-    if (!internal) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(internal, NIMCP_ERROR_INVALID_STATE, "internal state is NULL in nimcp_thermo_replenish_atp");
 
     /* Determine effective capacity */
     double effective_capacity = max_capacity;
@@ -549,18 +513,12 @@ nimcp_error_t nimcp_thermo_get_energy_budget(
      * HOW:  Copies internal tracking to output
      */
 
-    if (!state || !budget) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (!state->initialized) {
-        return NIMCP_ERROR_NOT_INITIALIZED;
-    }
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL in nimcp_thermo_get_energy_budget");
+    NIMCP_CHECK_THROW(budget, NIMCP_ERROR_NULL_POINTER, "budget is NULL in nimcp_thermo_get_energy_budget");
+    NIMCP_CHECK_THROW(state->initialized, NIMCP_ERROR_NOT_INITIALIZED, "state not initialized in nimcp_thermo_get_energy_budget");
 
     nimcp_thermo_internal_t* internal = get_internal_state(state);
-    if (!internal) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(internal, NIMCP_ERROR_INVALID_STATE, "internal state is NULL in nimcp_thermo_get_energy_budget");
 
     *budget = internal->budget;
     budget->time_period = state->simulation_time;
@@ -587,18 +545,12 @@ nimcp_error_t nimcp_thermo_compute_entropy_rate(
      * 2. Irreversible processes: sigma_irr >= 0 (Second Law)
      */
 
-    if (!state || !entropy_rate_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (!state->initialized) {
-        return NIMCP_ERROR_NOT_INITIALIZED;
-    }
-
-    /* Validate temperature */
-    if (temperature_k < MIN_VALID_TEMP_K || temperature_k > MAX_VALID_TEMP_K) {
-        return NIMCP_ERROR_OUT_OF_RANGE;
-    }
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL in nimcp_thermo_compute_entropy_rate");
+    NIMCP_CHECK_THROW(entropy_rate_out, NIMCP_ERROR_NULL_POINTER, "entropy_rate_out is NULL in nimcp_thermo_compute_entropy_rate");
+    NIMCP_CHECK_THROW(state->initialized, NIMCP_ERROR_NOT_INITIALIZED, "state not initialized in nimcp_thermo_compute_entropy_rate");
+    NIMCP_CHECK_THROW(temperature_k >= MIN_VALID_TEMP_K && temperature_k <= MAX_VALID_TEMP_K,
+                      NIMCP_ERROR_OUT_OF_RANGE, "Temperature %.2f K out of valid range [%.0f, %.0f]",
+                      temperature_k, MIN_VALID_TEMP_K, MAX_VALID_TEMP_K);
 
     /* Heat flow contribution: Q/T */
     double entropy_heat = state->heat_dissipation / temperature_k;
@@ -641,14 +593,10 @@ nimcp_error_t nimcp_thermo_compute_landauer_cost(
      * E_min = 1.38e-23 * 310 * 0.693 = 2.97e-21 J/bit = 2.97 zJ/bit
      */
 
-    if (!cost_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    /* Validate temperature */
-    if (temperature_k < MIN_VALID_TEMP_K || temperature_k > MAX_VALID_TEMP_K) {
-        return NIMCP_ERROR_OUT_OF_RANGE;
-    }
+    NIMCP_CHECK_THROW(cost_out, NIMCP_ERROR_NULL_POINTER, "cost_out is NULL in nimcp_thermo_compute_landauer_cost");
+    NIMCP_CHECK_THROW(temperature_k >= MIN_VALID_TEMP_K && temperature_k <= MAX_VALID_TEMP_K,
+                      NIMCP_ERROR_OUT_OF_RANGE, "Temperature %.2f K out of valid range [%.0f, %.0f]",
+                      temperature_k, MIN_VALID_TEMP_K, MAX_VALID_TEMP_K);
 
     memset(cost_out, 0, sizeof(*cost_out));
 
@@ -673,13 +621,8 @@ nimcp_error_t nimcp_thermo_get_efficiency(
      * HOW:  Returns pre-computed efficiencies from state
      */
 
-    if (!state) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (!state->initialized) {
-        return NIMCP_ERROR_NOT_INITIALIZED;
-    }
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL in nimcp_thermo_get_efficiency");
+    NIMCP_CHECK_THROW(state->initialized, NIMCP_ERROR_NOT_INITIALIZED, "state not initialized in nimcp_thermo_get_efficiency");
 
     if (computational_eff) {
         *computational_eff = state->computational_efficiency;
@@ -762,13 +705,10 @@ nimcp_error_t nimcp_thermo_estimate_operation_cost(
      * ion channels and enzymatic reactions.
      */
 
-    if (!energy_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (temperature_k < MIN_VALID_TEMP_K || temperature_k > MAX_VALID_TEMP_K) {
-        return NIMCP_ERROR_OUT_OF_RANGE;
-    }
+    NIMCP_CHECK_THROW(energy_out, NIMCP_ERROR_NULL_POINTER, "energy_out is NULL in nimcp_thermo_estimate_operation_cost");
+    NIMCP_CHECK_THROW(temperature_k >= MIN_VALID_TEMP_K && temperature_k <= MAX_VALID_TEMP_K,
+                      NIMCP_ERROR_OUT_OF_RANGE, "Temperature %.2f K out of valid range [%.0f, %.0f]",
+                      temperature_k, MIN_VALID_TEMP_K, MAX_VALID_TEMP_K);
 
     /* Temperature scaling (Q10 ~ 2-3 for biological processes) */
     double temp_factor = pow(2.5, (temperature_k - 310.0) / 10.0);

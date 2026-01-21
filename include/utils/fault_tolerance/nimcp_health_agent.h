@@ -69,10 +69,10 @@ struct brain_immune_system;
 typedef struct brain_immune_system brain_immune_system_t;
 #endif
 
-/** Health monitor forward declaration */
+/** Health monitor forward declaration - must match health_monitor.h */
 #ifndef NIMCP_HEALTH_MONITOR_H
-struct health_monitor;
-typedef struct health_monitor health_monitor_t;
+struct health_monitor_internal;
+typedef struct health_monitor_internal* health_monitor_t;
 #endif
 
 /** Capacity manager forward declaration */

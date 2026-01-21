@@ -181,10 +181,7 @@ static void compute_composite_modulation(substrate_neuromod_effects_t* effects)
 
 int neuromod_substrate_default_config(neuromod_substrate_config_t* config)
 {
-    if (!config) {
-        NIMCP_LOGGING_ERROR("NULL config pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Enable all features by default */
     config->enable_atp_synthesis_modulation = true;
@@ -313,9 +310,7 @@ void neuromod_substrate_bridge_destroy(neuromod_substrate_bridge_t* bridge)
 
 int neuromod_substrate_connect_bio_async(neuromod_substrate_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;
@@ -341,9 +336,7 @@ int neuromod_substrate_connect_bio_async(neuromod_substrate_bridge_t* bridge)
 
 int neuromod_substrate_disconnect_bio_async(neuromod_substrate_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;
@@ -374,12 +367,8 @@ bool neuromod_substrate_is_bio_async_connected(const neuromod_substrate_bridge_t
 int neuromod_substrate_compute_atp_effects(neuromod_substrate_bridge_t* bridge)
 {
     /* Guard: validate inputs */
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bridge->substrate) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->substrate, NIMCP_ERROR_INVALID_STATE, "bridge->substrate is NULL");
     if (!bridge->config.enable_atp_synthesis_modulation) {
         return NIMCP_SUCCESS;
     }
@@ -420,12 +409,8 @@ int neuromod_substrate_compute_atp_effects(neuromod_substrate_bridge_t* bridge)
 int neuromod_substrate_compute_calcium_effects(neuromod_substrate_bridge_t* bridge)
 {
     /* Guard: validate inputs */
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bridge->substrate) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->substrate, NIMCP_ERROR_INVALID_STATE, "bridge->substrate is NULL");
     if (!bridge->config.enable_calcium_release_modulation) {
         return NIMCP_SUCCESS;
     }
@@ -466,12 +451,8 @@ int neuromod_substrate_compute_calcium_effects(neuromod_substrate_bridge_t* brid
 int neuromod_substrate_compute_temperature_effects(neuromod_substrate_bridge_t* bridge)
 {
     /* Guard: validate inputs */
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bridge->substrate) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->substrate, NIMCP_ERROR_INVALID_STATE, "bridge->substrate is NULL");
     if (!bridge->config.enable_temperature_modulation) {
         return NIMCP_SUCCESS;
     }
@@ -523,12 +504,8 @@ int neuromod_substrate_compute_temperature_effects(neuromod_substrate_bridge_t* 
 int neuromod_substrate_compute_ion_effects(neuromod_substrate_bridge_t* bridge)
 {
     /* Guard: validate inputs */
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bridge->substrate) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->substrate, NIMCP_ERROR_INVALID_STATE, "bridge->substrate is NULL");
     if (!bridge->config.enable_ion_reuptake_modulation) {
         return NIMCP_SUCCESS;
     }
@@ -569,23 +546,17 @@ int neuromod_substrate_compute_ion_effects(neuromod_substrate_bridge_t* bridge)
 int neuromod_substrate_update_effects(neuromod_substrate_bridge_t* bridge)
 {
     /* Guard: validate inputs */
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Compute all individual effects */
-    if (neuromod_substrate_compute_atp_effects(bridge) != 0) {
-        return NIMCP_ERROR_OPERATION_FAILED;
-    }
-    if (neuromod_substrate_compute_calcium_effects(bridge) != 0) {
-        return NIMCP_ERROR_OPERATION_FAILED;
-    }
-    if (neuromod_substrate_compute_temperature_effects(bridge) != 0) {
-        return NIMCP_ERROR_OPERATION_FAILED;
-    }
-    if (neuromod_substrate_compute_ion_effects(bridge) != 0) {
-        return NIMCP_ERROR_OPERATION_FAILED;
-    }
+    int result = neuromod_substrate_compute_atp_effects(bridge);
+    NIMCP_CHECK_THROW(result == 0, NIMCP_ERROR_OPERATION_FAILED, "ATP effects computation failed");
+    result = neuromod_substrate_compute_calcium_effects(bridge);
+    NIMCP_CHECK_THROW(result == 0, NIMCP_ERROR_OPERATION_FAILED, "Calcium effects computation failed");
+    result = neuromod_substrate_compute_temperature_effects(bridge);
+    NIMCP_CHECK_THROW(result == 0, NIMCP_ERROR_OPERATION_FAILED, "Temperature effects computation failed");
+    result = neuromod_substrate_compute_ion_effects(bridge);
+    NIMCP_CHECK_THROW(result == 0, NIMCP_ERROR_OPERATION_FAILED, "Ion effects computation failed");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -632,18 +603,13 @@ int neuromod_substrate_record_synthesis(
 )
 {
     /* Guard: validate inputs */
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bridge->substrate) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->substrate, NIMCP_ERROR_INVALID_STATE, "bridge->substrate is NULL");
     if (!bridge->config.enable_metabolic_feedback) {
         return NIMCP_SUCCESS;
     }
-    if (neuromod_type >= NEUROMOD_BRIDGE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(neuromod_type < NEUROMOD_BRIDGE_COUNT,
+                      NIMCP_ERROR_INVALID_PARAM, "neuromod_type %d >= NEUROMOD_BRIDGE_COUNT", neuromod_type);
 
     /* Get current ATP */
     substrate_metabolic_state_t metabolic;
@@ -667,18 +633,13 @@ int neuromod_substrate_record_release(
 )
 {
     /* Guard: validate inputs */
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bridge->substrate) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->substrate, NIMCP_ERROR_INVALID_STATE, "bridge->substrate is NULL");
     if (!bridge->config.enable_metabolic_feedback) {
         return NIMCP_SUCCESS;
     }
-    if (neuromod_type >= NEUROMOD_BRIDGE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(neuromod_type < NEUROMOD_BRIDGE_COUNT,
+                      NIMCP_ERROR_INVALID_PARAM, "neuromod_type %d >= NEUROMOD_BRIDGE_COUNT", neuromod_type);
 
     /* Get current ATP */
     substrate_metabolic_state_t metabolic;
@@ -702,18 +663,13 @@ int neuromod_substrate_record_reuptake(
 )
 {
     /* Guard: validate inputs */
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bridge->substrate) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->substrate, NIMCP_ERROR_INVALID_STATE, "bridge->substrate is NULL");
     if (!bridge->config.enable_metabolic_feedback) {
         return NIMCP_SUCCESS;
     }
-    if (neuromod_type >= NEUROMOD_BRIDGE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(neuromod_type < NEUROMOD_BRIDGE_COUNT,
+                      NIMCP_ERROR_INVALID_PARAM, "neuromod_type %d >= NEUROMOD_BRIDGE_COUNT", neuromod_type);
 
     /* Get current ATP */
     substrate_metabolic_state_t metabolic;
@@ -801,19 +757,15 @@ int neuromod_substrate_get_effects(
 )
 {
     /* Guard: validate inputs */
-    if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (neuromod_type >= NEUROMOD_BRIDGE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(effects, NIMCP_ERROR_NULL_POINTER, "effects is NULL");
+    NIMCP_CHECK_THROW(neuromod_type < NEUROMOD_BRIDGE_COUNT,
+                      NIMCP_ERROR_INVALID_PARAM, "neuromod_type %d >= NEUROMOD_BRIDGE_COUNT", neuromod_type);
 
     const substrate_neuromod_effects_t* src = get_effects_for_type(
         (neuromod_substrate_bridge_t*)bridge, neuromod_type);
 
-    if (!src) {
-        return NIMCP_ERROR_OPERATION_FAILED;
-    }
+    NIMCP_CHECK_THROW(src, NIMCP_ERROR_OPERATION_FAILED, "Failed to get effects for neuromod_type %d", neuromod_type);
 
     *effects = *src;
     return NIMCP_SUCCESS;
@@ -825,9 +777,8 @@ int neuromod_substrate_get_stats(
 )
 {
     /* Guard: validate inputs */
-    if (!bridge || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;

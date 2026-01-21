@@ -1063,9 +1063,8 @@ nimcp_result_t nimcp_optimizer_init_params(
     nimcp_optimizer_context_t* ctx,
     size_t num_params)
 {
-    if (!ctx || num_params == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(num_params > 0, NIMCP_ERROR_INVALID_PARAM, "num_params must be > 0");
 
     /* State will be lazily initialized on first step */
     return NIMCP_SUCCESS;
@@ -1077,10 +1076,10 @@ nimcp_result_t nimcp_optimizer_step(
     const float* gradients,
     size_t count)
 {
-    if (!ctx || !params || !gradients || count == 0) {
-        nimcp_log(LOG_LEVEL_ERROR, "[%s] Invalid parameters for optimizer step", LOG_MODULE);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL for optimizer step");
+    NIMCP_CHECK_THROW(params != NULL, NIMCP_ERROR_INVALID_PARAM, "params is NULL for optimizer step");
+    NIMCP_CHECK_THROW(gradients != NULL, NIMCP_ERROR_INVALID_PARAM, "gradients is NULL for optimizer step");
+    NIMCP_CHECK_THROW(count > 0, NIMCP_ERROR_INVALID_PARAM, "count must be > 0 for optimizer step");
 
     uint64_t start_time = get_time_ns();
 
@@ -1193,9 +1192,10 @@ nimcp_result_t nimcp_optimizer_step_group(
     nimcp_optimizer_context_t* ctx,
     nimcp_param_group_t* group)
 {
-    if (!ctx || !group || !group->params || !group->gradients) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(group != NULL, NIMCP_ERROR_INVALID_PARAM, "group is NULL");
+    NIMCP_CHECK_THROW(group->params != NULL, NIMCP_ERROR_INVALID_PARAM, "group->params is NULL");
+    NIMCP_CHECK_THROW(group->gradients != NULL, NIMCP_ERROR_INVALID_PARAM, "group->gradients is NULL");
 
     /* Temporarily adjust learning rate for this group */
     float saved_lr = ctx->current_lr;
@@ -1323,9 +1323,8 @@ nimcp_result_t nimcp_optimizer_get_stats(
     const nimcp_optimizer_context_t* ctx,
     nimcp_optimizer_stats_t* stats)
 {
-    if (!ctx || !stats) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(stats != NULL, NIMCP_ERROR_INVALID_PARAM, "stats is NULL");
 
     memcpy(stats, &ctx->stats, sizeof(nimcp_optimizer_stats_t));
     return NIMCP_SUCCESS;
@@ -1354,13 +1353,9 @@ const char* nimcp_optimizer_type_name(nimcp_optimizer_type_t type) {
 }
 
 nimcp_result_t nimcp_optimizer_validate_config(const nimcp_optimizer_config_t* config) {
-    if (!config) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (config->type >= NIMCP_OPTIMIZER_TYPE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config != NULL, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
+    NIMCP_CHECK_THROW(config->type < NIMCP_OPTIMIZER_TYPE_COUNT, NIMCP_ERROR_INVALID_PARAM,
+        "invalid optimizer type %d", config->type);
 
     /* Validate type-specific parameters */
     switch (config->type) {
@@ -1492,22 +1487,20 @@ nimcp_result_t nimcp_optimizer_step_tensor(
     nimcp_tensor_t* params,
     const nimcp_tensor_t* gradients)
 {
-    if (!ctx || !params || !gradients) {
-        return NIMCP_ERROR_INVALID;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID, "ctx is NULL for tensor step");
+    NIMCP_CHECK_THROW(params != NULL, NIMCP_ERROR_INVALID, "params tensor is NULL");
+    NIMCP_CHECK_THROW(gradients != NULL, NIMCP_ERROR_INVALID, "gradients tensor is NULL");
 
     /* Get flat data pointers */
     size_t count = nimcp_tensor_numel(params);
     size_t grad_count = nimcp_tensor_numel(gradients);
-    if (count != grad_count) {
-        return NIMCP_ERROR_INVALID;
-    }
+    NIMCP_CHECK_THROW(count == grad_count, NIMCP_ERROR_INVALID,
+        "params/gradients size mismatch: %zu vs %zu", count, grad_count);
 
     float* param_data = (float*)nimcp_tensor_data(params);
     const float* grad_data = (const float*)nimcp_tensor_data((nimcp_tensor_t*)gradients);
-    if (!param_data || !grad_data) {
-        return NIMCP_ERROR_INVALID;
-    }
+    NIMCP_CHECK_THROW(param_data != NULL, NIMCP_ERROR_INVALID, "failed to get params data");
+    NIMCP_CHECK_THROW(grad_data != NULL, NIMCP_ERROR_INVALID, "failed to get gradients data");
 
     return nimcp_optimizer_step(ctx, param_data, grad_data, count);
 }

@@ -772,10 +772,7 @@ nimcp_result_t nimcp_thread_create(nimcp_thread_t* thread, void* (*start_routine
 {
     // Validate required parameters
     // WHY CHECK: thread_create with NULL thread or start_routine is UB
-    if (!thread || !start_routine) {
-        set_thread_error(NIMCP_ERROR_INVALID_PARAM, "Invalid thread parameters");
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(thread && start_routine, NIMCP_ERROR_INVALID_PARAM, "Invalid thread parameters");
 
     // Note: Platform layer doesn't support attributes yet, so we use basic creation
     // TODO: Add attribute support to platform layer
@@ -789,10 +786,7 @@ nimcp_result_t nimcp_thread_create(nimcp_thread_t* thread, void* (*start_routine
     int result = nimcp_platform_thread_create(thread, start_routine, arg);
 
     // Check result and set error if failed
-    if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "Thread creation failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
-    }
+    NIMCP_CHECK_THROW(result == 0, NIMCP_ERROR_SYSTEM, "Thread creation failed: %s", strerror(result));
 
     return NIMCP_SUCCESS;
 }
@@ -825,10 +819,7 @@ nimcp_result_t nimcp_thread_create(nimcp_thread_t* thread, void* (*start_routine
 nimcp_result_t nimcp_thread_join(nimcp_thread_t thread, void** retval)
 {
     int result = nimcp_platform_thread_join(thread, retval);
-    if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "Thread join failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
-    }
+    NIMCP_CHECK_THROW(result == 0, NIMCP_ERROR_SYSTEM, "Thread join failed: %s", strerror(result));
     return NIMCP_SUCCESS;
 }
 
@@ -858,10 +849,7 @@ nimcp_result_t nimcp_thread_join(nimcp_thread_t thread, void** retval)
 nimcp_result_t nimcp_thread_detach(nimcp_thread_t thread)
 {
     int result = nimcp_platform_thread_detach(thread);
-    if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "Thread detach failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
-    }
+    NIMCP_CHECK_THROW(result == 0, NIMCP_ERROR_SYSTEM, "Thread detach failed: %s", strerror(result));
     return NIMCP_SUCCESS;
 }
 
@@ -967,16 +955,10 @@ bool nimcp_thread_equal(nimcp_thread_t t1, nimcp_thread_t t2)
 nimcp_result_t nimcp_once(nimcp_once_t* once_control, void (*init_routine)(void))
 {
     // Validate parameters
-    if (!once_control || !init_routine) {
-        set_thread_error(NIMCP_ERROR_INVALID_PARAM, "Invalid once parameters");
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(once_control && init_routine, NIMCP_ERROR_INVALID_PARAM, "Invalid once parameters");
 
     int result = pthread_once(once_control, init_routine);
-    if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "pthread_once failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
-    }
+    NIMCP_CHECK_THROW(result == 0, NIMCP_ERROR_SYSTEM, "pthread_once failed: %s", strerror(result));
 
     return NIMCP_SUCCESS;
 }
@@ -1006,16 +988,10 @@ nimcp_result_t nimcp_once(nimcp_once_t* once_control, void (*init_routine)(void)
  */
 nimcp_result_t nimcp_rwlock_init(nimcp_rwlock_t* lock)
 {
-    if (!lock) {
-        set_thread_error(NIMCP_ERROR_INVALID_PARAM, "Invalid rwlock pointer");
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(lock, NIMCP_ERROR_INVALID_PARAM, "Invalid rwlock pointer");
 
     int result = pthread_rwlock_init(lock, NULL);
-    if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "RWlock initialization failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
-    }
+    NIMCP_CHECK_THROW(result == 0, NIMCP_ERROR_SYSTEM, "RWlock initialization failed: %s", strerror(result));
 
     return NIMCP_SUCCESS;
 }
@@ -1037,10 +1013,7 @@ nimcp_result_t nimcp_rwlock_destroy(nimcp_rwlock_t* lock)
     NIMCP_CHECK_THROW(lock, NIMCP_ERROR_INVALID_PARAM, "rwlock is NULL");
 
     int result = pthread_rwlock_destroy(lock);
-    if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "RWlock destruction failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
-    }
+    NIMCP_CHECK_THROW(result == 0, NIMCP_ERROR_SYSTEM, "RWlock destruction failed: %s", strerror(result));
 
     return NIMCP_SUCCESS;
 }
@@ -1069,10 +1042,7 @@ nimcp_result_t nimcp_rwlock_rdlock(nimcp_rwlock_t* lock)
     NIMCP_CHECK_THROW(lock, NIMCP_ERROR_INVALID_PARAM, "rwlock is NULL");
 
     int result = pthread_rwlock_rdlock(lock);
-    if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "RWlock rdlock failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
-    }
+    NIMCP_CHECK_THROW(result == 0, NIMCP_ERROR_SYSTEM, "RWlock rdlock failed: %s", strerror(result));
 
     return NIMCP_SUCCESS;
 }
@@ -1101,10 +1071,7 @@ nimcp_result_t nimcp_rwlock_wrlock(nimcp_rwlock_t* lock)
     NIMCP_CHECK_THROW(lock, NIMCP_ERROR_INVALID_PARAM, "rwlock is NULL");
 
     int result = pthread_rwlock_wrlock(lock);
-    if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "RWlock wrlock failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
-    }
+    NIMCP_CHECK_THROW(result == 0, NIMCP_ERROR_SYSTEM, "RWlock wrlock failed: %s", strerror(result));
 
     return NIMCP_SUCCESS;
 }
@@ -1128,10 +1095,7 @@ nimcp_result_t nimcp_rwlock_unlock(nimcp_rwlock_t* lock)
     NIMCP_CHECK_THROW(lock, NIMCP_ERROR_INVALID_PARAM, "rwlock is NULL");
 
     int result = pthread_rwlock_unlock(lock);
-    if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "RWlock unlock failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
-    }
+    NIMCP_CHECK_THROW(result == 0, NIMCP_ERROR_SYSTEM, "RWlock unlock failed: %s", strerror(result));
 
     return NIMCP_SUCCESS;
 }
@@ -1434,16 +1398,10 @@ nimcp_result_t nimcp_rwlock_timedwrlock(nimcp_rwlock_t* lock, uint32_t timeout_m
  */
 nimcp_result_t nimcp_cond_init(nimcp_cond_t* cond)
 {
-    if (!cond) {
-        set_thread_error(NIMCP_ERROR_INVALID_PARAM, "Invalid cond pointer");
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(cond, NIMCP_ERROR_INVALID_PARAM, "Invalid cond pointer");
 
     int result = nimcp_platform_cond_init(cond);
-    if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "Cond initialization failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
-    }
+    NIMCP_CHECK_THROW(result == 0, NIMCP_ERROR_SYSTEM, "Cond initialization failed: %s", strerror(result));
 
     return NIMCP_SUCCESS;
 }
@@ -1490,10 +1448,7 @@ nimcp_result_t nimcp_cond_destroy(nimcp_cond_t* cond)
     NIMCP_CHECK_THROW(cond, NIMCP_ERROR_INVALID_PARAM, "cond is NULL");
 
     int result = nimcp_platform_cond_destroy(cond);
-    if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "Cond destruction failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
-    }
+    NIMCP_CHECK_THROW(result == 0, NIMCP_ERROR_SYSTEM, "Cond destruction failed: %s", strerror(result));
 
     return NIMCP_SUCCESS;
 }
@@ -1543,10 +1498,7 @@ nimcp_result_t nimcp_cond_wait(nimcp_cond_t* cond, nimcp_mutex_t* mutex)
     NIMCP_CHECK_THROW(cond && mutex, NIMCP_ERROR_INVALID_PARAM, "cond or mutex is NULL");
 
     int result = nimcp_platform_cond_wait(cond, mutex);
-    if (result != 0) {
-        set_thread_error(NIMCP_ERROR_SYSTEM, "Cond wait failed: %s", strerror(result));
-        return NIMCP_ERROR_SYSTEM;
-    }
+    NIMCP_CHECK_THROW(result == 0, NIMCP_ERROR_SYSTEM, "Cond wait failed: %s", strerror(result));
 
     return NIMCP_SUCCESS;
 }

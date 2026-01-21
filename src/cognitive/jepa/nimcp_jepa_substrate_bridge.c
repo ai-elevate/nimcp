@@ -53,7 +53,7 @@ void jepa_substrate_bridge_destroy(jepa_substrate_bridge_t* bridge) {
 }
 
 int jepa_substrate_bridge_update(jepa_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->substrate) return -1;
+    NIMCP_CHECK_THROW(bridge && bridge->substrate, -1, "bridge or substrate is NULL");
     substrate_metabolic_state_t metabolic;
     if (substrate_get_metabolic_state(bridge->substrate, &metabolic) != 0) return -1;
     float atp = metabolic.atp_level, metabolic_cap = metabolic.metabolic_capacity, min_cap = bridge->config.min_capacity;
@@ -74,13 +74,13 @@ int jepa_substrate_bridge_update(jepa_substrate_bridge_t* bridge) {
 }
 
 int jepa_substrate_bridge_get_effects(const jepa_substrate_bridge_t* bridge, jepa_substrate_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    NIMCP_CHECK_THROW(bridge && effects, -1, "bridge or effects is NULL");
     *effects = bridge->effects;
     return 0;
 }
 
 int jepa_substrate_bridge_apply_effects(jepa_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
     if (!bridge->bio_async_connected || !bridge->ctx) return 0;
 
     substrate_metabolic_state_t metabolic;
@@ -124,7 +124,7 @@ int jepa_substrate_bridge_apply_effects(jepa_substrate_bridge_t* bridge) {
 }
 
 int jepa_substrate_bridge_register_bio_async(jepa_substrate_bridge_t* bridge, bio_router_t* router) {
-    if (!bridge) return -1;
+    NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
     if (bridge->bio_async_connected && bridge->ctx) {
         bio_router_unregister_module(bridge->ctx);
         bridge->ctx = NULL;

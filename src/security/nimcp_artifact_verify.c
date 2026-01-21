@@ -343,10 +343,11 @@ nimcp_error_t nimcp_artifact_verify_signature(
     const char* public_key_path,
     nimcp_signature_algorithm_t algo)
 {
-    if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC ||
-        !filepath || !signature_path || !public_key_path) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(sc && sc->magic == NIMCP_SUPPLY_CHAIN_MAGIC,
+                      NIMCP_ERROR_INVALID_PARAM, "invalid supply chain handle");
+    NIMCP_CHECK_THROW(filepath, NIMCP_ERROR_INVALID_PARAM, "filepath is NULL");
+    NIMCP_CHECK_THROW(signature_path, NIMCP_ERROR_INVALID_PARAM, "signature_path is NULL");
+    NIMCP_CHECK_THROW(public_key_path, NIMCP_ERROR_INVALID_PARAM, "public_key_path is NULL");
 
     nimcp_error_t err;
 
@@ -407,9 +408,9 @@ nimcp_error_t nimcp_artifact_verify_full(
     nimcp_signature_algorithm_t sig_algo,
     nimcp_artifact_verification_t* result)
 {
-    if (!sc || !filepath || !result) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(sc, NIMCP_ERROR_INVALID_PARAM, "supply chain is NULL");
+    NIMCP_CHECK_THROW(filepath, NIMCP_ERROR_INVALID_PARAM, "filepath is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
 
     /* Initialize result */
     memset(result, 0, sizeof(nimcp_artifact_verification_t));
@@ -456,10 +457,10 @@ nimcp_error_t nimcp_supply_chain_add_trusted_source(
     const char* public_key_path,
     nimcp_signature_algorithm_t sig_algo)
 {
-    if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC ||
-        !source_url || !public_key_path) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(sc && sc->magic == NIMCP_SUPPLY_CHAIN_MAGIC,
+                      NIMCP_ERROR_INVALID_PARAM, "invalid supply chain handle");
+    NIMCP_CHECK_THROW(source_url, NIMCP_ERROR_INVALID_PARAM, "source_url is NULL");
+    NIMCP_CHECK_THROW(public_key_path, NIMCP_ERROR_INVALID_PARAM, "public_key_path is NULL");
 
     pthread_mutex_lock(&sc->lock);
 
@@ -495,9 +496,9 @@ nimcp_error_t nimcp_supply_chain_add_trusted_source(
 
 nimcp_error_t nimcp_supply_chain_revoke_source(nimcp_supply_chain_t sc,
                                                  const char* source_url) {
-    if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !source_url) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(sc && sc->magic == NIMCP_SUPPLY_CHAIN_MAGIC,
+                      NIMCP_ERROR_INVALID_PARAM, "invalid supply chain handle");
+    NIMCP_CHECK_THROW(source_url, NIMCP_ERROR_INVALID_PARAM, "source_url is NULL");
 
     pthread_mutex_lock(&sc->lock);
 
@@ -520,9 +521,10 @@ nimcp_error_t nimcp_supply_chain_revoke_source(nimcp_supply_chain_t sc,
 nimcp_error_t nimcp_supply_chain_list_sources(nimcp_supply_chain_t sc,
                                                 nimcp_trusted_source_t** sources,
                                                 size_t* count) {
-    if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !sources || !count) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(sc && sc->magic == NIMCP_SUPPLY_CHAIN_MAGIC,
+                      NIMCP_ERROR_INVALID_PARAM, "invalid supply chain handle");
+    NIMCP_CHECK_THROW(sources, NIMCP_ERROR_INVALID_PARAM, "sources is NULL");
+    NIMCP_CHECK_THROW(count, NIMCP_ERROR_INVALID_PARAM, "count is NULL");
 
     pthread_mutex_lock(&sc->lock);
 
@@ -574,9 +576,9 @@ bool nimcp_supply_chain_is_source_trusted(nimcp_supply_chain_t sc,
 nimcp_error_t nimcp_cert_verify_chain(nimcp_supply_chain_t sc,
                                        const char* cert_path,
                                        const char* ca_path) {
-    if (!sc || !cert_path || !ca_path) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(sc, NIMCP_ERROR_INVALID_PARAM, "supply chain is NULL");
+    NIMCP_CHECK_THROW(cert_path, NIMCP_ERROR_INVALID_PARAM, "cert_path is NULL");
+    NIMCP_CHECK_THROW(ca_path, NIMCP_ERROR_INVALID_PARAM, "ca_path is NULL");
 
     LOG_INFO("Certificate chain verification for %s", cert_path);
     return NIMCP_OK;
@@ -585,9 +587,9 @@ nimcp_error_t nimcp_cert_verify_chain(nimcp_supply_chain_t sc,
 nimcp_error_t nimcp_timestamp_verify(nimcp_supply_chain_t sc,
                                       const char* timestamp_path,
                                       const char* artifact_path) {
-    if (!sc || !timestamp_path || !artifact_path) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(sc, NIMCP_ERROR_INVALID_PARAM, "supply chain is NULL");
+    NIMCP_CHECK_THROW(timestamp_path, NIMCP_ERROR_INVALID_PARAM, "timestamp_path is NULL");
+    NIMCP_CHECK_THROW(artifact_path, NIMCP_ERROR_INVALID_PARAM, "artifact_path is NULL");
 
     LOG_INFO("Timestamp verification for %s", artifact_path);
     return NIMCP_OK;
@@ -597,9 +599,8 @@ nimcp_error_t nimcp_cert_check_revocation(nimcp_supply_chain_t sc,
                                             const char* cert_path,
                                             const char* crl_path,
                                             const char* ocsp_url) {
-    if (!sc || !cert_path) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(sc, NIMCP_ERROR_INVALID_PARAM, "supply chain is NULL");
+    NIMCP_CHECK_THROW(cert_path, NIMCP_ERROR_INVALID_PARAM, "cert_path is NULL");
 
     LOG_INFO("Certificate revocation check for %s", cert_path);
     return NIMCP_OK;
@@ -611,9 +612,9 @@ nimcp_error_t nimcp_cert_check_revocation(nimcp_supply_chain_t sc,
 
 nimcp_error_t nimcp_supply_chain_scan_directory(nimcp_supply_chain_t sc,
                                                   const char* directory) {
-    if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !directory) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(sc && sc->magic == NIMCP_SUPPLY_CHAIN_MAGIC,
+                      NIMCP_ERROR_INVALID_PARAM, "invalid supply chain handle");
+    NIMCP_CHECK_THROW(directory, NIMCP_ERROR_INVALID_PARAM, "directory is NULL");
 
     LOG_INFO("Scanning directory: %s", directory);
 
@@ -625,9 +626,10 @@ nimcp_error_t nimcp_supply_chain_scan_directory(nimcp_supply_chain_t sc,
 nimcp_error_t nimcp_supply_chain_export_report(nimcp_supply_chain_t sc,
                                                  const char* format,
                                                  char** output) {
-    if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !format || !output) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(sc && sc->magic == NIMCP_SUPPLY_CHAIN_MAGIC,
+                      NIMCP_ERROR_INVALID_PARAM, "invalid supply chain handle");
+    NIMCP_CHECK_THROW(format, NIMCP_ERROR_INVALID_PARAM, "format is NULL");
+    NIMCP_CHECK_THROW(output, NIMCP_ERROR_INVALID_PARAM, "output is NULL");
 
     LOG_INFO("Exporting verification report (format=%s)", format);
 

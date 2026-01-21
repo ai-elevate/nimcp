@@ -399,21 +399,12 @@ int visual_jepa_bridge_encode(
     uint32_t feature_dim,
     jepa_latent_t* latent) {
 
-    if (!bridge || !features || !latent) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (feature_dim != bridge->encoder->input_dim) {
-        NIMCP_LOGGING_ERROR(LOG_MODULE " Feature dim mismatch: %u vs %u",
-                          feature_dim, bridge->encoder->input_dim);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (latent->latent_dim != bridge->encoder->output_dim) {
-        NIMCP_LOGGING_ERROR(LOG_MODULE " Latent dim mismatch: %u vs %u",
-                          latent->latent_dim, bridge->encoder->output_dim);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge && features && latent, NIMCP_ERROR_NULL_POINTER,
+        "NULL parameter in visual_jepa_bridge_encode");
+    NIMCP_CHECK_THROW(feature_dim == bridge->encoder->input_dim, NIMCP_ERROR_INVALID_PARAM,
+        "Feature dim mismatch in visual_jepa_bridge_encode");
+    NIMCP_CHECK_THROW(latent->latent_dim == bridge->encoder->output_dim, NIMCP_ERROR_INVALID_PARAM,
+        "Latent dim mismatch in visual_jepa_bridge_encode");
 
     /* Select encoder (target for inference in training mode) */
     const visual_jepa_encoder_t* enc = bridge->encoder;
@@ -443,14 +434,10 @@ int visual_jepa_bridge_encode_patches(
     jepa_latent_t** patch_latents,
     uint32_t* num_patches) {
 
-    if (!bridge || !image || !patch_latents || !num_patches) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    /* Validate dimensions */
-    if (width == 0 || height == 0 || channels == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge && image && patch_latents && num_patches, NIMCP_ERROR_NULL_POINTER,
+        "NULL parameter in visual_jepa_bridge_encode_patches");
+    NIMCP_CHECK_THROW(width > 0 && height > 0 && channels > 0, NIMCP_ERROR_INVALID_PARAM,
+        "Invalid dimensions in visual_jepa_bridge_encode_patches");
 
     const visual_jepa_patch_config_t* pc = &bridge->config.patch;
     uint32_t total_patches = pc->num_patches_x * pc->num_patches_y;
@@ -525,9 +512,8 @@ int visual_jepa_bridge_encode_attended(
     uint32_t height,
     jepa_latent_t* latent) {
 
-    if (!bridge || !features || !attention || !latent) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && features && attention && latent, NIMCP_ERROR_NULL_POINTER,
+        "NULL parameter in visual_jepa_bridge_encode_attended");
 
     /* Compute attention-weighted average of features */
     float* weighted_features = nimcp_malloc(feature_dim * sizeof(float));
@@ -581,9 +567,8 @@ int visual_jepa_bridge_train_step(
     uint32_t channels,
     float* loss) {
 
-    if (!bridge || !features) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && features, NIMCP_ERROR_NULL_POINTER,
+        "NULL parameter in visual_jepa_bridge_train_step");
 
     const visual_jepa_patch_config_t* pc = &bridge->config.patch;
     uint32_t num_patches = pc->num_patches_x * pc->num_patches_y;
@@ -728,9 +713,8 @@ int visual_jepa_bridge_predict_masked(
     jepa_latent_t** predictions,
     uint32_t* num_predictions) {
 
-    if (!bridge || !context_latents || !mask || !predictions || !num_predictions) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && context_latents && mask && predictions && num_predictions,
+        NIMCP_ERROR_NULL_POINTER, "NULL parameter in visual_jepa_bridge_predict_masked");
 
     uint32_t latent_dim = bridge->config.encoder.output_dim;
 

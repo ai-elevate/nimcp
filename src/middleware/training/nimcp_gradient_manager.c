@@ -243,13 +243,11 @@ nimcp_result_t nimcp_gradient_accumulate(
     const float* gradients,
     size_t num_gradients
 ) {
-    if (!ctx || !gradients || num_gradients == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!ctx->config.use_accumulation) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(gradients != NULL, NIMCP_ERROR_INVALID_PARAM, "gradients is NULL");
+    NIMCP_CHECK_THROW(num_gradients > 0, NIMCP_ERROR_INVALID_PARAM, "num_gradients must be > 0");
+    NIMCP_CHECK_THROW(ctx->config.use_accumulation, NIMCP_ERROR_INVALID_PARAM,
+        "accumulation not enabled in config");
 
     /* P0 fix: Thread-safe accum buffer reallocation */
     if (!ctx->accum_initialized || ctx->accum_buffer_size < num_gradients) {
@@ -321,17 +319,15 @@ nimcp_result_t nimcp_gradient_get_accumulated(
     float* output,
     size_t num_gradients
 ) {
-    if (!ctx || !output || num_gradients == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!ctx->config.use_accumulation) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!ctx->accum_initialized || ctx->accum_buffer_size < num_gradients) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(output != NULL, NIMCP_ERROR_INVALID_PARAM, "output is NULL");
+    NIMCP_CHECK_THROW(num_gradients > 0, NIMCP_ERROR_INVALID_PARAM, "num_gradients must be > 0");
+    NIMCP_CHECK_THROW(ctx->config.use_accumulation, NIMCP_ERROR_INVALID_PARAM,
+        "accumulation not enabled in config");
+    NIMCP_CHECK_THROW(ctx->accum_initialized, NIMCP_ERROR_INVALID_PARAM,
+        "accumulation buffer not initialized");
+    NIMCP_CHECK_THROW(ctx->accum_buffer_size >= num_gradients, NIMCP_ERROR_INVALID_PARAM,
+        "accum buffer size %zu < requested %zu", ctx->accum_buffer_size, num_gradients);
 
     /* Copy accumulated gradients */
     memcpy(output, ctx->accum_buffer, num_gradients * sizeof(float));
@@ -466,13 +462,11 @@ nimcp_result_t nimcp_gradient_set_scale(
     nimcp_gradient_manager_ctx_t* ctx,
     float scale
 ) {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (scale < NIMCP_GRAD_MIN_SCALE || scale > NIMCP_GRAD_MAX_SCALE) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(scale >= NIMCP_GRAD_MIN_SCALE, NIMCP_ERROR_INVALID_PARAM,
+        "scale %f < min %f", scale, NIMCP_GRAD_MIN_SCALE);
+    NIMCP_CHECK_THROW(scale <= NIMCP_GRAD_MAX_SCALE, NIMCP_ERROR_INVALID_PARAM,
+        "scale %f > max %f", scale, NIMCP_GRAD_MAX_SCALE);
 
     ctx->current_scale = scale;
     ctx->stats.current_scale = scale;
@@ -648,9 +642,8 @@ nimcp_result_t nimcp_gradient_manager_get_stats(
     const nimcp_gradient_manager_ctx_t* ctx,
     nimcp_grad_stats_t* stats
 ) {
-    if (!ctx || !stats) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(stats != NULL, NIMCP_ERROR_INVALID_PARAM, "stats is NULL");
 
     memcpy(stats, &ctx->stats, sizeof(nimcp_grad_stats_t));
 
@@ -720,9 +713,7 @@ const char* nimcp_grad_health_name(nimcp_grad_health_t health) {
 nimcp_result_t nimcp_gradient_manager_validate_config(
     const nimcp_gradient_manager_config_t* config
 ) {
-    if (!config) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config != NULL, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     /* Validate accumulation config */
     if (config->use_accumulation) {
@@ -823,18 +814,13 @@ nimcp_result_t nimcp_gradient_accumulate_tensor(
     nimcp_gradient_manager_ctx_t* ctx,
     const nimcp_tensor_t* grad_tensor
 ) {
-    if (!ctx || !grad_tensor) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!ctx->config.use_accumulation) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(grad_tensor != NULL, NIMCP_ERROR_INVALID_PARAM, "grad_tensor is NULL");
+    NIMCP_CHECK_THROW(ctx->config.use_accumulation, NIMCP_ERROR_INVALID_PARAM,
+        "accumulation not enabled in config");
 
     size_t num_gradients = nimcp_tensor_numel(grad_tensor);
-    if (num_gradients == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(num_gradients > 0, NIMCP_ERROR_INVALID_PARAM, "tensor has 0 elements");
 
     /* P0 fix: Thread-safe accum buffer reallocation */
     if (!ctx->accum_initialized || ctx->accum_buffer_size < num_gradients) {
@@ -901,9 +887,8 @@ nimcp_result_t nimcp_gradient_scale_tensor(
     nimcp_gradient_manager_ctx_t* ctx,
     nimcp_tensor_t* grad_tensor
 ) {
-    if (!ctx || !grad_tensor) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(grad_tensor != NULL, NIMCP_ERROR_INVALID_PARAM, "grad_tensor is NULL");
 
     if (!ctx->config.use_scaling || ctx->config.scaling.strategy == NIMCP_GRAD_SCALE_NONE) {
         return NIMCP_SUCCESS;
@@ -924,9 +909,8 @@ nimcp_result_t nimcp_gradient_unscale_tensor(
     nimcp_gradient_manager_ctx_t* ctx,
     nimcp_tensor_t* grad_tensor
 ) {
-    if (!ctx || !grad_tensor) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(grad_tensor != NULL, NIMCP_ERROR_INVALID_PARAM, "grad_tensor is NULL");
 
     if (!ctx->config.use_scaling || ctx->config.scaling.strategy == NIMCP_GRAD_SCALE_NONE) {
         return NIMCP_SUCCESS;

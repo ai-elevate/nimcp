@@ -226,17 +226,9 @@ nimcp_error_t gt_gw_bid(
     uint32_t content_dim,
     float bid
 ) {
-    if (!ctx || !content || content_dim == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!ctx->active) {
-        return NIMCP_GT_ERROR_GAME_OVER;
-    }
-
-    if (bid < 0.0f) {
-        return NIMCP_GT_ERROR_INVALID_BID;
-    }
+    NIMCP_CHECK_THROW(ctx && content && content_dim > 0, NIMCP_ERROR_INVALID_PARAM, "ctx, content is NULL or content_dim is 0");
+    NIMCP_CHECK_THROW(ctx->active, NIMCP_GT_ERROR_GAME_OVER, "ctx is not active");
+    NIMCP_CHECK_THROW(bid >= 0.0f, NIMCP_GT_ERROR_INVALID_BID, "bid is negative");
 
     // Find or add module state
     int module_idx = find_module_state(ctx, module);
@@ -296,13 +288,8 @@ nimcp_error_t gt_gw_resolve(
     gt_gw_auction_ctx_t ctx,
     gt_gw_round_result_t* result
 ) {
-    if (!ctx || !result) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!ctx->active) {
-        return NIMCP_GT_ERROR_GAME_OVER;
-    }
+    NIMCP_CHECK_THROW(ctx && result, NIMCP_ERROR_INVALID_PARAM, "ctx or result is NULL");
+    NIMCP_CHECK_THROW(ctx->active, NIMCP_GT_ERROR_GAME_OVER, "ctx is not active");
 
     memset(result, 0, sizeof(gt_gw_round_result_t));
 
@@ -446,9 +433,7 @@ nimcp_error_t gt_gw_get_module_state(
     cognitive_module_t module,
     gt_gw_module_state_t* state
 ) {
-    if (!ctx || !state) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx && state, NIMCP_ERROR_INVALID_PARAM, "ctx or state is NULL");
 
     int idx = find_module_state((gt_gw_auction_ctx_t)ctx, module);
     if (idx < 0) {
@@ -475,9 +460,7 @@ nimcp_error_t gt_gw_get_stats(
     const gt_gw_auction_ctx_t ctx,
     nimcp_game_stats_t* stats
 ) {
-    if (!ctx || !stats) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx && stats, NIMCP_ERROR_INVALID_PARAM, "ctx or stats is NULL");
 
     memset(stats, 0, sizeof(nimcp_game_stats_t));
 

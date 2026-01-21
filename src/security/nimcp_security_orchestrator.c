@@ -355,9 +355,7 @@ static void update_bridge_threat_from_event(
 
 int security_orch_default_config(security_orch_config_t* config)
 {
-    if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(*config));
 
@@ -449,7 +447,7 @@ void security_orch_destroy(security_orchestrator_t orch)
 
 int security_orch_reset(security_orchestrator_t orch)
 {
-    if (!orch) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
 
     ORCH_LOCK(orch);
 
@@ -494,23 +492,21 @@ int security_orch_register_bridge(
     uint32_t* bridge_id_out
 )
 {
-    if (!orch) return NIMCP_ERROR_NULL_POINTER;
-    if (bridge_type <= SEC_BRIDGE_UNKNOWN || bridge_type >= SEC_BRIDGE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
+    NIMCP_CHECK_THROW(bridge_type > SEC_BRIDGE_UNKNOWN && bridge_type < SEC_BRIDGE_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid bridge_type");
 
     ORCH_LOCK(orch);
 
     /* Check if bridge type already registered */
     if (find_bridge_by_type(orch, bridge_type) >= 0) {
         ORCH_UNLOCK(orch);
-        return NIMCP_ERROR_ALREADY_EXISTS;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_ALREADY_EXISTS, "bridge type already registered");
     }
 
     /* Check capacity */
     if (orch->num_bridges >= orch->config.max_bridges) {
         ORCH_UNLOCK(orch);
-        return NIMCP_ERROR_OUT_OF_RANGE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_OUT_OF_RANGE, "max bridges exceeded");
     }
 
     /* Add bridge */
@@ -565,14 +561,14 @@ int security_orch_unregister_bridge(
     uint32_t bridge_id
 )
 {
-    if (!orch) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
 
     ORCH_LOCK(orch);
 
     int idx = find_bridge_index(orch, bridge_id);
     if (idx < 0) {
         ORCH_UNLOCK(orch);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "bridge not found");
     }
 
     security_bridge_info_t* bridge = &orch->bridges[idx];
@@ -622,14 +618,15 @@ int security_orch_get_bridge_info(
     security_bridge_info_t* info
 )
 {
-    if (!orch || !info) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
+    NIMCP_CHECK_THROW(info, NIMCP_ERROR_NULL_POINTER, "info is NULL");
 
     ORCH_LOCK(orch);
 
     int idx = find_bridge_index(orch, bridge_id);
     if (idx < 0) {
         ORCH_UNLOCK(orch);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "bridge not found");
     }
 
     memcpy(info, &orch->bridges[idx], sizeof(*info));
@@ -645,14 +642,15 @@ int security_orch_get_bridge_by_type(
     void** bridge_handle_out
 )
 {
-    if (!orch || !bridge_handle_out) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
+    NIMCP_CHECK_THROW(bridge_handle_out, NIMCP_ERROR_NULL_POINTER, "bridge_handle_out is NULL");
 
     ORCH_LOCK(orch);
 
     int idx = find_bridge_by_type(orch, bridge_type);
     if (idx < 0) {
         ORCH_UNLOCK(orch);
-        return NIMCP_ERROR_NOT_FOUND;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "bridge type not found");
     }
 
     *bridge_handle_out = orch->bridges[idx].bridge_handle;
@@ -670,8 +668,9 @@ int security_orch_subscribe(
     void* user_data
 )
 {
-    if (!orch || !callback) return NIMCP_ERROR_NULL_POINTER;
-    if (event_type >= SEC_EVENT_TYPE_COUNT) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
+    NIMCP_CHECK_THROW(callback, NIMCP_ERROR_NULL_POINTER, "callback is NULL");
+    NIMCP_CHECK_THROW(event_type < SEC_EVENT_TYPE_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid event_type");
 
     ORCH_LOCK(orch);
 
@@ -697,7 +696,7 @@ int security_orch_subscribe(
     if (slot < 0) {
         if (orch->num_subscriptions >= orch->config.max_subscriptions) {
             ORCH_UNLOCK(orch);
-            return NIMCP_ERROR_OUT_OF_RANGE;
+            NIMCP_CHECK_THROW(false, NIMCP_ERROR_OUT_OF_RANGE, "max subscriptions exceeded");
         }
         slot = (int)orch->num_subscriptions++;
     }
@@ -725,8 +724,9 @@ int security_orch_subscribe_to_bridge(
     void* user_data
 )
 {
-    if (!orch || !callback) return NIMCP_ERROR_NULL_POINTER;
-    if (source_type >= SEC_BRIDGE_COUNT) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
+    NIMCP_CHECK_THROW(callback, NIMCP_ERROR_NULL_POINTER, "callback is NULL");
+    NIMCP_CHECK_THROW(source_type < SEC_BRIDGE_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid source_type");
 
     ORCH_LOCK(orch);
 
@@ -742,7 +742,7 @@ int security_orch_subscribe_to_bridge(
     if (slot < 0) {
         if (orch->num_subscriptions >= orch->config.max_subscriptions) {
             ORCH_UNLOCK(orch);
-            return NIMCP_ERROR_OUT_OF_RANGE;
+            NIMCP_CHECK_THROW(false, NIMCP_ERROR_OUT_OF_RANGE, "max subscriptions exceeded");
         }
         slot = (int)orch->num_subscriptions++;
     }
@@ -768,7 +768,7 @@ int security_orch_unsubscribe(
     security_event_type_t event_type
 )
 {
-    if (!orch) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
 
     ORCH_LOCK(orch);
 
@@ -785,7 +785,8 @@ int security_orch_unsubscribe(
     }
 
     ORCH_UNLOCK(orch);
-    return NIMCP_ERROR_NOT_FOUND;
+    NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "subscription not found");
+    return 0; /* unreachable */
 }
 
 int security_orch_publish(
@@ -794,7 +795,8 @@ int security_orch_publish(
     const security_event_data_t* event
 )
 {
-    if (!orch || !event) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
+    NIMCP_CHECK_THROW(event, NIMCP_ERROR_NULL_POINTER, "event is NULL");
 
     ORCH_LOCK(orch);
 
@@ -828,8 +830,9 @@ int security_orch_publish_async(
     const security_event_data_t* event
 )
 {
-    if (!orch || !event) return NIMCP_ERROR_NULL_POINTER;
-    if (!orch->config.enable_async) return NIMCP_ERROR_NOT_INITIALIZED;
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
+    NIMCP_CHECK_THROW(event, NIMCP_ERROR_NULL_POINTER, "event is NULL");
+    NIMCP_CHECK_THROW(orch->config.enable_async, NIMCP_ERROR_NOT_INITIALIZED, "async not enabled");
 
     ORCH_LOCK(orch);
 
@@ -837,7 +840,7 @@ int security_orch_publish_async(
     if (orch->queue_count >= orch->config.event_queue_size) {
         orch->stats.events_dropped++;
         ORCH_UNLOCK(orch);
-        return NIMCP_ERROR_BUFFER_OVERFLOW;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_BUFFER_OVERFLOW, "event queue full");
     }
 
     /* Add to queue */
@@ -867,8 +870,8 @@ int security_orch_report_threat(
     const char* description
 )
 {
-    if (!orch) return NIMCP_ERROR_NULL_POINTER;
-    if (threat_level < 0.0f || threat_level > 1.0f) return NIMCP_ERROR_OUT_OF_RANGE;
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
+    NIMCP_CHECK_THROW(threat_level >= 0.0f && threat_level <= 1.0f, NIMCP_ERROR_OUT_OF_RANGE, "threat_level out of range");
 
     security_event_data_t event = {
         .event_type = SEC_EVENT_THREAT_DETECTED,
@@ -901,7 +904,8 @@ int security_orch_get_threat_assessment(
     security_threat_assessment_t* assessment
 )
 {
-    if (!orch || !assessment) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
+    NIMCP_CHECK_THROW(assessment, NIMCP_ERROR_NULL_POINTER, "assessment is NULL");
 
     ORCH_LOCK(orch);
 
@@ -965,7 +969,8 @@ int security_orch_get_threat_level(
     float* threat_level
 )
 {
-    if (!orch || !threat_level) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
+    NIMCP_CHECK_THROW(threat_level, NIMCP_ERROR_NULL_POINTER, "threat_level is NULL");
 
     ORCH_LOCK(orch);
     *threat_level = orch->unified_threat_level;
@@ -976,7 +981,7 @@ int security_orch_get_threat_level(
 
 int security_orch_update_threat_decay(security_orchestrator_t orch)
 {
-    if (!orch) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
 
     ORCH_LOCK(orch);
     apply_threat_decay(orch);
@@ -987,7 +992,7 @@ int security_orch_update_threat_decay(security_orchestrator_t orch)
 
 int security_orch_clear_threats(security_orchestrator_t orch)
 {
-    if (!orch) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
 
     ORCH_LOCK(orch);
 
@@ -1015,7 +1020,7 @@ int security_orch_trigger_lockdown(
     const char* reason
 )
 {
-    if (!orch) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
 
     ORCH_LOCK(orch);
 
@@ -1057,7 +1062,7 @@ int security_orch_trigger_lockdown(
 
 int security_orch_release_lockdown(security_orchestrator_t orch)
 {
-    if (!orch) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
 
     ORCH_LOCK(orch);
 
@@ -1096,7 +1101,8 @@ int security_orch_is_locked_down(
     bool* is_locked
 )
 {
-    if (!orch || !is_locked) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
+    NIMCP_CHECK_THROW(is_locked, NIMCP_ERROR_NULL_POINTER, "is_locked is NULL");
 
     ORCH_LOCK(orch);
     *is_locked = orch->is_locked_down;
@@ -1111,7 +1117,7 @@ int security_orch_broadcast_response(
     const security_event_data_t* data
 )
 {
-    if (!orch) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
 
     ORCH_LOCK(orch);
 
@@ -1141,7 +1147,8 @@ int security_orch_get_state(
     security_orch_state_t* state
 )
 {
-    if (!orch || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL");
 
     ORCH_LOCK(orch);
     *state = orch->state;
@@ -1155,7 +1162,8 @@ int security_orch_get_stats(
     security_orch_stats_t* stats
 )
 {
-    if (!orch || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     ORCH_LOCK(orch);
 
@@ -1176,7 +1184,7 @@ int security_orch_get_stats(
 
 int security_orch_reset_stats(security_orchestrator_t orch)
 {
-    if (!orch) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
 
     ORCH_LOCK(orch);
 
@@ -1203,7 +1211,7 @@ int security_orch_connect_immune(
     void* immune_system
 )
 {
-    if (!orch) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
 
     ORCH_LOCK(orch);
     orch->immune_system = immune_system;
@@ -1217,7 +1225,7 @@ int security_orch_connect_cognitive_hub(
     void* cognitive_hub
 )
 {
-    if (!orch) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
 
     ORCH_LOCK(orch);
     orch->cognitive_hub = cognitive_hub;
@@ -1228,7 +1236,7 @@ int security_orch_connect_cognitive_hub(
 
 int security_orch_connect_bio_async(security_orchestrator_t orch)
 {
-    if (!orch) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_SECURITY,
@@ -1252,7 +1260,7 @@ int security_orch_connect_bio_async(security_orchestrator_t orch)
 
 int security_orch_disconnect_bio_async(security_orchestrator_t orch)
 {
-    if (!orch) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orch, NIMCP_ERROR_NULL_POINTER, "orch is NULL");
 
     ORCH_LOCK(orch);
     orch->bio_async_connected = false;

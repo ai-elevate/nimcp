@@ -213,13 +213,8 @@ nimcp_error_t gt_hemi_process_bargaining(
     uint32_t output_size,
     gt_hemi_outcome_t* outcome
 ) {
-    if (!ctx || !input || !output || !outcome) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!ctx->active) {
-        return NIMCP_GT_ERROR_TIMEOUT;
-    }
+    NIMCP_CHECK_THROW(ctx && input && output && outcome, NIMCP_ERROR_INVALID_PARAM, "ctx, input, output, or outcome is NULL");
+    NIMCP_CHECK_THROW(ctx->active, NIMCP_GT_ERROR_TIMEOUT, "ctx is not active");
 
     // First negotiate resource allocation
     gt_hemi_outcome_t allocation_outcome;
@@ -245,9 +240,7 @@ nimcp_error_t gt_hemi_negotiate_resources(
     float total_resources,
     gt_hemi_outcome_t* outcome
 ) {
-    if (!ctx || !outcome || total_resources <= 0.0f) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx && outcome && total_resources > 0.0f, NIMCP_ERROR_INVALID_PARAM, "ctx, outcome is NULL or total_resources <= 0");
 
     memset(outcome, 0, sizeof(gt_hemi_outcome_t));
 
@@ -306,9 +299,7 @@ nimcp_error_t gt_hemi_compute_credit(
     uint32_t output_size,
     gt_hemi_credit_t* credit
 ) {
-    if (!ctx || !combined_output || output_size == 0 || !credit) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx && combined_output && output_size > 0 && credit, NIMCP_ERROR_INVALID_PARAM, "ctx, combined_output, credit is NULL or output_size is 0");
 
     memset(credit, 0, sizeof(gt_hemi_credit_t));
 
@@ -364,13 +355,8 @@ nimcp_error_t gt_hemi_set_bargaining_power(
     gt_hemi_bargaining_ctx_t ctx,
     float left_power
 ) {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (left_power < 0.0f || left_power > 1.0f) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(left_power >= 0.0f && left_power <= 1.0f, NIMCP_ERROR_INVALID_PARAM, "left_power out of range [0.0, 1.0]");
 
     ctx->config.left_bargaining_power = left_power;
     ctx->config.right_bargaining_power = 1.0f - left_power;
@@ -385,9 +371,7 @@ nimcp_error_t gt_hemi_set_disagreement(
     float left_disagree,
     float right_disagree
 ) {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     ctx->config.disagreement_left = left_disagree;
     ctx->config.disagreement_right = right_disagree;
@@ -409,9 +393,7 @@ nimcp_error_t gt_hemi_get_last_outcome(
     const gt_hemi_bargaining_ctx_t ctx,
     gt_hemi_outcome_t* outcome
 ) {
-    if (!ctx || !outcome) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx && outcome, NIMCP_ERROR_INVALID_PARAM, "ctx or outcome is NULL");
 
     *outcome = ctx->last_outcome;
     return NIMCP_SUCCESS;
@@ -421,9 +403,7 @@ nimcp_error_t gt_hemi_get_last_credit(
     const gt_hemi_bargaining_ctx_t ctx,
     gt_hemi_credit_t* credit
 ) {
-    if (!ctx || !credit) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx && credit, NIMCP_ERROR_INVALID_PARAM, "ctx or credit is NULL");
 
     *credit = ctx->last_credit;
     return NIMCP_SUCCESS;
@@ -433,9 +413,7 @@ nimcp_error_t gt_hemi_get_stats(
     const gt_hemi_bargaining_ctx_t ctx,
     nimcp_game_stats_t* stats
 ) {
-    if (!ctx || !stats) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx && stats, NIMCP_ERROR_INVALID_PARAM, "ctx or stats is NULL");
 
     memset(stats, 0, sizeof(nimcp_game_stats_t));
 

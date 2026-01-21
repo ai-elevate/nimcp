@@ -512,13 +512,10 @@ int visual_cortical_process(
     uint32_t height,
     visual_cortical_orientation_result_t* result)
 {
-    if (!bridge || !image || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (width == 0 || height == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge && image && result, NIMCP_ERROR_NULL_POINTER,
+        "NULL parameter in visual_cortical_process");
+    NIMCP_CHECK_THROW(width > 0 && height > 0, NIMCP_ERROR_INVALID_PARAM,
+        "Invalid width or height in visual_cortical_process");
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
@@ -686,13 +683,10 @@ int visual_cortical_process_patch(
     float retino_y,
     visual_cortical_orientation_result_t* result)
 {
-    if (!bridge || !patch || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (patch_width == 0 || patch_height == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge && patch && result, NIMCP_ERROR_NULL_POINTER,
+        "NULL parameter in visual_cortical_process_patch");
+    NIMCP_CHECK_THROW(patch_width > 0 && patch_height > 0, NIMCP_ERROR_INVALID_PARAM,
+        "Invalid patch_width or patch_height in visual_cortical_process_patch");
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
@@ -756,13 +750,10 @@ int visual_cortical_get_orientation_map(
     float* orientation_map,
     float* selectivity_map)
 {
-    if (!bridge || !image || !orientation_map) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (width == 0 || height == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge && image && orientation_map, NIMCP_ERROR_NULL_POINTER,
+        "NULL parameter in visual_cortical_get_orientation_map");
+    NIMCP_CHECK_THROW(width > 0 && height > 0, NIMCP_ERROR_INVALID_PARAM,
+        "Invalid width or height in visual_cortical_get_orientation_map");
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 

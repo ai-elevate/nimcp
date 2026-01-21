@@ -215,20 +215,12 @@ nimcp_error_t gt_wm_add(
     float bid,
     int32_t* slot_index
 ) {
-    if (!ctx || !item || item_size == 0 || !slot_index) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx && item && item_size > 0 && slot_index, NIMCP_ERROR_INVALID_PARAM, "ctx, item, slot_index is NULL or item_size is 0");
 
     *slot_index = -1;
 
-    if (!ctx->active) {
-        return NIMCP_GT_ERROR_GAME_OVER;
-    }
-
-    // Check bid against reserve
-    if (bid < ctx->config.slot_reserve_price) {
-        return NIMCP_GT_ERROR_BID_TOO_LOW;
-    }
+    NIMCP_CHECK_THROW(ctx->active, NIMCP_GT_ERROR_GAME_OVER, "ctx is not active");
+    NIMCP_CHECK_THROW(bid >= ctx->config.slot_reserve_price, NIMCP_GT_ERROR_BID_TOO_LOW, "bid below reserve price");
 
     // Try to find a free slot
     int free_slot = find_free_slot(ctx);
@@ -311,17 +303,9 @@ nimcp_error_t gt_wm_refresh(
     uint32_t slot_index,
     float new_bid
 ) {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (slot_index >= ctx->num_slots) {
-        return NIMCP_ERROR_OUT_OF_RANGE;
-    }
-
-    if (!ctx->active) {
-        return NIMCP_GT_ERROR_GAME_OVER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(slot_index < ctx->num_slots, NIMCP_ERROR_OUT_OF_RANGE, "slot_index out of range");
+    NIMCP_CHECK_THROW(ctx->active, NIMCP_GT_ERROR_GAME_OVER, "ctx is not active");
 
     gt_wm_slot_internal_t* slot = &ctx->slots[slot_index];
     if (!slot->occupied) {
@@ -345,13 +329,8 @@ nimcp_error_t gt_wm_run_eviction(
     gt_wm_auction_ctx_t ctx,
     gt_wm_eviction_result_t* result
 ) {
-    if (!ctx || !result) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!ctx->active) {
-        return NIMCP_GT_ERROR_GAME_OVER;
-    }
+    NIMCP_CHECK_THROW(ctx && result, NIMCP_ERROR_INVALID_PARAM, "ctx or result is NULL");
+    NIMCP_CHECK_THROW(ctx->active, NIMCP_GT_ERROR_GAME_OVER, "ctx is not active");
 
     memset(result, 0, sizeof(gt_wm_eviction_result_t));
     result->occupancy_before = ctx->occupied_slots;
@@ -400,13 +379,8 @@ nimcp_error_t gt_wm_apply_decay(
     gt_wm_auction_ctx_t ctx,
     float decay_amount
 ) {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!ctx->active) {
-        return NIMCP_GT_ERROR_GAME_OVER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(ctx->active, NIMCP_GT_ERROR_GAME_OVER, "ctx is not active");
 
     float decay = (decay_amount > 0.0f) ? decay_amount : ctx->config.decay_rate;
 
@@ -443,13 +417,8 @@ nimcp_error_t gt_wm_get_slot_state(
     uint32_t slot_index,
     gt_wm_slot_state_t* state
 ) {
-    if (!ctx || !state) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (slot_index >= ctx->num_slots) {
-        return NIMCP_ERROR_OUT_OF_RANGE;
-    }
+    NIMCP_CHECK_THROW(ctx && state, NIMCP_ERROR_INVALID_PARAM, "ctx or state is NULL");
+    NIMCP_CHECK_THROW(slot_index < ctx->num_slots, NIMCP_ERROR_OUT_OF_RANGE, "slot_index out of range");
 
     const gt_wm_slot_internal_t* slot = &ctx->slots[slot_index];
     if (!slot->occupied) {
@@ -518,9 +487,7 @@ nimcp_error_t gt_wm_get_stats(
     const gt_wm_auction_ctx_t ctx,
     nimcp_game_stats_t* stats
 ) {
-    if (!ctx || !stats) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx && stats, NIMCP_ERROR_INVALID_PARAM, "ctx or stats is NULL");
 
     memset(stats, 0, sizeof(nimcp_game_stats_t));
 

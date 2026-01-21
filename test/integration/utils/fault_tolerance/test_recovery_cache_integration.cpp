@@ -40,13 +40,13 @@ protected:
     }
 
     /* Simulate error with context */
-    nimcp_error_context_t simulate_error(
+    nimcp_signal_error_context_t simulate_error(
         int signal,
         void* addr,
         const char* func,
         int error_code = 0)
     {
-        nimcp_error_context_t ctx = {0};
+        nimcp_signal_error_context_t ctx = {0};
         ctx.signal = signal;
         ctx.fault_address = addr;
         ctx.context_hash = std::hash<std::string>{}(func);
@@ -58,7 +58,7 @@ protected:
     /* Simulate recovery attempt */
     bool attempt_recovery(
         const nimcp_error_signature_t* sig,
-        nimcp_exception_recovery_strategy_t strategy)
+        nimcp_recovery_strategy_t strategy)
     {
         /* Simulate different recovery success rates */
         switch (strategy) {
@@ -93,7 +93,7 @@ TEST_F(RecoveryCacheIntegrationTest, FirstErrorSlowPath) {
     ASSERT_TRUE(nimcp_recovery_cache_compute_signature(&ctx, &sig));
 
     /* First time - cache miss, slow diagnostic path */
-    nimcp_exception_recovery_strategy_t strategy;
+    nimcp_recovery_strategy_t strategy;
     EXPECT_FALSE(nimcp_recovery_cache_lookup(cache, &sig, &strategy));
 
     /* Simulate expensive diagnostic determining best strategy */
@@ -130,7 +130,7 @@ TEST_F(RecoveryCacheIntegrationTest, RepeatedErrorFastPath) {
         nimcp_error_signature_t sig_repeat;
         ASSERT_TRUE(nimcp_recovery_cache_compute_signature(&ctx_repeat, &sig_repeat));
 
-        nimcp_exception_recovery_strategy_t strategy;
+        nimcp_recovery_strategy_t strategy;
         uint64_t lookup_time = measure_time_ns([&]() {
             EXPECT_TRUE(nimcp_recovery_cache_lookup(cache, &sig_repeat, &strategy));
         });
@@ -147,7 +147,7 @@ TEST_F(RecoveryCacheIntegrationTest, CompleteRecoveryWorkflow) {
     ASSERT_TRUE(nimcp_recovery_cache_compute_signature(&ctx, &sig));
 
     /* 1. Check cache (miss) */
-    nimcp_exception_recovery_strategy_t strategy;
+    nimcp_recovery_strategy_t strategy;
     EXPECT_FALSE(nimcp_recovery_cache_lookup(cache, &sig, &strategy));
 
     /* 2. Perform diagnostic (expensive) */
@@ -169,7 +169,7 @@ TEST_F(RecoveryCacheIntegrationTest, CompleteRecoveryWorkflow) {
     nimcp_error_signature_t sig2;
     ASSERT_TRUE(nimcp_recovery_cache_compute_signature(&ctx2, &sig2));
 
-    nimcp_exception_recovery_strategy_t cached_strategy;
+    nimcp_recovery_strategy_t cached_strategy;
     EXPECT_TRUE(nimcp_recovery_cache_lookup(cache, &sig2, &cached_strategy));
     EXPECT_EQ(cached_strategy, NIMCP_RECOVERY_STRATEGY_RETRY);
 }
@@ -185,7 +185,7 @@ TEST_F(RecoveryCacheIntegrationTest, SpeedupMeasurement) {
 
     /* Simulate slow diagnostic path (first time) */
     auto slow_path_time = measure_time_ns([&]() {
-        nimcp_exception_recovery_strategy_t strategy;
+        nimcp_recovery_strategy_t strategy;
         EXPECT_FALSE(nimcp_recovery_cache_lookup(cache, &sig, &strategy));
 
         /* Simulate diagnostic overhead */
@@ -198,7 +198,7 @@ TEST_F(RecoveryCacheIntegrationTest, SpeedupMeasurement) {
 
     /* Fast path (cached) */
     auto fast_path_time = measure_time_ns([&]() {
-        nimcp_exception_recovery_strategy_t strategy;
+        nimcp_recovery_strategy_t strategy;
         EXPECT_TRUE(nimcp_recovery_cache_lookup(cache, &sig, &strategy));
     });
 
@@ -223,7 +223,7 @@ TEST_F(RecoveryCacheIntegrationTest, RepeatedErrorPerformance) {
     /* Measure cumulative time for repeated lookups */
     auto total_time = measure_time_ns([&]() {
         for (int i = 0; i < NUM_ERRORS; i++) {
-            nimcp_exception_recovery_strategy_t strategy;
+            nimcp_recovery_strategy_t strategy;
             EXPECT_TRUE(nimcp_recovery_cache_lookup(cache, &sig, &strategy));
         }
     });
@@ -235,9 +235,9 @@ TEST_F(RecoveryCacheIntegrationTest, RepeatedErrorPerformance) {
 
 TEST_F(RecoveryCacheIntegrationTest, MultipleErrorTypesPerformance) {
     /* Create cache entries for multiple error types */
-    std::vector<std::pair<nimcp_error_signature_t, nimcp_exception_recovery_strategy_t>> errors;
+    std::vector<std::pair<nimcp_error_signature_t, nimcp_recovery_strategy_t>> errors;
 
-    nimcp_exception_recovery_strategy_t strategies[] = {
+    nimcp_recovery_strategy_t strategies[] = {
         NIMCP_RECOVERY_STRATEGY_RETRY,
         NIMCP_RECOVERY_STRATEGY_ROLLBACK,
         NIMCP_RECOVERY_STRATEGY_CHECKPOINT_RESTORE,
@@ -252,7 +252,7 @@ TEST_F(RecoveryCacheIntegrationTest, MultipleErrorTypesPerformance) {
         nimcp_error_signature_t sig;
         ASSERT_TRUE(nimcp_recovery_cache_compute_signature(&ctx, &sig));
 
-        nimcp_exception_recovery_strategy_t strategy = strategies[i % 5];
+        nimcp_recovery_strategy_t strategy = strategies[i % 5];
         EXPECT_TRUE(nimcp_recovery_cache_store(cache, &sig, strategy, nullptr));
 
         errors.push_back({sig, strategy});
@@ -260,7 +260,7 @@ TEST_F(RecoveryCacheIntegrationTest, MultipleErrorTypesPerformance) {
 
     /* Verify all lookups are fast and correct */
     for (const auto& [sig, expected_strategy] : errors) {
-        nimcp_exception_recovery_strategy_t strategy;
+        nimcp_recovery_strategy_t strategy;
         uint64_t lookup_time = measure_time_ns([&]() {
             EXPECT_TRUE(nimcp_recovery_cache_lookup(cache, &sig, &strategy));
         });
@@ -321,7 +321,7 @@ TEST_F(RecoveryCacheIntegrationTest, InvalidateFailingStrategy) {
     EXPECT_TRUE(nimcp_recovery_cache_invalidate(cache, &sig));
 
     /* Next error should miss cache and trigger new diagnostic */
-    nimcp_exception_recovery_strategy_t strategy;
+    nimcp_recovery_strategy_t strategy;
     EXPECT_FALSE(nimcp_recovery_cache_lookup(cache, &sig, &strategy));
 }
 
@@ -333,7 +333,7 @@ TEST_F(RecoveryCacheIntegrationTest, AdaptiveStrategySelection) {
 
     /* Try different strategies and track success */
     struct StrategyAttempt {
-        nimcp_exception_recovery_strategy_t strategy;
+        nimcp_recovery_strategy_t strategy;
         int successes;
         int failures;
     };
@@ -345,7 +345,7 @@ TEST_F(RecoveryCacheIntegrationTest, AdaptiveStrategySelection) {
     };
 
     /* Test each strategy */
-    nimcp_exception_recovery_strategy_t best_strategy = NIMCP_RECOVERY_STRATEGY_NONE;
+    nimcp_recovery_strategy_t best_strategy = NIMCP_RECOVERY_STRATEGY_NONE;
     double best_rate = 0.0;
 
     for (const auto& attempt : attempts) {
@@ -394,7 +394,7 @@ TEST_F(RecoveryCacheIntegrationTest, HighHitRateForRepeatedErrors) {
         error_signatures.push_back(sig);
 
         /* First occurrence - cache miss, store strategy */
-        nimcp_exception_recovery_strategy_t strategy;
+        nimcp_recovery_strategy_t strategy;
         EXPECT_FALSE(nimcp_recovery_cache_lookup(cache, &sig, &strategy));
         EXPECT_TRUE(nimcp_recovery_cache_store(cache, &sig,
                     NIMCP_RECOVERY_STRATEGY_RETRY, nullptr));
@@ -407,7 +407,7 @@ TEST_F(RecoveryCacheIntegrationTest, HighHitRateForRepeatedErrors) {
 
     for (int i = 0; i < 100; i++) {
         int idx = dist(gen);
-        nimcp_exception_recovery_strategy_t strategy;
+        nimcp_recovery_strategy_t strategy;
         EXPECT_TRUE(nimcp_recovery_cache_lookup(cache, &error_signatures[idx], &strategy));
     }
 
@@ -437,7 +437,7 @@ TEST_F(RecoveryCacheIntegrationTest, HitRateWithMixedWorkload) {
         if (i % 10 < 7) {
             /* Common error (hit) */
             int idx = i % common_errors.size();
-            nimcp_exception_recovery_strategy_t strategy;
+            nimcp_recovery_strategy_t strategy;
             EXPECT_TRUE(nimcp_recovery_cache_lookup(cache, &common_errors[idx], &strategy));
         } else {
             /* Unique error (miss) */
@@ -446,7 +446,7 @@ TEST_F(RecoveryCacheIntegrationTest, HitRateWithMixedWorkload) {
             nimcp_error_signature_t sig;
             ASSERT_TRUE(nimcp_recovery_cache_compute_signature(&ctx, &sig));
 
-            nimcp_exception_recovery_strategy_t strategy;
+            nimcp_recovery_strategy_t strategy;
             EXPECT_FALSE(nimcp_recovery_cache_lookup(cache, &sig, &strategy));
             EXPECT_TRUE(nimcp_recovery_cache_store(cache, &sig,
                         NIMCP_RECOVERY_STRATEGY_RETRY, nullptr));
@@ -470,7 +470,7 @@ TEST_F(RecoveryCacheIntegrationTest, MemoryAllocationFailures) {
     ASSERT_TRUE(nimcp_recovery_cache_compute_signature(&ctx, &sig));
 
     /* First failure - diagnostic determines retry strategy */
-    nimcp_exception_recovery_strategy_t strategy;
+    nimcp_recovery_strategy_t strategy;
     EXPECT_FALSE(nimcp_recovery_cache_lookup(cache, &sig, &strategy));
     EXPECT_TRUE(nimcp_recovery_cache_store(cache, &sig,
                 NIMCP_RECOVERY_STRATEGY_RETRY,
@@ -492,7 +492,7 @@ TEST_F(RecoveryCacheIntegrationTest, SegmentationFaults) {
     struct FaultContext {
         void* addr;
         const char* func;
-        nimcp_exception_recovery_strategy_t expected_strategy;
+        nimcp_recovery_strategy_t expected_strategy;
     };
 
     std::vector<FaultContext> faults = {
@@ -517,7 +517,7 @@ TEST_F(RecoveryCacheIntegrationTest, SegmentationFaults) {
         nimcp_error_signature_t sig;
         ASSERT_TRUE(nimcp_recovery_cache_compute_signature(&ctx, &sig));
 
-        nimcp_exception_recovery_strategy_t strategy;
+        nimcp_recovery_strategy_t strategy;
         EXPECT_TRUE(nimcp_recovery_cache_lookup(cache, &sig, &strategy));
         EXPECT_EQ(strategy, fault.expected_strategy);
     }
@@ -546,7 +546,7 @@ TEST_F(RecoveryCacheIntegrationTest, ConcurrentWorkload) {
         threads.emplace_back([this, &common_errors, ERRORS_PER_THREAD]() {
             for (int i = 0; i < ERRORS_PER_THREAD; i++) {
                 int idx = i % common_errors.size();
-                nimcp_exception_recovery_strategy_t strategy;
+                nimcp_recovery_strategy_t strategy;
                 EXPECT_TRUE(nimcp_recovery_cache_lookup(cache, &common_errors[idx],
                                                        &strategy));
                 EXPECT_EQ(strategy, NIMCP_RECOVERY_STRATEGY_RETRY);
@@ -580,7 +580,7 @@ TEST_F(RecoveryCacheIntegrationTest, LargeWorkload) {
         ASSERT_TRUE(nimcp_recovery_cache_compute_signature(&ctx, &sig));
 
         /* Store or lookup */
-        nimcp_exception_recovery_strategy_t strategy;
+        nimcp_recovery_strategy_t strategy;
         if (!nimcp_recovery_cache_lookup(cache, &sig, &strategy)) {
             EXPECT_TRUE(nimcp_recovery_cache_store(cache, &sig,
                         NIMCP_RECOVERY_STRATEGY_RETRY, nullptr));

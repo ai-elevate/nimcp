@@ -318,10 +318,7 @@ void nimcp_pheromone_default_config(nimcp_pheromone_config_t* out_config) {
 nimcp_result_t nimcp_pheromone_validate_config(
     const nimcp_pheromone_config_t* config
 ) {
-    if (!config) {
-        LOG_ERROR("NULL configuration");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_INVALID_PARAM, "configuration pointer is NULL");
 
     /* Validate world bounds */
     if (config->world_min.x >= config->world_max.x ||
@@ -468,9 +465,7 @@ void nimcp_pheromone_destroy(nimcp_pheromone_system_t* system) {
 }
 
 nimcp_result_t nimcp_pheromone_reset(nimcp_pheromone_system_t* system) {
-    if (!system) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "pheromone system is NULL");
 
     nimcp_platform_mutex_lock(&system->mutex);
 
@@ -515,9 +510,8 @@ nimcp_result_t nimcp_pheromone_deposit_modified(
     float amount,
     float env_modifier
 ) {
-    if (!system || !position) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "pheromone system is NULL");
+    NIMCP_CHECK_THROW(position, NIMCP_INVALID_PARAM, "position pointer is NULL");
 
     if (type >= PHEROMONE_TYPE_COUNT) {
         LOG_ERROR("Invalid pheromone type: %d", type);
@@ -604,9 +598,9 @@ nimcp_result_t nimcp_pheromone_reinforce_path(
     nimcp_pheromone_type_t type,
     float success_factor
 ) {
-    if (!system || !path || path_length == 0) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "pheromone system is NULL");
+    NIMCP_CHECK_THROW(path, NIMCP_INVALID_PARAM, "path array is NULL");
+    NIMCP_CHECK_THROW(path_length > 0, NIMCP_INVALID_PARAM, "path_length must be greater than 0");
 
     if (type >= PHEROMONE_TYPE_COUNT) {
         return NIMCP_INVALID_PARAM;
@@ -646,9 +640,9 @@ nimcp_result_t nimcp_pheromone_get_concentration(
     nimcp_pheromone_type_t type,
     float* out_concentration
 ) {
-    if (!system || !position || !out_concentration) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "pheromone system is NULL");
+    NIMCP_CHECK_THROW(position, NIMCP_INVALID_PARAM, "position pointer is NULL");
+    NIMCP_CHECK_THROW(out_concentration, NIMCP_INVALID_PARAM, "out_concentration pointer is NULL");
 
     if (type >= PHEROMONE_TYPE_COUNT) {
         return NIMCP_INVALID_PARAM;
@@ -683,9 +677,9 @@ nimcp_result_t nimcp_pheromone_get_gradient(
     nimcp_pheromone_type_t type,
     nimcp_pheromone_gradient_t* out_gradient
 ) {
-    if (!system || !position || !out_gradient) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "pheromone system is NULL");
+    NIMCP_CHECK_THROW(position, NIMCP_INVALID_PARAM, "position pointer is NULL");
+    NIMCP_CHECK_THROW(out_gradient, NIMCP_INVALID_PARAM, "out_gradient pointer is NULL");
 
     if (type >= PHEROMONE_TYPE_COUNT) {
         return NIMCP_INVALID_PARAM;
@@ -753,9 +747,11 @@ nimcp_result_t nimcp_pheromone_query_radius(
     size_t max_trails,
     size_t* out_count
 ) {
-    if (!system || !center || !out_trails || !out_count || max_trails == 0) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "pheromone system is NULL");
+    NIMCP_CHECK_THROW(center, NIMCP_INVALID_PARAM, "center position is NULL");
+    NIMCP_CHECK_THROW(out_trails, NIMCP_INVALID_PARAM, "out_trails array is NULL");
+    NIMCP_CHECK_THROW(out_count, NIMCP_INVALID_PARAM, "out_count pointer is NULL");
+    NIMCP_CHECK_THROW(max_trails > 0, NIMCP_INVALID_PARAM, "max_trails must be greater than 0");
 
     if (radius <= 0.0F) {
         return NIMCP_INVALID_PARAM;
@@ -842,9 +838,11 @@ nimcp_result_t nimcp_pheromone_plan_path(
     nimcp_position3d_t* out_path,
     size_t* out_path_length
 ) {
-    if (!system || !start || !out_path || !out_path_length || max_steps == 0) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "pheromone system is NULL");
+    NIMCP_CHECK_THROW(start, NIMCP_INVALID_PARAM, "start position is NULL");
+    NIMCP_CHECK_THROW(out_path, NIMCP_INVALID_PARAM, "out_path array is NULL");
+    NIMCP_CHECK_THROW(out_path_length, NIMCP_INVALID_PARAM, "out_path_length pointer is NULL");
+    NIMCP_CHECK_THROW(max_steps > 0, NIMCP_INVALID_PARAM, "max_steps must be greater than 0");
 
     if (type >= PHEROMONE_TYPE_COUNT) {
         return NIMCP_INVALID_PARAM;
@@ -899,9 +897,7 @@ nimcp_result_t nimcp_pheromone_update(
     nimcp_pheromone_system_t* system,
     uint64_t delta_time_ms
 ) {
-    if (!system) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "pheromone system is NULL");
 
     if (delta_time_ms == 0) {
         return NIMCP_SUCCESS;
@@ -970,9 +966,8 @@ nimcp_result_t nimcp_pheromone_set_environment(
     float radius,
     float modifier
 ) {
-    if (!system || !center) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "pheromone system is NULL");
+    NIMCP_CHECK_THROW(center, NIMCP_INVALID_PARAM, "center position is NULL");
 
     if (radius <= 0.0F || modifier < 0.0F || modifier > 1.0F) {
         return NIMCP_INVALID_PARAM;
@@ -1032,9 +1027,7 @@ nimcp_result_t nimcp_pheromone_register_bioasync(
     nimcp_pheromone_system_t* system,
     bio_router_t* router
 ) {
-    if (!system) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "pheromone system is NULL");
 
     (void)router;  /* Not used - we register directly with bio_router_register_module */
 
@@ -1065,9 +1058,8 @@ nimcp_result_t nimcp_pheromone_broadcast_update(
     nimcp_pheromone_type_t type,
     float concentration
 ) {
-    if (!system || !position) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "pheromone system is NULL");
+    NIMCP_CHECK_THROW(position, NIMCP_INVALID_PARAM, "position pointer is NULL");
 
     if (!system->bio_async_enabled || !system->bio_ctx) {
         return NIMCP_SUCCESS; /* Not registered, skip broadcast */
@@ -1107,9 +1099,8 @@ nimcp_result_t nimcp_pheromone_handle_message(
     const void* message,
     size_t msg_size
 ) {
-    if (!system || !message) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "pheromone system is NULL");
+    NIMCP_CHECK_THROW(message, NIMCP_INVALID_PARAM, "message pointer is NULL");
 
     /* Cast to our message type (header is first field) */
     const bio_msg_pheromone_t* msg = (const bio_msg_pheromone_t*)message;
@@ -1143,9 +1134,8 @@ nimcp_result_t nimcp_pheromone_get_stats(
     nimcp_pheromone_system_t* system,
     nimcp_pheromone_stats_t* out_stats
 ) {
-    if (!system || !out_stats) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "pheromone system is NULL");
+    NIMCP_CHECK_THROW(out_stats, NIMCP_INVALID_PARAM, "out_stats pointer is NULL");
 
     nimcp_platform_mutex_lock(&system->mutex);
 

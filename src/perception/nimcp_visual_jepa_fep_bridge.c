@@ -372,13 +372,10 @@ int visual_jepa_fep_report_prediction_error(
     const jepa_latent_t* prediction,
     const jepa_latent_t* target) {
 
-    if (!bridge || !prediction || !target) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (prediction->latent_dim != target->latent_dim) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge && prediction && target, NIMCP_ERROR_NULL_POINTER,
+        "NULL parameter in visual_jepa_fep_report_prediction_error");
+    NIMCP_CHECK_THROW(prediction->latent_dim == target->latent_dim, NIMCP_ERROR_INVALID_PARAM,
+        "latent_dim mismatch in visual_jepa_fep_report_prediction_error");
 
     /* Compute prediction error - only store up to buffer capacity */
     double sum_sq = 0.0;
@@ -425,7 +422,7 @@ int visual_jepa_fep_report_novelty(
     visual_jepa_fep_bridge_t* bridge,
     float prediction_error) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     bool is_novel = (prediction_error > bridge->config.novelty_threshold);
     bridge->signals.novelty_detected = is_novel;

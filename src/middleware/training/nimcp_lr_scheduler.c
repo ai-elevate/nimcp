@@ -671,9 +671,7 @@ float nimcp_lr_scheduler_get_lr(const nimcp_lr_scheduler_ctx_t* ctx) {
 }
 
 nimcp_result_t nimcp_lr_scheduler_set_lr(nimcp_lr_scheduler_ctx_t* ctx, float lr) {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     ctx->current_lr = clamp_lr(lr);
     update_stats(ctx, ctx->current_lr);
@@ -723,9 +721,7 @@ float nimcp_lr_scheduler_get_lr_at_epoch(const nimcp_lr_scheduler_ctx_t* ctx, ui
  * ============================================================================ */
 
 nimcp_result_t nimcp_lr_scheduler_reset(nimcp_lr_scheduler_ctx_t* ctx) {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     ctx->current_step = 0;
     ctx->current_epoch = 0;
@@ -765,17 +761,13 @@ uint64_t nimcp_lr_scheduler_get_epoch(const nimcp_lr_scheduler_ctx_t* ctx) {
 }
 
 nimcp_result_t nimcp_lr_scheduler_set_step(nimcp_lr_scheduler_ctx_t* ctx, uint64_t step) {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
     ctx->current_step = step;
     return NIMCP_SUCCESS;
 }
 
 nimcp_result_t nimcp_lr_scheduler_set_epoch(nimcp_lr_scheduler_ctx_t* ctx, uint64_t epoch) {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
     ctx->current_epoch = epoch;
     return NIMCP_SUCCESS;
 }
@@ -788,9 +780,8 @@ nimcp_result_t nimcp_lr_scheduler_get_stats(
     const nimcp_lr_scheduler_ctx_t* ctx,
     nimcp_lr_scheduler_stats_t* stats
 ) {
-    if (!ctx || !stats) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(stats != NULL, NIMCP_ERROR_INVALID_PARAM, "stats is NULL");
 
     memcpy(stats, &ctx->stats, sizeof(nimcp_lr_scheduler_stats_t));
     return NIMCP_SUCCESS;
@@ -840,13 +831,9 @@ nimcp_lr_scheduler_type_t nimcp_lr_scheduler_get_type(const nimcp_lr_scheduler_c
 }
 
 nimcp_result_t nimcp_lr_scheduler_validate_config(const nimcp_lr_scheduler_config_t* config) {
-    if (!config) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (config->type >= NIMCP_LR_SCHEDULER_TYPE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config != NULL, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
+    NIMCP_CHECK_THROW(config->type < NIMCP_LR_SCHEDULER_TYPE_COUNT, NIMCP_ERROR_INVALID_PARAM,
+        "invalid scheduler type %d", config->type);
 
     /* Type-specific validation */
     switch (config->type) {

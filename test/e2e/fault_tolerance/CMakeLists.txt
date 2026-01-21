@@ -123,3 +123,23 @@ set_tests_properties(e2e_fault_tolerance_test_exception_recovery_e2e PROPERTIES 
 
 # Exception Immune Response E2E Tests - DISABLED (API issues)
 # Tests moved to existing exception test suite
+
+# Exception Macro E2E Tests (Try/Catch Macro System)
+add_e2e_fault_tolerance_test(test_exception_macro_e2e)
+set_tests_properties(e2e_fault_tolerance_test_exception_macro_e2e PROPERTIES TIMEOUT 300)
+
+# Exception Immune E2E Tests (Exception-Immune System Integration)
+add_e2e_fault_tolerance_test(test_exception_immune_e2e)
+set_tests_properties(e2e_fault_tolerance_test_exception_immune_e2e PROPERTIES TIMEOUT 600)
+
+# Exception Complete Flow E2E Tests (Complete Exception Lifecycle from API to Brain)
+add_e2e_fault_tolerance_test(test_exception_complete_flow_e2e)
+set_tests_properties(e2e_fault_tolerance_test_exception_complete_flow_e2e PROPERTIES TIMEOUT 600)
+
+# Exception Recovery Scenarios E2E Tests (Multi-Exception Recovery, Circuit Breaker, Retry with Backoff)
+add_e2e_fault_tolerance_test(test_exception_recovery_scenarios_e2e)
+set_tests_properties(e2e_fault_tolerance_test_exception_recovery_scenarios_e2e PROPERTIES TIMEOUT 600)
+
+# Exception Stress E2E Tests (High Rate Exception Handling, Storm Prevention, Concurrent Threading)
+add_e2e_fault_tolerance_test(test_exception_stress_e2e)
+set_tests_properties(e2e_fault_tolerance_test_exception_stress_e2e PROPERTIES TIMEOUT 900)

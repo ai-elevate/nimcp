@@ -22,7 +22,7 @@
  * ============================================================================ */
 
 int hypo_reasoning_fep_default_config(hypo_reasoning_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     config->drive_fe_weight = 1.0f;
     config->prediction_error_gain = 1.5f;
@@ -92,7 +92,7 @@ void hypo_reasoning_fep_destroy(hypo_reasoning_fep_bridge_t* bridge) {
 }
 
 int hypo_reasoning_fep_reset(hypo_reasoning_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -114,7 +114,8 @@ int hypo_reasoning_fep_reset(hypo_reasoning_fep_bridge_t* bridge) {
  * ============================================================================ */
 
 int hypo_reasoning_fep_update(hypo_reasoning_fep_bridge_t* bridge, uint64_t delta_ms) {
-    if (!bridge || !bridge->state.active) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->state.active, NIMCP_ERROR_NULL_POINTER, "bridge is not active");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -184,7 +185,8 @@ int hypo_reasoning_fep_update(hypo_reasoning_fep_bridge_t* bridge, uint64_t delt
 int hypo_reasoning_fep_compute_fe(hypo_reasoning_fep_bridge_t* bridge,
     float cognitive_load, float* free_energy) {
 
-    if (!bridge || !free_energy) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(free_energy, NIMCP_ERROR_NULL_POINTER, "free_energy is NULL");
 
     /* Cognitive load maps directly to free energy
      * Higher load = more computational surprise = higher FE */
@@ -205,7 +207,8 @@ int hypo_reasoning_fep_compute_fe(hypo_reasoning_fep_bridge_t* bridge,
 int hypo_reasoning_fep_modulate_precision(hypo_reasoning_fep_bridge_t* bridge,
     float fatigue_level, float* precision) {
 
-    if (!bridge || !precision) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(precision, NIMCP_ERROR_NULL_POINTER, "precision is NULL");
 
     /* Fatigue reduces precision
      * precision = 1.0 - (fatigue * scale)
@@ -232,7 +235,7 @@ int hypo_reasoning_fep_modulate_precision(hypo_reasoning_fep_bridge_t* bridge,
 int hypo_reasoning_fep_report_error(hypo_reasoning_fep_bridge_t* bridge,
     float error_magnitude) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -256,7 +259,7 @@ int hypo_reasoning_fep_report_error(hypo_reasoning_fep_bridge_t* bridge,
 }
 
 int hypo_reasoning_fep_report_success(hypo_reasoning_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -282,7 +285,8 @@ int hypo_reasoning_fep_report_success(hypo_reasoning_fep_bridge_t* bridge) {
 int hypo_reasoning_fep_get_effects(const hypo_reasoning_fep_bridge_t* bridge,
     hypo_reasoning_fep_effects_t* effects) {
 
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(effects, NIMCP_ERROR_NULL_POINTER, "effects is NULL");
     *effects = bridge->fep_effects;
     return 0;
 }
@@ -290,7 +294,8 @@ int hypo_reasoning_fep_get_effects(const hypo_reasoning_fep_bridge_t* bridge,
 int hypo_reasoning_fep_get_stats(const hypo_reasoning_fep_bridge_t* bridge,
     hypo_reasoning_fep_stats_t* stats) {
 
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
     *stats = bridge->stats;
     return 0;
 }
@@ -349,7 +354,7 @@ int hypo_reasoning_fep_process_messages(hypo_reasoning_fep_bridge_t* bridge) {
 int hypo_reasoning_fep_connect_drives(hypo_reasoning_fep_bridge_t* bridge,
     hypo_drive_system_handle_t* drives) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->drive_system = drives;

@@ -33,10 +33,7 @@ static jepa_latent_stats_t g_latent_stats = {0};
  * ============================================================================ */
 
 int jepa_latent_default_config(jepa_latent_config_t* config) {
-    if (!config) {
-        NIMCP_LOGGING_ERROR(LOG_MODULE " NULL config pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, LOG_MODULE " NULL config pointer");
 
     config->latent_dim = NIMCP_JEPA_LATENT_DIM;
     config->enable_variance = true;
@@ -194,9 +191,7 @@ void jepa_latent_destroy(jepa_latent_t* latent) {
 }
 
 int jepa_latent_reset(jepa_latent_t* latent) {
-    if (!latent) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(latent, NIMCP_ERROR_NULL_POINTER, "latent is NULL");
 
     /* Zero embedding */
     memset(latent->embedding, 0, latent->latent_dim * sizeof(float));
@@ -222,9 +217,7 @@ int jepa_latent_reset(jepa_latent_t* latent) {
  * ============================================================================ */
 
 int jepa_latent_set_embedding(jepa_latent_t* latent, const float* values, uint32_t dim) {
-    if (!latent || !values) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(latent && values, NIMCP_ERROR_NULL_POINTER, "latent or values is NULL");
 
     if (dim != latent->latent_dim) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Dimension mismatch in set_embedding: %u vs %u",
@@ -252,9 +245,7 @@ int jepa_latent_get_embedding(const jepa_latent_t* latent, float* values, uint32
 }
 
 int jepa_latent_set_variance(jepa_latent_t* latent, const float* variance, uint32_t dim) {
-    if (!latent || !variance) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(latent && variance, NIMCP_ERROR_NULL_POINTER, "latent or variance is NULL");
 
     if (!latent->variance) {
         /* Allocate variance array if not present */
@@ -275,9 +266,7 @@ int jepa_latent_set_variance(jepa_latent_t* latent, const float* variance, uint3
 }
 
 int jepa_latent_update_precision(jepa_latent_t* latent) {
-    if (!latent) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(latent, NIMCP_ERROR_NULL_POINTER, "latent is NULL");
 
     if (!latent->variance) {
         /* No variance data, use default precision */
@@ -339,9 +328,7 @@ float jepa_latent_norm(const jepa_latent_t* latent) {
 }
 
 int jepa_latent_normalize(jepa_latent_t* latent) {
-    if (!latent || !latent->embedding) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(latent && latent->embedding, NIMCP_ERROR_NULL_POINTER, "latent or embedding is NULL");
 
     float norm = jepa_latent_norm(latent);
     if (norm < JEPA_LATENT_EPSILON) {
@@ -363,9 +350,7 @@ int jepa_latent_normalize(jepa_latent_t* latent) {
 }
 
 int jepa_latent_layer_normalize(jepa_latent_t* latent) {
-    if (!latent || !latent->embedding) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(latent && latent->embedding, NIMCP_ERROR_NULL_POINTER, "latent or embedding is NULL");
 
     /* Compute mean */
     double sum = 0.0;
@@ -522,9 +507,7 @@ float jepa_latent_distance(const jepa_latent_t* a, const jepa_latent_t* b) {
 
 int jepa_latent_interpolate(const jepa_latent_t* a, const jepa_latent_t* b,
                              float alpha, jepa_latent_t* result) {
-    if (!a || !b || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(a && b && result, NIMCP_ERROR_NULL_POINTER, "a, b, or result is NULL");
 
     if (a->latent_dim != b->latent_dim || a->latent_dim != result->latent_dim) {
         return NIMCP_ERROR_INVALID_PARAM;
@@ -559,9 +542,7 @@ int jepa_latent_interpolate(const jepa_latent_t* a, const jepa_latent_t* b,
 
 int jepa_latent_slerp(const jepa_latent_t* a, const jepa_latent_t* b,
                        float alpha, jepa_latent_t* result) {
-    if (!a || !b || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(a && b && result, NIMCP_ERROR_NULL_POINTER, "a, b, or result is NULL");
 
     if (a->latent_dim != b->latent_dim || a->latent_dim != result->latent_dim) {
         return NIMCP_ERROR_INVALID_PARAM;
@@ -610,9 +591,7 @@ int jepa_latent_slerp(const jepa_latent_t* a, const jepa_latent_t* b,
 
 int jepa_latent_add(const jepa_latent_t* a, const jepa_latent_t* b,
                      jepa_latent_t* result) {
-    if (!a || !b || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(a && b && result, NIMCP_ERROR_NULL_POINTER, "a, b, or result is NULL");
 
     if (a->latent_dim != b->latent_dim || a->latent_dim != result->latent_dim) {
         return NIMCP_ERROR_INVALID_PARAM;
@@ -628,9 +607,7 @@ int jepa_latent_add(const jepa_latent_t* a, const jepa_latent_t* b,
 
 int jepa_latent_subtract(const jepa_latent_t* a, const jepa_latent_t* b,
                           jepa_latent_t* result) {
-    if (!a || !b || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(a && b && result, NIMCP_ERROR_NULL_POINTER, "a, b, or result is NULL");
 
     if (a->latent_dim != b->latent_dim || a->latent_dim != result->latent_dim) {
         return NIMCP_ERROR_INVALID_PARAM;
@@ -645,9 +622,7 @@ int jepa_latent_subtract(const jepa_latent_t* a, const jepa_latent_t* b,
 }
 
 int jepa_latent_scale(jepa_latent_t* latent, float scale) {
-    if (!latent) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(latent, NIMCP_ERROR_NULL_POINTER, "latent is NULL");
 
     for (uint32_t i = 0; i < latent->latent_dim; i++) {
         latent->embedding[i] *= scale;
@@ -670,9 +645,7 @@ int jepa_latent_project(const jepa_latent_t* src,
                          const float* bias,
                          uint32_t target_dim,
                          jepa_latent_t* result) {
-    if (!src || !projection || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(src && projection && result, NIMCP_ERROR_NULL_POINTER, "src, projection, or result is NULL");
 
     if (result->latent_dim < target_dim) {
         return NIMCP_ERROR_INVALID_PARAM;
@@ -701,9 +674,7 @@ int jepa_latent_project(const jepa_latent_t* src,
 
 int jepa_latent_mean_pool(const jepa_latent_t** latents, uint32_t num_latents,
                            jepa_latent_t* result) {
-    if (!latents || !result || num_latents == 0) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(latents && result && num_latents > 0, NIMCP_ERROR_NULL_POINTER, "latents or result is NULL, or num_latents is 0");
 
     /* Verify all latents have same dimension */
     uint32_t dim = result->latent_dim;
@@ -733,9 +704,7 @@ int jepa_latent_mean_pool(const jepa_latent_t** latents, uint32_t num_latents,
 
 int jepa_latent_max_pool(const jepa_latent_t** latents, uint32_t num_latents,
                           jepa_latent_t* result) {
-    if (!latents || !result || num_latents == 0) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(latents && result && num_latents > 0, NIMCP_ERROR_NULL_POINTER, "latents or result is NULL, or num_latents is 0");
 
     uint32_t dim = result->latent_dim;
 
@@ -766,9 +735,7 @@ int jepa_latent_max_pool(const jepa_latent_t** latents, uint32_t num_latents,
  * ============================================================================ */
 
 int jepa_latent_get_stats(jepa_latent_stats_t* stats) {
-    if (!stats) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     /* Thread-safe copy using atomic loads for integers, direct read for float */
     stats->latents_created = __atomic_load_n(&g_latent_stats.latents_created, __ATOMIC_RELAXED);

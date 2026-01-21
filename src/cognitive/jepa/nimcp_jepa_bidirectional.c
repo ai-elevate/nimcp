@@ -27,9 +27,7 @@
 static int create_direction_predictor(jepa_direction_state_t* dir_state,
                                         jepa_direction_t direction,
                                         const jepa_bidir_config_t* config) {
-    if (!dir_state || !config) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(dir_state && config, NIMCP_ERROR_INVALID_PARAM, "dir_state or config is NULL");
 
     jepa_predictor_config_t pred_config;
     jepa_predictor_default_config(&pred_config);
@@ -97,9 +95,7 @@ static inline bool should_use_gpu(const jepa_bidirectional_t* bidir) {
  * ============================================================================ */
 
 int jepa_bidir_default_config(jepa_bidir_config_t* config) {
-    if (!config) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     memset(config, 0, sizeof(*config));
 
@@ -132,9 +128,7 @@ int jepa_bidir_default_config(jepa_bidir_config_t* config) {
 }
 
 int jepa_bidir_validate_config(const jepa_bidir_config_t* config) {
-    if (!config) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
     if (config->embedding_dim == 0 || config->embedding_dim > 4096) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -305,9 +299,7 @@ void jepa_bidirectional_destroy(jepa_bidirectional_t* bidir) {
 }
 
 int jepa_bidirectional_reset(jepa_bidirectional_t* bidir) {
-    if (!bidir) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bidir, NIMCP_ERROR_INVALID_PARAM, "bidir is NULL");
 
     nimcp_mutex_lock(bidir->mutex);
 
@@ -338,9 +330,7 @@ int jepa_bidirectional_predict(jepa_bidirectional_t* bidir,
                                 jepa_direction_t direction,
                                 const jepa_latent_t* input,
                                 jepa_bidir_result_t* result) {
-    if (!bidir || !input || !result || direction >= JEPA_DIR_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bidir && input && result && direction < JEPA_DIR_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid parameters");
 
     nimcp_mutex_lock(bidir->mutex);
 
@@ -402,12 +392,8 @@ int jepa_bidirectional_predict(jepa_bidirectional_t* bidir,
 int jepa_bidirectional_predict_multi(jepa_bidirectional_t* bidir,
                                       const jepa_bidir_multi_request_t* request,
                                       jepa_bidir_multi_result_t* result) {
-    if (!bidir || !request || !result) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (request->num_directions == 0 || !request->directions || !request->inputs) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bidir && request && result, NIMCP_ERROR_INVALID_PARAM, "bidir, request, or result is NULL");
+    NIMCP_CHECK_THROW(request->num_directions > 0 && request->directions && request->inputs, NIMCP_ERROR_INVALID_PARAM, "invalid request parameters");
 
     nimcp_mutex_lock(bidir->mutex);
     bidir->state = JEPA_BIDIR_STATE_PREDICTING;
@@ -545,9 +531,7 @@ static int update_precision_unlocked(jepa_bidirectional_t* bidir,
 int jepa_bidirectional_update_precision(jepa_bidirectional_t* bidir,
                                          jepa_direction_t direction,
                                          float error) {
-    if (!bidir || direction >= JEPA_DIR_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bidir && direction < JEPA_DIR_COUNT, NIMCP_ERROR_INVALID_PARAM, "bidir is NULL or invalid direction");
 
     nimcp_mutex_lock(bidir->mutex);
     int ret = update_precision_unlocked(bidir, direction, error);
@@ -567,12 +551,8 @@ float jepa_bidirectional_get_precision(const jepa_bidirectional_t* bidir,
 int jepa_bidirectional_set_precision(jepa_bidirectional_t* bidir,
                                       jepa_direction_t direction,
                                       float precision) {
-    if (!bidir || direction >= JEPA_DIR_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (precision < JEPA_BIDIR_MIN_PRECISION || precision > JEPA_BIDIR_MAX_PRECISION) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bidir && direction < JEPA_DIR_COUNT, NIMCP_ERROR_INVALID_PARAM, "bidir is NULL or invalid direction");
+    NIMCP_CHECK_THROW(precision >= JEPA_BIDIR_MIN_PRECISION && precision <= JEPA_BIDIR_MAX_PRECISION, NIMCP_ERROR_INVALID_PARAM, "precision out of range");
 
     nimcp_mutex_lock(bidir->mutex);
     bidir->directions[direction].precision = precision;
@@ -587,9 +567,7 @@ int jepa_bidirectional_set_precision(jepa_bidirectional_t* bidir,
  * ============================================================================ */
 
 int jepa_bidirectional_set_training(jepa_bidirectional_t* bidir, bool training) {
-    if (!bidir) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bidir, NIMCP_ERROR_INVALID_PARAM, "bidir is NULL");
 
     nimcp_mutex_lock(bidir->mutex);
 
@@ -611,9 +589,7 @@ int jepa_bidirectional_train_step(jepa_bidirectional_t* bidir,
                                    const jepa_latent_t* input,
                                    const jepa_latent_t* target,
                                    float* loss) {
-    if (!bidir || !input || !target || direction >= JEPA_DIR_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bidir && input && target && direction < JEPA_DIR_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid parameters");
 
     nimcp_mutex_lock(bidir->mutex);
 
@@ -642,9 +618,7 @@ int jepa_bidirectional_train_step(jepa_bidirectional_t* bidir,
 int jepa_bidirectional_set_direction_enabled(jepa_bidirectional_t* bidir,
                                               jepa_direction_t direction,
                                               bool enabled) {
-    if (!bidir || direction >= JEPA_DIR_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bidir && direction < JEPA_DIR_COUNT, NIMCP_ERROR_INVALID_PARAM, "bidir is NULL or invalid direction");
 
     nimcp_mutex_lock(bidir->mutex);
 
@@ -679,9 +653,7 @@ bool jepa_bidirectional_is_direction_enabled(const jepa_bidirectional_t* bidir,
 #ifdef NIMCP_ENABLE_CUDA
 int jepa_bidirectional_init_gpu(jepa_bidirectional_t* bidir,
                                  struct nimcp_gpu_context_s* gpu_ctx) {
-    if (!bidir) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bidir, NIMCP_ERROR_INVALID_PARAM, "bidir is NULL");
 
     if (gpu_ctx) {
         bidir->gpu_ctx = gpu_ctx;
@@ -713,17 +685,13 @@ struct nimcp_gpu_context_s* jepa_bidirectional_get_gpu_ctx(
 
 int jepa_bidirectional_get_stats(const jepa_bidirectional_t* bidir,
                                   jepa_bidir_stats_t* stats) {
-    if (!bidir || !stats) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bidir && stats, NIMCP_ERROR_INVALID_PARAM, "bidir or stats is NULL");
     memcpy(stats, &bidir->stats, sizeof(jepa_bidir_stats_t));
     return NIMCP_SUCCESS;
 }
 
 int jepa_bidirectional_reset_stats(jepa_bidirectional_t* bidir) {
-    if (!bidir) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bidir, NIMCP_ERROR_INVALID_PARAM, "bidir is NULL");
 
     nimcp_mutex_lock(bidir->mutex);
     memset(&bidir->stats, 0, sizeof(jepa_bidir_stats_t));
@@ -737,17 +705,13 @@ int jepa_bidirectional_reset_stats(jepa_bidirectional_t* bidir) {
  * ============================================================================ */
 
 int jepa_bidirectional_connect_bio_async(jepa_bidirectional_t* bidir) {
-    if (!bidir) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bidir, NIMCP_ERROR_INVALID_PARAM, "bidir is NULL");
     NIMCP_LOG_INFO("Bio-async connection (stub)");
     return NIMCP_SUCCESS;
 }
 
 int jepa_bidirectional_disconnect_bio_async(jepa_bidirectional_t* bidir) {
-    if (!bidir) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bidir, NIMCP_ERROR_INVALID_PARAM, "bidir is NULL");
     return NIMCP_SUCCESS;
 }
 

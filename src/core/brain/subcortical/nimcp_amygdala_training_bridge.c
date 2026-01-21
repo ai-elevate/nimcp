@@ -63,10 +63,7 @@ static void decay_emotional_state(float* value, float decay_rate) {
  * ============================================================================ */
 
 int amygdala_training_default_config(amygdala_training_config_t* config) {
-    if (!config) {
-        NIMCP_LOGGING_ERROR("NULL config pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Yerkes-Dodson parameters */
     config->optimal_arousal = AMYGDALA_TRAINING_OPTIMAL_AROUSAL;
@@ -179,8 +176,8 @@ int amygdala_training_connect_amygdala(
     amygdala_training_bridge_t* bridge,
     amygdala_t* amygdala
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!amygdala) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(amygdala, NIMCP_ERROR_INVALID_PARAM, "amygdala is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -207,8 +204,8 @@ int amygdala_training_connect_training(
     amygdala_training_bridge_t* bridge,
     void* training
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!training) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(training, NIMCP_ERROR_INVALID_PARAM, "training is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -235,8 +232,8 @@ int amygdala_training_connect_optimizer(
     amygdala_training_bridge_t* bridge,
     nimcp_optimizer_context_t* optimizer
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!optimizer) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(optimizer, NIMCP_ERROR_INVALID_PARAM, "optimizer is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -253,7 +250,7 @@ int amygdala_training_connect_optimizer(
 }
 
 int amygdala_training_disconnect_amygdala(amygdala_training_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->amygdala = NULL;
@@ -265,7 +262,7 @@ int amygdala_training_disconnect_amygdala(amygdala_training_bridge_t* bridge) {
 }
 
 int amygdala_training_disconnect_training(amygdala_training_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->training_system = NULL;
@@ -277,7 +274,7 @@ int amygdala_training_disconnect_training(amygdala_training_bridge_t* bridge) {
 }
 
 int amygdala_training_disconnect_optimizer(amygdala_training_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->optimizer = NULL;
@@ -292,8 +289,8 @@ int amygdala_training_disconnect_optimizer(amygdala_training_bridge_t* bridge) {
  * ============================================================================ */
 
 int amygdala_training_update(amygdala_training_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->amygdala_connected) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->amygdala_connected, NIMCP_ERROR_INVALID_STATE, "amygdala not connected");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -371,8 +368,8 @@ int amygdala_training_apply_lr_modulation(
     amygdala_training_bridge_t* bridge,
     float base_lr
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->optimizer_connected) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->optimizer_connected, NIMCP_ERROR_INVALID_STATE, "optimizer not connected");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -400,8 +397,8 @@ int amygdala_training_on_instability(
     int instability_type,
     float severity
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->amygdala_connected) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->amygdala_connected, NIMCP_ERROR_INVALID_STATE, "amygdala not connected");
     if (!bridge->config.enable_instability_response) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -475,7 +472,7 @@ int amygdala_training_on_instability(
  * ============================================================================ */
 
 int amygdala_training_connect_bio_async(amygdala_training_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;  /* Already connected */
 
     bio_module_info_t info = {
@@ -497,7 +494,7 @@ int amygdala_training_connect_bio_async(amygdala_training_bridge_t* bridge) {
 }
 
 int amygdala_training_disconnect_bio_async(amygdala_training_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {
@@ -546,7 +543,8 @@ int amygdala_training_get_stats(
     const amygdala_training_bridge_t* bridge,
     amygdala_training_stats_t* stats
 ) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 

@@ -476,9 +476,8 @@ tpb_context_t* tpb_create(const tpb_config_t* config)
 
 nimcp_result_t tpb_connect_training(tpb_context_t* ctx, nimcp_brain_training_ctx_t* training_ctx)
 {
-    if (!ctx || !training_ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(training_ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "training_ctx is NULL");
 
     ctx->training_ctx = training_ctx;
 
@@ -530,14 +529,12 @@ void tpb_destroy(tpb_context_t* ctx)
 
 nimcp_result_t tpb_report_loss(tpb_context_t* ctx, float loss, float* rpe_out)
 {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     /* Validate loss */
     if (isnan(loss) || isinf(loss)) {
         LOG_WARNING("[%s] ", TPB_LOG_MODULE, "Invalid loss value: %f", loss);
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "Invalid loss value: %f", loss);
     }
 
     nimcp_mutex_lock(&ctx->rpe_mutex);
@@ -609,9 +606,7 @@ nimcp_result_t tpb_report_loss(tpb_context_t* ctx, float loss, float* rpe_out)
 
 nimcp_result_t tpb_inject_reward(tpb_context_t* ctx, float da_delta)
 {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     /* Clamp delta */
     if (da_delta > 1.0F) da_delta = 1.0F;
@@ -627,9 +622,8 @@ nimcp_result_t tpb_inject_reward(tpb_context_t* ctx, float da_delta)
 
 nimcp_result_t tpb_get_rpe_state(tpb_context_t* ctx, tpb_rpe_state_t* state_out)
 {
-    if (!ctx || !state_out) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(state_out != NULL, NIMCP_ERROR_INVALID_PARAM, "state_out is NULL");
 
     nimcp_mutex_lock(&ctx->rpe_mutex);
     *state_out = ctx->rpe_state;
@@ -802,9 +796,8 @@ static void tpb_update_neuromod_from_rpe(tpb_context_t* ctx, float rpe)
 nimcp_result_t tpb_configure_region(tpb_context_t* ctx, const tpb_region_config_t* region_config,
                                      uint32_t* region_id_out)
 {
-    if (!ctx || !region_config) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(region_config != NULL, NIMCP_ERROR_INVALID_PARAM, "region_config is NULL");
 
     nimcp_platform_rwlock_wrlock(&ctx->region_rwlock);
 
@@ -835,9 +828,8 @@ nimcp_result_t tpb_route_weight_update(tpb_context_t* ctx, uint32_t neuron_id,
                                         float pre_activity, float post_activity,
                                         float spike_time_delta, float* weight_delta_out)
 {
-    if (!ctx || !weight_delta_out) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(weight_delta_out != NULL, NIMCP_ERROR_INVALID_PARAM, "weight_delta_out is NULL");
 
     nimcp_platform_rwlock_rdlock(&ctx->region_rwlock);
 
@@ -922,10 +914,14 @@ nimcp_result_t tpb_apply_plasticity_batch(tpb_context_t* ctx, uint32_t num_synap
                                            const float* spike_deltas,
                                            float* weights)
 {
-    if (!ctx || !pre_neuron_ids || !post_neuron_ids || !pre_activities ||
-        !post_activities || !spike_deltas || !weights || num_synapses == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(pre_neuron_ids != NULL, NIMCP_ERROR_INVALID_PARAM, "pre_neuron_ids is NULL");
+    NIMCP_CHECK_THROW(post_neuron_ids != NULL, NIMCP_ERROR_INVALID_PARAM, "post_neuron_ids is NULL");
+    NIMCP_CHECK_THROW(pre_activities != NULL, NIMCP_ERROR_INVALID_PARAM, "pre_activities is NULL");
+    NIMCP_CHECK_THROW(post_activities != NULL, NIMCP_ERROR_INVALID_PARAM, "post_activities is NULL");
+    NIMCP_CHECK_THROW(spike_deltas != NULL, NIMCP_ERROR_INVALID_PARAM, "spike_deltas is NULL");
+    NIMCP_CHECK_THROW(weights != NULL, NIMCP_ERROR_INVALID_PARAM, "weights is NULL");
+    NIMCP_CHECK_THROW(num_synapses > 0, NIMCP_ERROR_INVALID_PARAM, "num_synapses is zero");
 
     uint64_t start_time = ((uint64_t)clock() * 1000000000ULL / CLOCKS_PER_SEC);
 
@@ -1099,9 +1095,8 @@ static float tpb_apply_bcm_rule(tpb_context_t* ctx, uint32_t region_id,
 nimcp_result_t tpb_get_modulated_lr(tpb_context_t* ctx, uint32_t region_id,
                                      float base_lr, float* modulated_lr_out)
 {
-    if (!ctx || !modulated_lr_out) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(modulated_lr_out != NULL, NIMCP_ERROR_INVALID_PARAM, "modulated_lr_out is NULL");
 
     if (!ctx->neuromod_system) {
         *modulated_lr_out = base_lr;
@@ -1194,9 +1189,7 @@ nimcp_result_t tpb_get_modulated_lr(tpb_context_t* ctx, uint32_t region_id,
 nimcp_result_t tpb_get_neuromod_levels(tpb_context_t* ctx, float* da_out,
                                         float* ach_out, float* ht5_out, float* ne_out)
 {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     if (!ctx->neuromod_system) {
         if (da_out) *da_out = 0.5F;
@@ -1221,9 +1214,8 @@ nimcp_result_t tpb_get_neuromod_levels(tpb_context_t* ctx, float* da_out,
 nimcp_result_t tpb_set_neuromod_levels(tpb_context_t* ctx, float da, float ach,
                                         float ht5, float ne)
 {
-    if (!ctx || !ctx->neuromod_system) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(ctx->neuromod_system != NULL, NIMCP_ERROR_INVALID_PARAM, "neuromod_system is NULL");
 
     if (da >= 0.0F) {
         neuromodulator_set_level(ctx->neuromod_system, NEUROMOD_DOPAMINE,
@@ -1252,9 +1244,8 @@ nimcp_result_t tpb_set_neuromod_levels(tpb_context_t* ctx, float da, float ach,
 nimcp_result_t tpb_create_stdp_synapse(tpb_context_t* ctx, uint32_t region_id,
                                         stdp_synapse_t* synapse_out)
 {
-    if (!ctx || !synapse_out) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(synapse_out != NULL, NIMCP_ERROR_INVALID_PARAM, "synapse_out is NULL");
 
     stdp_synapse_init(synapse_out);
 
@@ -1274,9 +1265,8 @@ nimcp_result_t tpb_create_stdp_synapse(tpb_context_t* ctx, uint32_t region_id,
 nimcp_result_t tpb_create_bcm_synapse(tpb_context_t* ctx, uint32_t region_id,
                                        bcm_synapse_t* synapse_out)
 {
-    if (!ctx || !synapse_out) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(synapse_out != NULL, NIMCP_ERROR_INVALID_PARAM, "synapse_out is NULL");
 
     memset(synapse_out, 0, sizeof(bcm_synapse_t));
     synapse_out->weight = 0.5F;
@@ -1295,9 +1285,8 @@ nimcp_result_t tpb_update_stdp(tpb_context_t* ctx, stdp_synapse_t* synapse,
                                 bool pre_spike, bool post_spike,
                                 float current_time_ms, float* weight_delta_out)
 {
-    if (!ctx || !synapse) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(synapse != NULL, NIMCP_ERROR_INVALID_PARAM, "synapse is NULL");
 
     float delta = 0.0F;
 
@@ -1319,9 +1308,8 @@ nimcp_result_t tpb_update_bcm(tpb_context_t* ctx, bcm_synapse_t* synapse,
                                float pre_activity, float post_activity,
                                float dt, float* weight_delta_out)
 {
-    if (!ctx || !synapse) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(synapse != NULL, NIMCP_ERROR_INVALID_PARAM, "synapse is NULL");
 
     /* BCM update: delta_w = eta * post * (post - theta) * pre */
     float weight_change = post_activity * (post_activity - synapse->threshold) * pre_activity;
@@ -1362,9 +1350,8 @@ nimcp_result_t tpb_update_bcm(tpb_context_t* ctx, bcm_synapse_t* synapse,
 
 nimcp_result_t tpb_get_stats(tpb_context_t* ctx, tpb_stats_t* stats_out)
 {
-    if (!ctx || !stats_out) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(stats_out != NULL, NIMCP_ERROR_INVALID_PARAM, "stats_out is NULL");
 
     nimcp_mutex_lock(&ctx->stats_mutex);
     *stats_out = ctx->stats;
@@ -1375,9 +1362,7 @@ nimcp_result_t tpb_get_stats(tpb_context_t* ctx, tpb_stats_t* stats_out)
 
 nimcp_result_t tpb_reset_stats(tpb_context_t* ctx)
 {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     nimcp_mutex_lock(&ctx->stats_mutex);
     memset(&ctx->stats, 0, sizeof(tpb_stats_t));
@@ -1436,9 +1421,10 @@ typedef struct tpb_snapshot_wrapper {
 nimcp_result_t tpb_snapshot_weights(tpb_context_t* ctx, const float* weights,
                                      uint32_t num_weights, cow_handle_t* snapshot_out)
 {
-    if (!ctx || !weights || !snapshot_out || num_weights == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(weights != NULL, NIMCP_ERROR_INVALID_PARAM, "weights is NULL");
+    NIMCP_CHECK_THROW(snapshot_out != NULL, NIMCP_ERROR_INVALID_PARAM, "snapshot_out is NULL");
+    NIMCP_CHECK_THROW(num_weights > 0, NIMCP_ERROR_INVALID_PARAM, "num_weights is zero");
 
     if (!ctx->cow_manager) {
         LOG_WARNING("[%s] CoW not enabled, snapshot failed", TPB_LOG_MODULE);
@@ -1486,9 +1472,9 @@ nimcp_result_t tpb_snapshot_weights(tpb_context_t* ctx, const float* weights,
 
 nimcp_result_t tpb_restore_weights(tpb_context_t* ctx, cow_handle_t snapshot, float* weights)
 {
-    if (!ctx || !snapshot || !weights) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(snapshot != NULL, NIMCP_ERROR_INVALID_PARAM, "snapshot is NULL");
+    NIMCP_CHECK_THROW(weights != NULL, NIMCP_ERROR_INVALID_PARAM, "weights is NULL");
 
     if (!ctx->cow_manager) {
         return NIMCP_ERROR_NOT_IMPLEMENTED;
@@ -1515,9 +1501,8 @@ nimcp_result_t tpb_restore_weights(tpb_context_t* ctx, cow_handle_t snapshot, fl
 
 nimcp_result_t tpb_release_snapshot(tpb_context_t* ctx, cow_handle_t snapshot)
 {
-    if (!ctx || !snapshot) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(snapshot != NULL, NIMCP_ERROR_INVALID_PARAM, "snapshot is NULL");
 
     if (!ctx->cow_manager) {
         return NIMCP_ERROR_NOT_IMPLEMENTED;
@@ -1553,9 +1538,7 @@ static tcb_action_t tpb_on_divergence(const tcb_event_t* event);
 
 nimcp_result_t tpb_connect_callbacks(tpb_context_t* ctx, tcb_context_t* callback_ctx)
 {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     nimcp_mutex_lock(&ctx->callback_mutex);
     ctx->callback_ctx = callback_ctx;
@@ -1575,13 +1558,11 @@ tcb_context_t* tpb_get_callback_context(const tpb_context_t* ctx)
 
 nimcp_result_t tpb_register_plasticity_callbacks(tpb_context_t* ctx)
 {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     if (!ctx->callback_ctx) {
         LOG_WARNING("[%s] No callback context connected, cannot register callbacks", TPB_LOG_MODULE);
-        return NIMCP_ERROR_INVALID_PARAM;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_PARAM, "callback_ctx is NULL");
     }
 
     /* Register callback handlers with TCB */
@@ -1786,9 +1767,7 @@ static tcb_action_t tpb_on_divergence(const tcb_event_t* event)
 
 nimcp_result_t tpb_handle_callback_action(tpb_context_t* ctx, tcb_action_t action)
 {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     float da, ach, ht5, ne;
     tpb_get_neuromod_levels(ctx, &da, &ach, &ht5, &ne);
@@ -1841,13 +1820,8 @@ nimcp_result_t tpb_handle_callback_action(tpb_context_t* ctx, tcb_action_t actio
 
 nimcp_result_t tpb_set_callback_modulation(tpb_context_t* ctx, tcb_event_type_t event, float modulation)
 {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (event >= TCB_EVENT_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(event < TCB_EVENT_COUNT, NIMCP_ERROR_INVALID_PARAM, "event type out of range");
 
     /* Clamp modulation to valid range */
     if (modulation < 0.0F) modulation = 0.0F;
@@ -1865,9 +1839,7 @@ nimcp_result_t tpb_get_callback_stats(const tpb_context_t* ctx,
                                       uint64_t* epoch_fired,
                                       uint64_t* divergence_fired)
 {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     /* Cast away const for mutex lock - this is safe as mutex protects internal state */
     tpb_context_t* mutable_ctx = (tpb_context_t*)ctx;
@@ -1889,9 +1861,7 @@ nimcp_result_t tpb_connect_perception_training(
     tpb_context_t* ctx,
     perception_training_bridge_t* perception_bridge
 ) {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     ctx->perception_training = perception_bridge;
 
@@ -1908,9 +1878,7 @@ nimcp_result_t tpb_connect_cortical_training(
     tpb_context_t* ctx,
     cortical_training_bridge_t* cortical_bridge
 ) {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx != NULL, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     ctx->cortical_training = cortical_bridge;
 

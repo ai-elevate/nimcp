@@ -442,13 +442,10 @@ int audio_cortical_process(
     uint32_t sample_rate,
     audio_cortical_frequency_result_t* result)
 {
-    if (!bridge || !audio_data || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (num_samples == 0 || sample_rate == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge && audio_data && result, NIMCP_ERROR_NULL_POINTER,
+        "NULL parameter in audio_cortical_process");
+    NIMCP_CHECK_THROW(num_samples > 0 && sample_rate > 0, NIMCP_ERROR_INVALID_PARAM,
+        "Invalid num_samples or sample_rate in audio_cortical_process");
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
@@ -545,13 +542,10 @@ int audio_cortical_process_spectrogram(
     uint32_t num_time_frames,
     audio_cortical_frequency_result_t* result)
 {
-    if (!bridge || !spectrogram || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (num_freq_bins == 0 || num_time_frames == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge && spectrogram && result, NIMCP_ERROR_NULL_POINTER,
+        "NULL parameter in audio_cortical_process_spectrogram");
+    NIMCP_CHECK_THROW(num_freq_bins > 0 && num_time_frames > 0, NIMCP_ERROR_INVALID_PARAM,
+        "Invalid num_freq_bins or num_time_frames in audio_cortical_process_spectrogram");
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
@@ -681,13 +675,10 @@ int audio_cortical_process_frequency_band(
     float center_frequency,
     audio_cortical_frequency_result_t* result)
 {
-    if (!bridge || !band_energy || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (num_samples == 0 || center_frequency <= 0.0f) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge && band_energy && result, NIMCP_ERROR_NULL_POINTER,
+        "NULL parameter in audio_cortical_process_frequency_band");
+    NIMCP_CHECK_THROW(num_samples > 0 && center_frequency > 0.0f, NIMCP_ERROR_INVALID_PARAM,
+        "Invalid num_samples or center_frequency in audio_cortical_process_frequency_band");
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
@@ -757,13 +748,10 @@ int audio_cortical_get_frequency_map(
     float* selectivity_map,
     uint32_t* num_windows)
 {
-    if (!bridge || !audio_data || !frequency_map || !num_windows) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (num_samples == 0 || sample_rate == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge && audio_data && frequency_map && num_windows, NIMCP_ERROR_NULL_POINTER,
+        "NULL parameter in audio_cortical_get_frequency_map");
+    NIMCP_CHECK_THROW(num_samples > 0 && sample_rate > 0, NIMCP_ERROR_INVALID_PARAM,
+        "Invalid num_samples or sample_rate in audio_cortical_get_frequency_map");
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 

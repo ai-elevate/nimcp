@@ -174,13 +174,8 @@ nimcp_error_t gt_neuromod_process_outcome(
     const nimcp_game_outcome_t* outcome,
     gt_neuromod_release_t* release
 ) {
-    if (!bridge || !outcome || !release) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!bridge->active) {
-        return NIMCP_GT_ERROR_GAME_OVER;
-    }
+    NIMCP_CHECK_THROW(bridge && outcome && release, NIMCP_ERROR_INVALID_PARAM, "bridge, outcome, or release is NULL");
+    NIMCP_CHECK_THROW(bridge->active, NIMCP_GT_ERROR_GAME_OVER, "bridge is not active");
 
     memset(release, 0, sizeof(gt_neuromod_release_t));
 
@@ -368,9 +363,7 @@ nimcp_error_t gt_neuromod_get_cumulative_release(
     const gt_neuromod_bridge_t bridge,
     gt_neuromod_release_t* cumulative
 ) {
-    if (!bridge || !cumulative) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge && cumulative, NIMCP_ERROR_INVALID_PARAM, "bridge or cumulative is NULL");
 
     memset(cumulative, 0, sizeof(gt_neuromod_release_t));
 

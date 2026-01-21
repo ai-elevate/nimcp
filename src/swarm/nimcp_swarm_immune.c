@@ -203,10 +203,7 @@ static uint32_t generate_unique_id(void) {
  * ============================================================================ */
 
 nimcp_result_t nimcp_swarm_immune_default_config(NimcpSwarmImmuneConfig* config) {
-    if (!config) {
-        LOG_ERROR("Invalid config pointer");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_INVALID_PARAM, "config pointer is NULL");
 
     config->max_memory_cells = NIMCP_SWARM_IMMUNE_DEFAULT_MAX_MEMORY_CELLS;
     config->max_active_threats = NIMCP_SWARM_IMMUNE_DEFAULT_MAX_THREATS;
@@ -398,10 +395,9 @@ nimcp_result_t nimcp_swarm_immune_detect_threat(
     uint32_t source_drone_id,
     uint32_t* threat_id
 ) {
-    if (!system || !data || data_len == 0) {
-        LOG_ERROR("Invalid arguments for threat detection");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "immune system is NULL");
+    NIMCP_CHECK_THROW(data, NIMCP_INVALID_PARAM, "data pointer is NULL");
+    NIMCP_CHECK_THROW(data_len > 0, NIMCP_INVALID_PARAM, "data_len must be greater than 0");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -495,10 +491,9 @@ nimcp_result_t nimcp_swarm_immune_check_behavior(
     const NimcpSwarmBehaviorProfile* behavior,
     float* anomaly_score
 ) {
-    if (!system || !behavior || !anomaly_score) {
-        LOG_ERROR("Invalid arguments for behavior check");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "immune system is NULL");
+    NIMCP_CHECK_THROW(behavior, NIMCP_INVALID_PARAM, "behavior profile is NULL");
+    NIMCP_CHECK_THROW(anomaly_score, NIMCP_INVALID_PARAM, "anomaly_score output pointer is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -562,10 +557,9 @@ nimcp_result_t nimcp_swarm_immune_verify_self(
     size_t signature_len,
     bool* is_self
 ) {
-    if (!system || !signature || !is_self) {
-        LOG_ERROR("Invalid arguments for self verification");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "immune system is NULL");
+    NIMCP_CHECK_THROW(signature, NIMCP_INVALID_PARAM, "signature is NULL");
+    NIMCP_CHECK_THROW(is_self, NIMCP_INVALID_PARAM, "is_self output pointer is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -609,10 +603,8 @@ nimcp_result_t nimcp_swarm_immune_add_memory_cell(
     float effectiveness,
     uint32_t* cell_id
 ) {
-    if (!system || !signature) {
-        LOG_ERROR("Invalid arguments for adding memory cell");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "immune system is NULL");
+    NIMCP_CHECK_THROW(signature, NIMCP_INVALID_PARAM, "threat signature is NULL");
 
     /* Validate enum parameters */
     if (!NIMCP_VALIDATE_ENUM(signature->type, THREAT_COUNT)) {
@@ -664,10 +656,9 @@ nimcp_result_t nimcp_swarm_immune_find_memory_cell(
     size_t data_len,
     NimcpSwarmMemoryCell** cell
 ) {
-    if (!system || !data || !cell) {
-        LOG_ERROR("Invalid arguments for finding memory cell");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "immune system is NULL");
+    NIMCP_CHECK_THROW(data, NIMCP_INVALID_PARAM, "data pointer is NULL");
+    NIMCP_CHECK_THROW(cell, NIMCP_INVALID_PARAM, "cell output pointer is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -706,10 +697,7 @@ nimcp_result_t nimcp_swarm_immune_update_effectiveness(
     uint32_t cell_id,
     float new_effectiveness
 ) {
-    if (!system) {
-        LOG_ERROR("Invalid system pointer");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "immune system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -776,10 +764,7 @@ nimcp_result_t nimcp_swarm_immune_decay_memory(
     NimcpSwarmImmuneSystem* system,
     uint64_t current_time
 ) {
-    if (!system) {
-        LOG_ERROR("Invalid system pointer");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "immune system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
     nimcp_result_t result = nimcp_swarm_immune_decay_memory_unlocked(system, current_time);
@@ -822,10 +807,8 @@ nimcp_result_t nimcp_swarm_immune_generate_response(
     uint32_t threat_id,
     uint32_t* response_id
 ) {
-    if (!system || !response_id) {
-        LOG_ERROR("Invalid arguments for response generation");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "immune system is NULL");
+    NIMCP_CHECK_THROW(response_id, NIMCP_INVALID_PARAM, "response_id output pointer is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -890,10 +873,7 @@ nimcp_result_t nimcp_swarm_immune_execute_response(
     NimcpSwarmImmuneSystem* system,
     uint32_t response_id
 ) {
-    if (!system) {
-        LOG_ERROR("Invalid system pointer");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "immune system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -967,10 +947,8 @@ nimcp_result_t nimcp_swarm_immune_amplify_response(
     uint32_t response_id,
     float success_rate
 ) {
-    if (!system || success_rate < 0.0F || success_rate > 1.0F) {
-        LOG_ERROR("Invalid arguments for response amplification");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "immune system is NULL");
+    NIMCP_CHECK_THROW(success_rate >= 0.0F && success_rate <= 1.0F, NIMCP_INVALID_PARAM, "success_rate must be in range [0.0, 1.0]");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1036,10 +1014,9 @@ nimcp_result_t nimcp_swarm_immune_adapt_signature(
     const uint8_t* new_data,
     size_t new_data_len
 ) {
-    if (!system || !new_data || new_data_len == 0) {
-        LOG_ERROR("Invalid arguments for signature adaptation");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "immune system is NULL");
+    NIMCP_CHECK_THROW(new_data, NIMCP_INVALID_PARAM, "new_data pointer is NULL");
+    NIMCP_CHECK_THROW(new_data_len > 0, NIMCP_INVALID_PARAM, "new_data_len must be greater than 0");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1076,10 +1053,7 @@ nimcp_result_t nimcp_swarm_immune_adapt_signature(
 nimcp_result_t nimcp_swarm_immune_affinity_maturation(
     NimcpSwarmImmuneSystem* system
 ) {
-    if (!system) {
-        LOG_ERROR("Invalid system pointer");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "immune system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1116,10 +1090,7 @@ nimcp_result_t nimcp_swarm_immune_share_threat(
     NimcpSwarmImmuneSystem* system,
     uint32_t threat_id
 ) {
-    if (!system) {
-        LOG_ERROR("Invalid system pointer");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "immune system is NULL");
 
     if (!system->config.enable_sharing || !system->bio_ctx) {
         return NIMCP_SUCCESS; /* Sharing disabled */
@@ -1153,10 +1124,7 @@ nimcp_result_t nimcp_swarm_immune_share_memory_cell(
     NimcpSwarmImmuneSystem* system,
     uint32_t cell_id
 ) {
-    if (!system) {
-        LOG_ERROR("Invalid system pointer");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "immune system is NULL");
 
     if (!system->config.enable_sharing || !system->bio_ctx) {
         return NIMCP_SUCCESS;
@@ -1187,10 +1155,8 @@ nimcp_result_t nimcp_swarm_immune_coordinate_response(
     const uint32_t* participating_drones,
     size_t num_drones
 ) {
-    if (!system || !participating_drones) {
-        LOG_ERROR("Invalid arguments for response coordination");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "immune system is NULL");
+    NIMCP_CHECK_THROW(participating_drones, NIMCP_INVALID_PARAM, "participating_drones is NULL");
 
     if (!system->config.enable_coordination || !system->bio_ctx) {
         return NIMCP_SUCCESS;
@@ -1225,10 +1191,7 @@ nimcp_result_t nimcp_swarm_immune_broadcast_alert(
     uint32_t threat_id,
     NimcpSwarmSeverity priority
 ) {
-    if (!system) {
-        LOG_ERROR("Invalid system pointer");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "immune system is NULL");
 
     if (!system->bio_ctx) {
         return NIMCP_SUCCESS;
@@ -1268,10 +1231,7 @@ nimcp_result_t nimcp_swarm_immune_confirm_threat(
     uint32_t threat_id,
     uint32_t confirming_drone_id
 ) {
-    if (!system) {
-        LOG_ERROR("Invalid system pointer");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "immune system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1300,10 +1260,7 @@ nimcp_result_t nimcp_swarm_immune_neutralize_threat(
     NimcpSwarmImmuneSystem* system,
     uint32_t threat_id
 ) {
-    if (!system) {
-        LOG_ERROR("Invalid system pointer");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "immune system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1330,10 +1287,8 @@ nimcp_result_t nimcp_swarm_immune_get_threat(
     uint32_t threat_id,
     const NimcpSwarmThreat** threat
 ) {
-    if (!system || !threat) {
-        LOG_ERROR("Invalid arguments");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "immune system is NULL");
+    NIMCP_CHECK_THROW(threat, NIMCP_INVALID_PARAM, "threat output pointer is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1359,10 +1314,10 @@ nimcp_result_t nimcp_swarm_immune_get_stats(
     uint64_t* neutralized,
     uint64_t* false_positives
 ) {
-    if (!system || !total_threats || !neutralized || !false_positives) {
-        LOG_ERROR("Invalid arguments");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "immune system is NULL");
+    NIMCP_CHECK_THROW(total_threats, NIMCP_INVALID_PARAM, "total_threats output pointer is NULL");
+    NIMCP_CHECK_THROW(neutralized, NIMCP_INVALID_PARAM, "neutralized output pointer is NULL");
+    NIMCP_CHECK_THROW(false_positives, NIMCP_INVALID_PARAM, "false_positives output pointer is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1396,10 +1351,7 @@ nimcp_result_t nimcp_swarm_immune_update(
     NimcpSwarmImmuneSystem* system,
     uint64_t current_time
 ) {
-    if (!system) {
-        LOG_ERROR("Invalid system pointer");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "immune system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1433,10 +1385,7 @@ nimcp_result_t nimcp_swarm_immune_reset(
     NimcpSwarmImmuneSystem* system,
     bool preserve_memory
 ) {
-    if (!system) {
-        LOG_ERROR("Invalid system pointer");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(system, NIMCP_INVALID_PARAM, "immune system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1479,10 +1428,8 @@ nimcp_result_t immune_add_threat_rule(
     NimcpSwarmImmuneSystem* immune,
     const immune_threat_rule_t* rule
 ) {
-    if (!immune || !rule) {
-        LOG_ERROR("Invalid parameters for adding threat rule");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(immune, NIMCP_INVALID_PARAM, "immune system is NULL");
+    NIMCP_CHECK_THROW(rule, NIMCP_INVALID_PARAM, "threat rule is NULL");
 
     /* Validate enum parameter */
     if (!NIMCP_VALIDATE_ENUM(rule->threat_type, THREAT_COUNT)) {
@@ -1546,10 +1493,9 @@ nimcp_result_t immune_evaluate_threats(
     float* threat_scores,
     uint32_t* num_threats
 ) {
-    if (!immune || !threat_scores || !num_threats) {
-        LOG_ERROR("Invalid parameters for threat evaluation");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(immune, NIMCP_INVALID_PARAM, "immune system is NULL");
+    NIMCP_CHECK_THROW(threat_scores, NIMCP_INVALID_PARAM, "threat_scores output array is NULL");
+    NIMCP_CHECK_THROW(num_threats, NIMCP_INVALID_PARAM, "num_threats output pointer is NULL");
 
     nimcp_platform_mutex_lock(immune->mutex);
 
@@ -1688,10 +1634,8 @@ nimcp_result_t immune_logic_response(
     uint32_t threat_id,
     immune_response_t* response
 ) {
-    if (!immune || !response) {
-        LOG_ERROR("Invalid parameters for logic response");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(immune, NIMCP_INVALID_PARAM, "immune system is NULL");
+    NIMCP_CHECK_THROW(response, NIMCP_INVALID_PARAM, "response output pointer is NULL");
 
     nimcp_platform_mutex_lock(immune->mutex);
 
@@ -1755,10 +1699,7 @@ nimcp_result_t immune_send_bbb_threat_alert(
     uint32_t threat_id,
     NimcpSwarmSeverity priority
 ) {
-    if (!immune) {
-        LOG_ERROR("Invalid immune system");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(immune, NIMCP_INVALID_PARAM, "immune system is NULL");
 
     nimcp_platform_mutex_lock(immune->mutex);
 
@@ -1821,10 +1762,8 @@ nimcp_result_t immune_evaluate_not_threat(
     uint64_t time_window,
     bool* threat_detected
 ) {
-    if (!immune || !threat_detected) {
-        LOG_ERROR("Invalid parameters for NOT threat evaluation");
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(immune, NIMCP_INVALID_PARAM, "immune system is NULL");
+    NIMCP_CHECK_THROW(threat_detected, NIMCP_INVALID_PARAM, "threat_detected output pointer is NULL");
 
     nimcp_platform_mutex_lock(immune->mutex);
 

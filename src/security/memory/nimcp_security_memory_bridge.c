@@ -361,10 +361,7 @@ static void secure_erase_memory(void* data, size_t size, uint32_t passes)
 
 int security_memory_default_config(security_mem_config_t* config)
 {
-    if (!config) {
-        NIMCP_LOGGING_ERROR("NULL config pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(security_mem_config_t));
 
@@ -526,9 +523,7 @@ void security_memory_bridge_destroy(security_mem_bridge_t* bridge)
 
 int security_memory_bridge_reset(security_mem_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -576,14 +571,8 @@ int security_memory_connect_working(
     working_memory_t* working_memory
 )
 {
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!working_memory) {
-        NIMCP_LOGGING_ERROR("NULL working_memory");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(working_memory, NIMCP_ERROR_NULL_POINTER, "working_memory is NULL");
 
     BRIDGE_LOCK(bridge);
     bridge->working_memory = working_memory;
@@ -600,14 +589,8 @@ int security_memory_connect_episodic(
     episodic_memory_t* episodic_memory
 )
 {
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!episodic_memory) {
-        NIMCP_LOGGING_ERROR("NULL episodic_memory");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(episodic_memory, NIMCP_ERROR_NULL_POINTER, "episodic_memory is NULL");
 
     BRIDGE_LOCK(bridge);
     bridge->episodic_memory = episodic_memory;
@@ -624,14 +607,8 @@ int security_memory_connect_semantic(
     semantic_memory_system_t* semantic_memory
 )
 {
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!semantic_memory) {
-        NIMCP_LOGGING_ERROR("NULL semantic_memory");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(semantic_memory, NIMCP_ERROR_NULL_POINTER, "semantic_memory is NULL");
 
     BRIDGE_LOCK(bridge);
     bridge->semantic_memory = semantic_memory;
@@ -648,14 +625,8 @@ int security_memory_connect_procedural(
     procedural_memory_t procedural_memory
 )
 {
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!procedural_memory) {
-        NIMCP_LOGGING_ERROR("NULL procedural_memory");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(procedural_memory, NIMCP_ERROR_NULL_POINTER, "procedural_memory is NULL");
 
     BRIDGE_LOCK(bridge);
     bridge->procedural_memory = procedural_memory;
@@ -672,14 +643,8 @@ int security_memory_connect_bbb(
     bbb_system_t bbb
 )
 {
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bbb) {
-        NIMCP_LOGGING_ERROR("NULL bbb");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bbb, NIMCP_ERROR_NULL_POINTER, "bbb is NULL");
 
     BRIDGE_LOCK(bridge);
     bridge->bbb = bbb;
@@ -692,9 +657,7 @@ int security_memory_connect_bbb(
 
 int security_memory_disconnect_all(security_mem_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -865,9 +828,8 @@ int security_memory_register_subject(
     const security_mem_access_rights_t* rights
 )
 {
-    if (!bridge || !rights) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(rights, NIMCP_ERROR_NULL_POINTER, "rights is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -901,9 +863,8 @@ int security_memory_update_rights(
     const security_mem_access_rights_t* rights
 )
 {
-    if (!bridge || !rights) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(rights, NIMCP_ERROR_NULL_POINTER, "rights is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -927,9 +888,7 @@ int security_memory_revoke_subject(
     uint32_t subject_id
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -957,14 +916,11 @@ int security_memory_get_rights(
     security_mem_access_rights_t* rights_out
 )
 {
-    if (!bridge || !rights_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(rights_out, NIMCP_ERROR_NULL_POINTER, "rights_out is NULL");
 
     int idx = find_subject_index(bridge, subject_id);
-    if (idx < 0) {
-        return NIMCP_ERROR_NOT_FOUND;
-    }
+    NIMCP_CHECK_THROW(idx >= 0, NIMCP_ERROR_NOT_FOUND, "subject not found");
 
     *rights_out = bridge->access_table[idx];
     return 0;
@@ -982,9 +938,8 @@ int security_memory_classify_data(
     security_mem_classification_t* classification_out
 )
 {
-    if (!bridge || !classification_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(classification_out, NIMCP_ERROR_NULL_POINTER, "classification_out is NULL");
 
     /* Default to PUBLIC */
     security_mem_classification_t classification = SEC_MEM_CLASS_PUBLIC;
@@ -1082,9 +1037,7 @@ int security_memory_set_classification(
     security_mem_classification_t classification
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* In a full implementation, this would update a classification registry */
     /* For now, just update stats */
@@ -1105,9 +1058,8 @@ int security_memory_get_classification(
     security_mem_classification_t* classification_out
 )
 {
-    if (!bridge || !classification_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(classification_out, NIMCP_ERROR_NULL_POINTER, "classification_out is NULL");
 
     /* In a full implementation, look up from classification registry */
     (void)memory_type;
@@ -1132,16 +1084,16 @@ int security_memory_encrypt_sensitive(
     size_t* bytes_written_out
 )
 {
-    if (!bridge || !plaintext || !ciphertext_out || !bytes_written_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(plaintext, NIMCP_ERROR_NULL_POINTER, "plaintext is NULL");
+    NIMCP_CHECK_THROW(ciphertext_out, NIMCP_ERROR_NULL_POINTER, "ciphertext_out is NULL");
+    NIMCP_CHECK_THROW(bytes_written_out, NIMCP_ERROR_NULL_POINTER, "bytes_written_out is NULL");
 
     /* Check if encryption required for this classification */
     if ((uint32_t)classification < bridge->config.min_encryption_class) {
         /* No encryption needed - copy plaintext */
-        if (ciphertext_size < plaintext_size) {
-            return NIMCP_ERROR_BUFFER_TOO_SMALL;
-        }
+        NIMCP_CHECK_THROW(ciphertext_size >= plaintext_size, NIMCP_ERROR_BUFFER_TOO_SMALL,
+                         "ciphertext buffer too small for unencrypted copy");
         memcpy(ciphertext_out, plaintext, plaintext_size);
         *bytes_written_out = plaintext_size;
         return 0;
@@ -1149,11 +1101,8 @@ int security_memory_encrypt_sensitive(
 
     /* Calculate output size: IV + ciphertext + tag */
     size_t output_size = SEC_MEM_GCM_IV_SIZE + plaintext_size + SEC_MEM_GCM_TAG_SIZE;
-    if (ciphertext_size < output_size) {
-        NIMCP_LOGGING_ERROR("Output buffer too small: need %zu, have %zu",
-                          output_size, ciphertext_size);
-        return NIMCP_ERROR_BUFFER_TOO_SMALL;
-    }
+    NIMCP_CHECK_THROW(ciphertext_size >= output_size, NIMCP_ERROR_BUFFER_TOO_SMALL,
+                     "output buffer too small: need %zu, have %zu", output_size, ciphertext_size);
 
     BRIDGE_LOCK(bridge);
 
@@ -1162,7 +1111,7 @@ int security_memory_encrypt_sensitive(
     security_mem_internal_t* internal = (security_mem_internal_t*)bridge->base.system_b;
     if (!internal) {
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_INVALID_STATE;
+        NIMCP_CHECK_THROW(internal, NIMCP_ERROR_INVALID_STATE, "internal state is NULL");
     }
 
     /* Select key based on classification */
@@ -1210,38 +1159,34 @@ int security_memory_decrypt_sensitive(
     size_t* bytes_written_out
 )
 {
-    if (!bridge || !ciphertext || !plaintext_out || !bytes_written_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(ciphertext, NIMCP_ERROR_NULL_POINTER, "ciphertext is NULL");
+    NIMCP_CHECK_THROW(plaintext_out, NIMCP_ERROR_NULL_POINTER, "plaintext_out is NULL");
+    NIMCP_CHECK_THROW(bytes_written_out, NIMCP_ERROR_NULL_POINTER, "bytes_written_out is NULL");
 
     /* Check access rights first */
-    if (!security_memory_check_access(bridge, subject_id, SEC_MEM_TYPE_WORKING,
-                                      SEC_MEM_OP_READ, classification)) {
-        NIMCP_LOGGING_WARN("Decryption denied for subject %u", subject_id);
-        return NIMCP_ERROR_PERMISSION_DENIED;
-    }
+    bool access_ok = security_memory_check_access(bridge, subject_id, SEC_MEM_TYPE_WORKING,
+                                                  SEC_MEM_OP_READ, classification);
+    NIMCP_CHECK_THROW(access_ok, NIMCP_ERROR_PERMISSION_DENIED,
+                     "decryption denied for subject %u", subject_id);
 
     /* Check if encryption was applied */
     if ((uint32_t)classification < bridge->config.min_encryption_class) {
         /* Data was not encrypted - just copy */
-        if (plaintext_size < ciphertext_size) {
-            return NIMCP_ERROR_BUFFER_TOO_SMALL;
-        }
+        NIMCP_CHECK_THROW(plaintext_size >= ciphertext_size, NIMCP_ERROR_BUFFER_TOO_SMALL,
+                         "plaintext buffer too small for unencrypted copy");
         memcpy(plaintext_out, ciphertext, ciphertext_size);
         *bytes_written_out = ciphertext_size;
         return 0;
     }
 
     /* Validate input size */
-    if (ciphertext_size < SEC_MEM_GCM_IV_SIZE + SEC_MEM_GCM_TAG_SIZE) {
-        NIMCP_LOGGING_ERROR("Ciphertext too small");
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ciphertext_size >= SEC_MEM_GCM_IV_SIZE + SEC_MEM_GCM_TAG_SIZE,
+                     NIMCP_ERROR_INVALID_PARAMETER, "ciphertext too small");
 
     size_t data_size = ciphertext_size - SEC_MEM_GCM_IV_SIZE - SEC_MEM_GCM_TAG_SIZE;
-    if (plaintext_size < data_size) {
-        return NIMCP_ERROR_BUFFER_TOO_SMALL;
-    }
+    NIMCP_CHECK_THROW(plaintext_size >= data_size, NIMCP_ERROR_BUFFER_TOO_SMALL,
+                     "plaintext buffer too small for decrypted data");
 
     BRIDGE_LOCK(bridge);
 
@@ -1250,7 +1195,7 @@ int security_memory_decrypt_sensitive(
     security_mem_internal_t* internal = (security_mem_internal_t*)bridge->base.system_b;
     if (!internal) {
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_INVALID_STATE;
+        NIMCP_CHECK_THROW(internal, NIMCP_ERROR_INVALID_STATE, "internal state is NULL");
     }
 
     /* Select key */
@@ -1285,16 +1230,14 @@ int security_memory_rotate_keys(
     security_mem_classification_t classification
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
     security_mem_internal_t* internal = (security_mem_internal_t*)bridge->base.system_b;
     if (!internal) {
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_INVALID_STATE;
+        NIMCP_CHECK_THROW(internal, NIMCP_ERROR_INVALID_STATE, "internal state is NULL");
     }
 
     uint32_t key_idx = (uint32_t)classification % SEC_MEM_MAX_KEYS;
@@ -1325,9 +1268,7 @@ int security_memory_secure_erase(
     bool verify
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1356,12 +1297,9 @@ int security_memory_secure_erase_ptr(
     size_t data_size
 )
 {
-    if (!bridge || !data_ptr) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (data_size == 0) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(data_ptr, NIMCP_ERROR_NULL_POINTER, "data_ptr is NULL");
+    NIMCP_CHECK_THROW(data_size > 0, NIMCP_ERROR_INVALID_PARAMETER, "data_size is zero");
 
     BRIDGE_LOCK(bridge);
 
@@ -1396,9 +1334,7 @@ int security_memory_secure_erase_classification(
     security_mem_classification_t classification
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* In a full implementation, iterate through all memory regions
      * with the specified classification and erase them */
@@ -1527,20 +1463,19 @@ int security_memory_whitelist_transfer(
     uint32_t subject_id
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
     security_mem_internal_t* internal = (security_mem_internal_t*)bridge->base.system_b;
     if (!internal) {
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_INVALID_STATE;
+        NIMCP_CHECK_THROW(internal, NIMCP_ERROR_INVALID_STATE, "internal state is NULL");
     }
     if (internal->whitelist_count >= MAX_WHITELIST_ENTRIES) {
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_OUT_OF_RANGE;
+        NIMCP_CHECK_THROW(internal->whitelist_count < MAX_WHITELIST_ENTRIES,
+                         NIMCP_ERROR_OUT_OF_RANGE, "whitelist is full");
     }
 
     transfer_whitelist_entry_t* entry = &internal->whitelist[internal->whitelist_count++];
@@ -1568,12 +1503,9 @@ int security_memory_audit_access(
     const char* details
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bridge->config.enable_audit || !bridge->audit_log) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->config.enable_audit && bridge->audit_log,
+                     NIMCP_ERROR_INVALID_STATE, "audit not enabled or audit_log is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1623,12 +1555,10 @@ int security_memory_get_audit_log(
     size_t* count_out
 )
 {
-    if (!bridge || !entries_out || !count_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bridge->audit_log) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(entries_out, NIMCP_ERROR_NULL_POINTER, "entries_out is NULL");
+    NIMCP_CHECK_THROW(count_out, NIMCP_ERROR_NULL_POINTER, "count_out is NULL");
+    NIMCP_CHECK_THROW(bridge->audit_log, NIMCP_ERROR_INVALID_STATE, "audit_log is NULL");
 
     size_t to_copy = (bridge->audit_log_count < max_entries) ?
                      bridge->audit_log_count : max_entries;
@@ -1646,9 +1576,7 @@ int security_memory_get_audit_log(
 
 int security_memory_clear_audit_log(security_mem_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1679,18 +1607,12 @@ int security_memory_export_audit_log(
     const char* filepath
 )
 {
-    if (!bridge || !filepath) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bridge->audit_log) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(filepath, NIMCP_ERROR_NULL_POINTER, "filepath is NULL");
+    NIMCP_CHECK_THROW(bridge->audit_log, NIMCP_ERROR_INVALID_STATE, "audit_log is NULL");
 
     FILE* fp = fopen(filepath, "w");
-    if (!fp) {
-        NIMCP_LOGGING_ERROR("Failed to open %s for writing", filepath);
-        return NIMCP_ERROR_FILE_OPEN;
-    }
+    NIMCP_CHECK_THROW(fp, NIMCP_ERROR_FILE_OPEN, "failed to open %s for writing", filepath);
 
     fprintf(fp, "timestamp,type,subject_id,memory_type,operation,classification,success,details\n");
 
@@ -1724,9 +1646,7 @@ int security_memory_bridge_update(
     uint64_t delta_ms
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1762,9 +1682,7 @@ int security_memory_bridge_update(
 
 int security_memory_apply_security_effects(security_mem_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Update effective access mask based on lockouts and configuration */
     bridge->security_effects.current_access_mask = bridge->config.default_access_mask;
@@ -1793,14 +1711,10 @@ int security_memory_apply_security_effects(security_mem_bridge_t* bridge)
 
 int security_memory_gather_memory_effects(security_mem_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     security_mem_internal_t* internal = (security_mem_internal_t*)bridge->base.system_b;
-    if (!internal) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(internal, NIMCP_ERROR_INVALID_STATE, "internal state is NULL");
 
     /* Calculate access frequency from history */
     if (internal->history_count > 1) {
@@ -1868,9 +1782,8 @@ int security_memory_get_security_effects(
     security_to_memory_effects_t* effects_out
 )
 {
-    if (!bridge || !effects_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(effects_out, NIMCP_ERROR_NULL_POINTER, "effects_out is NULL");
 
     *effects_out = bridge->security_effects;
     return 0;
@@ -1881,9 +1794,8 @@ int security_memory_get_memory_effects(
     memory_to_security_effects_t* effects_out
 )
 {
-    if (!bridge || !effects_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(effects_out, NIMCP_ERROR_NULL_POINTER, "effects_out is NULL");
 
     *effects_out = bridge->memory_effects;
     return 0;
@@ -1894,9 +1806,8 @@ int security_memory_get_state(
     security_mem_state_info_t* state_out
 )
 {
-    if (!bridge || !state_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(state_out, NIMCP_ERROR_NULL_POINTER, "state_out is NULL");
 
     *state_out = bridge->state;
     return 0;
@@ -1907,9 +1818,8 @@ int security_memory_get_stats(
     security_mem_stats_t* stats_out
 )
 {
-    if (!bridge || !stats_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats_out, NIMCP_ERROR_NULL_POINTER, "stats_out is NULL");
 
     *stats_out = bridge->stats;
     return 0;
@@ -1917,9 +1827,7 @@ int security_memory_get_stats(
 
 int security_memory_reset_stats(security_mem_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
     memset(&bridge->stats, 0, sizeof(security_mem_stats_t));
@@ -1934,18 +1842,14 @@ int security_memory_reset_stats(security_mem_bridge_t* bridge)
 
 int security_memory_connect_bio_async(security_mem_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     return bridge_base_connect_bio_async(&bridge->base);
 }
 
 int security_memory_disconnect_bio_async(security_mem_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     return bridge_base_disconnect_bio_async(&bridge->base);
 }

@@ -266,9 +266,7 @@ static void update_facade_state(security_facade_t facade)
 
 int security_facade_default_config(security_facade_config_t* config)
 {
-    if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(*config));
 
@@ -446,9 +444,7 @@ void security_facade_destroy(security_facade_t facade)
 
 int security_facade_init_all(security_facade_t facade)
 {
-    if (!facade) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(facade, NIMCP_ERROR_NULL_POINTER, "facade is NULL");
 
     nimcp_mutex_lock(facade->mutex);
 
@@ -520,9 +516,7 @@ int security_facade_init_all(security_facade_t facade)
 
 int security_facade_shutdown(security_facade_t facade)
 {
-    if (!facade) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(facade, NIMCP_ERROR_NULL_POINTER, "facade is NULL");
 
     nimcp_mutex_lock(facade->mutex);
 
@@ -588,9 +582,7 @@ int security_facade_shutdown(security_facade_t facade)
 
 int security_facade_reset(security_facade_t facade)
 {
-    if (!facade) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(facade, NIMCP_ERROR_NULL_POINTER, "facade is NULL");
 
     nimcp_mutex_lock(facade->mutex);
 
@@ -638,12 +630,9 @@ int security_facade_enable_module(
     security_facade_t facade,
     security_module_id_t module_id)
 {
-    if (!facade) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (module_id >= SEC_MODULE_COUNT) {
-        return NIMCP_ERROR_OUT_OF_RANGE;
-    }
+    NIMCP_CHECK_THROW(facade, NIMCP_ERROR_NULL_POINTER, "facade is NULL");
+    NIMCP_CHECK_THROW(module_id < SEC_MODULE_COUNT, NIMCP_ERROR_OUT_OF_RANGE,
+                      "module_id out of range");
 
     nimcp_mutex_lock(facade->mutex);
 
@@ -677,12 +666,9 @@ int security_facade_disable_module(
     security_facade_t facade,
     security_module_id_t module_id)
 {
-    if (!facade) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (module_id >= SEC_MODULE_COUNT) {
-        return NIMCP_ERROR_OUT_OF_RANGE;
-    }
+    NIMCP_CHECK_THROW(facade, NIMCP_ERROR_NULL_POINTER, "facade is NULL");
+    NIMCP_CHECK_THROW(module_id < SEC_MODULE_COUNT, NIMCP_ERROR_OUT_OF_RANGE,
+                      "module_id out of range");
 
     /* Cannot disable core modules */
     if (module_id == SEC_MODULE_ORCHESTRATOR) {
@@ -721,12 +707,10 @@ int security_facade_is_module_enabled(
     security_module_id_t module_id,
     bool* enabled)
 {
-    if (!facade || !enabled) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (module_id >= SEC_MODULE_COUNT) {
-        return NIMCP_ERROR_OUT_OF_RANGE;
-    }
+    NIMCP_CHECK_THROW(facade, NIMCP_ERROR_NULL_POINTER, "facade is NULL");
+    NIMCP_CHECK_THROW(enabled, NIMCP_ERROR_NULL_POINTER, "enabled is NULL");
+    NIMCP_CHECK_THROW(module_id < SEC_MODULE_COUNT, NIMCP_ERROR_OUT_OF_RANGE,
+                      "module_id out of range");
 
     nimcp_mutex_lock(facade->mutex);
     *enabled = facade->modules[module_id].enabled;
@@ -740,12 +724,10 @@ int security_facade_get_module_status(
     security_module_id_t module_id,
     security_module_status_t* status)
 {
-    if (!facade || !status) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (module_id >= SEC_MODULE_COUNT) {
-        return NIMCP_ERROR_OUT_OF_RANGE;
-    }
+    NIMCP_CHECK_THROW(facade, NIMCP_ERROR_NULL_POINTER, "facade is NULL");
+    NIMCP_CHECK_THROW(status, NIMCP_ERROR_NULL_POINTER, "status is NULL");
+    NIMCP_CHECK_THROW(module_id < SEC_MODULE_COUNT, NIMCP_ERROR_OUT_OF_RANGE,
+                      "module_id out of range");
 
     nimcp_mutex_lock(facade->mutex);
 
@@ -775,9 +757,8 @@ int security_facade_get_threat_level(
     security_facade_t facade,
     float* threat_level)
 {
-    if (!facade || !threat_level) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(facade, NIMCP_ERROR_NULL_POINTER, "facade is NULL");
+    NIMCP_CHECK_THROW(threat_level, NIMCP_ERROR_NULL_POINTER, "threat_level is NULL");
 
     nimcp_mutex_lock(facade->mutex);
 
@@ -802,9 +783,8 @@ int security_facade_get_threat_assessment(
     security_facade_t facade,
     security_threat_assessment_t* assessment)
 {
-    if (!facade || !assessment) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(facade, NIMCP_ERROR_NULL_POINTER, "facade is NULL");
+    NIMCP_CHECK_THROW(assessment, NIMCP_ERROR_NULL_POINTER, "assessment is NULL");
 
     nimcp_mutex_lock(facade->mutex);
 
@@ -826,12 +806,9 @@ int security_facade_report_threat(
     security_severity_t severity,
     const char* description)
 {
-    if (!facade) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (source_module >= SEC_MODULE_COUNT) {
-        return NIMCP_ERROR_OUT_OF_RANGE;
-    }
+    NIMCP_CHECK_THROW(facade, NIMCP_ERROR_NULL_POINTER, "facade is NULL");
+    NIMCP_CHECK_THROW(source_module < SEC_MODULE_COUNT, NIMCP_ERROR_OUT_OF_RANGE,
+                      "source_module out of range");
 
     nimcp_mutex_lock(facade->mutex);
 
@@ -872,9 +849,7 @@ int security_facade_report_threat(
 
 int security_facade_clear_threats(security_facade_t facade)
 {
-    if (!facade) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(facade, NIMCP_ERROR_NULL_POINTER, "facade is NULL");
 
     nimcp_mutex_lock(facade->mutex);
 
@@ -900,9 +875,7 @@ int security_facade_clear_threats(security_facade_t facade)
 
 int security_facade_process_events(security_facade_t facade)
 {
-    if (!facade) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(facade, NIMCP_ERROR_NULL_POINTER, "facade is NULL");
 
     nimcp_mutex_lock(facade->mutex);
 
@@ -952,9 +925,8 @@ int security_facade_subscribe(
     security_event_callback_t callback,
     void* user_data)
 {
-    if (!facade || !callback) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(facade, NIMCP_ERROR_NULL_POINTER, "facade is NULL");
+    NIMCP_CHECK_THROW(callback, NIMCP_ERROR_NULL_POINTER, "callback is NULL");
 
     nimcp_mutex_lock(facade->mutex);
 
@@ -979,9 +951,7 @@ int security_facade_unsubscribe(
     security_facade_t facade,
     security_event_type_t event_type)
 {
-    if (!facade) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(facade, NIMCP_ERROR_NULL_POINTER, "facade is NULL");
 
     nimcp_mutex_lock(facade->mutex);
 
@@ -1008,9 +978,7 @@ int security_facade_trigger_lockdown(
     security_facade_t facade,
     const char* reason)
 {
-    if (!facade) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(facade, NIMCP_ERROR_NULL_POINTER, "facade is NULL");
 
     nimcp_mutex_lock(facade->mutex);
 
@@ -1051,9 +1019,7 @@ int security_facade_trigger_lockdown(
 
 int security_facade_release_lockdown(security_facade_t facade)
 {
-    if (!facade) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(facade, NIMCP_ERROR_NULL_POINTER, "facade is NULL");
 
     nimcp_mutex_lock(facade->mutex);
 
@@ -1095,9 +1061,8 @@ int security_facade_is_locked_down(
     security_facade_t facade,
     bool* is_locked)
 {
-    if (!facade || !is_locked) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(facade, NIMCP_ERROR_NULL_POINTER, "facade is NULL");
+    NIMCP_CHECK_THROW(is_locked, NIMCP_ERROR_NULL_POINTER, "is_locked is NULL");
 
     nimcp_mutex_lock(facade->mutex);
     *is_locked = facade->lockdown_active;
@@ -1114,9 +1079,8 @@ int security_facade_get_status(
     security_facade_t facade,
     security_facade_status_t* status)
 {
-    if (!facade || !status) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(facade, NIMCP_ERROR_NULL_POINTER, "facade is NULL");
+    NIMCP_CHECK_THROW(status, NIMCP_ERROR_NULL_POINTER, "status is NULL");
 
     nimcp_mutex_lock(facade->mutex);
 
@@ -1206,9 +1170,8 @@ int security_facade_get_state(
     security_facade_t facade,
     security_facade_state_t* state)
 {
-    if (!facade || !state) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(facade, NIMCP_ERROR_NULL_POINTER, "facade is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL");
 
     nimcp_mutex_lock(facade->mutex);
     *state = facade->state;
@@ -1221,9 +1184,8 @@ int security_facade_get_stats(
     security_facade_t facade,
     security_facade_stats_t* stats)
 {
-    if (!facade || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(facade, NIMCP_ERROR_NULL_POINTER, "facade is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     nimcp_mutex_lock(facade->mutex);
     memcpy(stats, &facade->stats, sizeof(security_facade_stats_t));
@@ -1235,9 +1197,7 @@ int security_facade_get_stats(
 
 int security_facade_reset_stats(security_facade_t facade)
 {
-    if (!facade) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(facade, NIMCP_ERROR_NULL_POINTER, "facade is NULL");
 
     nimcp_mutex_lock(facade->mutex);
     memset(&facade->stats, 0, sizeof(facade->stats));
@@ -1257,9 +1217,7 @@ int security_facade_connect_cognitive_hub(
     security_facade_t facade,
     void* cognitive_hub)
 {
-    if (!facade) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(facade, NIMCP_ERROR_NULL_POINTER, "facade is NULL");
 
     nimcp_mutex_lock(facade->mutex);
 
@@ -1284,9 +1242,7 @@ int security_facade_connect_immune_system(
     security_facade_t facade,
     void* immune_system)
 {
-    if (!facade) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(facade, NIMCP_ERROR_NULL_POINTER, "facade is NULL");
 
     nimcp_mutex_lock(facade->mutex);
 
@@ -1307,9 +1263,7 @@ int security_facade_connect_immune_system(
 
 int security_facade_connect_bio_async(security_facade_t facade)
 {
-    if (!facade) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(facade, NIMCP_ERROR_NULL_POINTER, "facade is NULL");
 
     nimcp_mutex_lock(facade->mutex);
 
@@ -1330,9 +1284,7 @@ int security_facade_connect_bio_async(security_facade_t facade)
 
 int security_facade_disconnect_bio_async(security_facade_t facade)
 {
-    if (!facade) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(facade, NIMCP_ERROR_NULL_POINTER, "facade is NULL");
 
     nimcp_mutex_lock(facade->mutex);
 

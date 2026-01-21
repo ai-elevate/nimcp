@@ -254,10 +254,7 @@ static float compute_temporal_coherence(sec_hippo_internal_t* internal)
 
 int security_hippocampus_default_config(sec_hippo_config_t* config)
 {
-    if (!config) {
-        NIMCP_LOGGING_ERROR("NULL config pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(sec_hippo_config_t));
 
@@ -433,9 +430,7 @@ void security_hippocampus_bridge_destroy(sec_hippo_bridge_t* bridge)
 
 int security_hippocampus_bridge_reset(sec_hippo_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -482,14 +477,8 @@ int security_hippocampus_connect_hippo(
     hippocampus_system_t hippocampus
 )
 {
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!hippocampus) {
-        NIMCP_LOGGING_ERROR("NULL hippocampus");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(hippocampus, NIMCP_ERROR_NULL_POINTER, "hippocampus is NULL");
 
     BRIDGE_LOCK(bridge);
     bridge->hippocampus = hippocampus;
@@ -506,14 +495,8 @@ int security_hippocampus_connect_sleep(
     sleep_system_t sleep_system
 )
 {
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!sleep_system) {
-        NIMCP_LOGGING_ERROR("NULL sleep_system");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(sleep_system, NIMCP_ERROR_NULL_POINTER, "sleep_system is NULL");
 
     BRIDGE_LOCK(bridge);
     bridge->sleep_system = sleep_system;
@@ -527,9 +510,7 @@ int security_hippocampus_connect_sleep(
 
 int security_hippocampus_disconnect_all(sec_hippo_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -563,9 +544,7 @@ int security_hippocampus_protect_sleep(
     sec_hippo_sleep_phase_t phase
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -643,9 +622,7 @@ int security_hippocampus_set_sleep_phase(
     sec_hippo_sleep_phase_t phase
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
     bridge->hippo_effects.current_sleep_phase = phase;
@@ -684,12 +661,9 @@ int security_hippocampus_verify_consolidation(
     float* confidence_out
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!status_out || !confidence_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(status_out, NIMCP_ERROR_NULL_POINTER, "status_out is NULL");
+    NIMCP_CHECK_THROW(confidence_out, NIMCP_ERROR_NULL_POINTER, "confidence_out is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -768,9 +742,9 @@ int security_hippocampus_verify_all_consolidations(
     uint32_t* failed_count_out
 )
 {
-    if (!bridge || !verified_count_out || !failed_count_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(verified_count_out, NIMCP_ERROR_NULL_POINTER, "verified_count_out is NULL");
+    NIMCP_CHECK_THROW(failed_count_out, NIMCP_ERROR_NULL_POINTER, "failed_count_out is NULL");
 
     uint32_t verified = 0;
     uint32_t failed = 0;
@@ -808,9 +782,7 @@ int security_hippocampus_verify_all_consolidations(
 
 int security_hippocampus_pause_consolidation(sec_hippo_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -828,9 +800,7 @@ int security_hippocampus_pause_consolidation(sec_hippo_bridge_t* bridge)
 
 int security_hippocampus_resume_consolidation(sec_hippo_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -961,9 +931,7 @@ int security_hippocampus_block_injection(
     sec_hippo_injection_type_t injection_type
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -987,21 +955,19 @@ int security_hippocampus_register_pattern(
     uint64_t pattern_hash
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
     sec_hippo_internal_t* internal = (sec_hippo_internal_t*)bridge->base.system_b;
     if (!internal) {
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_INVALID_STATE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_STATE, "internal state is NULL");
     }
 
     if (internal->num_patterns >= MAX_PATTERNS) {
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_OUT_OF_RANGE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_OUT_OF_RANGE, "pattern limit exceeded");
     }
 
     registered_pattern_t* pattern = &internal->patterns[internal->num_patterns++];
@@ -1025,9 +991,9 @@ int security_hippocampus_validate_replay(
     float* match_score_out
 )
 {
-    if (!bridge || !status_out || !match_score_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(status_out, NIMCP_ERROR_NULL_POINTER, "status_out is NULL");
+    NIMCP_CHECK_THROW(match_score_out, NIMCP_ERROR_NULL_POINTER, "match_score_out is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1136,21 +1102,19 @@ int security_hippocampus_register_encoding(
     uint64_t timestamp
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
     sec_hippo_internal_t* internal = (sec_hippo_internal_t*)bridge->base.system_b;
     if (!internal) {
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_INVALID_STATE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_STATE, "internal state is NULL");
     }
 
     if (internal->num_encodings >= MAX_ENCODINGS) {
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_OUT_OF_RANGE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_OUT_OF_RANGE, "encoding limit exceeded");
     }
 
     registered_encoding_t* enc = &internal->encodings[internal->num_encodings++];
@@ -1169,9 +1133,7 @@ int security_hippocampus_reject_replay(
     uint64_t sequence_id
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1195,9 +1157,8 @@ int security_hippocampus_get_replay_info(
     sec_hippo_replay_sequence_t* sequence_out
 )
 {
-    if (!bridge || !sequence_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(sequence_out, NIMCP_ERROR_NULL_POINTER, "sequence_out is NULL");
 
     for (uint32_t i = 0; i < bridge->num_replay_sequences; i++) {
         if (bridge->replay_sequences[i].sequence_id == sequence_id) {
@@ -1206,7 +1167,8 @@ int security_hippocampus_get_replay_info(
         }
     }
 
-    return NIMCP_ERROR_NOT_FOUND;
+    NIMCP_CHECK_THROW(false, NIMCP_ERROR_NOT_FOUND, "replay sequence not found");
+    return 0; /* unreachable */
 }
 
 /* ============================================================================
@@ -1220,9 +1182,10 @@ int security_hippocampus_check_coherence(
     float* temporal_score_out
 )
 {
-    if (!bridge || !status_out || !spatial_score_out || !temporal_score_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(status_out, NIMCP_ERROR_NULL_POINTER, "status_out is NULL");
+    NIMCP_CHECK_THROW(spatial_score_out, NIMCP_ERROR_NULL_POINTER, "spatial_score_out is NULL");
+    NIMCP_CHECK_THROW(temporal_score_out, NIMCP_ERROR_NULL_POINTER, "temporal_score_out is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1295,9 +1258,8 @@ int security_hippocampus_check_spatial_coherence(
     float* score_out
 )
 {
-    if (!bridge || !score_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(score_out, NIMCP_ERROR_NULL_POINTER, "score_out is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1314,9 +1276,8 @@ int security_hippocampus_check_temporal_coherence(
     float* score_out
 )
 {
-    if (!bridge || !score_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(score_out, NIMCP_ERROR_NULL_POINTER, "score_out is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1336,16 +1297,14 @@ int security_hippocampus_report_place_cell(
     float firing_rate
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
     sec_hippo_internal_t* internal = (sec_hippo_internal_t*)bridge->base.system_b;
     if (!internal) {
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_INVALID_STATE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_STATE, "internal state is NULL");
     }
 
     place_cell_record_t* record = &internal->place_cells[internal->place_cell_head];
@@ -1374,16 +1333,14 @@ int security_hippocampus_report_time_cell(
     float firing_rate
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
     sec_hippo_internal_t* internal = (sec_hippo_internal_t*)bridge->base.system_b;
     if (!internal) {
         BRIDGE_UNLOCK(bridge);
-        return NIMCP_ERROR_INVALID_STATE;
+        NIMCP_CHECK_THROW(false, NIMCP_ERROR_INVALID_STATE, "internal state is NULL");
     }
 
     time_cell_record_t* record = &internal->time_cells[internal->time_cell_head];
@@ -1412,9 +1369,7 @@ int security_hippocampus_bridge_update(
     uint64_t delta_ms
 )
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1490,9 +1445,7 @@ int security_hippocampus_bridge_update(
 
 int security_hippocampus_apply_security_effects(sec_hippo_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1524,9 +1477,7 @@ int security_hippocampus_apply_security_effects(sec_hippo_bridge_t* bridge)
 
 int security_hippocampus_gather_hippo_effects(sec_hippo_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1604,9 +1555,8 @@ int security_hippocampus_get_security_effects(
     security_to_hippo_effects_t* effects_out
 )
 {
-    if (!bridge || !effects_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(effects_out, NIMCP_ERROR_NULL_POINTER, "effects_out is NULL");
 
     *effects_out = bridge->security_effects;
     return 0;
@@ -1617,9 +1567,8 @@ int security_hippocampus_get_hippo_effects(
     hippo_to_security_effects_t* effects_out
 )
 {
-    if (!bridge || !effects_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(effects_out, NIMCP_ERROR_NULL_POINTER, "effects_out is NULL");
 
     *effects_out = bridge->hippo_effects;
     return 0;
@@ -1630,9 +1579,8 @@ int security_hippocampus_get_state(
     sec_hippo_state_info_t* state_out
 )
 {
-    if (!bridge || !state_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(state_out, NIMCP_ERROR_NULL_POINTER, "state_out is NULL");
 
     *state_out = bridge->state;
     return 0;
@@ -1643,9 +1591,8 @@ int security_hippocampus_get_stats(
     sec_hippo_stats_t* stats_out
 )
 {
-    if (!bridge || !stats_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats_out, NIMCP_ERROR_NULL_POINTER, "stats_out is NULL");
 
     *stats_out = bridge->stats;
     return 0;
@@ -1653,9 +1600,7 @@ int security_hippocampus_get_stats(
 
 int security_hippocampus_reset_stats(sec_hippo_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
     memset(&bridge->stats, 0, sizeof(sec_hippo_stats_t));
@@ -1675,12 +1620,10 @@ int security_hippocampus_get_audit_log(
     size_t* count_out
 )
 {
-    if (!bridge || !entries_out || !count_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bridge->audit_log) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(entries_out, NIMCP_ERROR_NULL_POINTER, "entries_out is NULL");
+    NIMCP_CHECK_THROW(count_out, NIMCP_ERROR_NULL_POINTER, "count_out is NULL");
+    NIMCP_CHECK_THROW(bridge->audit_log, NIMCP_ERROR_INVALID_STATE, "audit log not initialized");
 
     size_t to_copy = (bridge->audit_log_count < max_entries) ?
                      bridge->audit_log_count : max_entries;
@@ -1698,9 +1641,7 @@ int security_hippocampus_get_audit_log(
 
 int security_hippocampus_clear_audit_log(sec_hippo_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1719,18 +1660,14 @@ int security_hippocampus_clear_audit_log(sec_hippo_bridge_t* bridge)
 
 int security_hippocampus_connect_bio_async(sec_hippo_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     return bridge_base_connect_bio_async(&bridge->base);
 }
 
 int security_hippocampus_disconnect_bio_async(sec_hippo_bridge_t* bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     return bridge_base_disconnect_bio_async(&bridge->base);
 }

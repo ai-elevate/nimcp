@@ -530,9 +530,7 @@ void nimcp_swarm_proprioception_destroy(nimcp_swarm_proprioception_t* proprio) {
 }
 
 nimcp_result_t nimcp_swarm_proprioception_reset(nimcp_swarm_proprioception_t* proprio) {
-    if (!proprio) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(proprio, NIMCP_INVALID_PARAM, "proprioception instance is NULL");
 
     /* Reset all state except configuration */
     memset(&proprio->position, 0, sizeof(proprio->position));
@@ -563,9 +561,8 @@ nimcp_result_t nimcp_swarm_proprio_update_position(
     const nimcp_swarm_position_t* position,
     const nimcp_swarm_velocity_t* velocity
 ) {
-    if (!proprio || !position) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(proprio, NIMCP_INVALID_PARAM, "proprioception instance is NULL");
+    NIMCP_CHECK_THROW(position, NIMCP_INVALID_PARAM, "position pointer is NULL");
 
     uint64_t current_time = nimcp_get_timestamp_ns();
 
@@ -595,9 +592,8 @@ nimcp_result_t nimcp_swarm_proprio_update_neighbor(
     const nimcp_swarm_position_t* relative_position,
     double signal_strength
 ) {
-    if (!proprio || !relative_position) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(proprio, NIMCP_INVALID_PARAM, "proprioception instance is NULL");
+    NIMCP_CHECK_THROW(relative_position, NIMCP_INVALID_PARAM, "relative_position pointer is NULL");
 
     if (neighbor_id == proprio->drone_id) {
         LOG_WARN("Cannot add self as neighbor");
@@ -632,9 +628,8 @@ nimcp_result_t nimcp_swarm_proprio_get_neighbor(
     uint32_t neighbor_id,
     nimcp_swarm_neighbor_t* neighbor
 ) {
-    if (!proprio || !neighbor) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(proprio, NIMCP_INVALID_PARAM, "proprioception instance is NULL");
+    NIMCP_CHECK_THROW(neighbor, NIMCP_INVALID_PARAM, "neighbor output pointer is NULL");
 
     for (uint32_t i = 0; i < proprio->num_neighbors; i++) {
         if (proprio->neighbors[i].drone_id == neighbor_id &&
@@ -653,9 +648,9 @@ nimcp_result_t nimcp_swarm_proprio_get_neighbors(
     uint32_t max_neighbors,
     uint32_t* num_neighbors
 ) {
-    if (!proprio || !neighbors || !num_neighbors) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(proprio, NIMCP_INVALID_PARAM, "proprioception instance is NULL");
+    NIMCP_CHECK_THROW(neighbors, NIMCP_INVALID_PARAM, "neighbors output array is NULL");
+    NIMCP_CHECK_THROW(num_neighbors, NIMCP_INVALID_PARAM, "num_neighbors output pointer is NULL");
 
     uint32_t count = 0;
     for (uint32_t i = 0; i < proprio->num_neighbors && count < max_neighbors; i++) {
@@ -674,9 +669,8 @@ nimcp_result_t nimcp_swarm_proprio_classify_shape(
     nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_shape_descriptor_t* descriptor
 ) {
-    if (!proprio || !descriptor) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(proprio, NIMCP_INVALID_PARAM, "proprioception instance is NULL");
+    NIMCP_CHECK_THROW(descriptor, NIMCP_INVALID_PARAM, "shape descriptor output pointer is NULL");
 
     prune_stale_neighbors(proprio);
 
@@ -746,9 +740,8 @@ nimcp_result_t nimcp_swarm_proprio_shape_fitness(
     nimcp_swarm_shape_t target_shape,
     double* fitness
 ) {
-    if (!proprio || !fitness) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(proprio, NIMCP_INVALID_PARAM, "proprioception instance is NULL");
+    NIMCP_CHECK_THROW(fitness, NIMCP_INVALID_PARAM, "fitness output pointer is NULL");
 
     /* Use cached shape if recent */
     uint64_t current_time = nimcp_get_timestamp_ns();
@@ -774,9 +767,8 @@ nimcp_result_t nimcp_swarm_proprio_detect_deformation(
     nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_deformation_metrics_t* metrics
 ) {
-    if (!proprio || !metrics) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(proprio, NIMCP_INVALID_PARAM, "proprioception instance is NULL");
+    NIMCP_CHECK_THROW(metrics, NIMCP_INVALID_PARAM, "deformation metrics output pointer is NULL");
 
     prune_stale_neighbors(proprio);
 
@@ -802,9 +794,8 @@ nimcp_result_t nimcp_swarm_proprio_shape_deviation(
     nimcp_swarm_shape_t target_shape,
     double* deviation
 ) {
-    if (!proprio || !deviation) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(proprio, NIMCP_INVALID_PARAM, "proprioception instance is NULL");
+    NIMCP_CHECK_THROW(deviation, NIMCP_INVALID_PARAM, "deviation output pointer is NULL");
 
     double fitness;
     nimcp_swarm_proprio_shape_fitness(proprio, target_shape, &fitness);
@@ -820,9 +811,8 @@ nimcp_result_t nimcp_swarm_proprio_boundary_role(
     nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_boundary_descriptor_t* descriptor
 ) {
-    if (!proprio || !descriptor) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(proprio, NIMCP_INVALID_PARAM, "proprioception instance is NULL");
+    NIMCP_CHECK_THROW(descriptor, NIMCP_INVALID_PARAM, "boundary descriptor output pointer is NULL");
 
     prune_stale_neighbors(proprio);
 
@@ -894,9 +884,9 @@ nimcp_result_t nimcp_swarm_proprio_get_boundary_drones(
     uint32_t max_ids,
     uint32_t* num_ids
 ) {
-    if (!proprio || !boundary_ids || !num_ids) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(proprio, NIMCP_INVALID_PARAM, "proprioception instance is NULL");
+    NIMCP_CHECK_THROW(boundary_ids, NIMCP_INVALID_PARAM, "boundary_ids output array is NULL");
+    NIMCP_CHECK_THROW(num_ids, NIMCP_INVALID_PARAM, "num_ids output pointer is NULL");
 
     /* This requires information from other drones - for now return neighbors */
     uint32_t count = 0;
@@ -916,9 +906,8 @@ nimcp_result_t nimcp_swarm_proprio_density(
     nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_density_info_t* density_info
 ) {
-    if (!proprio || !density_info) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(proprio, NIMCP_INVALID_PARAM, "proprioception instance is NULL");
+    NIMCP_CHECK_THROW(density_info, NIMCP_INVALID_PARAM, "density_info output pointer is NULL");
 
     prune_stale_neighbors(proprio);
     calculate_density_internal(proprio, density_info);
@@ -934,9 +923,9 @@ nimcp_result_t nimcp_swarm_proprio_density_regions(
     nimcp_swarm_position_t* sparse_direction,
     nimcp_swarm_position_t* dense_direction
 ) {
-    if (!proprio || !sparse_direction || !dense_direction) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(proprio, NIMCP_INVALID_PARAM, "proprioception instance is NULL");
+    NIMCP_CHECK_THROW(sparse_direction, NIMCP_INVALID_PARAM, "sparse_direction output pointer is NULL");
+    NIMCP_CHECK_THROW(dense_direction, NIMCP_INVALID_PARAM, "dense_direction output pointer is NULL");
 
     /* Gradient points toward increasing density */
     dense_direction->x = proprio->density.gradient[0];
@@ -957,9 +946,8 @@ nimcp_result_t nimcp_swarm_proprio_estimate_com(
     nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_com_estimate_t* com_estimate
 ) {
-    if (!proprio || !com_estimate) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(proprio, NIMCP_INVALID_PARAM, "proprioception instance is NULL");
+    NIMCP_CHECK_THROW(com_estimate, NIMCP_INVALID_PARAM, "com_estimate output pointer is NULL");
 
     prune_stale_neighbors(proprio);
 
@@ -1006,9 +994,8 @@ nimcp_result_t nimcp_swarm_proprio_merge_com_estimate(
     nimcp_swarm_proprioception_t* proprio,
     const nimcp_swarm_com_estimate_t* neighbor_com
 ) {
-    if (!proprio || !neighbor_com) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(proprio, NIMCP_INVALID_PARAM, "proprioception instance is NULL");
+    NIMCP_CHECK_THROW(neighbor_com, NIMCP_INVALID_PARAM, "neighbor_com pointer is NULL");
 
     /* Weighted average based on confidence and contributing drones */
     double w1 = proprio->com_estimate.confidence * proprio->com_estimate.contributing_drones;
@@ -1046,9 +1033,8 @@ nimcp_result_t nimcp_swarm_proprio_formation_metrics(
     nimcp_swarm_proprioception_t* proprio,
     nimcp_swarm_formation_metrics_t* metrics
 ) {
-    if (!proprio || !metrics) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(proprio, NIMCP_INVALID_PARAM, "proprioception instance is NULL");
+    NIMCP_CHECK_THROW(metrics, NIMCP_INVALID_PARAM, "formation metrics output pointer is NULL");
 
     prune_stale_neighbors(proprio);
     calculate_formation_metrics_internal(proprio, metrics);
@@ -1063,9 +1049,8 @@ nimcp_result_t nimcp_swarm_proprio_connectivity_graph(
     bool* adjacency_matrix,
     uint32_t matrix_size
 ) {
-    if (!proprio || !adjacency_matrix) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(proprio, NIMCP_INVALID_PARAM, "proprioception instance is NULL");
+    NIMCP_CHECK_THROW(adjacency_matrix, NIMCP_INVALID_PARAM, "adjacency_matrix output pointer is NULL");
 
     /* Initialize matrix to false */
     memset(adjacency_matrix, 0, matrix_size * matrix_size * sizeof(bool));
@@ -1092,9 +1077,10 @@ nimcp_result_t nimcp_swarm_proprio_detect_vibration(
     uint32_t signal_length,
     nimcp_swarm_vibration_data_t* vibration_data
 ) {
-    if (!proprio || !signal || !vibration_data || signal_length == 0) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(proprio, NIMCP_INVALID_PARAM, "proprioception instance is NULL");
+    NIMCP_CHECK_THROW(signal, NIMCP_INVALID_PARAM, "signal input array is NULL");
+    NIMCP_CHECK_THROW(vibration_data, NIMCP_INVALID_PARAM, "vibration_data output pointer is NULL");
+    NIMCP_CHECK_THROW(signal_length > 0, NIMCP_INVALID_PARAM, "signal_length must be greater than 0");
 
     if (!proprio->config.enable_vibration) {
         return NIMCP_ERROR;
@@ -1153,9 +1139,10 @@ nimcp_result_t nimcp_swarm_proprio_localize_vibration(
     uint32_t num_neighbors,
     nimcp_swarm_position_t* source_position
 ) {
-    if (!proprio || !arrival_times || !source_position || num_neighbors < 3) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(proprio, NIMCP_INVALID_PARAM, "proprioception instance is NULL");
+    NIMCP_CHECK_THROW(arrival_times, NIMCP_INVALID_PARAM, "arrival_times input array is NULL");
+    NIMCP_CHECK_THROW(source_position, NIMCP_INVALID_PARAM, "source_position output pointer is NULL");
+    NIMCP_CHECK_THROW(num_neighbors >= 3, NIMCP_INVALID_PARAM, "num_neighbors must be at least 3 for localization");
 
     /* Multilateration using time differences */
     /* Simplified: use centroid of neighbors weighted by arrival time */
@@ -1238,9 +1225,7 @@ static nimcp_result_t proprio_send_message(
 nimcp_result_t nimcp_swarm_proprio_broadcast_position(
     nimcp_swarm_proprioception_t* proprio
 ) {
-    if (!proprio) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(proprio, NIMCP_INVALID_PARAM, "proprioception instance is NULL");
 
     if (!proprio->bio_ctx) {
         return NIMCP_SUCCESS;  /* Not enabled, return success */
@@ -1276,9 +1261,7 @@ nimcp_result_t nimcp_swarm_proprio_broadcast_position(
 nimcp_result_t nimcp_swarm_proprio_broadcast_formation_state(
     nimcp_swarm_proprioception_t* proprio
 ) {
-    if (!proprio) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(proprio, NIMCP_INVALID_PARAM, "proprioception instance is NULL");
 
     if (!proprio->bio_ctx) {
         return NIMCP_SUCCESS;  /* Not enabled, return success */
@@ -1316,9 +1299,8 @@ nimcp_result_t nimcp_swarm_proprio_send_deformation_alert(
     nimcp_swarm_proprioception_t* proprio,
     const nimcp_swarm_deformation_metrics_t* metrics
 ) {
-    if (!proprio || !metrics) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(proprio, NIMCP_INVALID_PARAM, "proprioception instance is NULL");
+    NIMCP_CHECK_THROW(metrics, NIMCP_INVALID_PARAM, "deformation metrics pointer is NULL");
 
     if (!proprio->bio_ctx) {
         return NIMCP_SUCCESS;  /* Not enabled, return success */
@@ -1367,9 +1349,8 @@ nimcp_result_t nimcp_swarm_proprio_process_message(
     nimcp_swarm_proprioception_t* proprio,
     const bio_message_header_t* msg
 ) {
-    if (!proprio || !msg) {
-        return NIMCP_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(proprio, NIMCP_INVALID_PARAM, "proprioception instance is NULL");
+    NIMCP_CHECK_THROW(msg, NIMCP_INVALID_PARAM, "message pointer is NULL");
 
     proprio->total_messages_received++;
 

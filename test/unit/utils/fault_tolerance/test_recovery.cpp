@@ -62,7 +62,7 @@ TEST(RecoveryUtilTest, TierNames) {
 }
 
 TEST(RecoveryUtilTest, ActionNames) {
-    EXPECT_STREQ("NONE", recovery_action_name(EXCEPTION_RECOVERY_NONE));
+    EXPECT_STREQ("NONE", recovery_action_name(RECOVERY_ACTION_NONE));
     EXPECT_STREQ("CLEAR_NAN", recovery_action_name(RECOVERY_ACTION_CLEAR_NAN));
     EXPECT_STREQ("RESET_COUNTER", recovery_action_name(RECOVERY_ACTION_RESET_COUNTER));
     EXPECT_STREQ("RELOAD_CHECKPOINT", recovery_action_name(RECOVERY_ACTION_RELOAD_CHECKPOINT));

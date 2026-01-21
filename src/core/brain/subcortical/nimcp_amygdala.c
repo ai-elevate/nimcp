@@ -187,7 +187,7 @@ static amyg_threat_level_t intensity_to_threat(float intensity) {
  * ============================================================================ */
 
 int amygdala_default_config(amyg_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     config->conditioning_rate = AMYG_DEFAULT_CONDITIONING_RATE;
     config->extinction_rate = AMYG_DEFAULT_EXTINCTION_RATE;
@@ -214,16 +214,16 @@ int amygdala_default_config(amyg_config_t* config) {
 }
 
 int amygdala_validate_config(const amyg_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
-    if (config->conditioning_rate < 0.0f || config->conditioning_rate > 1.0f)
-        return NIMCP_ERROR_INVALID_PARAM;
-    if (config->extinction_rate < 0.0f || config->extinction_rate > 1.0f)
-        return NIMCP_ERROR_INVALID_PARAM;
-    if (config->fear_threshold < 0.0f || config->fear_threshold > 1.0f)
-        return NIMCP_ERROR_INVALID_PARAM;
-    if (config->anxiety_threshold < 0.0f || config->anxiety_threshold > 1.0f)
-        return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(config->conditioning_rate >= 0.0f && config->conditioning_rate <= 1.0f,
+                      NIMCP_ERROR_INVALID_PARAM, "conditioning_rate out of range [0,1]");
+    NIMCP_CHECK_THROW(config->extinction_rate >= 0.0f && config->extinction_rate <= 1.0f,
+                      NIMCP_ERROR_INVALID_PARAM, "extinction_rate out of range [0,1]");
+    NIMCP_CHECK_THROW(config->fear_threshold >= 0.0f && config->fear_threshold <= 1.0f,
+                      NIMCP_ERROR_INVALID_PARAM, "fear_threshold out of range [0,1]");
+    NIMCP_CHECK_THROW(config->anxiety_threshold >= 0.0f && config->anxiety_threshold <= 1.0f,
+                      NIMCP_ERROR_INVALID_PARAM, "anxiety_threshold out of range [0,1]");
 
     return 0;
 }
@@ -336,7 +336,7 @@ void amygdala_destroy(amygdala_t* amyg) {
 }
 
 int amygdala_reset(amygdala_t* amyg) {
-    if (!amyg) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
 
     nimcp_mutex_lock(amyg->mutex);
 
@@ -373,7 +373,8 @@ int amygdala_reset(amygdala_t* amyg) {
 int amygdala_process_stimulus(amygdala_t* amyg,
                               const amyg_conditioned_stimulus_t* cs,
                               amyg_fear_response_t* response) {
-    if (!amyg || !cs) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
+    NIMCP_CHECK_THROW(cs, NIMCP_ERROR_NULL_POINTER, "cs is NULL");
 
     nimcp_mutex_lock(amyg->mutex);
 
@@ -484,8 +485,8 @@ int amygdala_process_stimulus(amygdala_t* amyg,
 }
 
 int amygdala_step(amygdala_t* amyg, float dt_ms) {
-    if (!amyg) return NIMCP_ERROR_NULL_POINTER;
-    if (dt_ms <= 0.0f) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
+    NIMCP_CHECK_THROW(dt_ms > 0.0f, NIMCP_ERROR_INVALID_PARAM, "dt_ms must be positive");
 
     nimcp_mutex_lock(amyg->mutex);
 
@@ -533,7 +534,8 @@ int amygdala_step(amygdala_t* amyg, float dt_ms) {
 }
 
 int amygdala_get_response(const amygdala_t* amyg, amyg_fear_response_t* response) {
-    if (!amyg || !response) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
+    NIMCP_CHECK_THROW(response, NIMCP_ERROR_NULL_POINTER, "response is NULL");
 
     // Note: Must cast away const to lock mutex for thread-safe read
     // This is safe because we only read response data, not modify amygdala state
@@ -552,7 +554,9 @@ int amygdala_condition_fear(amygdala_t* amyg,
                             const amyg_conditioned_stimulus_t* cs,
                             const amyg_unconditioned_stimulus_t* us,
                             uint32_t* memory_id) {
-    if (!amyg || !cs || !us) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
+    NIMCP_CHECK_THROW(cs, NIMCP_ERROR_NULL_POINTER, "cs is NULL");
+    NIMCP_CHECK_THROW(us, NIMCP_ERROR_NULL_POINTER, "us is NULL");
 
     nimcp_mutex_lock(amyg->mutex);
 
@@ -626,7 +630,8 @@ int amygdala_condition_fear(amygdala_t* amyg,
 
 int amygdala_extinction_trial(amygdala_t* amyg,
                               const amyg_conditioned_stimulus_t* cs) {
-    if (!amyg || !cs) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
+    NIMCP_CHECK_THROW(cs, NIMCP_ERROR_NULL_POINTER, "cs is NULL");
     if (!amyg->config.extinction_enabled) return 0;
 
     nimcp_mutex_lock(amyg->mutex);
@@ -667,7 +672,8 @@ int amygdala_retrieve_fear_memory(amygdala_t* amyg,
                                   const amyg_conditioned_stimulus_t* cs,
                                   amyg_fear_memory_t* memory,
                                   float* match_score) {
-    if (!amyg || !cs) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
+    NIMCP_CHECK_THROW(cs, NIMCP_ERROR_NULL_POINTER, "cs is NULL");
 
     nimcp_mutex_lock(amyg->mutex);
 
@@ -702,7 +708,8 @@ int amygdala_retrieve_fear_memory(amygdala_t* amyg,
 int amygdala_add_fear_memory(amygdala_t* amyg,
                              const amyg_fear_memory_t* memory,
                              uint32_t* memory_id) {
-    if (!amyg || !memory) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
+    NIMCP_CHECK_THROW(memory, NIMCP_ERROR_NULL_POINTER, "memory is NULL");
 
     nimcp_mutex_lock(amyg->mutex);
 
@@ -728,7 +735,8 @@ int amygdala_add_fear_memory(amygdala_t* amyg,
 int amygdala_get_fear_memory(const amygdala_t* amyg,
                              uint32_t memory_id,
                              amyg_fear_memory_t* memory) {
-    if (!amyg || !memory) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
+    NIMCP_CHECK_THROW(memory, NIMCP_ERROR_NULL_POINTER, "memory is NULL");
 
     // Note: Must cast away const to lock mutex for thread-safe read
     // This is safe because we only read memory data, not modify amygdala state
@@ -747,7 +755,7 @@ int amygdala_get_fear_memory(const amygdala_t* amyg,
 }
 
 int amygdala_clear_fear_memories(amygdala_t* amyg) {
-    if (!amyg) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
 
     nimcp_mutex_lock(amyg->mutex);
     amyg->fear_memory_count = 0;
@@ -762,7 +770,8 @@ int amygdala_clear_fear_memories(amygdala_t* amyg) {
  * ============================================================================ */
 
 int amygdala_set_context(amygdala_t* amyg, const amyg_context_t* context) {
-    if (!amyg || !context) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
+    NIMCP_CHECK_THROW(context, NIMCP_ERROR_NULL_POINTER, "context is NULL");
 
     nimcp_mutex_lock(amyg->mutex);
     amyg->current_context = *context;
@@ -773,7 +782,8 @@ int amygdala_set_context(amygdala_t* amyg, const amyg_context_t* context) {
 }
 
 int amygdala_get_context(const amygdala_t* amyg, amyg_context_t* context) {
-    if (!amyg || !context) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
+    NIMCP_CHECK_THROW(context, NIMCP_ERROR_NULL_POINTER, "context is NULL");
 
     nimcp_mutex_lock(((amygdala_t*)amyg)->mutex);
     *context = amyg->current_context;
@@ -785,8 +795,9 @@ int amygdala_get_context(const amygdala_t* amyg, amyg_context_t* context) {
 int amygdala_context_match(const amygdala_t* amyg,
                            uint32_t memory_id,
                            float* match_score) {
-    if (!amyg || !match_score) return NIMCP_ERROR_NULL_POINTER;
-    if (!amyg->context_valid) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
+    NIMCP_CHECK_THROW(match_score, NIMCP_ERROR_NULL_POINTER, "match_score is NULL");
+    NIMCP_CHECK_THROW(amyg->context_valid, NIMCP_ERROR_INVALID_STATE, "context is not valid");
 
     nimcp_mutex_lock(((amygdala_t*)amyg)->mutex);
 
@@ -808,7 +819,7 @@ int amygdala_context_match(const amygdala_t* amyg,
  * ============================================================================ */
 
 int amygdala_set_prefrontal_inhibition(amygdala_t* amyg, float inhibition) {
-    if (!amyg) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
 
     nimcp_mutex_lock(amyg->mutex);
     amyg->prefrontal_inhibition = clamp01(inhibition);
@@ -821,7 +832,7 @@ int amygdala_set_neuromodulators(amygdala_t* amyg,
                                  float dopamine,
                                  float norepinephrine,
                                  float cortisol) {
-    if (!amyg) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
 
     nimcp_mutex_lock(amyg->mutex);
 
@@ -837,7 +848,7 @@ int amygdala_set_neuromodulators(amygdala_t* amyg,
 }
 
 int amygdala_set_anxiety(amygdala_t* amyg, float anxiety) {
-    if (!amyg) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
 
     nimcp_mutex_lock(amyg->mutex);
     amyg->current_anxiety_level = clamp01(anxiety);
@@ -853,8 +864,9 @@ int amygdala_set_anxiety(amygdala_t* amyg, float anxiety) {
 int amygdala_get_nucleus_activation(const amygdala_t* amyg,
                                     amyg_nucleus_type_t nucleus,
                                     float* activation) {
-    if (!amyg || !activation) return NIMCP_ERROR_NULL_POINTER;
-    if (nucleus >= AMYG_NUCLEUS_COUNT) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
+    NIMCP_CHECK_THROW(activation, NIMCP_ERROR_NULL_POINTER, "activation is NULL");
+    NIMCP_CHECK_THROW(nucleus < AMYG_NUCLEUS_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid nucleus type");
 
     nimcp_mutex_lock(((amygdala_t*)amyg)->mutex);
     *activation = amyg->nuclei[nucleus].activation;
@@ -866,8 +878,8 @@ int amygdala_get_nucleus_activation(const amygdala_t* amyg,
 int amygdala_set_nucleus_activation(amygdala_t* amyg,
                                     amyg_nucleus_type_t nucleus,
                                     float activation) {
-    if (!amyg) return NIMCP_ERROR_NULL_POINTER;
-    if (nucleus >= AMYG_NUCLEUS_COUNT) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
+    NIMCP_CHECK_THROW(nucleus < AMYG_NUCLEUS_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid nucleus type");
 
     nimcp_mutex_lock(amyg->mutex);
     amyg->nuclei[nucleus].activation = clamp01(activation);
@@ -879,8 +891,8 @@ int amygdala_set_nucleus_activation(amygdala_t* amyg,
 int amygdala_set_nucleus_plasticity(amygdala_t* amyg,
                                     amyg_nucleus_type_t nucleus,
                                     bool enabled) {
-    if (!amyg) return NIMCP_ERROR_NULL_POINTER;
-    if (nucleus >= AMYG_NUCLEUS_COUNT) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
+    NIMCP_CHECK_THROW(nucleus < AMYG_NUCLEUS_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid nucleus type");
 
     nimcp_mutex_lock(amyg->mutex);
     amyg->nuclei[nucleus].plasticity_enabled = enabled;
@@ -894,7 +906,7 @@ int amygdala_set_nucleus_plasticity(amygdala_t* amyg,
  * ============================================================================ */
 
 int amygdala_connect_hippocampus(amygdala_t* amyg, void* hippocampus) {
-    if (!amyg) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
 
     nimcp_mutex_lock(amyg->mutex);
     amyg->hippocampus = hippocampus;
@@ -904,7 +916,7 @@ int amygdala_connect_hippocampus(amygdala_t* amyg, void* hippocampus) {
 }
 
 int amygdala_connect_prefrontal(amygdala_t* amyg, void* prefrontal) {
-    if (!amyg) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
 
     nimcp_mutex_lock(amyg->mutex);
     amyg->prefrontal = prefrontal;
@@ -914,7 +926,7 @@ int amygdala_connect_prefrontal(amygdala_t* amyg, void* prefrontal) {
 }
 
 int amygdala_connect_hypothalamus(amygdala_t* amyg, void* hypothalamus) {
-    if (!amyg) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
 
     nimcp_mutex_lock(amyg->mutex);
     amyg->hypothalamus = hypothalamus;
@@ -924,7 +936,7 @@ int amygdala_connect_hypothalamus(amygdala_t* amyg, void* hypothalamus) {
 }
 
 int amygdala_connect_thalamus(amygdala_t* amyg, void* thalamus) {
-    if (!amyg) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
 
     nimcp_mutex_lock(amyg->mutex);
     amyg->thalamus = thalamus;
@@ -934,7 +946,7 @@ int amygdala_connect_thalamus(amygdala_t* amyg, void* thalamus) {
 }
 
 int amygdala_connect_emotion_system(amygdala_t* amyg, emotional_system_t* emotion_system) {
-    if (!amyg) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
 
     nimcp_mutex_lock(amyg->mutex);
 
@@ -951,7 +963,7 @@ int amygdala_connect_emotion_system(amygdala_t* amyg, emotional_system_t* emotio
 }
 
 int amygdala_disconnect_emotion_system(amygdala_t* amyg) {
-    if (!amyg) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
 
     nimcp_mutex_lock(amyg->mutex);
 
@@ -971,7 +983,7 @@ bool amygdala_is_emotion_system_connected(const amygdala_t* amyg) {
 }
 
 int amygdala_sync_to_emotion_system(amygdala_t* amyg) {
-    if (!amyg) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
     if (!amyg->emotion_system_connected || !amyg->emotion_system) return 0;
 
     /* Convert amygdala fear/anxiety to emotional system valence/arousal
@@ -996,7 +1008,7 @@ int amygdala_sync_to_emotion_system(amygdala_t* amyg) {
 }
 
 int amygdala_sync_from_emotion_system(amygdala_t* amyg) {
-    if (!amyg) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
     if (!amyg->emotion_system_connected || !amyg->emotion_system) return 0;
 
     /* Get regulation state from emotional system */
@@ -1025,7 +1037,7 @@ int amygdala_sync_from_emotion_system(amygdala_t* amyg) {
  * ============================================================================ */
 
 int amygdala_connect_bio_async(amygdala_t* amyg) {
-    if (!amyg) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
     if (amyg->bio_async_connected) return 0;
 
     /* Bio-async registration would happen here if router is available */
@@ -1037,7 +1049,7 @@ int amygdala_connect_bio_async(amygdala_t* amyg) {
 }
 
 int amygdala_disconnect_bio_async(amygdala_t* amyg) {
-    if (!amyg) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
 
     amyg->bio_async_connected = false;
     amyg->bio_ctx = NULL;
@@ -1065,7 +1077,7 @@ float amygdala_get_fear_level(const amygdala_t* amyg) {
 }
 
 int amygdala_set_fear_level(amygdala_t* amyg, float fear) {
-    if (!amyg) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
 
     nimcp_mutex_lock(amyg->mutex);
     amyg->current_fear_level = clamp01(fear);
@@ -1090,7 +1102,7 @@ int amygdala_get_statistics(const amygdala_t* amyg,
                             uint64_t* fear_events,
                             uint64_t* extinction_events,
                             uint64_t* conditioning_events) {
-    if (!amyg) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(amyg, NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
 
     nimcp_mutex_lock(((amygdala_t*)amyg)->mutex);
 

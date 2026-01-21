@@ -14,6 +14,7 @@
 #include "utils/algorithms/nimcp_monte_carlo.h"
 #include "utils/quantum/nimcp_quantum_monte_carlo.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>
@@ -224,9 +225,7 @@ static void mlp_layer_forward(const jepa_mlp_layer_t* layer,
  * ============================================================================ */
 
 int jepa_predictor_default_config(jepa_predictor_config_t* config) {
-    if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     config->type = JEPA_PREDICTOR_MLP;
     config->input_dim = NIMCP_JEPA_LATENT_DIM;
@@ -464,21 +463,15 @@ int jepa_predictor_reset(jepa_predictor_t* predictor) {
 int jepa_predictor_predict(jepa_predictor_t* predictor,
                             const jepa_latent_t* context,
                             jepa_latent_t* prediction) {
-    if (!predictor || !context || !prediction) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (context->latent_dim != predictor->config.input_dim) {
-        NIMCP_LOGGING_ERROR(LOG_MODULE " Input dim mismatch: %u vs %u",
-                           context->latent_dim, predictor->config.input_dim);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (prediction->latent_dim != predictor->config.output_dim) {
-        NIMCP_LOGGING_ERROR(LOG_MODULE " Output dim mismatch: %u vs %u",
-                           prediction->latent_dim, predictor->config.output_dim);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
+    NIMCP_CHECK_THROW(context, NIMCP_ERROR_NULL_POINTER, "context is NULL");
+    NIMCP_CHECK_THROW(prediction, NIMCP_ERROR_NULL_POINTER, "prediction is NULL");
+    NIMCP_CHECK_THROW(context->latent_dim == predictor->config.input_dim,
+                      NIMCP_ERROR_INVALID_PARAM, "input dim mismatch: %u vs %u",
+                      context->latent_dim, predictor->config.input_dim);
+    NIMCP_CHECK_THROW(prediction->latent_dim == predictor->config.output_dim,
+                      NIMCP_ERROR_INVALID_PARAM, "output dim mismatch: %u vs %u",
+                      prediction->latent_dim, predictor->config.output_dim);
 
     /* Forward pass through MLP */
     if (predictor->type == JEPA_PREDICTOR_MLP || predictor->type == JEPA_PREDICTOR_LINEAR) {
@@ -525,17 +518,14 @@ int jepa_predictor_compute_error(jepa_predictor_t* predictor,
                                   const jepa_latent_t* prediction,
                                   const jepa_latent_t* target,
                                   jepa_prediction_error_t* error) {
-    if (!predictor || !prediction || !target || !error) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (prediction->latent_dim != target->latent_dim) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!error->error || error->dim != prediction->latent_dim) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
+    NIMCP_CHECK_THROW(prediction, NIMCP_ERROR_NULL_POINTER, "prediction is NULL");
+    NIMCP_CHECK_THROW(target, NIMCP_ERROR_NULL_POINTER, "target is NULL");
+    NIMCP_CHECK_THROW(error, NIMCP_ERROR_NULL_POINTER, "error is NULL");
+    NIMCP_CHECK_THROW(prediction->latent_dim == target->latent_dim,
+                      NIMCP_ERROR_INVALID_PARAM, "prediction/target dim mismatch");
+    NIMCP_CHECK_THROW(error->error && error->dim == prediction->latent_dim,
+                      NIMCP_ERROR_INVALID_PARAM, "error buffer invalid or dim mismatch");
 
     /* Compute raw error */
     double sum_sq = 0.0;
@@ -634,13 +624,10 @@ int jepa_predictor_set_training(jepa_predictor_t* predictor, bool training) {
 
 int jepa_predictor_backward(jepa_predictor_t* predictor,
                              const jepa_prediction_error_t* error) {
-    if (!predictor || !error) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (predictor->type != JEPA_PREDICTOR_MLP && predictor->type != JEPA_PREDICTOR_LINEAR) {
-        return NIMCP_ERROR_NOT_IMPLEMENTED;
-    }
+    NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
+    NIMCP_CHECK_THROW(error, NIMCP_ERROR_NULL_POINTER, "error is NULL");
+    NIMCP_CHECK_THROW(predictor->type == JEPA_PREDICTOR_MLP || predictor->type == JEPA_PREDICTOR_LINEAR,
+                      NIMCP_ERROR_NOT_IMPLEMENTED, "backward not implemented for this predictor type");
 
     jepa_mlp_t* mlp = &predictor->network.mlp;
 
@@ -771,9 +758,9 @@ int jepa_predictor_train_step(jepa_predictor_t* predictor,
                                const jepa_latent_t* context,
                                const jepa_latent_t* target,
                                float* loss) {
-    if (!predictor || !context || !target) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
+    NIMCP_CHECK_THROW(context, NIMCP_ERROR_NULL_POINTER, "context is NULL");
+    NIMCP_CHECK_THROW(target, NIMCP_ERROR_NULL_POINTER, "target is NULL");
 
     /* Create temporary prediction */
     jepa_latent_t* pred = jepa_latent_create_dim(predictor->config.output_dim);
@@ -824,9 +811,8 @@ int jepa_predictor_train_step(jepa_predictor_t* predictor,
 
 int jepa_predictor_update_precision(jepa_predictor_t* predictor,
                                      const jepa_prediction_error_t* error) {
-    if (!predictor || !error) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
+    NIMCP_CHECK_THROW(error, NIMCP_ERROR_NULL_POINTER, "error is NULL");
 
     /* Precision = 1 / mean(error²) */
     /* Use exponential moving average for stability */
@@ -853,14 +839,11 @@ int jepa_predictor_update_precision(jepa_predictor_t* predictor,
 int jepa_predictor_to_fep_error(jepa_predictor_t* predictor,
                                  const jepa_prediction_error_t* internal_error,
                                  fep_prediction_error_t* fep_error) {
-    if (!predictor || !internal_error || !fep_error) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    /* Ensure FEP error has same dimensionality */
-    if (fep_error->dim != internal_error->dim) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
+    NIMCP_CHECK_THROW(internal_error, NIMCP_ERROR_NULL_POINTER, "internal_error is NULL");
+    NIMCP_CHECK_THROW(fep_error, NIMCP_ERROR_NULL_POINTER, "fep_error is NULL");
+    NIMCP_CHECK_THROW(fep_error->dim == internal_error->dim,
+                      NIMCP_ERROR_INVALID_PARAM, "fep_error dim mismatch");
 
     /* Copy error values */
     memcpy(fep_error->error, internal_error->error, internal_error->dim * sizeof(float));
@@ -916,18 +899,15 @@ int jepa_predictor_get_weights(const jepa_predictor_t* predictor,
                                 uint32_t layer_idx,
                                 float** weights,
                                 uint32_t dims[2]) {
-    if (!predictor || !weights || !dims) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (predictor->type != JEPA_PREDICTOR_MLP && predictor->type != JEPA_PREDICTOR_LINEAR) {
-        return NIMCP_ERROR_NOT_IMPLEMENTED;
-    }
+    NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
+    NIMCP_CHECK_THROW(weights, NIMCP_ERROR_NULL_POINTER, "weights is NULL");
+    NIMCP_CHECK_THROW(dims, NIMCP_ERROR_NULL_POINTER, "dims is NULL");
+    NIMCP_CHECK_THROW(predictor->type == JEPA_PREDICTOR_MLP || predictor->type == JEPA_PREDICTOR_LINEAR,
+                      NIMCP_ERROR_NOT_IMPLEMENTED, "get_weights not implemented for this predictor type");
 
     const jepa_mlp_t* mlp = &predictor->network.mlp;
-    if (layer_idx >= mlp->num_layers) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(layer_idx < mlp->num_layers,
+                      NIMCP_ERROR_INVALID_PARAM, "layer_idx %u out of bounds", layer_idx);
 
     const jepa_mlp_layer_t* layer = &mlp->layers[layer_idx];
     *weights = layer->weights;
@@ -942,23 +922,18 @@ int jepa_predictor_set_weights(jepa_predictor_t* predictor,
                                 const float* weights,
                                 uint32_t in_dim,
                                 uint32_t out_dim) {
-    if (!predictor || !weights) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (predictor->type != JEPA_PREDICTOR_MLP && predictor->type != JEPA_PREDICTOR_LINEAR) {
-        return NIMCP_ERROR_NOT_IMPLEMENTED;
-    }
+    NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
+    NIMCP_CHECK_THROW(weights, NIMCP_ERROR_NULL_POINTER, "weights is NULL");
+    NIMCP_CHECK_THROW(predictor->type == JEPA_PREDICTOR_MLP || predictor->type == JEPA_PREDICTOR_LINEAR,
+                      NIMCP_ERROR_NOT_IMPLEMENTED, "set_weights not implemented for this predictor type");
 
     jepa_mlp_t* mlp = &predictor->network.mlp;
-    if (layer_idx >= mlp->num_layers) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(layer_idx < mlp->num_layers,
+                      NIMCP_ERROR_INVALID_PARAM, "layer_idx %u out of bounds", layer_idx);
 
     jepa_mlp_layer_t* layer = &mlp->layers[layer_idx];
-    if (layer->in_dim != in_dim || layer->out_dim != out_dim) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(layer->in_dim == in_dim && layer->out_dim == out_dim,
+                      NIMCP_ERROR_INVALID_PARAM, "dimension mismatch for layer weights");
 
     memcpy(layer->weights, weights, in_dim * out_dim * sizeof(float));
     return NIMCP_SUCCESS;
@@ -970,9 +945,8 @@ int jepa_predictor_set_weights(jepa_predictor_t* predictor,
 
 int jepa_predictor_get_stats(const jepa_predictor_t* predictor,
                               jepa_predictor_stats_t* stats) {
-    if (!predictor || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
     *stats = predictor->stats;
     return NIMCP_SUCCESS;
 }
@@ -1086,9 +1060,11 @@ int jepa_predictor_predict_with_uncertainty_mc(
     float* uncertainty,
     uint32_t num_samples
 ) {
-    if (!predictor || !context || !prediction || !uncertainty || num_samples == 0) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
+    NIMCP_CHECK_THROW(context, NIMCP_ERROR_NULL_POINTER, "context is NULL");
+    NIMCP_CHECK_THROW(prediction, NIMCP_ERROR_NULL_POINTER, "prediction is NULL");
+    NIMCP_CHECK_THROW(uncertainty, NIMCP_ERROR_NULL_POINTER, "uncertainty is NULL");
+    NIMCP_CHECK_THROW(num_samples > 0, NIMCP_ERROR_INVALID_PARAM, "num_samples must be > 0");
 
     if (g_jepa_pred_mc_seed == 0) {
         g_jepa_pred_mc_seed = mc_seed_from_time();
@@ -1407,13 +1383,12 @@ int jepa_predictor_qmc_amplitude_estimate(
     float* amplitude,
     float* variance
 ) {
-    if (!predictor || !context || !amplitude || !variance) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (target_dim >= predictor->config.output_dim) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
+    NIMCP_CHECK_THROW(context, NIMCP_ERROR_NULL_POINTER, "context is NULL");
+    NIMCP_CHECK_THROW(amplitude, NIMCP_ERROR_NULL_POINTER, "amplitude is NULL");
+    NIMCP_CHECK_THROW(variance, NIMCP_ERROR_NULL_POINTER, "variance is NULL");
+    NIMCP_CHECK_THROW(target_dim < predictor->config.output_dim,
+                      NIMCP_ERROR_INVALID_PARAM, "target_dim %u out of bounds", target_dim);
 
     /* Use default config if not provided */
     jepa_qmc_config_t default_cfg;
@@ -1489,13 +1464,12 @@ int jepa_predictor_qmc_adaptive_anneal(
     const jepa_qmc_config_t* config,
     jepa_qmc_stats_t* stats
 ) {
-    if (!predictor || !contexts || !targets || num_samples == 0) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (predictor->type != JEPA_PREDICTOR_MLP && predictor->type != JEPA_PREDICTOR_LINEAR) {
-        return NIMCP_ERROR_NOT_IMPLEMENTED;
-    }
+    NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
+    NIMCP_CHECK_THROW(contexts, NIMCP_ERROR_NULL_POINTER, "contexts is NULL");
+    NIMCP_CHECK_THROW(targets, NIMCP_ERROR_NULL_POINTER, "targets is NULL");
+    NIMCP_CHECK_THROW(num_samples > 0, NIMCP_ERROR_INVALID_PARAM, "num_samples must be > 0");
+    NIMCP_CHECK_THROW(predictor->type == JEPA_PREDICTOR_MLP || predictor->type == JEPA_PREDICTOR_LINEAR,
+                      NIMCP_ERROR_NOT_IMPLEMENTED, "QMC adaptive anneal not implemented for this predictor type");
 
     /* Use default config if not provided */
     jepa_qmc_config_t default_cfg;
@@ -1587,9 +1561,9 @@ int jepa_predictor_qmc_entropy(
     float* entropy,
     float* std_error
 ) {
-    if (!predictor || !context || !entropy) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
+    NIMCP_CHECK_THROW(context, NIMCP_ERROR_NULL_POINTER, "context is NULL");
+    NIMCP_CHECK_THROW(entropy, NIMCP_ERROR_NULL_POINTER, "entropy is NULL");
 
     /* Use default config if not provided */
     jepa_qmc_config_t default_cfg;
@@ -1719,9 +1693,10 @@ int jepa_predictor_qmc_sample_latent(
     uint32_t num_samples,
     const jepa_qmc_config_t* config
 ) {
-    if (!predictor || !context || !samples || num_samples == 0) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
+    NIMCP_CHECK_THROW(context, NIMCP_ERROR_NULL_POINTER, "context is NULL");
+    NIMCP_CHECK_THROW(samples, NIMCP_ERROR_NULL_POINTER, "samples is NULL");
+    NIMCP_CHECK_THROW(num_samples > 0, NIMCP_ERROR_INVALID_PARAM, "num_samples must be > 0");
 
     /* Use default config if not provided */
     jepa_qmc_config_t default_cfg;
@@ -1820,9 +1795,10 @@ int jepa_predictor_qmc_free_energy(
     const jepa_qmc_config_t* config,
     float* free_energy
 ) {
-    if (!predictor || !context || !target || !free_energy) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
+    NIMCP_CHECK_THROW(context, NIMCP_ERROR_NULL_POINTER, "context is NULL");
+    NIMCP_CHECK_THROW(target, NIMCP_ERROR_NULL_POINTER, "target is NULL");
+    NIMCP_CHECK_THROW(free_energy, NIMCP_ERROR_NULL_POINTER, "free_energy is NULL");
 
     if (temperature <= 0.0f) temperature = 1.0f;
 
@@ -1875,9 +1851,10 @@ int jepa_predictor_predict_qmc(
     const jepa_qmc_config_t* config,
     jepa_qmc_stats_t* stats
 ) {
-    if (!predictor || !context || !prediction || !uncertainty) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
+    NIMCP_CHECK_THROW(context, NIMCP_ERROR_NULL_POINTER, "context is NULL");
+    NIMCP_CHECK_THROW(prediction, NIMCP_ERROR_NULL_POINTER, "prediction is NULL");
+    NIMCP_CHECK_THROW(uncertainty, NIMCP_ERROR_NULL_POINTER, "uncertainty is NULL");
 
     /* Use default config if not provided */
     jepa_qmc_config_t default_cfg;
@@ -2003,9 +1980,10 @@ int jepa_predictor_qmc_mcts_explore(
     jepa_latent_t* best_latent,
     float* value
 ) {
-    if (!predictor || !context || !best_latent || !value) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
+    NIMCP_CHECK_THROW(context, NIMCP_ERROR_NULL_POINTER, "context is NULL");
+    NIMCP_CHECK_THROW(best_latent, NIMCP_ERROR_NULL_POINTER, "best_latent is NULL");
+    NIMCP_CHECK_THROW(value, NIMCP_ERROR_NULL_POINTER, "value is NULL");
 
     /* Use default config if not provided */
     jepa_qmc_config_t default_cfg;

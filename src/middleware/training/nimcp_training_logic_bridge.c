@@ -147,9 +147,7 @@ struct training_logic_bridge {
  * HOW:  Applies thresholds to each metric
  */
 static int update_conditions_internal(training_logic_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     training_logic_conditions_t* cond = &bridge->conditions;
 
@@ -359,9 +357,8 @@ static bool should_checkpoint_internal(training_logic_bridge_t* bridge) {
  * HOW:  Creates AND/OR/IMPLIES gates for common scenarios
  */
 static int init_decision_gates(training_logic_bridge_t* bridge) {
-    if (!bridge || !bridge->logic_network) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->logic_network != NULL, NIMCP_ERROR_NULL_POINTER, "logic_network is NULL");
 
     /* STABILITY_CHECK gate: loss_stable AND grad_stable AND lr_reasonable
      * Threshold 2.9 requires all 3 inputs active (sum > 2.9) */
@@ -625,9 +622,7 @@ void training_logic_destroy(training_logic_bridge_t* bridge) {
 }
 
 int training_logic_start(training_logic_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -652,9 +647,7 @@ int training_logic_start(training_logic_bridge_t* bridge) {
 }
 
 int training_logic_stop(training_logic_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -678,9 +671,7 @@ int training_logic_connect_brain_training(
     training_logic_bridge_t* bridge,
     nimcp_brain_training_ctx_t* training_ctx)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -698,9 +689,7 @@ int training_logic_connect_training_immune(
     training_logic_bridge_t* bridge,
     training_immune_system_t* immune_system)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -718,9 +707,7 @@ int training_logic_connect_portia_logic(
     training_logic_bridge_t* bridge,
     portia_logic_bridge_t* portia_logic)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -738,9 +725,7 @@ int training_logic_connect_swarm_logic(
     training_logic_bridge_t* bridge,
     swarm_logic_bridge_t* swarm_logic)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -758,9 +743,7 @@ int training_logic_connect_unified(
     training_logic_bridge_t* bridge,
     portia_swarm_logic_bridge_t* unified_bridge)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -778,9 +761,7 @@ int training_logic_connect_perception_training(
     training_logic_bridge_t* bridge,
     perception_training_bridge_t* perception_training)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -801,9 +782,7 @@ int training_logic_connect_cortical_training(
     training_logic_bridge_t* bridge,
     cortical_training_bridge_t* cortical_training)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -831,9 +810,7 @@ int training_logic_update_metrics(
     float learning_rate,
     uint64_t step)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -867,9 +844,7 @@ int training_logic_update_batch_metrics(
     float throughput,
     float memory_usage)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -893,13 +868,8 @@ int training_logic_signal_instability(
     training_logic_instability_t instability_type,
     uint32_t severity)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (instability_type >= LOGIC_INSTABILITY_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(instability_type < LOGIC_INSTABILITY_COUNT, NIMCP_ERROR_INVALID_PARAM, "instability_type out of range");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1084,9 +1054,8 @@ int training_logic_get_decision(
     training_logic_bridge_t* bridge,
     training_logic_decision_t* decision)
 {
-    if (!bridge || !decision) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(decision != NULL, NIMCP_ERROR_NULL_POINTER, "decision is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1264,9 +1233,8 @@ int training_logic_apply_decision(
     training_logic_bridge_t* bridge,
     const training_logic_decision_t* decision)
 {
-    if (!bridge || !decision) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(decision != NULL, NIMCP_ERROR_NULL_POINTER, "decision is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1315,9 +1283,7 @@ int training_logic_apply_decision(
  *============================================================================*/
 
 int training_logic_update_conditions(training_logic_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     int result = update_conditions_internal(bridge);
@@ -1330,9 +1296,8 @@ int training_logic_get_conditions(
     const training_logic_bridge_t* bridge,
     training_logic_conditions_t* conditions)
 {
-    if (!bridge || !conditions) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(conditions != NULL, NIMCP_ERROR_NULL_POINTER, "conditions is NULL");
 
     memcpy(conditions, &bridge->conditions, sizeof(training_logic_conditions_t));
 
@@ -1344,13 +1309,8 @@ int training_logic_set_condition(
     training_logic_condition_t condition,
     bool value)
 {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (condition >= TRAINING_COND_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(condition < TRAINING_COND_COUNT, NIMCP_ERROR_INVALID_PARAM, "condition out of range");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1421,9 +1381,8 @@ int training_logic_set_numeric_condition(
     const char* name,
     float value)
 {
-    if (!bridge || !name) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(name != NULL, NIMCP_ERROR_NULL_POINTER, "name is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1459,9 +1418,9 @@ int training_logic_add_custom_gate(
     const char* expression,
     uint32_t* gate_id)
 {
-    if (!bridge || !expression || !gate_id) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(expression != NULL, NIMCP_ERROR_NULL_POINTER, "expression is NULL");
+    NIMCP_CHECK_THROW(gate_id != NULL, NIMCP_ERROR_NULL_POINTER, "gate_id is NULL");
 
     if (bridge->stats.custom_gate_count >= TRAINING_LOGIC_MAX_CUSTOM_GATES) {
         NIMCP_LOGGING_ERROR("Maximum custom gates reached");
@@ -1559,9 +1518,8 @@ int training_logic_get_gate_decision(
     uint32_t gate_id,
     training_logic_decision_t* decision)
 {
-    if (!bridge || !decision) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(decision != NULL, NIMCP_ERROR_NULL_POINTER, "decision is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1614,9 +1572,7 @@ int training_logic_get_gate_decision(
  *============================================================================*/
 
 int training_logic_connect_bio_async(training_logic_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  /* Already connected */
@@ -1641,9 +1597,7 @@ int training_logic_connect_bio_async(training_logic_bridge_t* bridge) {
 }
 
 int training_logic_disconnect_bio_async(training_logic_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  /* Already disconnected */
@@ -1669,9 +1623,7 @@ bool training_logic_is_bio_async_connected(const training_logic_bridge_t* bridge
 }
 
 int training_logic_process_inbox(training_logic_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->base.bio_async_enabled || !bridge->base.bio_ctx) {
         return 0;  /* No messages to process */
@@ -1684,9 +1636,8 @@ int training_logic_broadcast_decision(
     training_logic_bridge_t* bridge,
     const training_logic_decision_t* decision)
 {
-    if (!bridge || !decision) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(decision != NULL, NIMCP_ERROR_NULL_POINTER, "decision is NULL");
 
     if (!bridge->base.bio_async_enabled || !bridge->base.bio_ctx) {
         return NIMCP_ERROR_INVALID_STATE;  /* Bio-async not connected */
@@ -1724,9 +1675,8 @@ int training_logic_get_stats(
     const training_logic_bridge_t* bridge,
     training_logic_stats_t* stats)
 {
-    if (!bridge || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats != NULL, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     memcpy(stats, &bridge->stats, sizeof(training_logic_stats_t));
 
@@ -1734,9 +1684,7 @@ int training_logic_get_stats(
 }
 
 int training_logic_reset_stats(training_logic_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 

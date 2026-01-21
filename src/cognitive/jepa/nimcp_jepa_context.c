@@ -59,9 +59,7 @@ static int compose_context(jepa_context_encoder_t* encoder);
 
 int jepa_context_default_config(jepa_context_config_t* config)
 {
-    if (!config) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     memset(config, 0, sizeof(*config));
 
@@ -309,9 +307,7 @@ void jepa_context_encoder_destroy(jepa_context_encoder_t* encoder)
 
 int jepa_context_encoder_reset(jepa_context_encoder_t* encoder)
 {
-    if (!encoder) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
 
     /* Clear context */
     jepa_context_clear(encoder);
@@ -357,15 +353,10 @@ int jepa_context_set_task(
     const float* task_embedding,
     uint32_t task_dim)
 {
-    if (!encoder || !encoder->current_context) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    /* Validate: if dim > 0, embedding must not be NULL */
-    if ((goal_dim > 0 && !goal_embedding) ||
-        (task_dim > 0 && !task_embedding)) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
+    NIMCP_CHECK_THROW(encoder->current_context, NIMCP_ERROR_INVALID_PARAM, "encoder->current_context is NULL");
+    NIMCP_CHECK_THROW(goal_dim == 0 || goal_embedding, NIMCP_ERROR_NULL_POINTER, "goal_embedding is NULL but goal_dim > 0");
+    NIMCP_CHECK_THROW(task_dim == 0 || task_embedding, NIMCP_ERROR_NULL_POINTER, "task_embedding is NULL but task_dim > 0");
 
     jepa_task_state_t* task = &encoder->current_context->task;
 
@@ -402,14 +393,10 @@ int jepa_context_set_working_memory(
     uint32_t item_dim,
     uint32_t num_items)
 {
-    if (!encoder || !encoder->current_context) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    /* Validate: if dimensions are specified, items must not be NULL */
-    if (num_items > 0 && item_dim > 0 && !wm_items) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
+    NIMCP_CHECK_THROW(encoder->current_context, NIMCP_ERROR_INVALID_PARAM, "encoder->current_context is NULL");
+    NIMCP_CHECK_THROW(!(num_items > 0 && item_dim > 0) || wm_items,
+                      NIMCP_ERROR_NULL_POINTER, "wm_items is NULL with non-zero dimensions");
 
     jepa_wm_context_t* wm = &encoder->current_context->working_memory;
 
@@ -455,15 +442,12 @@ int jepa_context_set_attention(
     const float* attended_features,
     uint32_t feature_dim)
 {
-    if (!encoder || !encoder->current_context) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    /* Validate: if dimensions are specified, data must not be NULL */
-    if ((num_locations > 0 && !attention_weights) ||
-        (feature_dim > 0 && !attended_features)) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
+    NIMCP_CHECK_THROW(encoder->current_context, NIMCP_ERROR_INVALID_PARAM, "encoder->current_context is NULL");
+    NIMCP_CHECK_THROW(num_locations == 0 || attention_weights,
+                      NIMCP_ERROR_NULL_POINTER, "attention_weights is NULL with num_locations > 0");
+    NIMCP_CHECK_THROW(feature_dim == 0 || attended_features,
+                      NIMCP_ERROR_NULL_POINTER, "attended_features is NULL with feature_dim > 0");
 
     jepa_attention_context_t* attn = &encoder->current_context->attention;
 
@@ -509,14 +493,9 @@ int jepa_context_set_custom(
     const float* custom,
     uint32_t dim)
 {
-    if (!encoder || !encoder->current_context) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    /* Validate: if dim > 0, custom vector must not be NULL */
-    if (dim > 0 && !custom) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
+    NIMCP_CHECK_THROW(encoder->current_context, NIMCP_ERROR_INVALID_PARAM, "encoder->current_context is NULL");
+    NIMCP_CHECK_THROW(dim == 0 || custom, NIMCP_ERROR_INVALID_PARAM, "custom is NULL with dim > 0");
 
     if (custom && dim > 0) {
         nimcp_free(encoder->current_context->custom_context);
@@ -537,9 +516,8 @@ int jepa_context_set_custom(
 
 int jepa_context_clear(jepa_context_encoder_t* encoder)
 {
-    if (!encoder || !encoder->current_context) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
+    NIMCP_CHECK_THROW(encoder->current_context, NIMCP_ERROR_INVALID_PARAM, "encoder->current_context is NULL");
 
     jepa_context_state_t* ctx = encoder->current_context;
 
@@ -582,9 +560,9 @@ int jepa_context_encode(
     const jepa_latent_t* input,
     jepa_latent_t* output)
 {
-    if (!encoder || !input || !output) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
+    NIMCP_CHECK_THROW(input, NIMCP_ERROR_INVALID_PARAM, "input is NULL");
+    NIMCP_CHECK_THROW(output, NIMCP_ERROR_INVALID_PARAM, "output is NULL");
 
     int rc;
 
@@ -754,9 +732,9 @@ int jepa_context_encode_batch(
     jepa_latent_t** outputs,
     uint32_t batch_size)
 {
-    if (!encoder || !inputs || !outputs) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
+    NIMCP_CHECK_THROW(inputs, NIMCP_ERROR_INVALID_PARAM, "inputs is NULL");
+    NIMCP_CHECK_THROW(outputs, NIMCP_ERROR_INVALID_PARAM, "outputs is NULL");
 
     for (uint32_t i = 0; i < batch_size; i++) {
         int rc = jepa_context_encode(encoder, inputs[i], outputs[i]);
@@ -773,9 +751,8 @@ int jepa_context_get_composed(
     float* context,
     uint32_t dim)
 {
-    if (!encoder || !context) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
+    NIMCP_CHECK_THROW(context, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
 
     uint32_t copy_dim = dim < encoder->config.context_dim ?
                         dim : encoder->config.context_dim;
@@ -795,13 +772,11 @@ int jepa_context_apply_film(
     float* output,
     uint32_t dim)
 {
-    if (!encoder || !input || !context || !output) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!encoder->conditioning.film) {
-        return NIMCP_ERROR_NOT_INITIALIZED;
-    }
+    NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
+    NIMCP_CHECK_THROW(input, NIMCP_ERROR_INVALID_PARAM, "input is NULL");
+    NIMCP_CHECK_THROW(context, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
+    NIMCP_CHECK_THROW(output, NIMCP_ERROR_INVALID_PARAM, "output is NULL");
+    NIMCP_CHECK_THROW(encoder->conditioning.film, NIMCP_ERROR_NOT_INITIALIZED, "FiLM layer not initialized");
 
     float* gamma = (float*)nimcp_calloc(dim, sizeof(float));
     float* beta = (float*)nimcp_calloc(dim, sizeof(float));
@@ -835,13 +810,11 @@ int jepa_context_apply_cross_attention(
     const float* context,
     float* output)
 {
-    if (!encoder || !input || !context || !output) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (!encoder->conditioning.cross_attn) {
-        return NIMCP_ERROR_NOT_INITIALIZED;
-    }
+    NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
+    NIMCP_CHECK_THROW(input, NIMCP_ERROR_INVALID_PARAM, "input is NULL");
+    NIMCP_CHECK_THROW(context, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
+    NIMCP_CHECK_THROW(output, NIMCP_ERROR_INVALID_PARAM, "output is NULL");
+    NIMCP_CHECK_THROW(encoder->conditioning.cross_attn, NIMCP_ERROR_NOT_INITIALIZED, "cross-attention not initialized");
 
     return cross_attention_forward(
         encoder->conditioning.cross_attn,
@@ -857,9 +830,8 @@ int jepa_context_get_stats(
     const jepa_context_encoder_t* encoder,
     jepa_context_stats_t* stats)
 {
-    if (!encoder || !stats) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_INVALID_PARAM, "stats is NULL");
 
     memcpy(stats, &encoder->stats, sizeof(jepa_context_stats_t));
     return NIMCP_SUCCESS;
@@ -867,9 +839,7 @@ int jepa_context_get_stats(
 
 int jepa_context_reset_stats(jepa_context_encoder_t* encoder)
 {
-    if (!encoder) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
 
     memset(&encoder->stats, 0, sizeof(encoder->stats));
     return NIMCP_SUCCESS;
@@ -881,9 +851,7 @@ int jepa_context_reset_stats(jepa_context_encoder_t* encoder)
 
 int jepa_context_connect_bio_async(jepa_context_encoder_t* encoder)
 {
-    if (!encoder) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
 
     encoder->base.bio_async_enabled = true;
     NIMCP_LOGGING_DEBUG("Connected to bio-async router");
@@ -893,9 +861,7 @@ int jepa_context_connect_bio_async(jepa_context_encoder_t* encoder)
 
 int jepa_context_disconnect_bio_async(jepa_context_encoder_t* encoder)
 {
-    if (!encoder) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
 
     encoder->base.bio_async_enabled = false;
     return NIMCP_SUCCESS;
@@ -912,9 +878,8 @@ bool jepa_context_is_bio_async_connected(const jepa_context_encoder_t* encoder)
 
 static int compose_context(jepa_context_encoder_t* encoder)
 {
-    if (!encoder || !encoder->current_context) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(encoder, NIMCP_ERROR_INVALID_PARAM, "encoder is NULL");
+    NIMCP_CHECK_THROW(encoder->current_context, NIMCP_ERROR_INVALID_PARAM, "encoder->current_context is NULL");
 
     uint32_t context_dim = encoder->config.context_dim;
     jepa_context_state_t* ctx = encoder->current_context;
@@ -1058,9 +1023,7 @@ static int film_layer_create(
     uint32_t feature_dim,
     uint32_t hidden_dim)
 {
-    if (!film) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(film, NIMCP_ERROR_INVALID_PARAM, "film output pointer is NULL");
 
     jepa_film_layer_t* f = (jepa_film_layer_t*)nimcp_calloc(1, sizeof(jepa_film_layer_t));
     if (!f) {
@@ -1140,9 +1103,10 @@ static int film_layer_forward(
     float* gamma,
     float* beta)
 {
-    if (!film || !context || !gamma || !beta) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(film, NIMCP_ERROR_INVALID_PARAM, "film is NULL");
+    NIMCP_CHECK_THROW(context, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
+    NIMCP_CHECK_THROW(gamma, NIMCP_ERROR_INVALID_PARAM, "gamma is NULL");
+    NIMCP_CHECK_THROW(beta, NIMCP_ERROR_INVALID_PARAM, "beta is NULL");
 
     const float* features = context;
     uint32_t feature_input_dim = film->context_dim;
@@ -1200,9 +1164,7 @@ static int cross_attention_create(
     uint32_t num_heads,
     uint32_t head_dim)
 {
-    if (!attn) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(attn, NIMCP_ERROR_INVALID_PARAM, "attn output pointer is NULL");
 
     jepa_cross_attention_t* a = (jepa_cross_attention_t*)nimcp_calloc(
         1, sizeof(jepa_cross_attention_t));
@@ -1268,9 +1230,10 @@ static int cross_attention_forward(
     const float* context,
     float* output)
 {
-    if (!attn || !query || !context || !output) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(attn, NIMCP_ERROR_INVALID_PARAM, "attn is NULL");
+    NIMCP_CHECK_THROW(query, NIMCP_ERROR_INVALID_PARAM, "query is NULL");
+    NIMCP_CHECK_THROW(context, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
+    NIMCP_CHECK_THROW(output, NIMCP_ERROR_INVALID_PARAM, "output is NULL");
 
     uint32_t proj_dim = attn->num_heads * attn->head_dim;
 

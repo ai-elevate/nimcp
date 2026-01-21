@@ -51,10 +51,7 @@ static float normalize_threat_level(amyg_threat_level_t threat) {
  * ============================================================================ */
 
 int amygdala_stress_default_config(amygdala_stress_config_t* config) {
-    if (!config) {
-        NIMCP_LOGGING_ERROR("NULL config pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Feature enables */
     config->enable_fear_cortisol = true;
@@ -132,14 +129,8 @@ void amygdala_stress_destroy(amygdala_stress_bridge_t* bridge) {
  * ============================================================================ */
 
 int amygdala_stress_connect_amygdala(amygdala_stress_bridge_t* bridge, amygdala_t* amygdala) {
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!amygdala) {
-        NIMCP_LOGGING_ERROR("NULL amygdala pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(amygdala, NIMCP_ERROR_NULL_POINTER, "amygdala is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->amygdala = amygdala;
@@ -154,14 +145,8 @@ int amygdala_stress_connect_amygdala(amygdala_stress_bridge_t* bridge, amygdala_
 }
 
 int amygdala_stress_connect_stress(amygdala_stress_bridge_t* bridge, void* stress) {
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!stress) {
-        NIMCP_LOGGING_ERROR("NULL stress system pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stress, NIMCP_ERROR_NULL_POINTER, "stress is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->stress_system = stress;
@@ -176,14 +161,8 @@ int amygdala_stress_connect_stress(amygdala_stress_bridge_t* bridge, void* stres
 }
 
 int amygdala_stress_connect_wellbeing(amygdala_stress_bridge_t* bridge, void* wellbeing) {
-    if (!bridge) {
-        NIMCP_LOGGING_ERROR("NULL bridge pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!wellbeing) {
-        NIMCP_LOGGING_ERROR("NULL wellbeing system pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(wellbeing, NIMCP_ERROR_NULL_POINTER, "wellbeing is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->wellbeing_system = wellbeing;
@@ -199,9 +178,9 @@ int amygdala_stress_connect_wellbeing(amygdala_stress_bridge_t* bridge, void* we
  * ============================================================================ */
 
 int amygdala_stress_apply_fear_cortisol(amygdala_stress_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_fear_cortisol) return 0;
-    if (!bridge->amygdala_connected) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(bridge->amygdala_connected, NIMCP_ERROR_INVALID_STATE, "amygdala not connected");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -221,9 +200,9 @@ int amygdala_stress_apply_fear_cortisol(amygdala_stress_bridge_t* bridge) {
 }
 
 int amygdala_stress_apply_anxiety_cortisol(amygdala_stress_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_anxiety_cortisol) return 0;
-    if (!bridge->amygdala_connected) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(bridge->amygdala_connected, NIMCP_ERROR_INVALID_STATE, "amygdala not connected");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -243,7 +222,7 @@ int amygdala_stress_apply_anxiety_cortisol(amygdala_stress_bridge_t* bridge) {
 }
 
 int amygdala_stress_update_allostatic_load(amygdala_stress_bridge_t* bridge, float delta_sec) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_allostatic_load) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -293,7 +272,7 @@ int amygdala_stress_update_allostatic_load(amygdala_stress_bridge_t* bridge, flo
  * ============================================================================ */
 
 int amygdala_stress_apply_sensitization(amygdala_stress_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_stress_sensitization) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -349,7 +328,7 @@ float amygdala_stress_get_effective_reactivity(const amygdala_stress_bridge_t* b
  * ============================================================================ */
 
 int amygdala_stress_apply_wellbeing_buffer(amygdala_stress_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_wellbeing_buffering) return 0;
     if (!bridge->wellbeing_connected) {
         /* No wellbeing system connected, no buffering */
@@ -402,7 +381,7 @@ float amygdala_stress_get_extinction_boost(const amygdala_stress_bridge_t* bridg
  * ============================================================================ */
 
 int amygdala_stress_update(amygdala_stress_bridge_t* bridge, uint64_t delta_ms) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     float delta_sec = delta_ms / 1000.0f;
 
@@ -474,7 +453,8 @@ int amygdala_stress_get_effects(
     const amygdala_stress_bridge_t* bridge,
     amygdala_stress_effects_t* effects
 ) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(effects, NIMCP_ERROR_NULL_POINTER, "effects is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->amygdala_effects;
@@ -487,7 +467,8 @@ int amygdala_stress_get_stress_effects(
     const amygdala_stress_bridge_t* bridge,
     stress_amygdala_effects_t* effects
 ) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(effects, NIMCP_ERROR_NULL_POINTER, "effects is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->stress_effects;
@@ -500,7 +481,8 @@ int amygdala_stress_get_wellbeing_effects(
     const amygdala_stress_bridge_t* bridge,
     wellbeing_amygdala_effects_t* effects
 ) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(effects, NIMCP_ERROR_NULL_POINTER, "effects is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->wellbeing_effects;
@@ -513,7 +495,8 @@ int amygdala_stress_get_allostatic_state(
     const amygdala_stress_bridge_t* bridge,
     allostatic_load_state_t* state
 ) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->allostatic_load;
@@ -527,7 +510,7 @@ int amygdala_stress_get_allostatic_state(
  * ============================================================================ */
 
 int amygdala_stress_connect_bio_async(amygdala_stress_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;  /* Already connected */
 
     bio_module_info_t info = {
@@ -549,7 +532,7 @@ int amygdala_stress_connect_bio_async(amygdala_stress_bridge_t* bridge) {
 }
 
 int amygdala_stress_disconnect_bio_async(amygdala_stress_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {
@@ -577,7 +560,7 @@ int amygdala_stress_get_statistics(
     uint32_t* wellbeing_interventions,
     uint32_t* chronic_burden_episodes
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
