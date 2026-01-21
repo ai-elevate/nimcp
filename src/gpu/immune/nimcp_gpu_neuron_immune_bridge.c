@@ -163,9 +163,8 @@ void gpu_neuron_immune_destroy(gpu_neuron_immune_bridge_t* bridge) {
 
 int gpu_neuron_immune_apply_cytokine_effects(gpu_neuron_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge || !bridge->immune_system) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->immune_system, NIMCP_ERROR_NULL_POINTER, "bridge->immune_system is NULL");
 
     if (!bridge->enable_cytokine_gpu_modulation) {
         return NIMCP_SUCCESS;  /* Feature disabled */
@@ -258,9 +257,8 @@ int gpu_neuron_immune_trigger_error_response(
     const char* error_message
 ) {
     /* Guard clauses */
-    if (!bridge || !bridge->immune_system) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->immune_system, NIMCP_ERROR_NULL_POINTER, "bridge->immune_system is NULL");
 
     if (!bridge->enable_gpu_error_immune_response) {
         return NIMCP_SUCCESS;  /* Feature disabled */
@@ -295,9 +293,9 @@ int gpu_neuron_immune_trigger_error_response(
 
 int gpu_neuron_immune_monitor_stress(gpu_neuron_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge || !bridge->immune_system || !bridge->gpu_network) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->immune_system, NIMCP_ERROR_NULL_POINTER, "bridge->immune_system is NULL");
+    NIMCP_CHECK_THROW(bridge->gpu_network, NIMCP_ERROR_NULL_POINTER, "bridge->gpu_network is NULL");
 
     /* Query GPU stats */
     uint64_t total_spikes;
@@ -356,9 +354,8 @@ int gpu_neuron_immune_monitor_stress(gpu_neuron_immune_bridge_t* bridge) {
 
 int gpu_neuron_immune_update_error_state(gpu_neuron_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge || !bridge->gpu_network) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->gpu_network, NIMCP_ERROR_NULL_POINTER, "bridge->gpu_network is NULL");
 
     /* Query GPU stats */
     uint64_t total_spikes;
@@ -381,9 +378,7 @@ int gpu_neuron_immune_update_error_state(gpu_neuron_immune_bridge_t* bridge) {
  * ============================================================================ */
 
 int gpu_neuron_immune_update(gpu_neuron_immune_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Update error state */
     gpu_neuron_immune_update_error_state(bridge);
@@ -401,9 +396,8 @@ int gpu_neuron_immune_update(gpu_neuron_immune_bridge_t* bridge) {
 }
 
 int gpu_neuron_immune_apply_modulation(gpu_neuron_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->gpu_network) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->gpu_network, NIMCP_ERROR_NULL_POINTER, "bridge->gpu_network is NULL");
 
     if (!bridge->enable_batch_size_modulation) {
         return NIMCP_SUCCESS;  /* Feature disabled */
@@ -433,9 +427,8 @@ int gpu_neuron_immune_get_cytokine_effects(
     const gpu_neuron_immune_bridge_t* bridge,
     gpu_neuron_cytokine_effects_t* effects
 ) {
-    if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(effects, NIMCP_ERROR_NULL_POINTER, "effects is NULL");
 
     memcpy(effects, &bridge->cytokine_effects, sizeof(gpu_neuron_cytokine_effects_t));
     return NIMCP_SUCCESS;
@@ -445,9 +438,8 @@ int gpu_neuron_immune_get_error_state(
     const gpu_neuron_immune_bridge_t* bridge,
     gpu_neuron_error_state_t* state
 ) {
-    if (!bridge || !state) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL");
 
     memcpy(state, &bridge->error_state, sizeof(gpu_neuron_error_state_t));
     return NIMCP_SUCCESS;
@@ -471,9 +463,7 @@ float gpu_neuron_immune_get_batch_factor(const gpu_neuron_immune_bridge_t* bridg
  * ============================================================================ */
 
 int gpu_neuron_immune_connect_bio_async(gpu_neuron_immune_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  /* Already connected */

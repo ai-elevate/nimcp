@@ -29,7 +29,7 @@
  * ============================================================================ */
 
 int visual_jepa_fep_bridge_default_config(visual_jepa_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(visual_jepa_fep_config_t));
 
@@ -153,7 +153,7 @@ void visual_jepa_fep_bridge_destroy(visual_jepa_fep_bridge_t* bridge) {
 }
 
 int visual_jepa_fep_bridge_reset(visual_jepa_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Reset precision to initial values */
     for (uint32_t i = 0; i < bridge->precision.num_patches; i++) {
@@ -191,7 +191,8 @@ int visual_jepa_fep_bridge_connect_jepa(
     visual_jepa_fep_bridge_t* bridge,
     visual_jepa_bridge_t* visual_jepa) {
 
-    if (!bridge || !visual_jepa) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(visual_jepa, NIMCP_ERROR_NULL_POINTER, "visual_jepa is NULL");
 
     bridge->visual_jepa = visual_jepa;
     bridge->base.system_a = visual_jepa;
@@ -242,7 +243,8 @@ int visual_jepa_fep_bridge_connect_fep(
     visual_jepa_fep_bridge_t* bridge,
     fep_system_t* fep) {
 
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(fep, NIMCP_ERROR_NULL_POINTER, "fep system is NULL");
 
     bridge->fep_system = fep;
     bridge->base.system_b = fep;
@@ -267,7 +269,8 @@ int visual_jepa_fep_get_precision_weights(
     float* patch_weights,
     uint32_t num_patches) {
 
-    if (!bridge || !patch_weights) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(patch_weights, NIMCP_ERROR_NULL_POINTER, "patch_weights is NULL");
 
     uint32_t count = (num_patches < bridge->precision.num_patches) ?
                      num_patches : bridge->precision.num_patches;
@@ -305,7 +308,8 @@ int visual_jepa_fep_apply_attention_precision(
     uint32_t width,
     uint32_t height) {
 
-    if (!bridge || !attention) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(attention, NIMCP_ERROR_NULL_POINTER, "attention is NULL");
 
     if (!bridge->config.enable_attention_precision) {
         return NIMCP_SUCCESS;  /* Disabled */
@@ -446,7 +450,8 @@ int visual_jepa_fep_update_beliefs(
     visual_jepa_fep_bridge_t* bridge,
     const jepa_latent_t* latent) {
 
-    if (!bridge || !latent) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(latent, NIMCP_ERROR_NULL_POINTER, "latent is NULL");
 
     if (!bridge->config.enable_fep_belief_updates || !bridge->fep_system) {
         return NIMCP_SUCCESS;  /* Disabled or not connected */
@@ -474,7 +479,7 @@ int visual_jepa_fep_bridge_update(
 
     (void)delta_ms;  /* May use for time-based decay */
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Update global precision from patch precisions */
     double sum_prec = 0.0;
@@ -515,7 +520,8 @@ int visual_jepa_fep_update_precision(
     const float* prediction_errors,
     uint32_t num_patches) {
 
-    if (!bridge || !prediction_errors) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(prediction_errors, NIMCP_ERROR_NULL_POINTER, "prediction_errors is NULL");
 
     if (!bridge->config.enable_precision_weighting) {
         return NIMCP_SUCCESS;
@@ -559,7 +565,8 @@ int visual_jepa_fep_bridge_get_state(
     const visual_jepa_fep_bridge_t* bridge,
     visual_jepa_fep_state_t* state) {
 
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL");
     *state = bridge->state;
     return NIMCP_SUCCESS;
 }
@@ -568,7 +575,8 @@ int visual_jepa_fep_bridge_get_stats(
     const visual_jepa_fep_bridge_t* bridge,
     visual_jepa_fep_stats_t* stats) {
 
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
     *stats = bridge->stats;
     return NIMCP_SUCCESS;
 }

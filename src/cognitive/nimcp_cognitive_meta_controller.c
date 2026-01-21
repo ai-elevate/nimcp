@@ -40,20 +40,12 @@ static inline float clamp_float(float value, float min, float max) {
  * HOW:  Range checks on all parameters
  */
 static int validate_config(const meta_controller_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
-
-    if (config->max_wm_slots == 0 || config->max_wm_slots > 20) {
-        NIMCP_LOGGING_ERROR("Invalid max_wm_slots: %u (must be 1-20)",
-                            config->max_wm_slots);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (config->base_learning_rate < META_CONTROLLER_LR_MIN ||
-        config->base_learning_rate > META_CONTROLLER_LR_MAX) {
-        NIMCP_LOGGING_ERROR("Invalid base_learning_rate: %f",
-                            config->base_learning_rate);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
+    NIMCP_CHECK_THROW(config->max_wm_slots > 0 && config->max_wm_slots <= 20,
+        NIMCP_ERROR_INVALID_PARAM, "invalid max_wm_slots: %u (must be 1-20)", config->max_wm_slots);
+    NIMCP_CHECK_THROW(config->base_learning_rate >= META_CONTROLLER_LR_MIN &&
+        config->base_learning_rate <= META_CONTROLLER_LR_MAX,
+        NIMCP_ERROR_INVALID_PARAM, "invalid base_learning_rate: %f", config->base_learning_rate);
 
     return NIMCP_SUCCESS;
 }
@@ -329,7 +321,7 @@ static void clear_processed_requests(
  * ============================================================================ */
 
 int meta_controller_default_config(meta_controller_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(meta_controller_config_t));
 
@@ -465,7 +457,7 @@ void meta_controller_destroy(cognitive_meta_controller_t* controller) {
 }
 
 int meta_controller_start(cognitive_meta_controller_t* controller) {
-    if (!controller) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(controller, NIMCP_ERROR_NULL_POINTER, "controller is NULL");
 
     if (controller->state == META_CONTROLLER_RUNNING) {
         return NIMCP_SUCCESS; /* Already running */
@@ -485,7 +477,7 @@ int meta_controller_start(cognitive_meta_controller_t* controller) {
 }
 
 int meta_controller_stop(cognitive_meta_controller_t* controller) {
-    if (!controller) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(controller, NIMCP_ERROR_NULL_POINTER, "controller is NULL");
 
     nimcp_platform_mutex_lock(controller->mutex);
 
@@ -499,7 +491,7 @@ int meta_controller_stop(cognitive_meta_controller_t* controller) {
 }
 
 int meta_controller_pause(cognitive_meta_controller_t* controller) {
-    if (!controller) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(controller, NIMCP_ERROR_NULL_POINTER, "controller is NULL");
 
     nimcp_platform_mutex_lock(controller->mutex);
 
@@ -513,7 +505,7 @@ int meta_controller_pause(cognitive_meta_controller_t* controller) {
 }
 
 int meta_controller_resume(cognitive_meta_controller_t* controller) {
-    if (!controller) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(controller, NIMCP_ERROR_NULL_POINTER, "controller is NULL");
 
     nimcp_platform_mutex_lock(controller->mutex);
 
@@ -685,7 +677,7 @@ int meta_controller_request_executive_priority(
     uint32_t task_id,
     float priority) {
 
-    if (!controller || !controller->executive) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(controller && controller->executive, NIMCP_ERROR_NULL_POINTER, "controller or executive is NULL");
 
     /* This would forward to executive controller */
     /* Placeholder - executive API doesn't have set_priority yet */
@@ -746,7 +738,7 @@ int meta_controller_update(
     cognitive_meta_controller_t* controller,
     uint64_t current_time_ms) {
 
-    if (!controller) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(controller, NIMCP_ERROR_NULL_POINTER, "controller is NULL");
 
     if (controller->state != META_CONTROLLER_RUNNING) {
         return 0; /* Not running, nothing to do */
@@ -814,7 +806,7 @@ int meta_controller_update(
 int meta_controller_update_metacognitive_state(
     cognitive_meta_controller_t* controller) {
 
-    if (!controller) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(controller, NIMCP_ERROR_NULL_POINTER, "controller is NULL");
 
     /* Compute system-wide metrics from module performance */
     float total_uncertainty = 0.0f;
@@ -870,7 +862,7 @@ int meta_controller_connect_working_memory(
     cognitive_meta_controller_t* controller,
     working_memory_t* working_memory) {
 
-    if (!controller || !working_memory) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(controller && working_memory, NIMCP_ERROR_NULL_POINTER, "controller or working_memory is NULL");
 
     controller->working_memory = working_memory;
 
@@ -883,7 +875,7 @@ int meta_controller_connect_executive(
     cognitive_meta_controller_t* controller,
     executive_controller_t* executive) {
 
-    if (!controller || !executive) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(controller && executive, NIMCP_ERROR_NULL_POINTER, "controller or executive is NULL");
 
     controller->executive = executive;
 
@@ -896,7 +888,7 @@ int meta_controller_connect_global_workspace(
     cognitive_meta_controller_t* controller,
     global_workspace_t* workspace) {
 
-    if (!controller || !workspace) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(controller && workspace, NIMCP_ERROR_NULL_POINTER, "controller or workspace is NULL");
 
     controller->global_workspace = workspace;
 
@@ -909,7 +901,7 @@ int meta_controller_connect_brain_immune(
     cognitive_meta_controller_t* controller,
     brain_immune_system_t* immune) {
 
-    if (!controller || !immune) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(controller && immune, NIMCP_ERROR_NULL_POINTER, "controller or immune is NULL");
 
     controller->brain_immune = immune;
     controller->immune_connected = true;
@@ -922,7 +914,7 @@ int meta_controller_connect_brain_immune(
 int meta_controller_connect_bio_async(
     cognitive_meta_controller_t* controller) {
 
-    if (!controller) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(controller, NIMCP_ERROR_NULL_POINTER, "controller is NULL");
 
     if (controller->bio_async_connected) {
         return NIMCP_SUCCESS; /* Already connected */
@@ -942,7 +934,7 @@ int meta_controller_connect_bio_async(
         NIMCP_LOGGING_INFO("Connected to bio-async router");
         return NIMCP_SUCCESS;
     } else {
-        NIMCP_LOGGING_WARN("Bio-async router not available");
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED, "bio-async router not available");
         return NIMCP_ERROR_OPERATION_FAILED;
     }
 }
@@ -950,7 +942,7 @@ int meta_controller_connect_bio_async(
 int meta_controller_disconnect_bio_async(
     cognitive_meta_controller_t* controller) {
 
-    if (!controller) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(controller, NIMCP_ERROR_NULL_POINTER, "controller is NULL");
 
     if (controller->bio_async_connected && controller->bio_context) {
         bio_router_unregister_module(controller->bio_context);
@@ -971,9 +963,10 @@ int meta_controller_register_allocation_observer(
     resource_allocation_callback_t callback,
     void* user_data) {
 
-    if (!controller || !callback) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(controller && callback, NIMCP_ERROR_NULL_POINTER, "controller or callback is NULL");
 
     if (controller->allocation_callback_count >= META_CONTROLLER_MAX_OBSERVERS) {
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED, "allocation observer limit reached");
         return NIMCP_ERROR_OPERATION_FAILED;
     }
 
@@ -989,9 +982,10 @@ int meta_controller_register_metacognitive_observer(
     metacognitive_callback_t callback,
     void* user_data) {
 
-    if (!controller || !callback) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(controller && callback, NIMCP_ERROR_NULL_POINTER, "controller or callback is NULL");
 
     if (controller->metacognitive_callback_count >= META_CONTROLLER_MAX_OBSERVERS) {
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED, "metacognitive observer limit reached");
         return NIMCP_ERROR_OPERATION_FAILED;
     }
 
@@ -1010,7 +1004,7 @@ int meta_controller_get_stats(
     const cognitive_meta_controller_t* controller,
     meta_controller_stats_t* stats) {
 
-    if (!controller || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(controller && stats, NIMCP_ERROR_NULL_POINTER, "controller or stats is NULL");
 
     *stats = controller->stats;
 
@@ -1033,8 +1027,8 @@ int meta_controller_get_module_performance(
     cognitive_module_id_t module,
     module_performance_t* performance) {
 
-    if (!controller || !performance) return NIMCP_ERROR_NULL_POINTER;
-    if (module >= META_CONTROLLER_MAX_MODULES) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(controller && performance, NIMCP_ERROR_NULL_POINTER, "controller or performance is NULL");
+    NIMCP_CHECK_THROW(module < META_CONTROLLER_MAX_MODULES, NIMCP_ERROR_INVALID_PARAM, "invalid module id: %d", module);
 
     *performance = controller->modules[module];
 
@@ -1057,7 +1051,7 @@ int meta_controller_set_arbitration_strategy(
     cognitive_meta_controller_t* controller,
     arbitration_strategy_t strategy) {
 
-    if (!controller) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(controller, NIMCP_ERROR_NULL_POINTER, "controller is NULL");
 
     controller->config.strategy = strategy;
 
@@ -1069,8 +1063,8 @@ int meta_controller_set_module_weight(
     cognitive_module_id_t module,
     float weight) {
 
-    if (!controller) return NIMCP_ERROR_NULL_POINTER;
-    if (module >= META_CONTROLLER_MAX_MODULES) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(controller, NIMCP_ERROR_NULL_POINTER, "controller is NULL");
+    NIMCP_CHECK_THROW(module < META_CONTROLLER_MAX_MODULES, NIMCP_ERROR_INVALID_PARAM, "invalid module id: %d", module);
 
     weight = clamp_float(weight, 0.0f, 1.0f);
     controller->config.module_weights[module] = weight;

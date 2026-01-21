@@ -197,7 +197,7 @@ static nimcp_error_t handle_sync_request(
  * ============================================================================ */
 
 int gpu_bio_bridge_default_config(gpu_bio_bridge_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(gpu_bio_bridge_config_t));
 
@@ -251,7 +251,7 @@ int gpu_bio_bridge_init(
     const gpu_bio_bridge_config_t* config,
     multigpu_context_t multigpu_ctx
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Initialize base bridge */
     int result = bridge_base_init(&bridge->base, BIO_MODULE_GPU_BRIDGE, "gpu_bio_bridge");
@@ -349,7 +349,7 @@ void gpu_bio_bridge_destroy(gpu_bio_bridge_t* bridge) {
  * ============================================================================ */
 
 int gpu_bio_bridge_connect_bio_async(gpu_bio_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  /* Already connected */
@@ -392,7 +392,7 @@ int gpu_bio_bridge_connect_bio_async(gpu_bio_bridge_t* bridge) {
 }
 
 int gpu_bio_bridge_disconnect_bio_async(gpu_bio_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  /* Already disconnected */
@@ -489,7 +489,7 @@ int gpu_bio_bridge_send_compute_complete(
     int32_t result_code,
     uint64_t elapsed_us
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->base.bio_async_enabled) {
         return GPU_BIO_ERROR_ROUTER_UNAVAILABLE;
@@ -596,7 +596,7 @@ int gpu_bio_bridge_send_transfer_complete(
     uint64_t elapsed_us,
     float bandwidth_gbps
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->base.bio_async_enabled) {
         return GPU_BIO_ERROR_ROUTER_UNAVAILABLE;
@@ -640,7 +640,7 @@ int gpu_bio_bridge_send_transfer_complete(
  * ============================================================================ */
 
 int gpu_bio_bridge_broadcast_status(gpu_bio_bridge_t* bridge, uint32_t device_id) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->base.bio_async_enabled) {
         return GPU_BIO_ERROR_ROUTER_UNAVAILABLE;
@@ -685,7 +685,7 @@ int gpu_bio_bridge_broadcast_status(gpu_bio_bridge_t* bridge, uint32_t device_id
 }
 
 int gpu_bio_bridge_broadcast_all_status(gpu_bio_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     for (uint32_t i = 0; i < bridge->device_count; i++) {
         int result = gpu_bio_bridge_broadcast_status(bridge, i);
@@ -704,7 +704,7 @@ int gpu_bio_bridge_send_error_report(
     int32_t error_code,
     const char* error_message
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->base.bio_async_enabled) {
         return GPU_BIO_ERROR_ROUTER_UNAVAILABLE;
@@ -776,7 +776,7 @@ uint64_t gpu_bio_bridge_send_sync_request(
 }
 
 int gpu_bio_bridge_send_rebalance_request(gpu_bio_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->base.bio_async_enabled) {
         return GPU_BIO_ERROR_ROUTER_UNAVAILABLE;
@@ -799,7 +799,7 @@ int gpu_bio_bridge_send_rebalance_request(gpu_bio_bridge_t* bridge) {
 }
 
 int gpu_bio_bridge_broadcast_coordination_status(gpu_bio_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->base.bio_async_enabled) {
         return GPU_BIO_ERROR_ROUTER_UNAVAILABLE;
@@ -865,13 +865,14 @@ int gpu_bio_bridge_get_stats(
     const gpu_bio_bridge_t* bridge,
     gpu_bio_bridge_stats_t* stats
 ) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
     memcpy(stats, &bridge->stats, sizeof(gpu_bio_bridge_stats_t));
     return NIMCP_SUCCESS;
 }
 
 int gpu_bio_bridge_reset_stats(gpu_bio_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     memset(&bridge->stats, 0, sizeof(gpu_bio_bridge_stats_t));
     return NIMCP_SUCCESS;
 }
@@ -881,7 +882,7 @@ int gpu_bio_bridge_reset_stats(gpu_bio_bridge_t* bridge) {
  * ============================================================================ */
 
 int gpu_bio_bridge_update(gpu_bio_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Update device status from multi-GPU context */
     if (bridge->multigpu_ctx) {
@@ -939,7 +940,8 @@ int gpu_bio_bridge_register_handler(
     gpu_message_type_t msg_type,
     bio_message_handler_t handler
 ) {
-    if (!bridge || !handler) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(handler, NIMCP_ERROR_NULL_POINTER, "handler is NULL");
 
     if (!bridge->base.bio_ctx) {
         return GPU_BIO_ERROR_ROUTER_UNAVAILABLE;
@@ -956,7 +958,7 @@ int gpu_bio_bridge_unregister_handler(
     gpu_bio_bridge_t* bridge,
     gpu_message_type_t msg_type
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->base.bio_ctx) {
         return GPU_BIO_ERROR_ROUTER_UNAVAILABLE;

@@ -21,10 +21,8 @@
  * ============================================================================ */
 
 int predictive_protocol_fep_default_config(predictive_protocol_fep_config_t* config) {
-    if (!config) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_fep_default_config: NULL config");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config != NULL, NIMCP_ERROR_NULL_POINTER,
+                       "predictive_protocol_fep_default_config: NULL config");
 
     config->prediction_confidence_threshold = 0.7f;
     config->pattern_surprise_threshold = 2.0f;
@@ -115,10 +113,8 @@ void predictive_protocol_fep_destroy(predictive_protocol_fep_bridge_t* bridge) {
  * ============================================================================ */
 
 int predictive_protocol_fep_update_effects(predictive_protocol_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_protocol_fep_update_effects: NULL bridge or fep_system");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER,
+                       "predictive_protocol_fep_update_effects: NULL bridge or fep_system");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 

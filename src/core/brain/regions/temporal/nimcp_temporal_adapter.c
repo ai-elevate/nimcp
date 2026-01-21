@@ -1076,7 +1076,7 @@ nimcp_error_t temporal_broadcast_auditory_event(
     temporal_adapter_t* adapter,
     const temporal_auditory_result_t* result
 ) {
-    if (!adapter || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(adapter && result, NIMCP_ERROR_NULL_POINTER, "adapter or result is NULL");
     /* TODO: Implement bio-async broadcast */
     return NIMCP_SUCCESS;
 }
@@ -1085,7 +1085,7 @@ nimcp_error_t temporal_broadcast_recognition_event(
     temporal_adapter_t* adapter,
     const temporal_recognition_result_t* result
 ) {
-    if (!adapter || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(adapter && result, NIMCP_ERROR_NULL_POINTER, "adapter or result is NULL");
     /* TODO: Implement bio-async broadcast */
     return NIMCP_SUCCESS;
 }

@@ -127,8 +127,8 @@ int visual_cortex_fep_bridge_connect_fep(
     visual_cortex_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!fep) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(fep, NIMCP_ERROR_NULL_POINTER, "fep system is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -147,8 +147,8 @@ int visual_cortex_fep_bridge_connect_visual_cortex(
     visual_cortex_fep_bridge_t* bridge,
     visual_cortex_t* visual
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!visual) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(visual, NIMCP_ERROR_NULL_POINTER, "visual cortex is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->visual_cortex = visual;
@@ -168,8 +168,8 @@ int visual_cortex_fep_bridge_connect_visual_cortex(
  * HOW:  Query FEP beliefs, convert to Gabor gain modulation
  */
 int visual_cortex_fep_apply_predictions(visual_cortex_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "fep_system not connected");
     if (!bridge->config.enable_top_down_predictions) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -195,8 +195,8 @@ int visual_cortex_fep_apply_predictions(visual_cortex_fep_bridge_t* bridge) {
  * HOW:  Scale attention map by precision
  */
 int visual_cortex_fep_apply_precision(visual_cortex_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "fep_system not connected");
     if (!bridge->config.enable_precision_attention) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -231,9 +231,11 @@ int visual_cortex_fep_generate_saccade(
     float* target_x,
     float* target_y
 ) {
-    if (!bridge || !target_x || !target_y) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
-    if (!bridge->config.enable_active_vision) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(target_x, NIMCP_ERROR_NULL_POINTER, "target_x is NULL");
+    NIMCP_CHECK_THROW(target_y, NIMCP_ERROR_NULL_POINTER, "target_y is NULL");
+    NIMCP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "fep_system not connected");
+    NIMCP_CHECK_THROW(bridge->config.enable_active_vision, NIMCP_ERROR_INVALID_STATE, "active_vision not enabled");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -262,10 +264,10 @@ int visual_cortex_fep_compute_prediction_error(
     uint32_t num_features,
     float* prediction_error
 ) {
-    if (!bridge || !visual_features || !prediction_error) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(visual_features, NIMCP_ERROR_NULL_POINTER, "visual_features is NULL");
+    NIMCP_CHECK_THROW(prediction_error, NIMCP_ERROR_NULL_POINTER, "prediction_error is NULL");
+    NIMCP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "fep_system not connected");
     if (num_features == 0) return NIMCP_ERROR_INVALID_PARAM;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -309,8 +311,9 @@ int visual_cortex_fep_report_observations(
     const float* visual_features,
     uint32_t num_features
 ) {
-    if (!bridge || !visual_features) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(visual_features, NIMCP_ERROR_NULL_POINTER, "visual_features is NULL");
+    NIMCP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "fep_system not connected");
     if (!bridge->config.enable_visual_pe_updates) return NIMCP_SUCCESS;
     if (num_features == 0) return NIMCP_ERROR_INVALID_PARAM;
 
@@ -333,8 +336,8 @@ int visual_cortex_fep_report_novelty(
     visual_cortex_fep_bridge_t* bridge,
     float novelty_score
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "fep_system not connected");
     if (novelty_score < 0.0f || novelty_score > 1.0f) {
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -363,7 +366,7 @@ int visual_cortex_fep_bridge_update(
     visual_cortex_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Apply FEP effects to visual processing */
     visual_cortex_fep_apply_predictions(bridge);
@@ -396,7 +399,8 @@ int visual_cortex_fep_bridge_get_state(
     const visual_cortex_fep_bridge_t* bridge,
     visual_cortex_fep_state_t* state
 ) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -414,7 +418,8 @@ int visual_cortex_fep_bridge_get_stats(
     const visual_cortex_fep_bridge_t* bridge,
     visual_cortex_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -435,7 +440,7 @@ int visual_cortex_fep_bridge_get_stats(
 int visual_cortex_fep_bridge_connect_bio_async(
     visual_cortex_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     bio_module_info_t info = {
@@ -464,7 +469,7 @@ int visual_cortex_fep_bridge_connect_bio_async(
 int visual_cortex_fep_bridge_disconnect_bio_async(
     visual_cortex_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     if (bridge->base.bio_ctx) {

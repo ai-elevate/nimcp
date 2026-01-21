@@ -386,25 +386,10 @@ nimcp_status_t nimcp_brain_predict(
     char* out_label,
     float* out_confidence)
 {
-    if (!brain) {
-        set_error("Brain handle is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!features) {
-        set_error("Features array is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!out_label) {
-        set_error("Output label buffer is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!out_confidence) {
-        set_error("Output confidence pointer is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    NIMCP_CHECK_THROW(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL");
+    NIMCP_CHECK_THROW(out_label, NIMCP_ERROR_NULL_ARG, "Output label buffer is NULL");
+    NIMCP_CHECK_THROW(out_confidence, NIMCP_ERROR_NULL_ARG, "Output confidence pointer is NULL");
 
     // === PHASE IS-1: BBB INPUT VALIDATION ===
     // Validate external input data through Blood-Brain Barrier before processing
@@ -447,20 +432,9 @@ nimcp_status_t nimcp_brain_infer(
     float* outputs,
     uint32_t num_outputs)
 {
-    if (!brain) {
-        set_error("Brain handle is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!features) {
-        set_error("Features array is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!outputs) {
-        set_error("Outputs array is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    NIMCP_CHECK_THROW(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL");
+    NIMCP_CHECK_THROW(outputs, NIMCP_ERROR_NULL_ARG, "Outputs array is NULL");
 
     // Call internal brain API to get decision (which includes output vector)
     brain_decision_t* decision = brain_decide(brain->internal_brain, features, num_features);
@@ -489,15 +463,8 @@ nimcp_status_t nimcp_brain_infer(
 }
 
 nimcp_status_t nimcp_brain_save(nimcp_brain_t brain, const char* filepath) {
-    if (!brain) {
-        set_error("Brain handle is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!filepath) {
-        set_error("Filepath is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    NIMCP_CHECK_THROW(filepath, NIMCP_ERROR_NULL_ARG, "Filepath is NULL");
 
     // Call internal brain API
     bool success = brain_save(brain->internal_brain, filepath);
@@ -546,15 +513,8 @@ nimcp_status_t nimcp_brain_snapshot_save(
     const char* name,
     const char* description)
 {
-    if (!brain) {
-        set_error("Brain handle is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!name) {
-        set_error("Snapshot name is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    NIMCP_CHECK_THROW(name, NIMCP_ERROR_NULL_ARG, "Snapshot name is NULL");
 
     // Call internal brain snapshot API
     bool success = brain_save_snapshot(
@@ -611,15 +571,8 @@ nimcp_status_t nimcp_brain_snapshot_list(
     uint32_t max_count,
     uint32_t* out_count)
 {
-    if (!brain) {
-        set_error("Brain handle is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!infos) {
-        set_error("Infos array is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    NIMCP_CHECK_THROW(infos, NIMCP_ERROR_NULL_ARG, "Infos array is NULL");
 
     // Call internal brain list API
     // Note: brain_snapshot_info_t and nimcp_brain_snapshot_info_t have same layout
@@ -643,15 +596,8 @@ nimcp_status_t nimcp_brain_snapshot_delete(
     nimcp_brain_t brain,
     const char* name)
 {
-    if (!brain) {
-        set_error("Brain handle is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!name) {
-        set_error("Snapshot name is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL");
+    NIMCP_CHECK_THROW(name, NIMCP_ERROR_NULL_ARG, "Snapshot name is NULL");
 
     // Call internal brain delete API
     bool success = brain_delete_snapshot(brain->internal_brain, name);

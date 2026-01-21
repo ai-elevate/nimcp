@@ -161,7 +161,7 @@ static void init_validation_result(lgss_validation_result_t* result,
 nimcp_error_t lgss_input_validator_default_config(
     lgss_input_validator_config_t* config)
 {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(*config));
 
@@ -261,8 +261,8 @@ nimcp_error_t lgss_input_validator_check_visual(
     const lgss_visual_input_t* input,
     lgss_validation_result_t* result)
 {
-    if (!validator_is_valid(validator)) return NIMCP_ERROR_INVALID_PARAM;
-    if (!input || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(validator_is_valid(validator), NIMCP_ERROR_INVALID_PARAM, "invalid validator");
+    NIMCP_CHECK_THROW(input && result, NIMCP_ERROR_NULL_POINTER, "input or result is NULL");
     if (!validator->config.enable_visual_validation) {
         init_validation_result(result, LGSS_MODALITY_VISUAL);
         return NIMCP_SUCCESS;
@@ -360,8 +360,8 @@ nimcp_error_t lgss_input_validator_check_audio(
     const lgss_audio_input_t* input,
     lgss_validation_result_t* result)
 {
-    if (!validator_is_valid(validator)) return NIMCP_ERROR_INVALID_PARAM;
-    if (!input || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(validator_is_valid(validator), NIMCP_ERROR_INVALID_PARAM, "invalid validator");
+    NIMCP_CHECK_THROW(input && result, NIMCP_ERROR_NULL_POINTER, "input or result is NULL");
     if (!validator->config.enable_audio_validation) {
         init_validation_result(result, LGSS_MODALITY_AUDIO);
         return NIMCP_SUCCESS;
@@ -475,8 +475,8 @@ nimcp_error_t lgss_input_validator_check_text(
     const lgss_text_input_t* input,
     lgss_validation_result_t* result)
 {
-    if (!validator_is_valid(validator)) return NIMCP_ERROR_INVALID_PARAM;
-    if (!input || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(validator_is_valid(validator), NIMCP_ERROR_INVALID_PARAM, "invalid validator");
+    NIMCP_CHECK_THROW(input && result, NIMCP_ERROR_NULL_POINTER, "input or result is NULL");
     if (!validator->config.enable_text_validation) {
         init_validation_result(result, LGSS_MODALITY_TEXT);
         return NIMCP_SUCCESS;
@@ -572,8 +572,8 @@ nimcp_error_t lgss_input_validator_check_proprio(
     const lgss_proprio_input_t* input,
     lgss_validation_result_t* result)
 {
-    if (!validator_is_valid(validator)) return NIMCP_ERROR_INVALID_PARAM;
-    if (!input || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(validator_is_valid(validator), NIMCP_ERROR_INVALID_PARAM, "invalid validator");
+    NIMCP_CHECK_THROW(input && result, NIMCP_ERROR_NULL_POINTER, "input or result is NULL");
     if (!validator->config.enable_proprio_validation) {
         init_validation_result(result, LGSS_MODALITY_PROPRIOCEPTIVE);
         return NIMCP_SUCCESS;
@@ -658,8 +658,8 @@ nimcp_error_t lgss_input_validator_check_tactile(
     const lgss_tactile_input_t* input,
     lgss_validation_result_t* result)
 {
-    if (!validator_is_valid(validator)) return NIMCP_ERROR_INVALID_PARAM;
-    if (!input || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(validator_is_valid(validator), NIMCP_ERROR_INVALID_PARAM, "invalid validator");
+    NIMCP_CHECK_THROW(input && result, NIMCP_ERROR_NULL_POINTER, "input or result is NULL");
     if (!validator->config.enable_tactile_validation) {
         init_validation_result(result, LGSS_MODALITY_TACTILE);
         return NIMCP_SUCCESS;
@@ -743,8 +743,8 @@ nimcp_error_t lgss_input_validator_check(
     const lgss_input_t* input,
     lgss_validation_result_t* result)
 {
-    if (!validator_is_valid(validator)) return NIMCP_ERROR_INVALID_PARAM;
-    if (!input || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(validator_is_valid(validator), NIMCP_ERROR_INVALID_PARAM, "invalid validator");
+    NIMCP_CHECK_THROW(input && result, NIMCP_ERROR_NULL_POINTER, "input or result is NULL");
 
     switch (input->modality) {
         case LGSS_MODALITY_VISUAL:
@@ -774,8 +774,8 @@ nimcp_error_t lgss_input_validator_get_stats(
     const lgss_input_validator_t* validator,
     lgss_validator_stats_t* stats)
 {
-    if (!validator_is_valid(validator)) return NIMCP_ERROR_INVALID_PARAM;
-    if (!stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(validator_is_valid(validator), NIMCP_ERROR_INVALID_PARAM, "invalid validator");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     nimcp_mutex_lock(((lgss_input_validator_t*)validator)->mutex);
     memcpy(stats, &validator->stats, sizeof(*stats));
@@ -785,7 +785,7 @@ nimcp_error_t lgss_input_validator_get_stats(
 }
 
 nimcp_error_t lgss_input_validator_reset_stats(lgss_input_validator_t* validator) {
-    if (!validator_is_valid(validator)) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(validator_is_valid(validator), NIMCP_ERROR_INVALID_PARAM, "invalid validator");
 
     nimcp_mutex_lock(validator->mutex);
     memset(&validator->stats, 0, sizeof(validator->stats));
@@ -797,7 +797,7 @@ nimcp_error_t lgss_input_validator_reset_stats(lgss_input_validator_t* validator
 nimcp_error_t lgss_input_validator_report_false_positive(
     lgss_input_validator_t* validator)
 {
-    if (!validator_is_valid(validator)) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(validator_is_valid(validator), NIMCP_ERROR_INVALID_PARAM, "invalid validator");
 
     nimcp_mutex_lock(validator->mutex);
     validator->stats.false_positives++;

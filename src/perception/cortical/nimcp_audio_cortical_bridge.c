@@ -344,7 +344,7 @@ int audio_cortical_connect_audio_cortex(
     audio_cortical_bridge_t* bridge,
     audio_cortex_t* audio_cortex)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
@@ -360,7 +360,7 @@ int audio_cortical_connect_immune(
     audio_cortical_bridge_t* bridge,
     cortical_immune_system_t* immune)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
@@ -384,7 +384,7 @@ int audio_cortical_connect_immune(
 
 int audio_cortical_connect_bio_async(audio_cortical_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS; /* Already connected */
@@ -410,7 +410,7 @@ int audio_cortical_connect_bio_async(audio_cortical_bridge_t* bridge)
 
 int audio_cortical_disconnect_bio_async(audio_cortical_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;
@@ -838,7 +838,7 @@ int audio_cortical_set_hypercolumn_gain(
     float frequency_hz,
     float gain)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     uint32_t idx = compute_hypercolumn_index(bridge, frequency_hz);
     if (idx >= bridge->num_hypercolumns) return NIMCP_ERROR_INVALID_PARAM;
@@ -871,7 +871,7 @@ int audio_cortical_set_immune_modulation(
     audio_cortical_bridge_t* bridge,
     float modulation_factor)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (modulation_factor < 0.0f) modulation_factor = 0.0f;
     if (modulation_factor > 1.0f) modulation_factor = 1.0f;
@@ -902,7 +902,7 @@ float audio_cortical_get_immune_factor(const audio_cortical_bridge_t* bridge)
 
 int audio_cortical_update_immune_modulation(audio_cortical_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->cortical_immune) {
         return NIMCP_SUCCESS;
@@ -922,7 +922,8 @@ int audio_cortical_get_stats(
     const audio_cortical_bridge_t* bridge,
     audio_cortical_stats_t* stats)
 {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     /* Note: Accessing stats without lock for read-only operation */
     memcpy(stats, &bridge->stats, sizeof(audio_cortical_stats_t));
@@ -932,7 +933,7 @@ int audio_cortical_get_stats(
 
 int audio_cortical_reset_stats(audio_cortical_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
@@ -984,7 +985,8 @@ int audio_cortical_broadcast_frequency(
     audio_cortical_bridge_t* bridge,
     const audio_cortical_frequency_result_t* result)
 {
-    if (!bridge || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_NULL_POINTER, "result is NULL");
 
     if (!bridge->base.bio_async_enabled || !bridge->base.bio_ctx) {
         return NIMCP_ERROR_INVALID_STATE;

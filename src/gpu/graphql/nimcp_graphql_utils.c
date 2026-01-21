@@ -124,9 +124,7 @@ nimcp_error_t nimcp_graphql_executor_set_graph(
     nimcp_graphql_executor_t* exec,
     void* graph)
 {
-    if (!exec) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(exec, NIMCP_ERROR_NULL_POINTER, "exec is NULL");
 
     exec->graph = graph;
     return NIMCP_SUCCESS;
@@ -141,9 +139,9 @@ nimcp_error_t nimcp_graphql_execute(
     const char* query_string,
     void** result)
 {
-    if (!exec || !query_string || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(exec, NIMCP_ERROR_NULL_POINTER, "exec is NULL");
+    NIMCP_CHECK_THROW(query_string, NIMCP_ERROR_NULL_POINTER, "query_string is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_NULL_POINTER, "result is NULL");
 
     *result = NULL;
 
@@ -220,9 +218,8 @@ nimcp_error_t nimcp_graphql_execute_query(
     nimcp_graphql_executor_t* exec,
     nimcp_graph_query_t* query)
 {
-    if (!exec || !query) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(exec, NIMCP_ERROR_NULL_POINTER, "exec is NULL");
+    NIMCP_CHECK_THROW(query, NIMCP_ERROR_NULL_POINTER, "query is NULL");
 
     if (!exec->graph) {
         return NIMCP_ERROR_NOT_INITIALIZED;
@@ -382,9 +379,8 @@ nimcp_error_t nimcp_graph_query_set_type(
     nimcp_graph_query_t* query,
     const char* type)
 {
-    if (!query || !type) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(query, NIMCP_ERROR_NULL_POINTER, "query is NULL");
+    NIMCP_CHECK_THROW(type, NIMCP_ERROR_NULL_POINTER, "type is NULL");
 
     size_t len = strlen(type);
     if (len >= NIMCP_GRAPHQL_MAX_QUERY_TYPE_LEN) {
@@ -401,9 +397,8 @@ nimcp_error_t nimcp_graph_query_set_filter(
     nimcp_graph_query_t* query,
     const char* filter)
 {
-    if (!query || !filter) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(query, NIMCP_ERROR_NULL_POINTER, "query is NULL");
+    NIMCP_CHECK_THROW(filter, NIMCP_ERROR_NULL_POINTER, "filter is NULL");
 
     size_t len = strlen(filter);
     if (len >= NIMCP_GRAPHQL_MAX_FILTER_LEN) {
@@ -421,9 +416,7 @@ nimcp_error_t nimcp_graph_query_set_vertices(
     const int* vertex_ids,
     size_t num_vertices)
 {
-    if (!query) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(query, NIMCP_ERROR_NULL_POINTER, "query is NULL");
 
     if (num_vertices > NIMCP_GRAPHQL_MAX_VERTICES) {
         return NIMCP_ERROR_OUT_OF_RANGE;
@@ -451,9 +444,7 @@ nimcp_error_t nimcp_graph_query_set_depth(
     nimcp_graph_query_t* query,
     int depth)
 {
-    if (!query) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(query, NIMCP_ERROR_NULL_POINTER, "query is NULL");
 
     if (depth < 0 || depth > NIMCP_GRAPHQL_MAX_DEPTH) {
         return NIMCP_ERROR_OUT_OF_RANGE;
@@ -754,9 +745,8 @@ nimcp_error_t nimcp_graphql_result_to_host(
     void* host_buffer,
     size_t buffer_size)
 {
-    if (!result || !host_buffer) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_NULL_POINTER, "result is NULL");
+    NIMCP_CHECK_THROW(host_buffer, NIMCP_ERROR_NULL_POINTER, "host_buffer is NULL");
 
     size_t data_size = result->num_elements * result->element_size;
     if (buffer_size < data_size) {

@@ -75,7 +75,7 @@ static omni_logic_type_t compute_suggested_logic_type(
  * ============================================================================ */
 
 int omni_logic_default_config(omni_logic_config_t* config) {
-    if (!config) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     memset(config, 0, sizeof(omni_logic_config_t));
 
@@ -169,7 +169,7 @@ void omni_logic_bridge_destroy(omni_logic_bridge_t* bridge) {
 
 int omni_logic_connect_jepa(omni_logic_bridge_t* bridge,
                              jepa_bidirectional_t* jepa) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->jepa = jepa;
     nimcp_mutex_unlock(bridge->mutex);
@@ -178,7 +178,7 @@ int omni_logic_connect_jepa(omni_logic_bridge_t* bridge,
 
 int omni_logic_connect_pred_hier(omni_logic_bridge_t* bridge,
                                   predictive_hierarchy_t* pred_hier) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->pred_hier = pred_hier;
     nimcp_mutex_unlock(bridge->mutex);
@@ -187,7 +187,7 @@ int omni_logic_connect_pred_hier(omni_logic_bridge_t* bridge,
 
 int omni_logic_connect_logic_network(omni_logic_bridge_t* bridge,
                                       neural_logic_network_t* logic_net) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->logic_net = logic_net;
     nimcp_mutex_unlock(bridge->mutex);
@@ -199,7 +199,7 @@ int omni_logic_connect_logic_network(omni_logic_bridge_t* bridge,
  * ============================================================================ */
 
 int omni_logic_update(omni_logic_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -248,7 +248,7 @@ int omni_logic_update(omni_logic_bridge_t* bridge) {
 }
 
 int omni_logic_apply_to_logic(omni_logic_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->stats.gate_evaluations++;
     nimcp_mutex_unlock(bridge->mutex);
@@ -256,7 +256,7 @@ int omni_logic_apply_to_logic(omni_logic_bridge_t* bridge) {
 }
 
 int omni_logic_apply_to_omni(omni_logic_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     return NIMCP_SUCCESS;
 }
 
@@ -266,7 +266,7 @@ int omni_logic_apply_to_omni(omni_logic_bridge_t* bridge) {
 
 int omni_logic_get_direction(const omni_logic_bridge_t* bridge,
                               omni_infer_direction_t* direction) {
-    if (!bridge || !direction) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && direction, NIMCP_ERROR_INVALID_PARAM, "bridge or direction is NULL");
     nimcp_mutex_lock(((omni_logic_bridge_t*)bridge)->mutex);
     *direction = bridge->logic_effects.direction;
     ((omni_logic_bridge_t*)bridge)->stats.direction_decisions++;
@@ -277,7 +277,7 @@ int omni_logic_get_direction(const omni_logic_bridge_t* bridge,
 int omni_logic_set_condition(omni_logic_bridge_t* bridge,
                               omni_logic_condition_t condition,
                               bool value) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -305,6 +305,7 @@ int omni_logic_set_condition(omni_logic_bridge_t* bridge,
             break;
         default:
             nimcp_mutex_unlock(bridge->mutex);
+            NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "invalid condition type: %d", condition);
             return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -314,7 +315,7 @@ int omni_logic_set_condition(omni_logic_bridge_t* bridge,
 
 int omni_logic_get_conditions(const omni_logic_bridge_t* bridge,
                                omni_logic_conditions_t* conditions) {
-    if (!bridge || !conditions) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && conditions, NIMCP_ERROR_INVALID_PARAM, "bridge or conditions is NULL");
     nimcp_mutex_lock(((omni_logic_bridge_t*)bridge)->mutex);
     memcpy(conditions, &bridge->conditions, sizeof(omni_logic_conditions_t));
     nimcp_mutex_unlock(((omni_logic_bridge_t*)bridge)->mutex);
@@ -356,12 +357,13 @@ int omni_logic_add_rule(omni_logic_bridge_t* bridge,
                          omni_logic_type_t type,
                          uint32_t gate_id,
                          uint32_t* rule_id) {
-    if (!bridge || !name) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && name, NIMCP_ERROR_INVALID_PARAM, "bridge or name is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
     if (bridge->num_rules >= bridge->max_rules) {
         nimcp_mutex_unlock(bridge->mutex);
+        NIMCP_THROW(NIMCP_ERROR_OUT_OF_RANGE, "max rules exceeded: %u", bridge->max_rules);
         return NIMCP_ERROR_OUT_OF_RANGE;
     }
 
@@ -383,7 +385,7 @@ int omni_logic_add_rule(omni_logic_bridge_t* bridge,
 
 int omni_logic_remove_rule(omni_logic_bridge_t* bridge,
                             uint32_t rule_id) {
-    if (!bridge || rule_id == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && rule_id != 0, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL or rule_id is 0");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -396,13 +398,14 @@ int omni_logic_remove_rule(omni_logic_bridge_t* bridge,
     }
 
     nimcp_mutex_unlock(bridge->mutex);
+    NIMCP_THROW(NIMCP_ERROR_NOT_FOUND, "rule_id %u not found", rule_id);
     return NIMCP_ERROR_NOT_FOUND;
 }
 
 int omni_logic_evaluate_rule(omni_logic_bridge_t* bridge,
                               uint32_t rule_id,
                               bool* result) {
-    if (!bridge || !result || rule_id == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && result && rule_id != 0, NIMCP_ERROR_INVALID_PARAM, "bridge/result is NULL or rule_id is 0");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -432,6 +435,7 @@ int omni_logic_evaluate_rule(omni_logic_bridge_t* bridge,
     }
 
     nimcp_mutex_unlock(bridge->mutex);
+    NIMCP_THROW(NIMCP_ERROR_NOT_FOUND, "rule_id %u not found or inactive", rule_id);
     return NIMCP_ERROR_NOT_FOUND;
 }
 
@@ -441,7 +445,7 @@ int omni_logic_evaluate_rule(omni_logic_bridge_t* bridge,
 
 int omni_logic_get_omni_effects(const omni_logic_bridge_t* bridge,
                                  omni_to_logic_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_INVALID_PARAM, "bridge or effects is NULL");
     nimcp_mutex_lock(((omni_logic_bridge_t*)bridge)->mutex);
     memcpy(effects, &bridge->omni_effects, sizeof(omni_to_logic_effects_t));
     nimcp_mutex_unlock(((omni_logic_bridge_t*)bridge)->mutex);
@@ -450,7 +454,7 @@ int omni_logic_get_omni_effects(const omni_logic_bridge_t* bridge,
 
 int omni_logic_get_logic_effects(const omni_logic_bridge_t* bridge,
                                   logic_to_omni_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_INVALID_PARAM, "bridge or effects is NULL");
     nimcp_mutex_lock(((omni_logic_bridge_t*)bridge)->mutex);
     memcpy(effects, &bridge->logic_effects, sizeof(logic_to_omni_effects_t));
     nimcp_mutex_unlock(((omni_logic_bridge_t*)bridge)->mutex);
@@ -459,7 +463,7 @@ int omni_logic_get_logic_effects(const omni_logic_bridge_t* bridge,
 
 int omni_logic_get_stats(const omni_logic_bridge_t* bridge,
                           omni_logic_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_INVALID_PARAM, "bridge or stats is NULL");
     nimcp_mutex_lock(((omni_logic_bridge_t*)bridge)->mutex);
     memcpy(stats, &bridge->stats, sizeof(omni_logic_stats_t));
     nimcp_mutex_unlock(((omni_logic_bridge_t*)bridge)->mutex);
@@ -467,7 +471,7 @@ int omni_logic_get_stats(const omni_logic_bridge_t* bridge,
 }
 
 int omni_logic_reset_stats(omni_logic_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     memset(&bridge->stats, 0, sizeof(omni_logic_stats_t));
     nimcp_mutex_unlock(bridge->mutex);
@@ -485,7 +489,7 @@ static nimcp_error_t handle_logic_direction_switch(
     void* user_data)
 {
     omni_logic_bridge_t* bridge = (omni_logic_bridge_t*)user_data;
-    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && msg, NIMCP_ERROR_INVALID_PARAM, "bridge or msg is NULL");
 
     omni_logic_update(bridge);
 
@@ -501,7 +505,7 @@ static nimcp_error_t handle_logic_gate_result(
     void* user_data)
 {
     omni_logic_bridge_t* bridge = (omni_logic_bridge_t*)user_data;
-    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && msg, NIMCP_ERROR_INVALID_PARAM, "bridge or msg is NULL");
 
     /* Process logic gate result */
     omni_logic_update(bridge);
@@ -516,7 +520,7 @@ static nimcp_error_t handle_logic_gate_result(
  * ============================================================================ */
 
 int omni_logic_connect_bio_async(omni_logic_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     if (bridge->bio_async_connected) return NIMCP_SUCCESS;
 
     bio_module_info_t info = {
@@ -528,6 +532,7 @@ int omni_logic_connect_bio_async(omni_logic_bridge_t* bridge) {
 
     bio_module_context_t ctx = bio_router_register_module(&info);
     if (!ctx) {
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED, "failed to register bio-async module");
         return NIMCP_ERROR_OPERATION_FAILED;
     }
 
@@ -543,7 +548,7 @@ int omni_logic_connect_bio_async(omni_logic_bridge_t* bridge) {
 }
 
 int omni_logic_disconnect_bio_async(omni_logic_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     if (!bridge->bio_async_connected) return NIMCP_SUCCESS;
 
     if (bridge->bio_context) {

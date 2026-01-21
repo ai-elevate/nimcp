@@ -179,7 +179,7 @@ static void update_bridge_active_state(security_kg_bridge_t* bridge) {
  * ============================================================================ */
 
 int security_kg_default_config(sec_kg_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(sec_kg_config_t));
 
@@ -311,8 +311,8 @@ int security_kg_connect_reader(
     security_kg_bridge_t* bridge,
     kg_reader_t* kg_reader
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!kg_reader) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(kg_reader, NIMCP_ERROR_NULL_POINTER, "kg_reader is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -333,8 +333,8 @@ int security_kg_connect_bbb(
     security_kg_bridge_t* bridge,
     bbb_system_t bbb
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bbb) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bbb, NIMCP_ERROR_NULL_POINTER, "bbb is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -354,8 +354,8 @@ int security_kg_connect_anomaly_detector(
     security_kg_bridge_t* bridge,
     nimcp_anomaly_detector_t detector
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!detector) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(detector, NIMCP_ERROR_NULL_POINTER, "detector is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -381,7 +381,7 @@ int security_kg_validate_query(
     size_t query_len,
     sec_kg_query_result_t* result
 ) {
-    if (!bridge || !query || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && query && result, NIMCP_ERROR_NULL_POINTER, "NULL parameter in security_kg_validate_query");
 
     BRIDGE_LOCK(bridge);
 
@@ -446,7 +446,7 @@ int security_kg_validate_entity_name(
     const char* entity_name,
     sec_kg_query_result_t* result
 ) {
-    if (!bridge || !entity_name || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && entity_name && result, NIMCP_ERROR_NULL_POINTER, "NULL parameter in security_kg_validate_entity_name");
 
     BRIDGE_LOCK(bridge);
 
@@ -487,7 +487,7 @@ int security_kg_validate_search(
     const char* search_text,
     sec_kg_query_result_t* result
 ) {
-    if (!bridge || !search_text || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && search_text && result, NIMCP_ERROR_NULL_POINTER, "NULL parameter in security_kg_validate_search");
 
     size_t len = strlen(search_text);
     return security_kg_validate_query(bridge, search_text, len, result);
@@ -505,8 +505,8 @@ int security_kg_check_traversal_access(
     uint32_t current_depth,
     sec_kg_traversal_result_t* result
 ) {
-    if (!bridge || !result) return NIMCP_ERROR_NULL_POINTER;
-    if (!source_entity) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && result, NIMCP_ERROR_NULL_POINTER, "bridge or result is NULL");
+    NIMCP_CHECK_THROW(source_entity, NIMCP_ERROR_NULL_POINTER, "source_entity is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -560,7 +560,7 @@ int security_kg_is_entity_accessible(
     const char* entity_name,
     bool* accessible
 ) {
-    if (!bridge || !entity_name || !accessible) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && entity_name && accessible, NIMCP_ERROR_NULL_POINTER, "NULL parameter in security_kg_is_entity_accessible");
 
     BRIDGE_LOCK(bridge);
 
@@ -590,7 +590,7 @@ int security_kg_set_max_traversal_depth(
     security_kg_bridge_t* bridge,
     uint32_t max_depth
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -614,7 +614,7 @@ int security_kg_verify_node_integrity(
     const char* entity_name,
     sec_kg_integrity_result_t* result
 ) {
-    if (!bridge || !entity_name || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && entity_name && result, NIMCP_ERROR_NULL_POINTER, "NULL parameter in security_kg_verify_node_integrity");
 
     BRIDGE_LOCK(bridge);
 
@@ -660,9 +660,7 @@ int security_kg_verify_relation_integrity(
     const char* relation_type,
     sec_kg_integrity_result_t* result
 ) {
-    if (!bridge || !from_entity || !to_entity || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && from_entity && to_entity && result, NIMCP_ERROR_NULL_POINTER, "NULL parameter in security_kg_verify_relation_integrity");
 
     BRIDGE_LOCK(bridge);
 
@@ -714,7 +712,7 @@ int security_kg_enforce_consistency(
     security_kg_bridge_t* bridge,
     sec_kg_consistency_result_t* result
 ) {
-    if (!bridge || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && result, NIMCP_ERROR_NULL_POINTER, "bridge or result is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -739,7 +737,7 @@ int security_kg_check_orphaned_nodes(
     security_kg_bridge_t* bridge,
     uint32_t* orphan_count
 ) {
-    if (!bridge || !orphan_count) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && orphan_count, NIMCP_ERROR_NULL_POINTER, "bridge or orphan_count is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -788,7 +786,7 @@ int security_kg_check_dangling_relations(
     security_kg_bridge_t* bridge,
     uint32_t* dangling_count
 ) {
-    if (!bridge || !dangling_count) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && dangling_count, NIMCP_ERROR_NULL_POINTER, "bridge or dangling_count is NULL");
 
     *dangling_count = 0;
     /* Simplified implementation - would need full relation scan */
@@ -805,7 +803,7 @@ int security_kg_isolate_private_data(
     const char* entity_name,
     sec_kg_privacy_level_t privacy_level
 ) {
-    if (!bridge || !entity_name) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && entity_name, NIMCP_ERROR_NULL_POINTER, "bridge or entity_name is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -856,7 +854,7 @@ int security_kg_remove_isolation(
     security_kg_bridge_t* bridge,
     const char* entity_name
 ) {
-    if (!bridge || !entity_name) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && entity_name, NIMCP_ERROR_NULL_POINTER, "bridge or entity_name is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -889,7 +887,7 @@ int security_kg_get_privacy_level(
     const char* entity_name,
     sec_kg_privacy_level_t* privacy_level
 ) {
-    if (!bridge || !entity_name || !privacy_level) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && entity_name && privacy_level, NIMCP_ERROR_NULL_POINTER, "NULL parameter in security_kg_get_privacy_level");
 
     BRIDGE_LOCK(bridge);
 
@@ -909,7 +907,7 @@ int security_kg_check_privacy_access(
     sec_kg_privacy_level_t required_level,
     bool* allowed
 ) {
-    if (!bridge || !allowed) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && allowed, NIMCP_ERROR_NULL_POINTER, "bridge or allowed is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -929,7 +927,7 @@ int security_kg_enter_lockdown(
     security_kg_bridge_t* bridge,
     const char* reason
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -955,7 +953,7 @@ int security_kg_enter_lockdown(
 int security_kg_exit_lockdown(
     security_kg_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -980,7 +978,7 @@ int security_kg_is_lockdown_active(
     security_kg_bridge_t* bridge,
     bool* active
 ) {
-    if (!bridge || !active) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && active, NIMCP_ERROR_NULL_POINTER, "bridge or active is NULL");
 
     BRIDGE_LOCK(bridge);
     *active = bridge->state.lockdown_active;
@@ -996,7 +994,7 @@ int security_kg_is_lockdown_active(
 int security_kg_update_sec_to_kg(
     security_kg_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1039,7 +1037,7 @@ int security_kg_update_sec_to_kg(
 int security_kg_update_kg_to_sec(
     security_kg_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -1061,7 +1059,7 @@ int security_kg_update_kg_to_sec(
 int security_kg_update(
     security_kg_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     int ret = security_kg_update_kg_to_sec(bridge);
     if (ret != 0) return ret;
@@ -1077,7 +1075,7 @@ int security_kg_get_sec_to_kg_effects(
     const security_kg_bridge_t* bridge,
     sec_to_kg_effects_t* effects
 ) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_NULL_POINTER, "bridge or effects is NULL");
 
     security_kg_bridge_t* mutable_bridge = (security_kg_bridge_t*)bridge;
 
@@ -1092,7 +1090,7 @@ int security_kg_get_kg_to_sec_effects(
     const security_kg_bridge_t* bridge,
     kg_to_sec_effects_t* effects
 ) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_NULL_POINTER, "bridge or effects is NULL");
 
     security_kg_bridge_t* mutable_bridge = (security_kg_bridge_t*)bridge;
 
@@ -1107,7 +1105,7 @@ int security_kg_get_state(
     const security_kg_bridge_t* bridge,
     sec_kg_bridge_state_t* state
 ) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     security_kg_bridge_t* mutable_bridge = (security_kg_bridge_t*)bridge;
 
@@ -1122,7 +1120,7 @@ int security_kg_get_stats(
     const security_kg_bridge_t* bridge,
     sec_kg_stats_t* stats
 ) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     security_kg_bridge_t* mutable_bridge = (security_kg_bridge_t*)bridge;
 
@@ -1204,7 +1202,7 @@ const char* security_kg_state_name(
 int security_kg_report_false_positive(
     security_kg_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 

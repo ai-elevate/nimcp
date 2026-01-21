@@ -214,10 +214,8 @@ struct cnn_to_snn_converter_s {
  */
 nimcp_error_t cnn_trainer_default_config(cnn_trainer_config_t* config) {
     /* Guard clause: null check */
-    if (!config) {
-        NIMCP_LOGGING_ERROR("cnn_trainer_default_config: NULL config pointer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER,
+                      "cnn_trainer_default_config: config is NULL");
 
     /* Zero-initialize */
     memset(config, 0, sizeof(cnn_trainer_config_t));
@@ -1360,18 +1358,12 @@ nimcp_error_t cnn_trainer_forward(cnn_trainer_t* trainer,
                                    const nimcp_tensor_t* input,
                                    cnn_forward_result_t* result) {
     /* Guard clauses */
-    if (!trainer) {
-        NIMCP_LOGGING_ERROR("cnn_trainer_forward: NULL trainer");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!input) {
-        NIMCP_LOGGING_ERROR("cnn_trainer_forward: NULL input");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!result) {
-        NIMCP_LOGGING_ERROR("cnn_trainer_forward: NULL result");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(trainer, NIMCP_ERROR_NULL_POINTER,
+                      "cnn_trainer_forward: trainer is NULL");
+    NIMCP_CHECK_THROW(input, NIMCP_ERROR_NULL_POINTER,
+                      "cnn_trainer_forward: input is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_NULL_POINTER,
+                      "cnn_trainer_forward: result is NULL");
 
     /* Initialize result */
     memset(result, 0, sizeof(cnn_forward_result_t));
@@ -1381,10 +1373,8 @@ nimcp_error_t cnn_trainer_forward(cnn_trainer_t* trainer,
     if (trainer->num_layers > 0) {
         result->activations = (nimcp_tensor_t**)nimcp_malloc(
             sizeof(nimcp_tensor_t*) * (trainer->num_layers + 1));
-        if (!result->activations) {
-            NIMCP_LOGGING_ERROR("cnn_trainer_forward: Failed to allocate activations");
-            return NIMCP_ERROR_NO_MEMORY;
-        }
+        NIMCP_CHECK_THROW(result->activations, NIMCP_ERROR_NO_MEMORY,
+                          "cnn_trainer_forward: Failed to allocate activations");
         memset(result->activations, 0, sizeof(nimcp_tensor_t*) * (trainer->num_layers + 1));
     }
 
@@ -1434,13 +1424,14 @@ nimcp_error_t cnn_trainer_forward(cnn_trainer_t* trainer,
         }
 
         if (!next) {
-            NIMCP_LOGGING_ERROR("cnn_trainer_forward: Layer %u forward failed", layer_idx - 1);
             /* Cleanup */
             for (uint32_t i = 0; i <= layer_idx; i++) {
                 nimcp_tensor_destroy(result->activations[i]);
             }
             nimcp_free(result->activations);
             result->activations = NULL;
+            NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED,
+                        "cnn_trainer_forward: Layer %u forward failed", layer_idx - 1);
             return NIMCP_ERROR_OPERATION_FAILED;
         }
 
@@ -1466,18 +1457,18 @@ nimcp_error_t cnn_trainer_forward(cnn_trainer_t* trainer,
 nimcp_error_t cnn_trainer_backward(cnn_trainer_t* trainer,
                                     const nimcp_tensor_t* target,
                                     const cnn_forward_result_t* forward_result) {
-    if (!trainer || !target || !forward_result) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!forward_result->output || !forward_result->activations) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(trainer && target && forward_result, NIMCP_ERROR_NULL_POINTER,
+                      "cnn_trainer_backward: trainer, target, or forward_result is NULL");
+    NIMCP_CHECK_THROW(forward_result->output && forward_result->activations,
+                      NIMCP_ERROR_INVALID_STATE,
+                      "cnn_trainer_backward: forward_result has no output or activations");
 
     /* Compute output gradient (loss gradient w.r.t. output) */
     /* For MSE: grad = 2 * (output - target) / n */
     /* For cross-entropy with softmax: grad = output - target (simplified) */
     nimcp_tensor_t* grad = nimcp_tensor_clone(forward_result->output);
-    if (!grad) return NIMCP_ERROR_NO_MEMORY;
+    NIMCP_CHECK_THROW(grad, NIMCP_ERROR_NO_MEMORY,
+                      "cnn_trainer_backward: Failed to clone output for gradient");
 
     float* grad_data = nimcp_tensor_data(grad);
     const float* target_data = nimcp_tensor_data_const(target);
@@ -1492,6 +1483,7 @@ nimcp_error_t cnn_trainer_backward(cnn_trainer_t* trainer,
     cnn_layer_t** layer_stack = (cnn_layer_t**)nimcp_malloc(sizeof(cnn_layer_t*) * trainer->num_layers);
     if (!layer_stack) {
         nimcp_tensor_destroy(grad);
+        NIMCP_THROW(NIMCP_ERROR_NO_MEMORY, "cnn_trainer_backward: Failed to allocate layer stack");
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -1576,6 +1568,8 @@ nimcp_error_t cnn_trainer_backward(cnn_trainer_t* trainer,
                     if (!new_grad) {
                         nimcp_free(layer_stack);
                         nimcp_tensor_destroy(grad);
+                        NIMCP_THROW(NIMCP_ERROR_NO_MEMORY,
+                                    "cnn_trainer_backward: Failed to allocate gradient for flatten");
                         return NIMCP_ERROR_NO_MEMORY;
                     }
 
@@ -1609,6 +1603,8 @@ nimcp_error_t cnn_trainer_backward(cnn_trainer_t* trainer,
                     if (!new_grad) {
                         nimcp_free(layer_stack);
                         nimcp_tensor_destroy(grad);
+                        NIMCP_THROW(NIMCP_ERROR_NO_MEMORY,
+                                    "cnn_trainer_backward: Failed to allocate gradient for activation");
                         return NIMCP_ERROR_NO_MEMORY;
                     }
 
@@ -1687,6 +1683,8 @@ nimcp_error_t cnn_trainer_backward(cnn_trainer_t* trainer,
                     if (!new_grad) {
                         nimcp_free(layer_stack);
                         nimcp_tensor_destroy(grad);
+                        NIMCP_THROW(NIMCP_ERROR_NO_MEMORY,
+                                    "cnn_trainer_backward: Failed to allocate gradient for pooling");
                         return NIMCP_ERROR_NO_MEMORY;
                     }
                     float* new_grad_data = nimcp_tensor_data(new_grad);
@@ -1795,6 +1793,8 @@ nimcp_error_t cnn_trainer_backward(cnn_trainer_t* trainer,
                     if (!new_grad) {
                         nimcp_free(layer_stack);
                         nimcp_tensor_destroy(grad);
+                        NIMCP_THROW(NIMCP_ERROR_NO_MEMORY,
+                                    "cnn_trainer_backward: Failed to allocate gradient for dropout");
                         return NIMCP_ERROR_NO_MEMORY;
                     }
 
@@ -2057,12 +2057,10 @@ nimcp_error_t cnn_trainer_backward(cnn_trainer_t* trainer,
  * HOW:  Call optimizer for each layer's parameters
  */
 nimcp_error_t cnn_trainer_step(cnn_trainer_t* trainer) {
-    if (!trainer) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!trainer->optimizer) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(trainer, NIMCP_ERROR_NULL_POINTER,
+                      "cnn_trainer_step: trainer is NULL");
+    NIMCP_CHECK_THROW(trainer->optimizer, NIMCP_ERROR_INVALID_STATE,
+                      "cnn_trainer_step: optimizer is NULL");
 
     /* Apply perception-modulated learning rate if connected to cortex */
     float lr_scale = 1.0f;
@@ -2107,9 +2105,8 @@ nimcp_error_t cnn_trainer_step(cnn_trainer_t* trainer) {
  * HOW:  Fill gradient tensors with zeros
  */
 nimcp_error_t cnn_trainer_zero_grad(cnn_trainer_t* trainer) {
-    if (!trainer) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(trainer, NIMCP_ERROR_NULL_POINTER,
+                      "cnn_trainer_zero_grad: trainer is NULL");
 
     cnn_layer_t* layer = trainer->layers_head;
     while (layer) {
@@ -2135,9 +2132,8 @@ nimcp_error_t cnn_trainer_zero_grad(cnn_trainer_t* trainer) {
 nimcp_error_t cnn_trainer_train_epoch(cnn_trainer_t* trainer,
                                        cnn_dataloader_t* dataloader,
                                        cnn_epoch_result_t* result) {
-    if (!trainer || !dataloader || !result) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(trainer && dataloader && result, NIMCP_ERROR_NULL_POINTER,
+                      "cnn_trainer_train_epoch: trainer, dataloader, or result is NULL");
 
     /* Initialize result */
     memset(result, 0, sizeof(cnn_epoch_result_t));
@@ -2226,9 +2222,8 @@ nimcp_error_t cnn_trainer_validate(cnn_trainer_t* trainer,
                                     cnn_dataloader_t* dataloader,
                                     float* val_loss,
                                     float* val_accuracy) {
-    if (!trainer || !dataloader || !val_loss || !val_accuracy) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(trainer && dataloader && val_loss && val_accuracy, NIMCP_ERROR_NULL_POINTER,
+                      "cnn_trainer_validate: trainer, dataloader, val_loss, or val_accuracy is NULL");
 
     /* Set eval mode (disable dropout) */
     bool prev_mode = trainer->training_mode;
@@ -2299,9 +2294,8 @@ nimcp_error_t cnn_trainer_validate(cnn_trainer_t* trainer,
 nimcp_error_t cnn_trainer_fit(cnn_trainer_t* trainer,
                                cnn_dataloader_t* train_loader,
                                cnn_dataloader_t* val_loader) {
-    if (!trainer || !train_loader) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(trainer && train_loader, NIMCP_ERROR_NULL_POINTER,
+                      "cnn_trainer_fit: trainer or train_loader is NULL");
 
     NIMCP_LOGGING_INFO("Starting training for %u epochs", trainer->config.max_epochs);
 
@@ -2460,9 +2454,8 @@ nimcp_error_t cnn_dataloader_next_batch(cnn_dataloader_t* loader,
                                          nimcp_tensor_t** batch_data,
                                          nimcp_tensor_t** batch_labels) {
     /* Guard clauses */
-    if (!loader || !batch_data || !batch_labels) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(loader && batch_data && batch_labels, NIMCP_ERROR_NULL_POINTER,
+                      "cnn_dataloader_next_batch: loader, batch_data, or batch_labels is NULL");
 
     /* Check if epoch complete */
     if (loader->current_index >= loader->dataset_size) {
@@ -2493,9 +2486,8 @@ nimcp_error_t cnn_dataloader_next_batch(cnn_dataloader_t* loader,
         batch_dims[i] = data_shape.dims[i];
     }
     *batch_data = nimcp_tensor_create(batch_dims, data_shape.rank, NIMCP_DTYPE_F32);
-    if (!*batch_data) {
-        return NIMCP_ERROR_NO_MEMORY;
-    }
+    NIMCP_CHECK_THROW(*batch_data, NIMCP_ERROR_NO_MEMORY,
+                      "cnn_dataloader_next_batch: Failed to allocate batch_data");
 
     /* Get labels shape */
     nimcp_tensor_shape_t label_shape;
@@ -2511,6 +2503,7 @@ nimcp_error_t cnn_dataloader_next_batch(cnn_dataloader_t* loader,
     if (!*batch_labels) {
         nimcp_tensor_destroy(*batch_data);
         *batch_data = NULL;
+        NIMCP_THROW(NIMCP_ERROR_NO_MEMORY, "cnn_dataloader_next_batch: Failed to allocate batch_labels");
         return NIMCP_ERROR_NO_MEMORY;
     }
 

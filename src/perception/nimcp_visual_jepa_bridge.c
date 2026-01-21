@@ -93,7 +93,9 @@ static int encoder_forward(const visual_jepa_encoder_t* enc,
                             const float* input,
                             float* output,
                             float* hidden_buffer) {
-    if (!enc || !input || !output) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(enc, NIMCP_ERROR_NULL_POINTER, "encoder is NULL");
+    NIMCP_CHECK_THROW(input, NIMCP_ERROR_NULL_POINTER, "input is NULL");
+    NIMCP_CHECK_THROW(output, NIMCP_ERROR_NULL_POINTER, "output is NULL");
 
     /* Layer 1: hidden = GELU(W1 @ input + b1) */
     for (uint32_t i = 0; i < enc->hidden_dim; i++) {
@@ -164,7 +166,7 @@ static void encoder_ema_update(visual_jepa_encoder_t* target,
  * ============================================================================ */
 
 int visual_jepa_bridge_default_config(visual_jepa_bridge_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(visual_jepa_bridge_config_t));
 
@@ -323,14 +325,14 @@ void visual_jepa_bridge_destroy(visual_jepa_bridge_t* bridge) {
 }
 
 int visual_jepa_bridge_reset(visual_jepa_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Reset encoder weights */
     encoder_destroy(bridge->encoder);
     bridge->encoder = encoder_create(bridge->config.encoder.input_dim,
                                       bridge->config.encoder.hidden_dim,
                                       bridge->config.encoder.output_dim);
-    if (!bridge->encoder) return NIMCP_ERROR_MEMORY;
+    NIMCP_CHECK_THROW(bridge->encoder, NIMCP_ERROR_NO_MEMORY, "Failed to create encoder");
 
     if (bridge->config.use_target_encoder) {
         encoder_destroy(bridge->target_encoder);
@@ -359,7 +361,8 @@ int visual_jepa_bridge_connect_visual_cortex(
     visual_jepa_bridge_t* bridge,
     visual_cortex_t* visual) {
 
-    if (!bridge || !visual) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(visual, NIMCP_ERROR_NULL_POINTER, "visual cortex is NULL");
 
     bridge->visual_cortex = visual;
     bridge->base.system_a = visual;
@@ -371,7 +374,7 @@ int visual_jepa_bridge_connect_visual_cortex(
 }
 
 int visual_jepa_bridge_disconnect_visual_cortex(visual_jepa_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     bridge->visual_cortex = NULL;
     bridge->base.system_a = NULL;
@@ -479,7 +482,7 @@ int visual_jepa_bridge_encode_patches(
             /* Pad/truncate to encoder input dim */
             uint32_t input_dim = bridge->encoder->input_dim;
             float* enc_input = nimcp_malloc(input_dim * sizeof(float));
-            if (!enc_input) return NIMCP_ERROR_MEMORY;
+            NIMCP_CHECK_THROW(enc_input, NIMCP_ERROR_NO_MEMORY, "Failed to allocate encoder input buffer");
 
             if (patch_size >= input_dim) {
                 /* Average pool if too large */
@@ -528,7 +531,7 @@ int visual_jepa_bridge_encode_attended(
 
     /* Compute attention-weighted average of features */
     float* weighted_features = nimcp_malloc(feature_dim * sizeof(float));
-    if (!weighted_features) return NIMCP_ERROR_MEMORY;
+    NIMCP_CHECK_THROW(weighted_features, NIMCP_ERROR_NO_MEMORY, "Failed to allocate weighted features buffer");
 
     memset(weighted_features, 0, feature_dim * sizeof(float));
     double total_weight = 0.0;
@@ -562,7 +565,7 @@ int visual_jepa_bridge_encode_attended(
  * ============================================================================ */
 
 int visual_jepa_bridge_set_training(visual_jepa_bridge_t* bridge, bool training) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     bridge->training_mode = training;
     jepa_predictor_set_training(bridge->predictor, training);
@@ -588,7 +591,7 @@ int visual_jepa_bridge_train_step(
 
     /* Create patch latents */
     jepa_latent_t** patch_latents = nimcp_malloc(num_patches * sizeof(jepa_latent_t*));
-    if (!patch_latents) return NIMCP_ERROR_MEMORY;
+    NIMCP_CHECK_THROW(patch_latents, NIMCP_ERROR_NO_MEMORY, "Failed to allocate patch latents array");
 
     for (uint32_t i = 0; i < num_patches; i++) {
         patch_latents[i] = jepa_latent_create_dim(latent_dim);
@@ -703,7 +706,7 @@ int visual_jepa_bridge_train_step(
 }
 
 int visual_jepa_bridge_update_target_encoder(visual_jepa_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->target_encoder || !bridge->encoder) {
         return NIMCP_ERROR_INVALID_STATE;
@@ -775,13 +778,14 @@ int visual_jepa_bridge_get_stats(
     const visual_jepa_bridge_t* bridge,
     visual_jepa_stats_t* stats) {
 
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
     *stats = bridge->stats;
     return NIMCP_SUCCESS;
 }
 
 int visual_jepa_bridge_reset_stats(visual_jepa_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     memset(&bridge->stats, 0, sizeof(visual_jepa_stats_t));
     bridge->stats.min_loss = FLT_MAX;
     return NIMCP_SUCCESS;

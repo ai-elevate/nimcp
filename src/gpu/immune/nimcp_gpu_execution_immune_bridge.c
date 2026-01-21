@@ -74,9 +74,7 @@ static float get_mode_energy_factor(execution_mode_t mode) {
  * ============================================================================ */
 
 int execution_immune_default_config(execution_immune_config_t* config) {
-    if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Enable all features by default */
     config->enable_cytokine_mode_modulation = true;
@@ -166,9 +164,8 @@ void execution_immune_destroy(execution_immune_bridge_t* bridge) {
  * ============================================================================ */
 
 int execution_immune_apply_cytokine_effects(execution_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->immune_system) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->immune_system, NIMCP_ERROR_NULL_POINTER, "bridge->immune_system is NULL");
 
     if (!bridge->enable_cytokine_mode_modulation) {
         return NIMCP_SUCCESS;
@@ -232,9 +229,8 @@ int execution_immune_trigger_error_response(
     int error_code,
     const char* error_message
 ) {
-    if (!bridge || !bridge->immune_system) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->immune_system, NIMCP_ERROR_NULL_POINTER, "bridge->immune_system is NULL");
 
     if (!bridge->enable_exec_error_immune_response) {
         return NIMCP_SUCCESS;
@@ -263,9 +259,8 @@ int execution_immune_trigger_error_response(
 }
 
 int execution_immune_monitor_performance(execution_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->exec_context) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->exec_context, NIMCP_ERROR_NULL_POINTER, "bridge->exec_context is NULL");
 
     if (!bridge->enable_performance_monitoring) {
         return NIMCP_SUCCESS;
@@ -311,9 +306,8 @@ int execution_immune_monitor_performance(execution_immune_bridge_t* bridge) {
 }
 
 int execution_immune_update_error_state(execution_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->exec_context) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->exec_context, NIMCP_ERROR_NULL_POINTER, "bridge->exec_context is NULL");
 
     bridge->error_state.active_mode = execution_context_get_mode(bridge->exec_context);
 
@@ -325,9 +319,7 @@ int execution_immune_update_error_state(execution_immune_bridge_t* bridge) {
  * ============================================================================ */
 
 int execution_immune_update(execution_immune_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     execution_immune_update_error_state(bridge);
     execution_immune_apply_cytokine_effects(bridge);
@@ -340,9 +332,8 @@ int execution_immune_update(execution_immune_bridge_t* bridge) {
 }
 
 int execution_immune_apply_modulation(execution_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->exec_context) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->exec_context, NIMCP_ERROR_NULL_POINTER, "bridge->exec_context is NULL");
 
     if (!bridge->allow_mode_switching) {
         return NIMCP_SUCCESS;
@@ -369,9 +360,8 @@ int execution_immune_get_cytokine_effects(
     const execution_immune_bridge_t* bridge,
     execution_cytokine_effects_t* effects
 ) {
-    if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(effects, NIMCP_ERROR_NULL_POINTER, "effects is NULL");
 
     memcpy(effects, &bridge->cytokine_effects, sizeof(execution_cytokine_effects_t));
     return NIMCP_SUCCESS;
@@ -381,9 +371,8 @@ int execution_immune_get_error_state(
     const execution_immune_bridge_t* bridge,
     execution_error_state_t* state
 ) {
-    if (!bridge || !state) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL");
 
     memcpy(state, &bridge->error_state, sizeof(execution_error_state_t));
     return NIMCP_SUCCESS;
@@ -408,9 +397,7 @@ float execution_immune_get_energy_conservation_factor(
  * ============================================================================ */
 
 int execution_immune_connect_bio_async(execution_immune_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;

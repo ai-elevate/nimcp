@@ -585,10 +585,8 @@ nimcp_error_t nimcp_promise_complete(nimcp_promise_t promise, const void* result
 {
     LOG_DEBUG("Completing promise: %p", (void*)promise);
 
-    if (!promise || promise->magic != FUTURE_MAGIC) {
-        LOG_ERROR("Promise complete failed: invalid promise handle");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(promise && promise->magic == FUTURE_MAGIC,
+                       NIMCP_ERROR_NULL_POINTER, "Promise complete failed: invalid promise handle");
 
     // Bio-async backend: delegate to bio-promise
     if (promise->is_bio_mode) {
@@ -615,20 +613,16 @@ nimcp_error_t nimcp_promise_complete(nimcp_promise_t promise, const void* result
     }
 
     // Validate result parameter if result_size > 0
-    if (shared->result_size > 0 && !result) {
-        LOG_ERROR("Promise complete failed: NULL result for non-void promise");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(shared->result_size == 0 || result != NULL,
+                       NIMCP_ERROR_NULL_POINTER, "Promise complete failed: NULL result for non-void promise");
 
     // Allocate and copy result BEFORE setting state to COMPLETED
     // This prevents a race where consumer sees COMPLETED but result isn't ready
     void* result_copy = NULL;
     if (shared->result_size > 0) {
         result_copy = future_alloc(shared->result_size);
-        if (!result_copy) {
-            LOG_ERROR("Promise complete failed: memory allocation for result");
-            return NIMCP_ERROR_NO_MEMORY;
-        }
+        NIMCP_CHECK_THROW(result_copy != NULL, NIMCP_ERROR_NO_MEMORY,
+                          "Promise complete failed: memory allocation for result (%zu bytes)", shared->result_size);
         memcpy(result_copy, result, shared->result_size);
     }
 
@@ -710,16 +704,12 @@ nimcp_error_t nimcp_promise_fail(nimcp_promise_t promise, nimcp_error_t error)
 {
     LOG_DEBUG("Failing promise: %p with error=%d", (void*)promise, error);
 
-    if (!promise || promise->magic != FUTURE_MAGIC) {
-        LOG_ERROR("Promise fail failed: invalid promise handle");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(promise && promise->magic == FUTURE_MAGIC,
+                       NIMCP_ERROR_NULL_POINTER, "Promise fail failed: invalid promise handle");
 
     // Validate error is a failure code (must not be SUCCESS)
-    if (error == NIMCP_SUCCESS) {
-        LOG_ERROR("Promise fail failed: error code cannot be SUCCESS");
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(error != NIMCP_SUCCESS, NIMCP_ERROR_INVALID_PARAM,
+                       "Promise fail failed: error code cannot be SUCCESS");
 
     // Bio-async backend: delegate to bio-promise
     if (promise->is_bio_mode) {
@@ -1089,13 +1079,9 @@ bool nimcp_future_wait_timeout(nimcp_future_t future, uint32_t timeout_ms)
 
 nimcp_error_t nimcp_future_get(nimcp_future_t future, void* out_result)
 {
-    if (!future || future->magic != FUTURE_MAGIC) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (!out_result) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(future && future->magic == FUTURE_MAGIC,
+                       NIMCP_ERROR_NULL_POINTER, "future is NULL or invalid");
+    NIMCP_CHECK_THROW(out_result != NULL, NIMCP_ERROR_NULL_POINTER, "out_result is NULL");
 
     nimcp_future_shared_state_t* shared = future->shared;
     if (!shared || shared->magic != FUTURE_MAGIC) {
@@ -1264,13 +1250,9 @@ void nimcp_future_destroy(nimcp_future_t future)
 
 nimcp_error_t nimcp_future_then(nimcp_future_t future, nimcp_future_callback_t callback, void* user_data)
 {
-    if (!future || future->magic != FUTURE_MAGIC) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (!callback) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(future && future->magic == FUTURE_MAGIC,
+                       NIMCP_ERROR_NULL_POINTER, "future is NULL or invalid");
+    NIMCP_CHECK_THROW(callback != NULL, NIMCP_ERROR_NULL_POINTER, "callback is NULL");
 
     nimcp_future_shared_state_t* shared = future->shared;
     if (!shared || shared->magic != FUTURE_MAGIC) {
@@ -1291,10 +1273,7 @@ nimcp_error_t nimcp_future_then(nimcp_future_t future, nimcp_future_callback_t c
 
     // Allocate callback node via unified memory wrapper
     callback_node_t* node = (callback_node_t*)future_alloc(sizeof(callback_node_t));
-    if (!node) {
-        LOG_ERROR("Failed to allocate callback node");
-        return NIMCP_ERROR_NO_MEMORY;
-    }
+    NIMCP_CHECK_THROW(node != NULL, NIMCP_ERROR_NO_MEMORY, "Failed to allocate callback node");
 
     node->callback = callback;
     node->user_data = user_data;
@@ -1340,9 +1319,8 @@ static nimcp_error_t future_then_with_destructor(
     void* user_data,
     callback_destructor_t destructor)
 {
-    if (!future || future->magic != FUTURE_MAGIC || !callback) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(future && future->magic == FUTURE_MAGIC && callback,
+                       NIMCP_ERROR_NULL_POINTER, "future or callback is NULL/invalid");
 
     nimcp_future_shared_state_t* shared = future->shared;
     if (!shared || shared->magic != FUTURE_MAGIC) {
@@ -1360,10 +1338,8 @@ static nimcp_error_t future_then_with_destructor(
 
     // Allocate callback node via unified memory wrapper
     callback_node_t* node = (callback_node_t*)future_alloc(sizeof(callback_node_t));
-    if (!node) {
-        LOG_ERROR("Failed to allocate callback node with destructor");
-        return NIMCP_ERROR_NO_MEMORY;
-    }
+    NIMCP_CHECK_THROW(node != NULL, NIMCP_ERROR_NO_MEMORY,
+                       "Failed to allocate callback node with destructor");
 
     node->callback = callback;
     node->user_data = user_data;
@@ -1828,9 +1804,7 @@ nimcp_future_t nimcp_future_map(
 
 nimcp_error_t nimcp_future_get_stats(nimcp_future_stats_t* stats)
 {
-    if (!stats) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(stats != NULL, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     // Read atomic counters with relaxed ordering (statistics don't need strict ordering)
     stats->promises_created = nimcp_atomic_load_u64(&g_stats_promises_created, NIMCP_MEMORY_ORDER_RELAXED);

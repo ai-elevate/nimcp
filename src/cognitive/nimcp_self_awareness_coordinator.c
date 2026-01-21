@@ -67,7 +67,7 @@ static int add_conflict(
     float confidence
 ) {
     if (coord->conflict_count >= SAC_MAX_CONFLICTS) {
-        NIMCP_LOGGING_WARN("Conflict limit reached, cannot add new conflict");
+        NIMCP_THROW(NIMCP_ERROR_OUT_OF_RANGE, "conflict limit %u reached", SAC_MAX_CONFLICTS);
         return NIMCP_ERROR_OUT_OF_RANGE;
     }
 
@@ -179,9 +179,7 @@ static void update_phi_monitoring(self_awareness_coordinator_t* coord) {
 // ============================================================================
 
 int sac_default_config(sac_config_t* config) {
-    if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     config->enable_introspection_feedback = true;
     config->enable_autobio_feedback = true;
@@ -320,9 +318,7 @@ void sac_destroy(self_awareness_coordinator_t* coord) {
 // ============================================================================
 
 int sac_update(self_awareness_coordinator_t* coord) {
-    if (!coord) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coord, NIMCP_ERROR_NULL_POINTER, "coord is NULL");
 
     nimcp_mutex_lock(coord->mutex);
 
@@ -385,9 +381,7 @@ int sac_update(self_awareness_coordinator_t* coord) {
 }
 
 int sac_check_coherence(self_awareness_coordinator_t* coord, float* score) {
-    if (!coord || !score) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coord && score, NIMCP_ERROR_NULL_POINTER, "coord or score is NULL");
 
     float total_coherence = 1.0f;
     int checks_performed = 0;
@@ -476,9 +470,7 @@ int sac_check_coherence(self_awareness_coordinator_t* coord, float* score) {
 // ============================================================================
 
 int sac_introspection_to_self_model(self_awareness_coordinator_t* coord) {
-    if (!coord || !coord->introspection || !coord->self_model) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coord && coord->introspection && coord->self_model, NIMCP_ERROR_NULL_POINTER, "coord, introspection, or self_model is NULL");
 
     feedback_loop_state_t* loop = &coord->loops[FEEDBACK_INTROSPECTION_TO_SELF_MODEL];
     uint64_t start_time = get_current_time_ms();
@@ -511,9 +503,7 @@ int sac_introspection_to_self_model(self_awareness_coordinator_t* coord) {
 }
 
 int sac_autobio_to_self_model(self_awareness_coordinator_t* coord) {
-    if (!coord || !coord->autobio || !coord->self_model) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coord && coord->autobio && coord->self_model, NIMCP_ERROR_NULL_POINTER, "coord, autobio, or self_model is NULL");
 
     feedback_loop_state_t* loop = &coord->loops[FEEDBACK_AUTOBIO_TO_SELF_MODEL];
     uint64_t start_time = get_current_time_ms();
@@ -545,9 +535,7 @@ int sac_autobio_to_self_model(self_awareness_coordinator_t* coord) {
 }
 
 int sac_ground_tom_in_self(self_awareness_coordinator_t* coord) {
-    if (!coord || !coord->tom || !coord->self_model) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coord && coord->tom && coord->self_model, NIMCP_ERROR_NULL_POINTER, "coord, tom, or self_model is NULL");
 
     feedback_loop_state_t* loop = &coord->loops[FEEDBACK_SELF_MODEL_TO_TOM];
     uint64_t start_time = get_current_time_ms();
@@ -576,12 +564,8 @@ int sac_set_feedback_loop_enabled(
     feedback_loop_type_t loop_type,
     bool enabled
 ) {
-    if (!coord) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (loop_type >= FEEDBACK_LOOP_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(coord, NIMCP_ERROR_NULL_POINTER, "coord is NULL");
+    NIMCP_CHECK_THROW(loop_type < FEEDBACK_LOOP_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid loop_type: %d", loop_type);
 
     nimcp_mutex_lock(coord->mutex);
     coord->loops[loop_type].enabled = enabled;
@@ -597,12 +581,8 @@ int sac_get_feedback_loop_state(
     feedback_loop_type_t loop_type,
     feedback_loop_state_t* state
 ) {
-    if (!coord || !state) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (loop_type >= FEEDBACK_LOOP_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(coord && state, NIMCP_ERROR_NULL_POINTER, "coord or state is NULL");
+    NIMCP_CHECK_THROW(loop_type < FEEDBACK_LOOP_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid loop_type: %d", loop_type);
 
     *state = coord->loops[loop_type];
     return 0;
@@ -625,9 +605,7 @@ int sac_get_conflicts(
     uint32_t max_conflicts,
     uint32_t* count
 ) {
-    if (!coord || !conflicts || !count) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coord && conflicts && count, NIMCP_ERROR_NULL_POINTER, "coord, conflicts, or count is NULL");
 
     uint32_t to_copy = (coord->conflict_count < max_conflicts) ?
         coord->conflict_count : max_conflicts;
@@ -643,9 +621,7 @@ int sac_resolve_conflict(
     uint64_t conflict_id,
     const char* resolution
 ) {
-    if (!coord) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coord, NIMCP_ERROR_NULL_POINTER, "coord is NULL");
 
     nimcp_mutex_lock(coord->mutex);
 
@@ -671,16 +647,15 @@ int sac_resolve_conflict(
     }
 
     nimcp_mutex_unlock(coord->mutex);
-    return NIMCP_ERROR_NOT_FOUND;  /* Conflict not found */
+    NIMCP_THROW(NIMCP_ERROR_NOT_FOUND, "conflict_id %lu not found", conflict_id);
+    return NIMCP_ERROR_NOT_FOUND;
 }
 
 int sac_auto_resolve_minor_conflicts(
     self_awareness_coordinator_t* coord,
     uint32_t* resolved_count
 ) {
-    if (!coord || !resolved_count) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coord && resolved_count, NIMCP_ERROR_NULL_POINTER, "coord or resolved_count is NULL");
 
     nimcp_mutex_lock(coord->mutex);
 
@@ -733,9 +708,7 @@ int sac_set_phi_callbacks(
     void (*on_recovery)(float phi, void* user_data),
     void* user_data
 ) {
-    if (!coord) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coord, NIMCP_ERROR_NULL_POINTER, "coord is NULL");
 
     nimcp_mutex_lock(coord->mutex);
     coord->phi_alert.on_alert = on_alert;
@@ -751,12 +724,8 @@ int sac_set_phi_thresholds(
     float alert_threshold,
     float recovery_threshold
 ) {
-    if (!coord) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (alert_threshold < 0.0f || recovery_threshold < 0.0f) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(coord, NIMCP_ERROR_NULL_POINTER, "coord is NULL");
+    NIMCP_CHECK_THROW(alert_threshold >= 0.0f && recovery_threshold >= 0.0f, NIMCP_ERROR_INVALID_PARAM, "negative threshold value");
 
     nimcp_mutex_lock(coord->mutex);
     coord->phi_alert.alert_threshold = alert_threshold;
@@ -771,9 +740,7 @@ int sac_set_phi_thresholds(
 // ============================================================================
 
 int sac_connect_bio_async(self_awareness_coordinator_t* coord) {
-    if (!coord) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coord, NIMCP_ERROR_NULL_POINTER, "coord is NULL");
 
     if (coord->bio_async_enabled) {
         return NIMCP_SUCCESS;  /* Already connected */
@@ -798,9 +765,7 @@ int sac_connect_bio_async(self_awareness_coordinator_t* coord) {
 }
 
 int sac_disconnect_bio_async(self_awareness_coordinator_t* coord) {
-    if (!coord) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coord, NIMCP_ERROR_NULL_POINTER, "coord is NULL");
 
     if (!coord->bio_async_enabled) {
         return NIMCP_SUCCESS;
@@ -838,18 +803,14 @@ int sac_get_stats(
     const self_awareness_coordinator_t* coord,
     sac_stats_t* stats
 ) {
-    if (!coord || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coord && stats, NIMCP_ERROR_NULL_POINTER, "coord or stats is NULL");
 
     *stats = coord->stats;
     return NIMCP_SUCCESS;
 }
 
 int sac_reset_stats(self_awareness_coordinator_t* coord) {
-    if (!coord) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(coord, NIMCP_ERROR_NULL_POINTER, "coord is NULL");
 
     nimcp_mutex_lock(coord->mutex);
     memset(&coord->stats, 0, sizeof(sac_stats_t));

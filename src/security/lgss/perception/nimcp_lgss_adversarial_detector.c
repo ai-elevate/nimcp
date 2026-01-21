@@ -252,7 +252,7 @@ static float feature_squeezing_visual(const lgss_visual_input_t* input,
 nimcp_error_t lgss_adversarial_detector_default_config(
     lgss_adversarial_config_t* config)
 {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(*config));
 
@@ -360,8 +360,8 @@ nimcp_error_t lgss_adversarial_detector_check_visual(
     const lgss_visual_input_t* input,
     adversarial_detection_result_t* result)
 {
-    if (!detector_is_valid(detector)) return NIMCP_ERROR_INVALID_PARAM;
-    if (!input || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(detector_is_valid(detector), NIMCP_ERROR_INVALID_PARAM, "invalid detector");
+    NIMCP_CHECK_THROW(input && result, NIMCP_ERROR_NULL_POINTER, "input or result is NULL");
 
     uint64_t start_time = get_timestamp_us();
     init_detection_result(result, input->pixels, LGSS_MODALITY_VISUAL);
@@ -446,8 +446,8 @@ nimcp_error_t lgss_adversarial_detector_check_audio(
     const lgss_audio_input_t* input,
     adversarial_detection_result_t* result)
 {
-    if (!detector_is_valid(detector)) return NIMCP_ERROR_INVALID_PARAM;
-    if (!input || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(detector_is_valid(detector), NIMCP_ERROR_INVALID_PARAM, "invalid detector");
+    NIMCP_CHECK_THROW(input && result, NIMCP_ERROR_NULL_POINTER, "input or result is NULL");
 
     uint64_t start_time = get_timestamp_us();
     init_detection_result(result, input->samples, LGSS_MODALITY_AUDIO);
@@ -514,8 +514,8 @@ nimcp_error_t lgss_adversarial_detector_is_adversarial(
     size_t input_size,
     adversarial_detection_result_t* result)
 {
-    if (!detector_is_valid(detector)) return NIMCP_ERROR_INVALID_PARAM;
-    if (!input || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(detector_is_valid(detector), NIMCP_ERROR_INVALID_PARAM, "invalid detector");
+    NIMCP_CHECK_THROW(input && result, NIMCP_ERROR_NULL_POINTER, "input or result is NULL");
 
     /* For visual and audio, we need proper structures */
     /* For generic inputs, use statistical analysis only */
@@ -592,8 +592,8 @@ nimcp_error_t lgss_adversarial_detector_get_stats(
     const lgss_adversarial_detector_t* detector,
     lgss_adversarial_stats_t* stats)
 {
-    if (!detector_is_valid(detector)) return NIMCP_ERROR_INVALID_PARAM;
-    if (!stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(detector_is_valid(detector), NIMCP_ERROR_INVALID_PARAM, "invalid detector");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     nimcp_mutex_lock(((lgss_adversarial_detector_t*)detector)->mutex);
     memcpy(stats, &detector->stats, sizeof(*stats));
@@ -605,7 +605,7 @@ nimcp_error_t lgss_adversarial_detector_get_stats(
 nimcp_error_t lgss_adversarial_detector_reset_stats(
     lgss_adversarial_detector_t* detector)
 {
-    if (!detector_is_valid(detector)) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(detector_is_valid(detector), NIMCP_ERROR_INVALID_PARAM, "invalid detector");
 
     nimcp_mutex_lock(detector->mutex);
     memset(&detector->stats, 0, sizeof(detector->stats));
@@ -617,7 +617,7 @@ nimcp_error_t lgss_adversarial_detector_reset_stats(
 nimcp_error_t lgss_adversarial_detector_report_false_positive(
     lgss_adversarial_detector_t* detector)
 {
-    if (!detector_is_valid(detector)) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(detector_is_valid(detector), NIMCP_ERROR_INVALID_PARAM, "invalid detector");
 
     nimcp_mutex_lock(detector->mutex);
     detector->stats.false_positives++;
@@ -635,7 +635,7 @@ nimcp_error_t lgss_adversarial_detector_report_false_positive(
 nimcp_error_t lgss_adversarial_detector_report_false_negative(
     lgss_adversarial_detector_t* detector)
 {
-    if (!detector_is_valid(detector)) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(detector_is_valid(detector), NIMCP_ERROR_INVALID_PARAM, "invalid detector");
 
     nimcp_mutex_lock(detector->mutex);
     detector->stats.false_negatives++;

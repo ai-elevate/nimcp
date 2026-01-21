@@ -267,7 +267,7 @@ int cingulate_immune_update_immune_to_cingulate(
     cingulate_immune_bridge_t bridge,
     cingulate_cytokine_effects_t* effects
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_immune_to_cingulate) return NIMCP_SUCCESS;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -376,7 +376,7 @@ int cingulate_immune_update_cingulate_to_immune(
     cingulate_immune_bridge_t bridge,
     cingulate_immune_effects_t* effects
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_cingulate_to_immune) return NIMCP_SUCCESS;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -482,7 +482,7 @@ int cingulate_immune_update_cingulate_to_immune(
  *===========================================================================*/
 
 int cingulate_immune_update(cingulate_immune_bridge_t bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     int result;
 
@@ -514,7 +514,7 @@ int cingulate_immune_get_cytokine_effects(
     cingulate_immune_bridge_t bridge,
     cingulate_cytokine_effects_t* effects
 ) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_NULL_POINTER, "bridge or effects is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->cytokine_effects;
@@ -527,7 +527,7 @@ int cingulate_immune_get_immune_effects(
     cingulate_immune_bridge_t bridge,
     cingulate_immune_effects_t* effects
 ) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_NULL_POINTER, "bridge or effects is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->immune_effects;
@@ -552,7 +552,7 @@ int cingulate_immune_get_stats(
     cingulate_immune_bridge_t bridge,
     cingulate_immune_stats_t* stats
 ) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -569,7 +569,7 @@ int cingulate_immune_report_error(
     cingulate_immune_bridge_t bridge,
     float error_severity
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_error_tracking) return NIMCP_SUCCESS;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -585,7 +585,7 @@ int cingulate_immune_report_conflict(
     cingulate_immune_bridge_t bridge,
     float conflict_level
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_conflict_tracking) return NIMCP_SUCCESS;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -602,7 +602,7 @@ int cingulate_immune_report_emotion(
     float valence,
     float arousal
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_emotional_modulation) return NIMCP_SUCCESS;
 
     /* Clamp values */
@@ -625,7 +625,7 @@ int cingulate_immune_report_emotion(
  *===========================================================================*/
 
 int cingulate_immune_connect_bio_async(cingulate_immune_bridge_t bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->bio_async_connected) return NIMCP_SUCCESS;
 
     /* Register with bio-router */
@@ -648,7 +648,7 @@ int cingulate_immune_connect_bio_async(cingulate_immune_bridge_t bridge) {
 }
 
 int cingulate_immune_disconnect_bio_async(cingulate_immune_bridge_t bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->bio_async_connected) return NIMCP_SUCCESS;
 
     if (bridge->base.bio_ctx) {

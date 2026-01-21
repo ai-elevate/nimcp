@@ -424,7 +424,7 @@ int speech_cortical_connect_speech_cortex(
     speech_cortical_bridge_t* bridge,
     speech_cortex_t* speech_cortex)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
@@ -440,7 +440,7 @@ int speech_cortical_connect_immune(
     speech_cortical_bridge_t* bridge,
     cortical_immune_system_t* immune)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
@@ -459,7 +459,7 @@ int speech_cortical_connect_immune(
 
 int speech_cortical_connect_bio_async(speech_cortical_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  /* Already connected */
@@ -485,7 +485,7 @@ int speech_cortical_connect_bio_async(speech_cortical_bridge_t* bridge)
 
 int speech_cortical_disconnect_bio_async(speech_cortical_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;
@@ -882,7 +882,7 @@ uint32_t speech_cortical_get_num_hypercolumns(const speech_cortical_bridge_t* br
 
 int speech_cortical_update_immune_modulation(speech_cortical_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->cortical_immune) {
         return NIMCP_SUCCESS;  /* No immune system connected */
@@ -917,7 +917,7 @@ int speech_cortical_set_immune_factor(
     speech_cortical_bridge_t* bridge,
     float factor)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (factor < 0.0f) factor = 0.0f;
     if (factor > 1.0f) factor = 1.0f;
@@ -943,7 +943,8 @@ int speech_cortical_get_stats(
     const speech_cortical_bridge_t* bridge,
     speech_cortical_stats_t* stats)
 {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     if ((bridge->base.mutex != NULL)) {
         nimcp_mutex_lock(bridge->base.mutex);
@@ -958,7 +959,7 @@ int speech_cortical_get_stats(
 
 int speech_cortical_reset_stats(speech_cortical_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(speech_cortical_stats_t));
@@ -1006,7 +1007,8 @@ int speech_cortical_broadcast_phoneme(
     speech_cortical_bridge_t* bridge,
     const speech_cortical_phoneme_result_t* result)
 {
-    if (!bridge || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_NULL_POINTER, "result is NULL");
 
     if (!bridge->base.bio_async_enabled || !bridge->base.bio_ctx) {
         return NIMCP_ERROR_INVALID_STATE;

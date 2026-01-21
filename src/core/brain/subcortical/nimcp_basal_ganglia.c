@@ -269,6 +269,7 @@ static void* bg_mcts_clone_state(const void* state, void* user_data) {
 //=============================================================================
 
 void basal_ganglia_default_config(basal_ganglia_config_t* config) {
+    NIMCP_THROW_IF(!config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     if (!config) return;
 
     config->num_actions = 8;
@@ -315,7 +316,7 @@ basal_ganglia_t* basal_ganglia_create(const basal_ganglia_config_t* config) {
 
     basal_ganglia_t* bg = nimcp_malloc(sizeof(basal_ganglia_t));
     if (!bg) {
-        NIMCP_LOGGING_ERROR("Failed to allocate basal ganglia");
+        NIMCP_THROW(NIMCP_ERROR_NO_MEMORY, "Failed to allocate basal ganglia");
         return NULL;
     }
     memset(bg, 0, sizeof(basal_ganglia_t));
@@ -328,7 +329,7 @@ basal_ganglia_t* basal_ganglia_create(const basal_ganglia_config_t* config) {
     /* Create striatum */
     bg->striatum = striatum_create(&cfg.striatum_config);
     if (!bg->striatum) {
-        NIMCP_LOGGING_ERROR("Failed to create striatum");
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED, "Failed to create striatum");
         nimcp_free(bg);
         return NULL;
     }
@@ -336,7 +337,7 @@ basal_ganglia_t* basal_ganglia_create(const basal_ganglia_config_t* config) {
     /* Create GPi */
     bg->gpi = globus_pallidus_create(&cfg.gpi_config);
     if (!bg->gpi) {
-        NIMCP_LOGGING_ERROR("Failed to create GPi");
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED, "Failed to create GPi");
         striatum_destroy(bg->striatum);
         nimcp_free(bg);
         return NULL;
@@ -345,7 +346,7 @@ basal_ganglia_t* basal_ganglia_create(const basal_ganglia_config_t* config) {
     /* Create GPe */
     bg->gpe = globus_pallidus_create(&cfg.gpe_config);
     if (!bg->gpe) {
-        NIMCP_LOGGING_ERROR("Failed to create GPe");
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED, "Failed to create GPe");
         globus_pallidus_destroy(bg->gpi);
         striatum_destroy(bg->striatum);
         nimcp_free(bg);
@@ -355,7 +356,7 @@ basal_ganglia_t* basal_ganglia_create(const basal_ganglia_config_t* config) {
     /* Create STN */
     bg->stn = subthalamic_create(&cfg.stn_config);
     if (!bg->stn) {
-        NIMCP_LOGGING_ERROR("Failed to create STN");
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED, "Failed to create STN");
         globus_pallidus_destroy(bg->gpe);
         globus_pallidus_destroy(bg->gpi);
         striatum_destroy(bg->striatum);
@@ -366,7 +367,7 @@ basal_ganglia_t* basal_ganglia_create(const basal_ganglia_config_t* config) {
     /* Create SNc (dopamine) */
     bg->snc = substantia_nigra_create(&cfg.snc_config);
     if (!bg->snc) {
-        NIMCP_LOGGING_ERROR("Failed to create SNc");
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED, "Failed to create SNc");
         subthalamic_destroy(bg->stn);
         globus_pallidus_destroy(bg->gpe);
         globus_pallidus_destroy(bg->gpi);
@@ -378,7 +379,7 @@ basal_ganglia_t* basal_ganglia_create(const basal_ganglia_config_t* config) {
     /* Create SNr (output) */
     bg->snr = substantia_nigra_create(&cfg.snr_config);
     if (!bg->snr) {
-        NIMCP_LOGGING_ERROR("Failed to create SNr");
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED, "Failed to create SNr");
         substantia_nigra_destroy(bg->snc);
         subthalamic_destroy(bg->stn);
         globus_pallidus_destroy(bg->gpe);
@@ -391,7 +392,7 @@ basal_ganglia_t* basal_ganglia_create(const basal_ganglia_config_t* config) {
     /* Allocate action candidates */
     bg->actions = nimcp_calloc(cfg.num_actions, sizeof(action_candidate_t));
     if (!bg->actions) {
-        NIMCP_LOGGING_ERROR("Failed to allocate action candidates");
+        NIMCP_THROW(NIMCP_ERROR_NO_MEMORY, "Failed to allocate action candidates");
         goto cleanup;
     }
 
@@ -409,21 +410,21 @@ basal_ganglia_t* basal_ganglia_create(const basal_ganglia_config_t* config) {
 
     if (!bg->direct_pathway || !bg->indirect_pathway ||
         !bg->hyperdirect_pathway || !bg->thalamic_output) {
-        NIMCP_LOGGING_ERROR("Failed to allocate pathway arrays");
+        NIMCP_THROW(NIMCP_ERROR_NO_MEMORY, "Failed to allocate pathway arrays");
         goto cleanup;
     }
 
     /* Allocate habits */
     bg->habits = nimcp_calloc(BG_MAX_HABITS, sizeof(habit_t));
     if (!bg->habits) {
-        NIMCP_LOGGING_ERROR("Failed to allocate habits");
+        NIMCP_THROW(NIMCP_ERROR_NO_MEMORY, "Failed to allocate habits");
         goto cleanup;
     }
 
     /* Allocate mutex */
     bg->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!bg->mutex) {
-        NIMCP_LOGGING_ERROR("Failed to allocate BG mutex");
+        NIMCP_THROW(NIMCP_ERROR_NO_MEMORY, "Failed to allocate BG mutex");
         goto cleanup;
     }
     nimcp_mutex_init(bg->mutex, NULL);
@@ -455,6 +456,7 @@ cleanup:
 }
 
 void basal_ganglia_destroy(basal_ganglia_t* bg) {
+    NIMCP_THROW_IF(!bg, NIMCP_ERROR_NULL_POINTER, "bg is NULL");
     if (!bg) return;
 
     nimcp_mutex_lock(bg->mutex);
@@ -484,6 +486,7 @@ void basal_ganglia_destroy(basal_ganglia_t* bg) {
 }
 
 int basal_ganglia_reset(basal_ganglia_t* bg) {
+    NIMCP_THROW_IF(!bg, NIMCP_ERROR_NULL_POINTER, "bg is NULL");
     if (!bg) return -1;
 
     nimcp_mutex_lock(bg->mutex);

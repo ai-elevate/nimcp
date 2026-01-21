@@ -251,7 +251,7 @@ int cnn_cortex_bridge_connect_trainer(
      * WHY:  Enable feature injection and gradient retrieval
      * HOW:  Store reference, update stats
      */
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -284,7 +284,7 @@ int cnn_cortex_bridge_connect_visual_cortex(
      * WHY:  Enable visual feature extraction
      * HOW:  Store reference, query dimensions
      */
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -335,7 +335,7 @@ int cnn_cortex_bridge_connect_audio_cortex(
      * WHY:  Enable audio feature extraction
      * HOW:  Store reference, query dimensions
      */
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -386,7 +386,7 @@ int cnn_cortex_bridge_connect_perception_bridge(
      * WHY:  Share perception metrics and modulation factors
      * HOW:  Store reference
      */
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
     bridge->perception_bridge = perception_bridge;
@@ -425,13 +425,10 @@ int cnn_cortex_bridge_extract_visual_features(
      * WHY:  Provides perception-based features for CNN
      * HOW:  Call visual_cortex_process, wrap in tensor
      */
-    if (!bridge || !image || !features) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bridge->visual_cortex) {
-        NIMCP_LOGGING_ERROR("Visual cortex not connected");
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge && image && features, NIMCP_ERROR_NULL_POINTER,
+                      "bridge, image, or features is NULL");
+    NIMCP_CHECK_THROW(bridge->visual_cortex, NIMCP_ERROR_INVALID_STATE,
+                      "Visual cortex not connected");
 
     uint64_t start_time = nimcp_time_monotonic_us();
 
@@ -445,9 +442,8 @@ int cnn_cortex_bridge_extract_visual_features(
     /* Default to 128 if unknown */
     uint32_t feature_dim = 128;
     float* feature_buffer = nimcp_malloc(feature_dim * sizeof(float));
-    if (!feature_buffer) {
-        return NIMCP_ERROR_NO_MEMORY;
-    }
+    NIMCP_CHECK_THROW(feature_buffer, NIMCP_ERROR_NO_MEMORY,
+                      "Failed to allocate visual feature buffer");
 
     /* Process image through visual cortex */
     bool success = visual_cortex_process(
@@ -458,7 +454,7 @@ int cnn_cortex_bridge_extract_visual_features(
 
     if (!success) {
         nimcp_free(feature_buffer);
-        NIMCP_LOGGING_ERROR("Visual cortex processing failed");
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED, "Visual cortex processing failed");
         return NIMCP_ERROR_OPERATION_FAILED;
     }
 
@@ -504,6 +500,7 @@ int cnn_cortex_bridge_extract_visual_features(
     *features = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
     if (!*features) {
         nimcp_free(feature_buffer);
+        NIMCP_THROW(NIMCP_ERROR_NO_MEMORY, "Failed to allocate visual features tensor");
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -533,13 +530,10 @@ int cnn_cortex_bridge_extract_audio_features(
      * WHY:  Provides perception-based features for CNN
      * HOW:  Call audio_cortex_process, wrap in tensor
      */
-    if (!bridge || !audio || !features) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bridge->audio_cortex) {
-        NIMCP_LOGGING_ERROR("Audio cortex not connected");
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge && audio && features, NIMCP_ERROR_NULL_POINTER,
+                      "bridge, audio, or features is NULL");
+    NIMCP_CHECK_THROW(bridge->audio_cortex, NIMCP_ERROR_INVALID_STATE,
+                      "Audio cortex not connected");
 
     uint64_t start_time = nimcp_time_monotonic_us();
 
@@ -550,9 +544,8 @@ int cnn_cortex_bridge_extract_audio_features(
     /* Allocate feature buffer - default MFCC + mel features */
     uint32_t feature_dim = 128;  /* Default feature dimension */
     float* feature_buffer = nimcp_malloc(feature_dim * sizeof(float));
-    if (!feature_buffer) {
-        return NIMCP_ERROR_NO_MEMORY;
-    }
+    NIMCP_CHECK_THROW(feature_buffer, NIMCP_ERROR_NO_MEMORY,
+                      "Failed to allocate audio feature buffer");
 
     /* Process audio through audio cortex */
     bool success = audio_cortex_process(
@@ -563,7 +556,7 @@ int cnn_cortex_bridge_extract_audio_features(
 
     if (!success) {
         nimcp_free(feature_buffer);
-        NIMCP_LOGGING_ERROR("Audio cortex processing failed");
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED, "Audio cortex processing failed");
         return NIMCP_ERROR_OPERATION_FAILED;
     }
 
@@ -609,6 +602,7 @@ int cnn_cortex_bridge_extract_audio_features(
     *features = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
     if (!*features) {
         nimcp_free(feature_buffer);
+        NIMCP_THROW(NIMCP_ERROR_NO_MEMORY, "Failed to allocate audio features tensor");
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -642,9 +636,8 @@ int cnn_cortex_bridge_extract_multimodal_features(
      * WHY:  Enable multimodal CNN training
      * HOW:  Extract both, concatenate
      */
-    if (!bridge || !features) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && features, NIMCP_ERROR_NULL_POINTER,
+                      "bridge or features is NULL");
 
     nimcp_tensor_t* visual_features = NULL;
     nimcp_tensor_t* audio_features = NULL;
@@ -672,7 +665,7 @@ int cnn_cortex_bridge_extract_multimodal_features(
 
     /* Handle cases */
     if (!visual_features && !audio_features) {
-        NIMCP_LOGGING_ERROR("No features extracted");
+        NIMCP_THROW(NIMCP_ERROR_OPERATION_FAILED, "No features extracted from either cortex");
         return NIMCP_ERROR_OPERATION_FAILED;
     }
 
@@ -696,6 +689,7 @@ int cnn_cortex_bridge_extract_multimodal_features(
     if (!*features) {
         nimcp_tensor_destroy(visual_features);
         nimcp_tensor_destroy(audio_features);
+        NIMCP_THROW(NIMCP_ERROR_NO_MEMORY, "Failed to allocate multimodal features tensor");
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -727,9 +721,8 @@ int cnn_cortex_bridge_set_gradients(
      * WHY:  Enable STDP modulation from CNN training
      * HOW:  Copy gradient data to internal buffer
      */
-    if (!bridge || !gradients) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && gradients, NIMCP_ERROR_NULL_POINTER,
+                      "bridge or gradients is NULL");
 
     if (!bridge->config.enable_gradient_feedback) {
         return 0;  /* Silently skip if feedback disabled */
@@ -795,7 +788,7 @@ int cnn_cortex_bridge_propagate_gradients(cnn_cortex_bridge_t* bridge) {
      * WHY:  Enable top-down learning modulation
      * HOW:  Convert gradients to STDP signals per method
      */
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->config.enable_gradient_feedback) {
         return 0;
@@ -856,9 +849,8 @@ int cnn_cortex_bridge_get_perception_metrics(
      * WHY:  Query for LR modulation decisions
      * HOW:  Copy internal metrics
      */
-    if (!bridge || !metrics) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && metrics, NIMCP_ERROR_NULL_POINTER,
+                      "bridge or metrics is NULL");
 
     /* Note: const-cast for lock, but we only read */
     cnn_cortex_bridge_t* mutable_bridge = (cnn_cortex_bridge_t*)bridge;
@@ -905,9 +897,8 @@ int cnn_cortex_bridge_get_visual_state(
      * WHY:  Needed for gradient computation
      * HOW:  Copy internal state
      */
-    if (!bridge || !state) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER,
+                      "bridge or state is NULL");
 
     cnn_cortex_bridge_t* mutable_bridge = (cnn_cortex_bridge_t*)bridge;
     BRIDGE_LOCK(mutable_bridge);
@@ -925,9 +916,8 @@ int cnn_cortex_bridge_get_audio_state(
      * WHY:  Needed for gradient computation
      * HOW:  Copy internal state
      */
-    if (!bridge || !state) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER,
+                      "bridge or state is NULL");
 
     cnn_cortex_bridge_t* mutable_bridge = (cnn_cortex_bridge_t*)bridge;
     BRIDGE_LOCK(mutable_bridge);
@@ -946,7 +936,7 @@ int cnn_cortex_bridge_update(cnn_cortex_bridge_t* bridge) {
      * WHY:  Refresh metrics, apply pending gradients
      * HOW:  Update metrics, propagate gradients
      */
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -975,14 +965,14 @@ int cnn_cortex_bridge_update(cnn_cortex_bridge_t* bridge) {
 //=============================================================================
 
 int cnn_cortex_bridge_connect_bio_async(cnn_cortex_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     int result = bridge_base_connect_bio_async(&bridge->base);
     bridge->stats.bio_async_connected = bridge->base.bio_async_enabled;
     return result;
 }
 
 int cnn_cortex_bridge_disconnect_bio_async(cnn_cortex_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     int result = bridge_base_disconnect_bio_async(&bridge->base);
     bridge->stats.bio_async_connected = false;
     return result;
@@ -1004,9 +994,8 @@ int cnn_cortex_bridge_get_stats(
      * WHY:  Monitoring and debugging
      * HOW:  Copy internal stats
      */
-    if (!bridge || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER,
+                      "bridge or stats is NULL");
 
     cnn_cortex_bridge_t* mutable_bridge = (cnn_cortex_bridge_t*)bridge;
     BRIDGE_LOCK(mutable_bridge);
@@ -1021,7 +1010,7 @@ int cnn_cortex_bridge_reset_stats(cnn_cortex_bridge_t* bridge) {
      * WHY:  Start fresh measurement
      * HOW:  Zero counters, preserve connection state
      */
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 

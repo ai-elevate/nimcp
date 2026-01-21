@@ -282,9 +282,7 @@ nimcp_loss_context_t* nimcp_loss_create(
 }
 
 nimcp_result_t nimcp_loss_init(nimcp_loss_context_t* ctx) {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     if (ctx->initialized) {
         return NIMCP_SUCCESS; /* Already initialized */
@@ -363,7 +361,7 @@ void nimcp_loss_destroy(nimcp_loss_context_t* ctx) {
 }
 
 nimcp_result_t nimcp_loss_reset(nimcp_loss_context_t* ctx) {
-    if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     memset(&ctx->stats, 0, sizeof(nimcp_loss_stats_t));
     ctx->stats.min_loss = FLT_MAX;
@@ -904,9 +902,10 @@ nimcp_result_t nimcp_loss_forward(
     size_t output_size,
     nimcp_loss_result_t* result)
 {
-    if (!ctx || !predictions || !targets || !result) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(predictions, NIMCP_ERROR_INVALID_PARAM, "predictions is NULL");
+    NIMCP_CHECK_THROW(targets, NIMCP_ERROR_INVALID_PARAM, "targets is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
 
     if (!ctx->initialized) {
         nimcp_result_t err = nimcp_loss_init(ctx);
@@ -1000,9 +999,10 @@ nimcp_result_t nimcp_loss_backward(
     size_t output_size,
     float* gradients)
 {
-    if (!ctx || !predictions || !targets || !gradients) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(predictions, NIMCP_ERROR_INVALID_PARAM, "predictions is NULL");
+    NIMCP_CHECK_THROW(targets, NIMCP_ERROR_INVALID_PARAM, "targets is NULL");
+    NIMCP_CHECK_THROW(gradients, NIMCP_ERROR_INVALID_PARAM, "gradients is NULL");
 
     if (!ctx->initialized) {
         nimcp_result_t err = nimcp_loss_init(ctx);
@@ -1084,9 +1084,10 @@ nimcp_result_t nimcp_loss_forward_backward(
     size_t output_size,
     nimcp_loss_result_t* result)
 {
-    if (!ctx || !predictions || !targets || !result) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(predictions, NIMCP_ERROR_INVALID_PARAM, "predictions is NULL");
+    NIMCP_CHECK_THROW(targets, NIMCP_ERROR_INVALID_PARAM, "targets is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
 
     size_t count = batch_size * output_size;
 
@@ -1123,9 +1124,8 @@ nimcp_result_t nimcp_loss_get_stats(
     const nimcp_loss_context_t* ctx,
     nimcp_loss_stats_t* stats)
 {
-    if (!ctx || !stats) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_INVALID_PARAM, "stats is NULL");
 
     memcpy(stats, &ctx->stats, sizeof(nimcp_loss_stats_t));
 
@@ -1162,9 +1162,7 @@ const char* nimcp_loss_type_name(nimcp_loss_type_t type) {
 }
 
 nimcp_result_t nimcp_loss_validate_config(const nimcp_loss_config_t* config) {
-    if (!config) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     if (config->type < 0 || config->type >= NIMCP_LOSS_TYPE_COUNT) {
         return NIMCP_ERROR_INVALID_PARAM;

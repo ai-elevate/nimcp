@@ -22,7 +22,7 @@
  * ============================================================================ */
 
 int hypo_intro_fep_default_config(hypo_intro_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     config->drive_fe_weight = 1.0f;
     config->prediction_error_gain = 1.5f;
@@ -92,7 +92,7 @@ void hypo_intro_fep_destroy(hypo_intro_fep_bridge_t* bridge) {
 }
 
 int hypo_intro_fep_reset(hypo_intro_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -114,7 +114,7 @@ int hypo_intro_fep_reset(hypo_intro_fep_bridge_t* bridge) {
  * ============================================================================ */
 
 int hypo_intro_fep_update(hypo_intro_fep_bridge_t* bridge, uint64_t delta_ms) {
-    if (!bridge || !bridge->state.active) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->state.active, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or inactive");
     (void)delta_ms; /* Currently unused but available for time-based updates */
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -210,7 +210,7 @@ int hypo_intro_fep_update(hypo_intro_fep_bridge_t* bridge, uint64_t delta_ms) {
 int hypo_intro_fep_compute_fe(hypo_intro_fep_bridge_t* bridge,
     float body_awareness, float* free_energy) {
 
-    if (!bridge || !free_energy) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && free_energy, NIMCP_ERROR_NULL_POINTER, "bridge or free_energy is NULL");
 
     /* Body awareness generates free energy
      * Higher awareness = more interoceptive processing = higher FE load */
@@ -230,7 +230,7 @@ int hypo_intro_fep_compute_fe(hypo_intro_fep_bridge_t* bridge,
 int hypo_intro_fep_compute_pe(hypo_intro_fep_bridge_t* bridge,
     float interoception_accuracy, float* prediction_error) {
 
-    if (!bridge || !prediction_error) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && prediction_error, NIMCP_ERROR_NULL_POINTER, "bridge or prediction_error is NULL");
 
     /* Interoception accuracy inversely maps to prediction error
      * Lower accuracy = higher PE (more mismatch between expected and actual) */
@@ -250,7 +250,7 @@ int hypo_intro_fep_compute_pe(hypo_intro_fep_bridge_t* bridge,
 int hypo_intro_fep_modulate_precision(hypo_intro_fep_bridge_t* bridge,
     float homeostatic_error, float* precision) {
 
-    if (!bridge || !precision) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && precision, NIMCP_ERROR_NULL_POINTER, "bridge or precision is NULL");
 
     /* Homeostatic error reduces precision
      * Higher error = less reliable self-model = lower precision */
@@ -274,7 +274,7 @@ int hypo_intro_fep_modulate_precision(hypo_intro_fep_bridge_t* bridge,
 int hypo_intro_fep_report_deviation(hypo_intro_fep_bridge_t* bridge,
     float deviation_magnitude) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -298,7 +298,7 @@ int hypo_intro_fep_report_deviation(hypo_intro_fep_bridge_t* bridge,
 int hypo_intro_fep_update_interoception(hypo_intro_fep_bridge_t* bridge,
     float accuracy) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -319,7 +319,7 @@ int hypo_intro_fep_update_interoception(hypo_intro_fep_bridge_t* bridge,
 int hypo_intro_fep_get_effects(const hypo_intro_fep_bridge_t* bridge,
     hypo_intro_fep_effects_t* effects) {
 
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_NULL_POINTER, "bridge or effects is NULL");
     *effects = bridge->fep_effects;
     return 0;
 }
@@ -327,7 +327,7 @@ int hypo_intro_fep_get_effects(const hypo_intro_fep_bridge_t* bridge,
 int hypo_intro_fep_get_stats(const hypo_intro_fep_bridge_t* bridge,
     hypo_intro_fep_stats_t* stats) {
 
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     *stats = bridge->stats;
     return 0;
 }
@@ -386,7 +386,7 @@ int hypo_intro_fep_process_messages(hypo_intro_fep_bridge_t* bridge) {
 int hypo_intro_fep_connect_drives(hypo_intro_fep_bridge_t* bridge,
     hypo_drive_system_handle_t* drives) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->drive_system = drives;

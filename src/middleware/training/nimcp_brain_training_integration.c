@@ -297,9 +297,7 @@ nimcp_brain_training_config_t nimcp_brain_training_default_config(void)
 nimcp_result_t nimcp_brain_training_validate_config(
     const nimcp_brain_training_config_t* config)
 {
-    if (!config) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     if (config->default_loss_type < 0 ||
         config->default_loss_type >= NIMCP_LOSS_TYPE_COUNT) {
@@ -423,9 +421,7 @@ nimcp_result_t nimcp_brain_training_init(
     nimcp_sec_integration_t* security_ctx,
     unified_mem_manager_t memory_mgr)
 {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     ctx->security_ctx = security_ctx;
     ctx->memory_mgr = memory_mgr;
@@ -543,9 +539,8 @@ nimcp_result_t nimcp_brain_training_register_security(
     nimcp_brain_training_ctx_t* ctx,
     nimcp_sec_integration_t* security_ctx)
 {
-    if (!ctx || !security_ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(security_ctx, NIMCP_ERROR_INVALID_PARAM, "security_ctx is NULL");
 
     if (ctx->security_registered) {
         return NIMCP_SUCCESS; /* Already registered */
@@ -591,9 +586,9 @@ nimcp_result_t nimcp_brain_training_register_security(
 nimcp_result_t nimcp_brain_training_unregister_security(
     nimcp_brain_training_ctx_t* ctx)
 {
-    if (!ctx || !ctx->security_registered || !ctx->security_ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(ctx->security_registered, NIMCP_ERROR_INVALID_PARAM, "not registered");
+    NIMCP_CHECK_THROW(ctx->security_ctx, NIMCP_ERROR_INVALID_PARAM, "security_ctx is NULL");
 
     nimcp_sec_unregister_module(ctx->security_ctx, ctx->loss_module_id);
     nimcp_sec_unregister_module(ctx->security_ctx, ctx->optimizer_module_id);
@@ -615,9 +610,7 @@ nimcp_result_t nimcp_brain_training_get_security_ids(
     uint32_t* loss_module_id,
     uint32_t* optimizer_module_id)
 {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     if (!ctx->security_registered) {
         return NIMCP_NOT_FOUND;
@@ -662,9 +655,9 @@ nimcp_result_t nimcp_brain_training_create_loss(
     const nimcp_loss_config_t* config,
     uint32_t* loss_id)
 {
-    if (!ctx || !config || !loss_id) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
+    NIMCP_CHECK_THROW(loss_id, NIMCP_ERROR_INVALID_PARAM, "loss_id is NULL");
 
     int slot = find_free_loss_slot(ctx);
     if (slot < 0) {
@@ -725,9 +718,7 @@ nimcp_result_t nimcp_brain_training_destroy_loss(
     nimcp_brain_training_ctx_t* ctx,
     uint32_t loss_id)
 {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     int slot = find_loss_slot_by_id(ctx, loss_id);
     if (slot < 0) {
@@ -772,9 +763,9 @@ nimcp_result_t nimcp_brain_training_create_optimizer(
     const nimcp_optimizer_config_t* config,
     uint32_t* optimizer_id)
 {
-    if (!ctx || !config || !optimizer_id) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
+    NIMCP_CHECK_THROW(optimizer_id, NIMCP_ERROR_INVALID_PARAM, "optimizer_id is NULL");
 
     int slot = find_free_optimizer_slot(ctx);
     if (slot < 0) {
@@ -829,9 +820,7 @@ nimcp_result_t nimcp_brain_training_destroy_optimizer(
     nimcp_brain_training_ctx_t* ctx,
     uint32_t optimizer_id)
 {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     int slot = find_optimizer_slot_by_id(ctx, optimizer_id);
     if (slot < 0) {
@@ -855,13 +844,9 @@ nimcp_result_t nimcp_brain_training_set_mode(
     nimcp_brain_training_ctx_t* ctx,
     nimcp_training_mode_t mode)
 {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (mode < NIMCP_TRAINING_MODE_TRAIN || mode > NIMCP_TRAINING_MODE_INFERENCE) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(mode >= NIMCP_TRAINING_MODE_TRAIN && mode <= NIMCP_TRAINING_MODE_INFERENCE,
+        NIMCP_ERROR_INVALID_PARAM, "Invalid training mode");
 
     ctx->mode = mode;
     LOG_DEBUG("Training mode set to %s", nimcp_training_mode_name(mode));
@@ -887,9 +872,10 @@ nimcp_result_t nimcp_brain_training_compute_loss(
     float* loss_value,
     float* gradients)
 {
-    if (!ctx || !predictions || !targets || !loss_value) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(predictions, NIMCP_ERROR_INVALID_PARAM, "predictions is NULL");
+    NIMCP_CHECK_THROW(targets, NIMCP_ERROR_INVALID_PARAM, "targets is NULL");
+    NIMCP_CHECK_THROW(loss_value, NIMCP_ERROR_INVALID_PARAM, "loss_value is NULL");
 
     nimcp_loss_context_t* loss_ctx = nimcp_brain_training_get_loss(ctx, loss_id);
     if (!loss_ctx) {
@@ -982,9 +968,10 @@ nimcp_result_t nimcp_brain_training_optimize(
     const float* gradients,
     size_t count)
 {
-    if (!ctx || !params || !gradients || count == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(params, NIMCP_ERROR_INVALID_PARAM, "params is NULL");
+    NIMCP_CHECK_THROW(gradients, NIMCP_ERROR_INVALID_PARAM, "gradients is NULL");
+    NIMCP_CHECK_THROW(count > 0, NIMCP_ERROR_INVALID_PARAM, "count is 0");
 
     if (ctx->mode != NIMCP_TRAINING_MODE_TRAIN) {
         return NIMCP_SUCCESS; /* Skip optimization in eval/inference mode */
@@ -1040,13 +1027,14 @@ nimcp_result_t nimcp_brain_training_step(
     size_t param_count,
     float* loss_value)
 {
-    if (!ctx || !params || !predictions || !targets || !loss_value) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (batch_size == 0 || output_size == 0 || param_count == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(params, NIMCP_ERROR_INVALID_PARAM, "params is NULL");
+    NIMCP_CHECK_THROW(predictions, NIMCP_ERROR_INVALID_PARAM, "predictions is NULL");
+    NIMCP_CHECK_THROW(targets, NIMCP_ERROR_INVALID_PARAM, "targets is NULL");
+    NIMCP_CHECK_THROW(loss_value, NIMCP_ERROR_INVALID_PARAM, "loss_value is NULL");
+    NIMCP_CHECK_THROW(batch_size > 0, NIMCP_ERROR_INVALID_PARAM, "batch_size is 0");
+    NIMCP_CHECK_THROW(output_size > 0, NIMCP_ERROR_INVALID_PARAM, "output_size is 0");
+    NIMCP_CHECK_THROW(param_count > 0, NIMCP_ERROR_INVALID_PARAM, "param_count is 0");
 
     /* Phase TPB-1: If plasticity bridge is connected and biological modulation > 0,
      * automatically route through biological training step */
@@ -1154,9 +1142,8 @@ nimcp_result_t nimcp_brain_training_emit_event(
     nimcp_brain_training_ctx_t* ctx,
     const nimcp_training_event_t* event)
 {
-    if (!ctx || !event) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(event, NIMCP_ERROR_INVALID_PARAM, "event is NULL");
 
     /* Call registered callback */
     if (ctx->event_callback) {
@@ -1171,9 +1158,7 @@ nimcp_result_t nimcp_brain_training_register_callback(
     nimcp_training_event_callback_t callback,
     void* user_data)
 {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     ctx->event_callback = callback;
     ctx->callback_user_data = user_data;
@@ -1189,9 +1174,8 @@ nimcp_result_t nimcp_brain_training_get_stats(
     const nimcp_brain_training_ctx_t* ctx,
     nimcp_training_session_stats_t* stats)
 {
-    if (!ctx || !stats) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_INVALID_PARAM, "stats is NULL");
 
     *stats = ctx->stats;
 
@@ -1287,9 +1271,9 @@ nimcp_result_t nimcp_brain_training_create_scheduler(
     const nimcp_lr_scheduler_config_t* config,
     uint32_t* scheduler_id)
 {
-    if (!ctx || !config || !scheduler_id) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
+    NIMCP_CHECK_THROW(scheduler_id, NIMCP_ERROR_INVALID_PARAM, "scheduler_id is NULL");
 
     int slot = find_free_scheduler_slot(ctx);
     if (slot < 0) {
@@ -1335,9 +1319,7 @@ nimcp_result_t nimcp_brain_training_destroy_scheduler(
     nimcp_brain_training_ctx_t* ctx,
     uint32_t scheduler_id)
 {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     int slot = find_scheduler_slot_by_id(ctx, scheduler_id);
     if (slot < 0) {
@@ -1452,9 +1434,9 @@ nimcp_result_t nimcp_brain_training_create_gradient_manager(
     const nimcp_gradient_manager_config_t* config,
     uint32_t* gradmgr_id)
 {
-    if (!ctx || !config || !gradmgr_id) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
+    NIMCP_CHECK_THROW(gradmgr_id, NIMCP_ERROR_INVALID_PARAM, "gradmgr_id is NULL");
 
     int slot = find_free_gradmgr_slot(ctx);
     if (slot < 0) {
@@ -1499,9 +1481,7 @@ nimcp_result_t nimcp_brain_training_destroy_gradient_manager(
     nimcp_brain_training_ctx_t* ctx,
     uint32_t gradmgr_id)
 {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
 
     int slot = find_gradmgr_slot_by_id(ctx, gradmgr_id);
     if (slot < 0) {

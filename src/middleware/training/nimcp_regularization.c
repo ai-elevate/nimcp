@@ -383,9 +383,10 @@ nimcp_result_t nimcp_regularization_apply_gradient(
     float* gradients,
     size_t num_weights
 ) {
-    if (!ctx || !weights || !gradients || num_weights == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(weights, NIMCP_ERROR_INVALID_PARAM, "weights is NULL");
+    NIMCP_CHECK_THROW(gradients, NIMCP_ERROR_INVALID_PARAM, "gradients is NULL");
+    NIMCP_CHECK_THROW(num_weights > 0, NIMCP_ERROR_INVALID_PARAM, "num_weights is 0");
 
     // Process pending bio-async messages
     if (ctx->bio_async_enabled && ctx->bio_ctx) {
@@ -626,9 +627,9 @@ nimcp_result_t nimcp_dropout_forward(
     size_t num_activations,
     uint8_t* mask
 ) {
-    if (!ctx || !activations || num_activations == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(activations, NIMCP_ERROR_INVALID_PARAM, "activations is NULL");
+    NIMCP_CHECK_THROW(num_activations > 0, NIMCP_ERROR_INVALID_PARAM, "num_activations is 0");
 
     /* In inference mode, no dropout */
     if (!ctx->config.training) {
@@ -667,9 +668,9 @@ nimcp_result_t nimcp_dropout_backward(
     size_t num_gradients,
     const uint8_t* mask
 ) {
-    if (!ctx || !gradients || num_gradients == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(gradients, NIMCP_ERROR_INVALID_PARAM, "gradients is NULL");
+    NIMCP_CHECK_THROW(num_gradients > 0, NIMCP_ERROR_INVALID_PARAM, "num_gradients is 0");
 
     /* In inference mode, pass through */
     if (!ctx->config.training) {
@@ -698,13 +699,9 @@ float nimcp_dropout_get_rate(const nimcp_dropout_ctx_t* ctx) {
 }
 
 nimcp_result_t nimcp_dropout_set_rate(nimcp_dropout_ctx_t* ctx, float rate) {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (rate < NIMCP_DROPOUT_MIN || rate >= NIMCP_DROPOUT_MAX) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(rate >= NIMCP_DROPOUT_MIN && rate < NIMCP_DROPOUT_MAX,
+        NIMCP_ERROR_INVALID_PARAM, "rate out of valid range");
 
     ctx->config.rate = rate;
     return NIMCP_SUCCESS;
@@ -879,9 +876,8 @@ nimcp_result_t nimcp_regularization_get_stats(
     const nimcp_regularization_ctx_t* ctx,
     nimcp_regularization_stats_t* stats
 ) {
-    if (!ctx || !stats) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "ctx is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_INVALID_PARAM, "stats is NULL");
 
     memcpy(stats, &ctx->stats, sizeof(nimcp_regularization_stats_t));
     return NIMCP_SUCCESS;
@@ -930,9 +926,7 @@ const char* nimcp_clip_mode_name(nimcp_clip_mode_t mode) {
 nimcp_result_t nimcp_regularization_validate_config(
     const nimcp_regularization_config_t* config
 ) {
-    if (!config) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     /* Validate weight regularization */
     if (config->weight_reg_type >= NIMCP_REG_TYPE_COUNT) {

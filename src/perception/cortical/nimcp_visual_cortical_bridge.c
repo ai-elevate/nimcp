@@ -413,7 +413,7 @@ int visual_cortical_connect_visual_cortex(
     visual_cortical_bridge_t* bridge,
     visual_cortex_t* visual_cortex)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
@@ -429,7 +429,7 @@ int visual_cortical_connect_immune(
     visual_cortical_bridge_t* bridge,
     cortical_immune_system_t* immune)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
 
@@ -454,7 +454,7 @@ int visual_cortical_connect_immune(
 
 int visual_cortical_connect_bio_async(visual_cortical_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  /* Already connected */
@@ -480,7 +480,7 @@ int visual_cortical_connect_bio_async(visual_cortical_bridge_t* bridge)
 
 int visual_cortical_disconnect_bio_async(visual_cortical_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;
@@ -860,7 +860,7 @@ uint32_t visual_cortical_get_num_hypercolumns(const visual_cortical_bridge_t* br
 
 int visual_cortical_update_immune_modulation(visual_cortical_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->cortical_immune) {
         return NIMCP_SUCCESS;  /* No immune system connected */
@@ -895,7 +895,7 @@ int visual_cortical_set_immune_factor(
     visual_cortical_bridge_t* bridge,
     float factor)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Clamp to valid range: >= 0, no upper limit (allows hyper-sensitivity) */
     if (factor < 0.0f) factor = 0.0f;
@@ -921,7 +921,8 @@ int visual_cortical_get_stats(
     const visual_cortical_bridge_t* bridge,
     visual_cortical_stats_t* stats)
 {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     /* Cast away const for mutex operations - mutex is logically const but physically modified */
     visual_cortical_bridge_t* mutable_bridge = (visual_cortical_bridge_t*)bridge;
@@ -935,7 +936,7 @@ int visual_cortical_get_stats(
 
 int visual_cortical_reset_stats(visual_cortical_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if ((bridge->base.mutex != NULL)) nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(visual_cortical_stats_t));
@@ -980,7 +981,8 @@ int visual_cortical_broadcast_orientation(
     visual_cortical_bridge_t* bridge,
     const visual_cortical_orientation_result_t* result)
 {
-    if (!bridge || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_NULL_POINTER, "result is NULL");
 
     if (!bridge->base.bio_async_enabled || !bridge->base.bio_ctx) {
         return NIMCP_ERROR_INVALID_STATE;

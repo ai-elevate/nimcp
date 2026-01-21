@@ -29,6 +29,7 @@
 
 void globus_pallidus_default_config(globus_pallidus_config_t* config,
                                      gp_segment_t segment) {
+    NIMCP_THROW_IF(!config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     if (!config) return;
 
     config->segment = segment;
@@ -41,16 +42,12 @@ void globus_pallidus_default_config(globus_pallidus_config_t* config,
 }
 
 globus_pallidus_t* globus_pallidus_create(const globus_pallidus_config_t* config) {
-    if (!config) {
-        NIMCP_LOGGING_ERROR("NULL config for globus pallidus");
-        return NULL;
-    }
+    NIMCP_THROW_IF(!config, NIMCP_ERROR_NULL_POINTER, "config is NULL for globus pallidus");
+    if (!config) return NULL;
 
     globus_pallidus_t* gp = nimcp_malloc(sizeof(globus_pallidus_t));
-    if (!gp) {
-        NIMCP_LOGGING_ERROR("Failed to allocate globus pallidus");
-        return NULL;
-    }
+    NIMCP_THROW_IF(!gp, NIMCP_ERROR_NO_MEMORY, "Failed to allocate globus pallidus");
+    if (!gp) return NULL;
     memset(gp, 0, sizeof(globus_pallidus_t));
 
     gp->segment = config->segment;
@@ -61,7 +58,7 @@ globus_pallidus_t* globus_pallidus_create(const globus_pallidus_config_t* config
     /* Allocate neurons */
     gp->neurons = nimcp_calloc(config->num_neurons, sizeof(gp_neuron_t));
     if (!gp->neurons) {
-        NIMCP_LOGGING_ERROR("Failed to allocate GP neurons");
+        NIMCP_THROW(NIMCP_ERROR_NO_MEMORY, "Failed to allocate GP neurons");
         nimcp_free(gp);
         return NULL;
     }
@@ -82,7 +79,7 @@ globus_pallidus_t* globus_pallidus_create(const globus_pallidus_config_t* config
     /* Allocate output buffer */
     gp->output = nimcp_calloc(config->num_actions, sizeof(float));
     if (!gp->output) {
-        NIMCP_LOGGING_ERROR("Failed to allocate GP output buffer");
+        NIMCP_THROW(NIMCP_ERROR_NO_MEMORY, "Failed to allocate GP output buffer");
         nimcp_free(gp->neurons);
         nimcp_free(gp);
         return NULL;
@@ -99,7 +96,7 @@ globus_pallidus_t* globus_pallidus_create(const globus_pallidus_config_t* config
     gp->gpe_input = nimcp_calloc(config->num_actions, sizeof(float));
 
     if (!gp->striatal_input || !gp->stn_input || !gp->gpe_input) {
-        NIMCP_LOGGING_ERROR("Failed to allocate GP input buffers");
+        NIMCP_THROW(NIMCP_ERROR_NO_MEMORY, "Failed to allocate GP input buffers");
         if (gp->striatal_input) nimcp_free(gp->striatal_input);
         if (gp->stn_input) nimcp_free(gp->stn_input);
         if (gp->gpe_input) nimcp_free(gp->gpe_input);
@@ -112,7 +109,7 @@ globus_pallidus_t* globus_pallidus_create(const globus_pallidus_config_t* config
     /* Allocate mutex */
     gp->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!gp->mutex) {
-        NIMCP_LOGGING_ERROR("Failed to allocate GP mutex");
+        NIMCP_THROW(NIMCP_ERROR_NO_MEMORY, "Failed to allocate GP mutex");
         nimcp_free(gp->striatal_input);
         nimcp_free(gp->stn_input);
         nimcp_free(gp->gpe_input);
@@ -131,6 +128,7 @@ globus_pallidus_t* globus_pallidus_create(const globus_pallidus_config_t* config
 }
 
 void globus_pallidus_destroy(globus_pallidus_t* gp) {
+    NIMCP_THROW_IF(!gp, NIMCP_ERROR_NULL_POINTER, "gp is NULL");
     if (!gp) return;
 
     nimcp_mutex_lock(gp->mutex);
@@ -150,6 +148,7 @@ void globus_pallidus_destroy(globus_pallidus_t* gp) {
 }
 
 int globus_pallidus_reset(globus_pallidus_t* gp) {
+    NIMCP_THROW_IF(!gp, NIMCP_ERROR_NULL_POINTER, "gp is NULL");
     if (!gp) return -1;
 
     nimcp_mutex_lock(gp->mutex);
@@ -181,6 +180,8 @@ int globus_pallidus_reset(globus_pallidus_t* gp) {
 
 int globus_pallidus_set_striatal_input(globus_pallidus_t* gp,
                                         const float* inhibition) {
+    NIMCP_THROW_IF(!gp, NIMCP_ERROR_NULL_POINTER, "gp is NULL");
+    NIMCP_THROW_IF(!inhibition, NIMCP_ERROR_NULL_POINTER, "inhibition is NULL");
     if (!gp || !inhibition) return -1;
 
     nimcp_mutex_lock(gp->mutex);
@@ -192,6 +193,8 @@ int globus_pallidus_set_striatal_input(globus_pallidus_t* gp,
 
 int globus_pallidus_set_stn_input(globus_pallidus_t* gp,
                                    const float* excitation) {
+    NIMCP_THROW_IF(!gp, NIMCP_ERROR_NULL_POINTER, "gp is NULL");
+    NIMCP_THROW_IF(!excitation, NIMCP_ERROR_NULL_POINTER, "excitation is NULL");
     if (!gp || !excitation) return -1;
 
     nimcp_mutex_lock(gp->mutex);
@@ -203,9 +206,11 @@ int globus_pallidus_set_stn_input(globus_pallidus_t* gp,
 
 int globus_pallidus_set_gpe_input(globus_pallidus_t* gp,
                                    const float* input) {
+    NIMCP_THROW_IF(!gp, NIMCP_ERROR_NULL_POINTER, "gp is NULL");
+    NIMCP_THROW_IF(!input, NIMCP_ERROR_NULL_POINTER, "input is NULL");
     if (!gp || !input) return -1;
     if (gp->segment != GP_SEGMENT_INTERNAL) {
-        NIMCP_LOGGING_WARN("GPe input only valid for GPi");
+        NIMCP_THROW(NIMCP_ERROR_INVALID_STATE, "GPe input only valid for GPi");
         return -2;
     }
 
@@ -217,6 +222,7 @@ int globus_pallidus_set_gpe_input(globus_pallidus_t* gp,
 }
 
 int globus_pallidus_process(globus_pallidus_t* gp) {
+    NIMCP_THROW_IF(!gp, NIMCP_ERROR_NULL_POINTER, "gp is NULL");
     if (!gp) return -1;
 
     nimcp_mutex_lock(gp->mutex);
@@ -272,6 +278,8 @@ int globus_pallidus_process(globus_pallidus_t* gp) {
 }
 
 int globus_pallidus_get_output(const globus_pallidus_t* gp, float* output) {
+    NIMCP_THROW_IF(!gp, NIMCP_ERROR_NULL_POINTER, "gp is NULL");
+    NIMCP_THROW_IF(!output, NIMCP_ERROR_NULL_POINTER, "output is NULL");
     if (!gp || !output) return -1;
 
     nimcp_mutex_lock((nimcp_mutex_t*)gp->mutex);
@@ -283,6 +291,8 @@ int globus_pallidus_get_output(const globus_pallidus_t* gp, float* output) {
 
 float globus_pallidus_get_action_output(const globus_pallidus_t* gp,
                                          uint32_t action_id) {
+    NIMCP_THROW_IF(!gp, NIMCP_ERROR_NULL_POINTER, "gp is NULL");
+    NIMCP_THROW_IF(action_id >= gp->num_actions, NIMCP_ERROR_INVALID_PARAM, "action_id out of range");
     if (!gp || action_id >= gp->num_actions) return -1.0f;
 
     nimcp_mutex_lock((nimcp_mutex_t*)gp->mutex);
@@ -293,6 +303,7 @@ float globus_pallidus_get_action_output(const globus_pallidus_t* gp,
 }
 
 int globus_pallidus_step(globus_pallidus_t* gp, float dt) {
+    NIMCP_THROW_IF(!gp, NIMCP_ERROR_NULL_POINTER, "gp is NULL");
     if (!gp) return -1;
 
     /* Process with current inputs */
@@ -300,6 +311,8 @@ int globus_pallidus_step(globus_pallidus_t* gp, float dt) {
 }
 
 int globus_pallidus_get_stats(const globus_pallidus_t* gp, gp_stats_t* stats) {
+    NIMCP_THROW_IF(!gp, NIMCP_ERROR_NULL_POINTER, "gp is NULL");
+    NIMCP_THROW_IF(!stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
     if (!gp || !stats) return -1;
 
     nimcp_mutex_lock((nimcp_mutex_t*)gp->mutex);

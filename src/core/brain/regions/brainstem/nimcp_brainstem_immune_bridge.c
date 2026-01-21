@@ -219,7 +219,7 @@ int brainstem_immune_update_immune_to_brainstem(
     brainstem_immune_bridge_t bridge,
     brainstem_cytokine_effects_t* effects
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_immune_to_brainstem) return NIMCP_SUCCESS;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -342,7 +342,7 @@ int brainstem_immune_update_brainstem_to_immune(
     brainstem_immune_bridge_t bridge,
     brainstem_immune_effects_t* effects
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_brainstem_to_immune) return NIMCP_SUCCESS;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -415,7 +415,7 @@ int brainstem_immune_update_brainstem_to_immune(
  *===========================================================================*/
 
 int brainstem_immune_update(brainstem_immune_bridge_t bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     int result;
 
@@ -447,7 +447,7 @@ int brainstem_immune_get_cytokine_effects(
     brainstem_immune_bridge_t bridge,
     brainstem_cytokine_effects_t* effects
 ) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_NULL_POINTER, "bridge or effects is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->cytokine_effects;
@@ -460,7 +460,7 @@ int brainstem_immune_get_immune_effects(
     brainstem_immune_bridge_t bridge,
     brainstem_immune_effects_t* effects
 ) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_NULL_POINTER, "bridge or effects is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->immune_effects;
@@ -485,7 +485,7 @@ int brainstem_immune_get_stats(
     brainstem_immune_bridge_t bridge,
     brainstem_immune_stats_t* stats
 ) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -499,7 +499,7 @@ int brainstem_immune_get_stats(
  *===========================================================================*/
 
 int brainstem_immune_connect_bio_async(brainstem_immune_bridge_t bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->bio_async_connected) return NIMCP_SUCCESS;
 
     /* Register with bio-router */
@@ -522,7 +522,7 @@ int brainstem_immune_connect_bio_async(brainstem_immune_bridge_t bridge) {
 }
 
 int brainstem_immune_disconnect_bio_async(brainstem_immune_bridge_t bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->bio_async_connected) return NIMCP_SUCCESS;
 
     if (bridge->base.bio_ctx) {

@@ -88,9 +88,7 @@ static float get_inflammation_rebalance_factor(brain_inflammation_level_t level)
  * ============================================================================ */
 
 int multigpu_immune_default_config(multigpu_immune_config_t* config) {
-    if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Enable all features by default */
     config->enable_cytokine_coordination_modulation = true;
@@ -201,9 +199,8 @@ void multigpu_immune_destroy(multigpu_immune_bridge_t* bridge) {
  * ============================================================================ */
 
 int multigpu_immune_apply_cytokine_effects(multigpu_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->immune_system) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->immune_system, NIMCP_ERROR_NULL_POINTER, "bridge->immune_system is NULL");
 
     if (!bridge->enable_cytokine_coordination_modulation) {
         return NIMCP_SUCCESS;
@@ -279,9 +276,8 @@ int multigpu_immune_trigger_error_response(
     int error_code,
     const char* error_message
 ) {
-    if (!bridge || !bridge->immune_system) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->immune_system, NIMCP_ERROR_NULL_POINTER, "bridge->immune_system is NULL");
 
     if (!bridge->enable_multigpu_error_immune_response) {
         return NIMCP_SUCCESS;
@@ -310,9 +306,8 @@ int multigpu_immune_trigger_error_response(
 }
 
 int multigpu_immune_monitor_load_balance(multigpu_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->multigpu_context) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->multigpu_context, NIMCP_ERROR_NULL_POINTER, "bridge->multigpu_context is NULL");
 
     /* Get multi-GPU performance stats */
     uint64_t total_ops;
@@ -357,9 +352,8 @@ int multigpu_immune_monitor_load_balance(multigpu_immune_bridge_t* bridge) {
 }
 
 int multigpu_immune_update_error_state(multigpu_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->multigpu_context) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->multigpu_context, NIMCP_ERROR_NULL_POINTER, "bridge->multigpu_context is NULL");
 
     bridge->error_state.active_gpu_count = multigpu_get_device_count(bridge->multigpu_context);
 
@@ -371,9 +365,7 @@ int multigpu_immune_update_error_state(multigpu_immune_bridge_t* bridge) {
  * ============================================================================ */
 
 int multigpu_immune_update(multigpu_immune_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     multigpu_immune_update_error_state(bridge);
     multigpu_immune_apply_cytokine_effects(bridge);
@@ -386,9 +378,8 @@ int multigpu_immune_update(multigpu_immune_bridge_t* bridge) {
 }
 
 int multigpu_immune_apply_modulation(multigpu_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->multigpu_context) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->multigpu_context, NIMCP_ERROR_NULL_POINTER, "bridge->multigpu_context is NULL");
 
     /* Check if GPU count should be reduced */
     uint32_t recommended_count = multigpu_immune_get_recommended_gpu_count(bridge);
@@ -433,9 +424,8 @@ int multigpu_immune_get_cytokine_effects(
     const multigpu_immune_bridge_t* bridge,
     multigpu_cytokine_effects_t* effects
 ) {
-    if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(effects, NIMCP_ERROR_NULL_POINTER, "effects is NULL");
 
     memcpy(effects, &bridge->cytokine_effects, sizeof(multigpu_cytokine_effects_t));
     return NIMCP_SUCCESS;
@@ -445,9 +435,8 @@ int multigpu_immune_get_error_state(
     const multigpu_immune_bridge_t* bridge,
     multigpu_error_state_t* state
 ) {
-    if (!bridge || !state) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL");
 
     memcpy(state, &bridge->error_state, sizeof(multigpu_error_state_t));
     return NIMCP_SUCCESS;
@@ -475,9 +464,7 @@ uint32_t multigpu_immune_get_active_gpu_count(const multigpu_immune_bridge_t* br
  * ============================================================================ */
 
 int multigpu_immune_connect_bio_async(multigpu_immune_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;

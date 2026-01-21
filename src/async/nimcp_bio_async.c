@@ -1039,9 +1039,7 @@ bool nimcp_bio_async_is_initialized(void) {
 }
 
 nimcp_error_t nimcp_bio_async_get_stats(nimcp_bio_async_stats_t* stats) {
-    if (!stats) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(stats != NULL, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     nimcp_rwlock_rdlock(&g_bio_async.stats_lock);
     *stats = g_bio_async.stats;
@@ -1130,10 +1128,8 @@ nimcp_error_t nimcp_bio_promise_complete_sized(
     LOG_DEBUG("nimcp_bio_promise_complete_sized: promise=%p, result=%p, size=%zu",
               (void*)promise, result, result_size);
 
-    if (!promise || promise->magic != BIO_MAGIC_PROMISE) {
-        LOG_ERROR("nimcp_bio_promise_complete_sized: invalid promise");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(promise && promise->magic == BIO_MAGIC_PROMISE,
+                       NIMCP_ERROR_NULL_POINTER, "nimcp_bio_promise_complete_sized: invalid promise");
 
     nimcp_bio_shared_state_t* shared = promise->shared;
     if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
@@ -1142,10 +1138,8 @@ nimcp_error_t nimcp_bio_promise_complete_sized(
     }
 
     /* Validate result */
-    if (result_size > 0 && !result) {
-        LOG_ERROR("nimcp_bio_promise_complete_sized: result required but NULL");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(result_size == 0 || result != NULL,
+                       NIMCP_ERROR_NULL_POINTER, "nimcp_bio_promise_complete_sized: result required but NULL");
 
     /* Enforce refractory period: check if minimum time has passed since last completion */
     nimcp_bio_channel_type_t channel = shared->channel;
@@ -1180,11 +1174,8 @@ nimcp_error_t nimcp_bio_promise_complete_sized(
     /* Copy result */
     if (copy_size > 0) {
         shared->result = bio_alloc(copy_size);
-        if (!shared->result) {
-            LOG_ERROR("nimcp_bio_promise_complete_sized: failed to allocate result buffer (%zu bytes)",
-                      copy_size);
-            return NIMCP_ERROR_NO_MEMORY;
-        }
+        NIMCP_CHECK_THROW(shared->result != NULL, NIMCP_ERROR_NO_MEMORY,
+                          "nimcp_bio_promise_complete_sized: failed to allocate result buffer (%zu bytes)", copy_size);
         memcpy(shared->result, result, copy_size);
         shared->result_size = copy_size;  // Update to actual size
         LOG_DEBUG("nimcp_bio_promise_complete_sized: copied %zu bytes of result data", copy_size);
@@ -1250,10 +1241,8 @@ nimcp_error_t nimcp_bio_promise_complete(
     const void* result)
 {
     /* Legacy API: uses pre-set result_size from promise creation */
-    if (!promise || promise->magic != BIO_MAGIC_PROMISE) {
-        LOG_ERROR("nimcp_bio_promise_complete: invalid promise");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(promise && promise->magic == BIO_MAGIC_PROMISE,
+                       NIMCP_ERROR_NULL_POINTER, "nimcp_bio_promise_complete: invalid promise");
 
     nimcp_bio_shared_state_t* shared = promise->shared;
     if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
@@ -1271,10 +1260,8 @@ nimcp_error_t nimcp_bio_promise_fail(
 {
     LOG_DEBUG("nimcp_bio_promise_fail: promise=%p, error=%d", (void*)promise, error);
 
-    if (!promise || promise->magic != BIO_MAGIC_PROMISE) {
-        LOG_ERROR("nimcp_bio_promise_fail: invalid promise");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(promise && promise->magic == BIO_MAGIC_PROMISE,
+                       NIMCP_ERROR_NULL_POINTER, "nimcp_bio_promise_fail: invalid promise");
 
     nimcp_bio_shared_state_t* shared = promise->shared;
     if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
@@ -1282,10 +1269,8 @@ nimcp_error_t nimcp_bio_promise_fail(
         return NIMCP_ERROR_INVALID_STATE;
     }
 
-    if (error == NIMCP_SUCCESS) {
-        LOG_ERROR("nimcp_bio_promise_fail: cannot fail with NIMCP_SUCCESS");
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(error != NIMCP_SUCCESS, NIMCP_ERROR_INVALID_PARAM,
+                       "nimcp_bio_promise_fail: cannot fail with NIMCP_SUCCESS");
 
     /* Store error BEFORE state transition CAS to ensure another thread
      * reading the FAILED state will always see the error value.
@@ -1389,10 +1374,8 @@ nimcp_error_t nimcp_bio_future_wait(
 {
     LOG_DEBUG("nimcp_bio_future_wait: future=%p timeout=%lu ms", (void*)future, (unsigned long)timeout_ms);
 
-    if (!future || future->magic != BIO_MAGIC_FUTURE) {
-        LOG_ERROR("nimcp_bio_future_wait: invalid future");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(future && future->magic == BIO_MAGIC_FUTURE,
+                       NIMCP_ERROR_NULL_POINTER, "nimcp_bio_future_wait: invalid future");
 
     nimcp_bio_shared_state_t* shared = future->shared;
     if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
@@ -1528,9 +1511,8 @@ nimcp_error_t nimcp_bio_future_then(
     nimcp_bio_callback_t callback,
     void* user_data)
 {
-    if (!future || future->magic != BIO_MAGIC_FUTURE || !callback) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(future && future->magic == BIO_MAGIC_FUTURE && callback,
+                       NIMCP_ERROR_NULL_POINTER, "nimcp_bio_future_then: future or callback is NULL/invalid");
 
     nimcp_bio_shared_state_t* shared = future->shared;
     if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
@@ -1550,9 +1532,8 @@ nimcp_error_t nimcp_bio_future_then(
 
     /* Allocate callback node */
     bio_callback_node_t* node = (bio_callback_node_t*)bio_alloc(sizeof(bio_callback_node_t));
-    if (!node) {
-        return NIMCP_ERROR_NO_MEMORY;
-    }
+    NIMCP_CHECK_THROW(node != NULL, NIMCP_ERROR_NO_MEMORY,
+                       "nimcp_bio_future_then: failed to allocate callback node");
 
     node->callback = callback;
     node->user_data = user_data;
@@ -1714,12 +1695,10 @@ nimcp_error_t nimcp_phase_sync_add_future(
     nimcp_phase_sync_t sync,
     nimcp_bio_future_t future)
 {
-    if (!sync || sync->magic != BIO_MAGIC_PHASE) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!future || future->magic != BIO_MAGIC_FUTURE) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(sync && sync->magic == BIO_MAGIC_PHASE,
+                       NIMCP_ERROR_NULL_POINTER, "nimcp_phase_sync_add_future: sync is NULL/invalid");
+    NIMCP_CHECK_THROW(future && future->magic == BIO_MAGIC_FUTURE,
+                       NIMCP_ERROR_NULL_POINTER, "nimcp_phase_sync_add_future: future is NULL/invalid");
 
     nimcp_rwlock_wrlock(&sync->rwlock);
 
@@ -1834,9 +1813,8 @@ nimcp_error_t nimcp_phase_sync_wait_coherent(
     float coherence_threshold,
     uint64_t timeout_ms)
 {
-    if (!sync || sync->magic != BIO_MAGIC_PHASE) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(sync && sync->magic == BIO_MAGIC_PHASE,
+                       NIMCP_ERROR_NULL_POINTER, "nimcp_phase_sync_wait_coherent: sync is NULL/invalid");
 
     /* Default timeout based on band */
     if (timeout_ms == 0) {
@@ -1979,15 +1957,13 @@ nimcp_error_t nimcp_predictive_on_error(
     void* user_data,
     float surprise_threshold)
 {
-    if (!model || model->magic != BIO_MAGIC_PREDICT || !callback) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(model && model->magic == BIO_MAGIC_PREDICT && callback,
+                       NIMCP_ERROR_NULL_POINTER, "nimcp_predictive_on_error: model or callback is NULL/invalid");
 
     predict_callback_entry_t* entry = (predict_callback_entry_t*)
         bio_alloc(sizeof(predict_callback_entry_t));
-    if (!entry) {
-        return NIMCP_ERROR_NO_MEMORY;
-    }
+    NIMCP_CHECK_THROW(entry != NULL, NIMCP_ERROR_NO_MEMORY,
+                       "nimcp_predictive_on_error: failed to allocate callback entry");
 
     entry->callback = callback;
     entry->user_data = user_data;
@@ -2006,9 +1982,8 @@ nimcp_error_t nimcp_predictive_observe(
     nimcp_predictive_model_t model,
     float actual_value)
 {
-    if (!model || model->magic != BIO_MAGIC_PREDICT) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(model && model->magic == BIO_MAGIC_PREDICT,
+                       NIMCP_ERROR_NULL_POINTER, "nimcp_predictive_observe: model is NULL/invalid");
 
     nimcp_rwlock_wrlock(&model->rwlock);
 
@@ -2200,9 +2175,8 @@ nimcp_glial_wave_t nimcp_glial_wave_initiate(
 }
 
 nimcp_error_t nimcp_glial_wave_step(nimcp_glial_wave_t wave, float dt_ms) {
-    if (!wave || wave->magic != BIO_MAGIC_GLIAL) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(wave && wave->magic == BIO_MAGIC_GLIAL,
+                       NIMCP_ERROR_NULL_POINTER, "nimcp_glial_wave_step: wave is NULL/invalid");
 
     if (!wave->active) {
         return NIMCP_BIO_ERROR_WAVE_EXTINCT;
@@ -2311,9 +2285,8 @@ nimcp_error_t nimcp_glial_wave_wait_for_region(
     uint32_t region_id,
     uint64_t timeout_ms)
 {
-    if (!wave || wave->magic != BIO_MAGIC_GLIAL) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(wave && wave->magic == BIO_MAGIC_GLIAL,
+                       NIMCP_ERROR_NULL_POINTER, "nimcp_glial_wave_wait_for_region: wave is NULL/invalid");
 
     if (region_id >= wave->num_regions) {
         return NIMCP_ERROR_OUT_OF_RANGE;
@@ -2357,9 +2330,8 @@ nimcp_error_t nimcp_glial_wave_on_arrival(
     nimcp_wave_callback_t callback,
     void* user_data)
 {
-    if (!wave || wave->magic != BIO_MAGIC_GLIAL || !callback) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(wave && wave->magic == BIO_MAGIC_GLIAL && callback,
+                       NIMCP_ERROR_NULL_POINTER, "nimcp_glial_wave_on_arrival: wave or callback is NULL/invalid");
 
     if (region_id >= wave->num_regions) {
         return NIMCP_ERROR_OUT_OF_RANGE;
