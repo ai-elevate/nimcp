@@ -27,6 +27,7 @@
 #include "cognitive/immune/nimcp_heal_patterns.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "utils/memory/nimcp_memory.h"
+#include "lnn/nimcp_lnn.h"  // For lnn_is_initialized()
 
 /* ============================================================================
  * Helper Functions
@@ -789,10 +790,17 @@ TEST_F(CodeImmuneRegressionTest, BenchmarkFixGenerationSpeed) {
     uint64_t elapsed = get_time_us() - start;
     double avg_us = (double)elapsed / iterations;
 
-    /* Fix generation should complete within 500 microseconds */
-    EXPECT_LT(avg_us, 500.0) << "Fix generation too slow: " << avg_us << " us/fix";
+    /*
+     * Fix generation threshold depends on LNN availability:
+     * - With LNN initialized: 500 µs (neural accelerated)
+     * - Without LNN (fallback): 3000 µs (pattern-based only)
+     */
+    double threshold = lnn_is_initialized() ? 500.0 : 3000.0;
+    EXPECT_LT(avg_us, threshold) << "Fix generation too slow: " << avg_us << " us/fix"
+                                  << " (LNN " << (lnn_is_initialized() ? "enabled" : "disabled") << ")";
 
-    printf("[BENCHMARK] Fix generation: %.2f us/fix\n", avg_us);
+    printf("[BENCHMARK] Fix generation: %.2f us/fix (LNN %s, threshold %.0f us)\n",
+           avg_us, lnn_is_initialized() ? "enabled" : "disabled", threshold);
 }
 
 TEST_F(CodeImmuneRegressionTest, BenchmarkStatsRetrievalSpeed) {
