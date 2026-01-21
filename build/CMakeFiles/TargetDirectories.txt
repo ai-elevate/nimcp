@@ -794,6 +794,8 @@
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_heartbeat_module_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_state_checkpoint_recovery_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_self_repair_bio_async_e2e.dir
+/home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_health_self_repair_e2e.dir
+/home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_plasticity_health_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/rebuild_cache.dir
@@ -1198,6 +1200,8 @@
 /home/bbrelin/nimcp/build/test/unit/cognitive/fault_tolerance/CMakeFiles/unit_cognitive_fault_tolerance_emotional_tagging.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/fault_tolerance/CMakeFiles/unit_cognitive_fault_tolerance_self_repair.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/fault_tolerance/CMakeFiles/unit_cognitive_fault_tolerance_self_repair_bio_async.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/fault_tolerance/CMakeFiles/unit_cognitive_fault_tolerance_health_diagnostic_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/fault_tolerance/CMakeFiles/unit_cognitive_fault_tolerance_health_self_repair_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/fault_tolerance/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/fault_tolerance/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/fault_tolerance/CMakeFiles/rebuild_cache.dir
@@ -1206,6 +1210,7 @@
 /home/bbrelin/nimcp/build/test/unit/cognitive/fault_tolerance/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/fault_tolerance/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/fault_tolerance/CMakeFiles/integration_cognitive_fault_tolerance_emotional_tagging.dir
+/home/bbrelin/nimcp/build/test/integration/cognitive/fault_tolerance/CMakeFiles/integration_cognitive_fault_tolerance_health_self_repair.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/fault_tolerance/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/fault_tolerance/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/fault_tolerance/CMakeFiles/rebuild_cache.dir
@@ -1214,6 +1219,7 @@
 /home/bbrelin/nimcp/build/test/integration/cognitive/fault_tolerance/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/fault_tolerance/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/fault_tolerance/CMakeFiles/regression_cognitive_fault_tolerance_emotional_tagging.dir
+/home/bbrelin/nimcp/build/test/regression/cognitive/fault_tolerance/CMakeFiles/regression_cognitive_fault_tolerance_health_repair_bridge.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/fault_tolerance/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/fault_tolerance/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/cognitive/fault_tolerance/CMakeFiles/rebuild_cache.dir
@@ -1760,6 +1766,8 @@
 /home/bbrelin/nimcp/build/test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_bridge_coordinator.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_code_immune.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_heal_bridge.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_integrated_self_repair.dir
+/home/bbrelin/nimcp/build/test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_self_repair_bridge.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/immune/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/immune/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/cognitive/immune/CMakeFiles/rebuild_cache.dir
@@ -1775,6 +1783,7 @@
 /home/bbrelin/nimcp/build/test/integration/cognitive/immune/CMakeFiles/integration_cognitive_immune_modules.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/immune/CMakeFiles/integration_cognitive_immune_code_immune.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/immune/CMakeFiles/integration_cognitive_immune_heal_bridge.dir
+/home/bbrelin/nimcp/build/test/integration/cognitive/immune/CMakeFiles/integration_cognitive_immune_code_immune_self_repair.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/immune/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/immune/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/immune/CMakeFiles/rebuild_cache.dir
@@ -2780,6 +2789,8 @@
 /home/bbrelin/nimcp/build/test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_heartbeat_module_integration.dir
 /home/bbrelin/nimcp/build/test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_state_manager_integration.dir
 /home/bbrelin/nimcp/build/test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_module_recovery_integration.dir
+/home/bbrelin/nimcp/build/test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_stdp_health_integration.dir
+/home/bbrelin/nimcp/build/test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_plasticity_anomaly_integration.dir
 /home/bbrelin/nimcp/build/test/integration/utils/fault_tolerance/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/utils/fault_tolerance/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/utils/fault_tolerance/CMakeFiles/rebuild_cache.dir
@@ -3083,6 +3094,7 @@
 /home/bbrelin/nimcp/build/test/integration/cognitive/game_theory/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/parietal/CMakeFiles/integration_cognitive_parietal.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/parietal/CMakeFiles/integration_parietal_fep.dir
+/home/bbrelin/nimcp/build/test/integration/cognitive/parietal/CMakeFiles/integration_parietal_training.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/parietal/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/parietal/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/cognitive/parietal/CMakeFiles/rebuild_cache.dir

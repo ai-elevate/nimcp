@@ -8700,6 +8700,32 @@ e2e_fault_tolerance_test_self_repair_bio_async_e2e/fast:
 .PHONY : e2e_fault_tolerance_test_self_repair_bio_async_e2e/fast
 
 #=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_health_self_repair_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_health_self_repair_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_health_self_repair_e2e
+.PHONY : e2e_fault_tolerance_test_health_self_repair_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_health_self_repair_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_health_self_repair_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_health_self_repair_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_health_self_repair_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_plasticity_health_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_plasticity_health_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_plasticity_health_e2e
+.PHONY : e2e_fault_tolerance_test_plasticity_health_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_plasticity_health_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_plasticity_health_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_plasticity_health_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_plasticity_health_e2e/fast
+
+#=============================================================================
 # Target rules for targets named unit_middleware_integration
 
 # Build rule for target.
@@ -10767,6 +10793,32 @@ unit_cognitive_fault_tolerance_self_repair_bio_async/fast:
 .PHONY : unit_cognitive_fault_tolerance_self_repair_bio_async/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_fault_tolerance_health_diagnostic_bridge
+
+# Build rule for target.
+unit_cognitive_fault_tolerance_health_diagnostic_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_fault_tolerance_health_diagnostic_bridge
+.PHONY : unit_cognitive_fault_tolerance_health_diagnostic_bridge
+
+# fast build rule for target.
+unit_cognitive_fault_tolerance_health_diagnostic_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/fault_tolerance/CMakeFiles/unit_cognitive_fault_tolerance_health_diagnostic_bridge.dir/build.make test/unit/cognitive/fault_tolerance/CMakeFiles/unit_cognitive_fault_tolerance_health_diagnostic_bridge.dir/build
+.PHONY : unit_cognitive_fault_tolerance_health_diagnostic_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_fault_tolerance_health_self_repair_bridge
+
+# Build rule for target.
+unit_cognitive_fault_tolerance_health_self_repair_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_fault_tolerance_health_self_repair_bridge
+.PHONY : unit_cognitive_fault_tolerance_health_self_repair_bridge
+
+# fast build rule for target.
+unit_cognitive_fault_tolerance_health_self_repair_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/fault_tolerance/CMakeFiles/unit_cognitive_fault_tolerance_health_self_repair_bridge.dir/build.make test/unit/cognitive/fault_tolerance/CMakeFiles/unit_cognitive_fault_tolerance_health_self_repair_bridge.dir/build
+.PHONY : unit_cognitive_fault_tolerance_health_self_repair_bridge/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_fault_tolerance_emotional_tagging
 
 # Build rule for target.
@@ -10780,6 +10832,19 @@ integration_cognitive_fault_tolerance_emotional_tagging/fast:
 .PHONY : integration_cognitive_fault_tolerance_emotional_tagging/fast
 
 #=============================================================================
+# Target rules for targets named integration_cognitive_fault_tolerance_health_self_repair
+
+# Build rule for target.
+integration_cognitive_fault_tolerance_health_self_repair: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_fault_tolerance_health_self_repair
+.PHONY : integration_cognitive_fault_tolerance_health_self_repair
+
+# fast build rule for target.
+integration_cognitive_fault_tolerance_health_self_repair/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/fault_tolerance/CMakeFiles/integration_cognitive_fault_tolerance_health_self_repair.dir/build.make test/integration/cognitive/fault_tolerance/CMakeFiles/integration_cognitive_fault_tolerance_health_self_repair.dir/build
+.PHONY : integration_cognitive_fault_tolerance_health_self_repair/fast
+
+#=============================================================================
 # Target rules for targets named regression_cognitive_fault_tolerance_emotional_tagging
 
 # Build rule for target.
@@ -10791,6 +10856,19 @@ regression_cognitive_fault_tolerance_emotional_tagging: cmake_check_build_system
 regression_cognitive_fault_tolerance_emotional_tagging/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/fault_tolerance/CMakeFiles/regression_cognitive_fault_tolerance_emotional_tagging.dir/build.make test/regression/cognitive/fault_tolerance/CMakeFiles/regression_cognitive_fault_tolerance_emotional_tagging.dir/build
 .PHONY : regression_cognitive_fault_tolerance_emotional_tagging/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_fault_tolerance_health_repair_bridge
+
+# Build rule for target.
+regression_cognitive_fault_tolerance_health_repair_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_fault_tolerance_health_repair_bridge
+.PHONY : regression_cognitive_fault_tolerance_health_repair_bridge
+
+# fast build rule for target.
+regression_cognitive_fault_tolerance_health_repair_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/fault_tolerance/CMakeFiles/regression_cognitive_fault_tolerance_health_repair_bridge.dir/build.make test/regression/cognitive/fault_tolerance/CMakeFiles/regression_cognitive_fault_tolerance_health_repair_bridge.dir/build
+.PHONY : regression_cognitive_fault_tolerance_health_repair_bridge/fast
 
 #=============================================================================
 # Target rules for targets named integration_fault_tolerance
@@ -13887,6 +13965,32 @@ unit_cognitive_immune_heal_bridge/fast:
 .PHONY : unit_cognitive_immune_heal_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_immune_integrated_self_repair
+
+# Build rule for target.
+unit_cognitive_immune_integrated_self_repair: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_immune_integrated_self_repair
+.PHONY : unit_cognitive_immune_integrated_self_repair
+
+# fast build rule for target.
+unit_cognitive_immune_integrated_self_repair/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_integrated_self_repair.dir/build.make test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_integrated_self_repair.dir/build
+.PHONY : unit_cognitive_immune_integrated_self_repair/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_immune_self_repair_bridge
+
+# Build rule for target.
+unit_cognitive_immune_self_repair_bridge: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_immune_self_repair_bridge
+.PHONY : unit_cognitive_immune_self_repair_bridge
+
+# fast build rule for target.
+unit_cognitive_immune_self_repair_bridge/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_self_repair_bridge.dir/build.make test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_self_repair_bridge.dir/build
+.PHONY : unit_cognitive_immune_self_repair_bridge/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_immune_brain_immune
 
 # Build rule for target.
@@ -13989,6 +14093,19 @@ integration_cognitive_immune_heal_bridge: cmake_check_build_system
 integration_cognitive_immune_heal_bridge/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/immune/CMakeFiles/integration_cognitive_immune_heal_bridge.dir/build.make test/integration/cognitive/immune/CMakeFiles/integration_cognitive_immune_heal_bridge.dir/build
 .PHONY : integration_cognitive_immune_heal_bridge/fast
+
+#=============================================================================
+# Target rules for targets named integration_cognitive_immune_code_immune_self_repair
+
+# Build rule for target.
+integration_cognitive_immune_code_immune_self_repair: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_immune_code_immune_self_repair
+.PHONY : integration_cognitive_immune_code_immune_self_repair
+
+# fast build rule for target.
+integration_cognitive_immune_code_immune_self_repair/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/immune/CMakeFiles/integration_cognitive_immune_code_immune_self_repair.dir/build.make test/integration/cognitive/immune/CMakeFiles/integration_cognitive_immune_code_immune_self_repair.dir/build
+.PHONY : integration_cognitive_immune_code_immune_self_repair/fast
 
 #=============================================================================
 # Target rules for targets named regression_cognitive_immune_brain_immune
@@ -18593,6 +18710,32 @@ integration_utils_fault_tolerance_test_module_recovery_integration/fast:
 .PHONY : integration_utils_fault_tolerance_test_module_recovery_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_utils_fault_tolerance_test_stdp_health_integration
+
+# Build rule for target.
+integration_utils_fault_tolerance_test_stdp_health_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_stdp_health_integration
+.PHONY : integration_utils_fault_tolerance_test_stdp_health_integration
+
+# fast build rule for target.
+integration_utils_fault_tolerance_test_stdp_health_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_stdp_health_integration.dir/build.make test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_stdp_health_integration.dir/build
+.PHONY : integration_utils_fault_tolerance_test_stdp_health_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_utils_fault_tolerance_test_plasticity_anomaly_integration
+
+# Build rule for target.
+integration_utils_fault_tolerance_test_plasticity_anomaly_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_plasticity_anomaly_integration
+.PHONY : integration_utils_fault_tolerance_test_plasticity_anomaly_integration
+
+# fast build rule for target.
+integration_utils_fault_tolerance_test_plasticity_anomaly_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_plasticity_anomaly_integration.dir/build.make test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_plasticity_anomaly_integration.dir/build
+.PHONY : integration_utils_fault_tolerance_test_plasticity_anomaly_integration/fast
+
+#=============================================================================
 # Target rules for targets named regression_utils_fault_tolerance_test_checkpoint_format
 
 # Build rule for target.
@@ -19709,6 +19852,19 @@ integration_parietal_fep: cmake_check_build_system
 integration_parietal_fep/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/parietal/CMakeFiles/integration_parietal_fep.dir/build.make test/integration/cognitive/parietal/CMakeFiles/integration_parietal_fep.dir/build
 .PHONY : integration_parietal_fep/fast
+
+#=============================================================================
+# Target rules for targets named integration_parietal_training
+
+# Build rule for target.
+integration_parietal_training: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_parietal_training
+.PHONY : integration_parietal_training
+
+# fast build rule for target.
+integration_parietal_training/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/parietal/CMakeFiles/integration_parietal_training.dir/build.make test/integration/cognitive/parietal/CMakeFiles/integration_parietal_training.dir/build
+.PHONY : integration_parietal_training/fast
 
 #=============================================================================
 # Target rules for targets named integration_thalamic_substrate_bridges
@@ -30668,8 +30824,10 @@ help:
 	@echo "... e2e_fault_tolerance_test_health_agent_consistency_e2e"
 	@echo "... e2e_fault_tolerance_test_health_agent_memory_e2e"
 	@echo "... e2e_fault_tolerance_test_health_agent_neural_e2e"
+	@echo "... e2e_fault_tolerance_test_health_self_repair_e2e"
 	@echo "... e2e_fault_tolerance_test_heartbeat_module_e2e"
 	@echo "... e2e_fault_tolerance_test_perception_cortical_health_e2e"
+	@echo "... e2e_fault_tolerance_test_plasticity_health_e2e"
 	@echo "... e2e_fault_tolerance_test_resilience_stress"
 	@echo "... e2e_fault_tolerance_test_self_repair_bio_async_e2e"
 	@echo "... e2e_fault_tolerance_test_state_checkpoint_recovery_e2e"
@@ -30905,6 +31063,7 @@ help:
 	@echo "... integration_cognitive_exception_integration"
 	@echo "... integration_cognitive_executive_snn_plasticity"
 	@echo "... integration_cognitive_fault_tolerance_emotional_tagging"
+	@echo "... integration_cognitive_fault_tolerance_health_self_repair"
 	@echo "... integration_cognitive_grief_test_grief_and_loss_integration"
 	@echo "... integration_cognitive_gt_fep"
 	@echo "... integration_cognitive_gt_global_workspace"
@@ -30915,6 +31074,7 @@ help:
 	@echo "... integration_cognitive_immune_bbb"
 	@echo "... integration_cognitive_immune_brain_immune"
 	@echo "... integration_cognitive_immune_code_immune"
+	@echo "... integration_cognitive_immune_code_immune_self_repair"
 	@echo "... integration_cognitive_immune_heal_bridge"
 	@echo "... integration_cognitive_immune_memory"
 	@echo "... integration_cognitive_immune_modules"
@@ -31151,6 +31311,7 @@ help:
 	@echo "... integration_optimization_test_multi_objective_integration"
 	@echo "... integration_parietal_fep"
 	@echo "... integration_parietal_test_parietal_fep_integration"
+	@echo "... integration_parietal_training"
 	@echo "... integration_perception_exception_test_perception_exception_integration"
 	@echo "... integration_perception_test_cochlea_integration"
 	@echo "... integration_perception_test_lip_reading"
@@ -31273,9 +31434,11 @@ help:
 	@echo "... integration_utils_fault_tolerance_test_lockfree_metrics_integration"
 	@echo "... integration_utils_fault_tolerance_test_module_recovery_integration"
 	@echo "... integration_utils_fault_tolerance_test_perception_cortical_health_integration"
+	@echo "... integration_utils_fault_tolerance_test_plasticity_anomaly_integration"
 	@echo "... integration_utils_fault_tolerance_test_recovery_cache_integration"
 	@echo "... integration_utils_fault_tolerance_test_recovery_pool_integration"
 	@echo "... integration_utils_fault_tolerance_test_state_manager_integration"
+	@echo "... integration_utils_fault_tolerance_test_stdp_health_integration"
 	@echo "... integration_utils_fault_tolerance_test_substrate_health_integration"
 	@echo "... integration_utils_fault_tolerance_test_symbolic_logic_health_integration"
 	@echo "... integration_utils_fault_tolerance_test_thalamic_middleware_health_integration"
@@ -31357,6 +31520,7 @@ help:
 	@echo "... regression_cognitive_ethics_snn_plasticity"
 	@echo "... regression_cognitive_executive_snn_plasticity"
 	@echo "... regression_cognitive_fault_tolerance_emotional_tagging"
+	@echo "... regression_cognitive_fault_tolerance_health_repair_bridge"
 	@echo "... regression_cognitive_grief_test_grief_and_loss_backward_compat"
 	@echo "... regression_cognitive_guardian_intervention"
 	@echo "... regression_cognitive_gw_snn_plasticity"
@@ -31963,6 +32127,8 @@ help:
 	@echo "... unit_cognitive_explanations_test_explanations_regression"
 	@echo "... unit_cognitive_extrapolation_test_world_model_multimodal"
 	@echo "... unit_cognitive_fault_tolerance_emotional_tagging"
+	@echo "... unit_cognitive_fault_tolerance_health_diagnostic_bridge"
+	@echo "... unit_cognitive_fault_tolerance_health_self_repair_bridge"
 	@echo "... unit_cognitive_fault_tolerance_self_repair"
 	@echo "... unit_cognitive_fault_tolerance_self_repair_bio_async"
 	@echo "... unit_cognitive_game_theory_test_auction"
@@ -31997,6 +32163,7 @@ help:
 	@echo "... unit_cognitive_immune_emotion_bridge"
 	@echo "... unit_cognitive_immune_exhaustion"
 	@echo "... unit_cognitive_immune_heal_bridge"
+	@echo "... unit_cognitive_immune_integrated_self_repair"
 	@echo "... unit_cognitive_immune_memory_integration"
 	@echo "... unit_cognitive_immune_memory_subsystem_integration"
 	@echo "... unit_cognitive_immune_mucosal"
@@ -32005,6 +32172,7 @@ help:
 	@echo "... unit_cognitive_immune_plasticity_full"
 	@echo "... unit_cognitive_immune_plasticity_modulation"
 	@echo "... unit_cognitive_immune_reasoning_bridge"
+	@echo "... unit_cognitive_immune_self_repair_bridge"
 	@echo "... unit_cognitive_immune_tolerance"
 	@echo "... unit_cognitive_immune_trained_immunity"
 	@echo "... unit_cognitive_immune_vaccine"

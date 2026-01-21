@@ -9,6 +9,9 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/error/nimcp_error_codes.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -62,6 +65,9 @@ struct code_immune_self_repair_bridge {
 
     /* Thread safety */
     nimcp_mutex_t* mutex;
+
+    /* Bio-async integration */
+    bio_module_context_t bio_ctx;
 
     /* State */
     bool initialized;
@@ -270,6 +276,20 @@ code_immune_self_repair_bridge_t* code_immune_self_repair_bridge_create(
         return NULL;
     }
 
+    /* Register with bio-router if enabled */
+    if (bridge->config.enable_bio_async) {
+        bio_module_info_t bio_info = {0};
+        bio_info.module_id = BIO_MODULE_CODE_IMMUNE_SELF_REPAIR;
+        bio_info.module_name = "code-immune-self-repair";
+        bio_info.user_data = bridge;
+
+        bridge->bio_ctx = bio_router_register_module(&bio_info);
+        if (!bridge->bio_ctx) {
+            /* Non-fatal - bio-async is optional */
+            /* Silent fail - no verbose logging option in this config */
+        }
+    }
+
     bridge->initialized = true;
     return bridge;
 }
@@ -287,6 +307,12 @@ void code_immune_self_repair_bridge_destroy(
 
     bridge->magic = 0;
     bridge->initialized = false;
+
+    /* Unregister from bio-router */
+    if (bridge->bio_ctx) {
+        bio_router_unregister_module(bridge->bio_ctx);
+        bridge->bio_ctx = NULL;
+    }
 
     if (bridge->tracking) {
         nimcp_free(bridge->tracking);
@@ -810,9 +836,45 @@ int code_immune_self_repair_broadcast_trigger(
         return -1;
     }
 
-    /* Bio-async broadcast implementation will be connected in Phase 5 */
-    (void)antigen_id;
-    (void)repair_id;
+    /* Skip if bio-async not enabled or not registered */
+    if (!bridge->bio_ctx) {
+        return 0;
+    }
+
+    /* Find tracking record for additional info */
+    const code_immune_repair_tracking_t* tracking = NULL;
+    nimcp_mutex_lock(bridge->mutex);
+    for (uint32_t i = 0; i < bridge->tracking_count; i++) {
+        if (bridge->tracking[i].repair_id == repair_id) {
+            tracking = &bridge->tracking[i];
+            break;
+        }
+    }
+    nimcp_mutex_unlock(bridge->mutex);
+
+    /* Build trigger message */
+    bio_msg_code_immune_repair_trigger_t msg = {0};
+    bio_msg_init_header(&msg.header,
+                        BIO_MSG_CODE_IMMUNE_REPAIR_TRIGGER,
+                        BIO_MODULE_CODE_IMMUNE_SELF_REPAIR,
+                        BIO_MODULE_ALL,
+                        sizeof(msg) - sizeof(bio_message_header_t));
+
+    msg.repair_id = repair_id;
+    msg.signal_type = 0;  /* Not tracked in current struct */
+    msg.severity = 0.0f;  /* Not tracked in current struct */
+    msg.confidence = 0.0f;  /* Not tracked in current struct */
+    msg.recurrence_count = 0;  /* Not tracked in current struct */
+    msg.met_threshold = true;  /* Always true if we got here */
+
+    (void)antigen_id;  /* Not currently used in message */
+    (void)tracking;  /* Fields not available in current struct */
+
+    /* Broadcast via bio-router */
+    nimcp_error_t err = bio_router_broadcast(bridge->bio_ctx, &msg, sizeof(msg));
+    if (err != NIMCP_SUCCESS) {
+        return -1;
+    }
 
     return 0;
 }
@@ -826,9 +888,42 @@ int code_immune_self_repair_broadcast_outcome(
         return -1;
     }
 
-    /* Bio-async broadcast implementation will be connected in Phase 5 */
-    (void)repair_id;
-    (void)success;
+    /* Skip if bio-async not enabled or not registered */
+    if (!bridge->bio_ctx) {
+        return 0;
+    }
+
+    /* Find tracking record for learning info */
+    const code_immune_repair_tracking_t* tracking = NULL;
+    nimcp_mutex_lock(bridge->mutex);
+    for (uint32_t i = 0; i < bridge->tracking_count; i++) {
+        if (bridge->tracking[i].repair_id == repair_id) {
+            tracking = &bridge->tracking[i];
+            break;
+        }
+    }
+    nimcp_mutex_unlock(bridge->mutex);
+
+    /* Build outcome message */
+    bio_msg_code_immune_repair_outcome_t msg = {0};
+    bio_msg_init_header(&msg.header,
+                        BIO_MSG_CODE_IMMUNE_REPAIR_OUTCOME,
+                        BIO_MODULE_CODE_IMMUNE_SELF_REPAIR,
+                        BIO_MODULE_ALL,
+                        sizeof(msg) - sizeof(bio_message_header_t));
+
+    msg.repair_id = repair_id;
+    msg.success = success;
+    msg.learning_applied = (tracking != NULL);  /* If tracked, learning was applied */
+    msg.new_confidence = 0.0f;  /* Confidence not tracked in current struct */
+
+    (void)tracking;  /* Used for learning_applied check above */
+
+    /* Broadcast via bio-router */
+    nimcp_error_t err = bio_router_broadcast(bridge->bio_ctx, &msg, sizeof(msg));
+    if (err != NIMCP_SUCCESS) {
+        return -1;
+    }
 
     return 0;
 }

@@ -9,6 +9,9 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/error/nimcp_error_codes.h"
+#include "async/nimcp_bio_router.h"
+#include "async/nimcp_bio_messages.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -67,6 +70,9 @@ struct health_self_repair_bridge {
 
     /* Thread safety */
     nimcp_mutex_t* mutex;
+
+    /* Bio-async integration */
+    bio_module_context_t bio_ctx;
 
     /* State */
     bool initialized;
@@ -373,6 +379,22 @@ health_self_repair_bridge_t* health_self_repair_bridge_create(
     bridge->window_start_ms = nimcp_time_get_ms();
     bridge->next_request_id = 1;
 
+    /* Register with bio-router if enabled */
+    if (bridge->config.enable_bio_async) {
+        bio_module_info_t bio_info = {0};
+        bio_info.module_id = BIO_MODULE_HEALTH_SELF_REPAIR_BRIDGE;
+        bio_info.module_name = "health-self-repair-bridge";
+        bio_info.user_data = bridge;
+
+        bridge->bio_ctx = bio_router_register_module(&bio_info);
+        if (!bridge->bio_ctx) {
+            /* Non-fatal - bio-async is optional */
+            if (bridge->config.verbose_logging) {
+                fprintf(stderr, "Bio-async router not available, skipping registration\n");
+            }
+        }
+    }
+
     bridge->initialized = true;
     return bridge;
 }
@@ -388,6 +410,12 @@ void health_self_repair_bridge_destroy(health_self_repair_bridge_t* bridge) {
 
     bridge->magic = 0;
     bridge->initialized = false;
+
+    /* Unregister from bio-router */
+    if (bridge->bio_ctx) {
+        bio_router_unregister_module(bridge->bio_ctx);
+        bridge->bio_ctx = NULL;
+    }
 
     /* Free aggregation batch diagnostics */
     if (bridge->aggregation_batch) {
@@ -1016,9 +1044,35 @@ int health_self_repair_bridge_broadcast_trigger(
         return -1;
     }
 
-    /* Bio-async broadcast implementation would go here */
-    /* For now, this is a placeholder that will be connected in Phase 5 */
-    (void)request_id;
+    /* Skip if bio-async not enabled or not registered */
+    if (!bridge->bio_ctx) {
+        return 0;
+    }
+
+    /* Build trigger message */
+    bio_msg_health_repair_trigger_t msg = {0};
+    bio_msg_init_header(&msg.header,
+                        BIO_MSG_HEALTH_SELF_REPAIR_TRIGGER,
+                        BIO_MODULE_HEALTH_SELF_REPAIR_BRIDGE,
+                        BIO_MODULE_ALL,
+                        sizeof(msg) - sizeof(bio_message_header_t));
+
+    msg.request_id = request_id;
+    msg.diagnostic_id = diagnostic->error_id;
+    msg.error_type = (uint32_t)diagnostic->error_type;
+    msg.severity = (uint32_t)diagnostic->severity;
+    msg.confidence = diagnostic->confidence;
+    msg.trigger_policy = (uint32_t)bridge->config.trigger_policy;
+    msg.aggregated = false;
+
+    /* Broadcast via bio-router */
+    nimcp_error_t err = bio_router_broadcast(bridge->bio_ctx, &msg, sizeof(msg));
+    if (err != NIMCP_SUCCESS) {
+        if (bridge->config.verbose_logging) {
+            fprintf(stderr, "Failed to broadcast repair trigger: %d\n", err);
+        }
+        return -1;
+    }
 
     return 0;
 }
@@ -1032,10 +1086,47 @@ int health_self_repair_bridge_broadcast_outcome(
         return -1;
     }
 
-    /* Bio-async broadcast implementation would go here */
-    /* For now, this is a placeholder that will be connected in Phase 5 */
-    (void)request_id;
-    (void)outcome;
+    /* Skip if bio-async not enabled or not registered */
+    if (!bridge->bio_ctx) {
+        return 0;
+    }
+
+    /* Find tracking record for duration */
+    const health_repair_tracking_t* tracking = NULL;
+    nimcp_mutex_lock(bridge->mutex);
+    for (uint32_t i = 0; i < bridge->tracking_count; i++) {
+        if (bridge->tracking[i].request_id == request_id) {
+            tracking = &bridge->tracking[i];
+            break;
+        }
+    }
+    nimcp_mutex_unlock(bridge->mutex);
+
+    /* Build outcome message */
+    bio_msg_health_repair_outcome_t msg = {0};
+    bio_msg_init_header(&msg.header,
+                        BIO_MSG_HEALTH_SELF_REPAIR_OUTCOME,
+                        BIO_MODULE_HEALTH_SELF_REPAIR_BRIDGE,
+                        BIO_MODULE_ALL,
+                        sizeof(msg) - sizeof(bio_message_header_t));
+
+    msg.request_id = request_id;
+    msg.outcome = (uint32_t)outcome;
+    msg.success = (outcome == HEALTH_REPAIR_OUTCOME_SUCCESS);
+    msg.duration_ms = tracking ? tracking->duration_ms : 0;
+
+    if (tracking && outcome == HEALTH_REPAIR_OUTCOME_FAILED) {
+        strncpy(msg.error_message, tracking->error_message, sizeof(msg.error_message) - 1);
+    }
+
+    /* Broadcast via bio-router */
+    nimcp_error_t err = bio_router_broadcast(bridge->bio_ctx, &msg, sizeof(msg));
+    if (err != NIMCP_SUCCESS) {
+        if (bridge->config.verbose_logging) {
+            fprintf(stderr, "Failed to broadcast repair outcome: %d\n", err);
+        }
+        return -1;
+    }
 
     return 0;
 }

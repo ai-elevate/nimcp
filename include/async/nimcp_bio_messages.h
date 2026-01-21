@@ -3796,6 +3796,86 @@ typedef struct {
 } bio_msg_imagination_collective_t;
 
 /*=============================================================================
+ * HEALTH SELF-REPAIR BRIDGE MESSAGES
+ *============================================================================*/
+
+/**
+ * @brief Health self-repair trigger message
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint64_t request_id;            /**< Unique repair request ID */
+    uint64_t diagnostic_id;         /**< Source diagnostic ID */
+    uint32_t error_type;            /**< Error type from diagnostic */
+    uint32_t severity;              /**< Diagnostic severity level */
+    float confidence;               /**< Repair confidence [0.0-1.0] */
+    uint32_t trigger_policy;        /**< Trigger policy that matched */
+    bool aggregated;                /**< Part of aggregated batch */
+} bio_msg_health_repair_trigger_t;
+
+/**
+ * @brief Health self-repair outcome message
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint64_t request_id;            /**< Repair request ID */
+    uint32_t outcome;               /**< Repair outcome (health_repair_outcome_t) */
+    uint64_t duration_ms;           /**< Repair duration */
+    bool success;                   /**< Quick success flag */
+    char error_message[128];        /**< Error message if failed */
+} bio_msg_health_repair_outcome_t;
+
+/**
+ * @brief Health self-repair statistics message
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint64_t repairs_triggered;     /**< Total repairs triggered */
+    uint64_t repairs_succeeded;     /**< Successful repairs */
+    uint64_t repairs_failed;        /**< Failed repairs */
+    uint64_t rate_limited_count;    /**< Rate-limited requests */
+    float success_rate;             /**< Overall success rate */
+    float avg_repair_time_ms;       /**< Average repair time */
+} bio_msg_health_repair_stats_t;
+
+/**
+ * @brief Code immune repair trigger message
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint64_t repair_id;             /**< Repair request ID */
+    uint32_t signal_type;           /**< Signal type (SIGSEGV, etc.) */
+    float severity;                 /**< Antigen severity [0.0-1.0] */
+    float confidence;               /**< Pattern confidence [0.0-1.0] */
+    uint32_t recurrence_count;      /**< Number of occurrences */
+    bool met_threshold;             /**< Met auto-repair threshold */
+} bio_msg_code_immune_repair_trigger_t;
+
+/**
+ * @brief Code immune repair outcome message
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint64_t repair_id;             /**< Repair request ID */
+    bool success;                   /**< Repair success */
+    bool learning_applied;          /**< B cell learning applied */
+    float new_confidence;           /**< Updated pattern confidence */
+} bio_msg_code_immune_repair_outcome_t;
+
+/**
+ * @brief Self-repair health failure notification
+ */
+typedef struct {
+    bio_message_header_t header;
+    uint64_t repair_id;             /**< Failed repair ID */
+    uint32_t failure_count;         /**< Consecutive failures */
+    uint32_t notification_type;     /**< Type of notification */
+    char component[64];             /**< Affected component */
+    char reason[128];               /**< Failure reason */
+    bool requires_intervention;     /**< Needs manual intervention */
+} bio_msg_repair_health_failure_t;
+
+/*=============================================================================
  * MESSAGE UTILITIES
  *============================================================================*/
 
