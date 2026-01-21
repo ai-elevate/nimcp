@@ -414,7 +414,7 @@ void astrocyte_propagate_calcium_wave(astrocyte_t* astro, astrocyte_network_t* n
 //=============================================================================
 
 nimcp_result_t astrocyte_add_synapse(astrocyte_t* astro, uint32_t synapse_id) {
-    if (!astro) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(astro, NIMCP_ERROR_NULL_POINTER, "astro is NULL");
 
     nimcp_spinlock_lock(&astro->lock);
 
@@ -454,7 +454,7 @@ nimcp_result_t astrocyte_add_synapse(astrocyte_t* astro, uint32_t synapse_id) {
 }
 
 nimcp_result_t astrocyte_remove_synapse(astrocyte_t* astro, uint32_t synapse_id) {
-    if (!astro) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(astro, NIMCP_ERROR_NULL_POINTER, "astro is NULL");
 
     nimcp_spinlock_lock(&astro->lock);
 
@@ -497,7 +497,7 @@ nimcp_result_t astrocyte_remove_synapse(astrocyte_t* astro, uint32_t synapse_id)
 
 nimcp_result_t astrocyte_couple(astrocyte_t* astro1, astrocyte_t* astro2,
                                  float coupling_strength) {
-    if (!astro1 || !astro2) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(astro1 && astro2, NIMCP_ERROR_NULL_POINTER, "astro1 or astro2 is NULL");
     if (astro1 == astro2) return NIMCP_ERROR_INVALID_PARAM;
 
     LOG_MODULE_DEBUG(ASTROCYTE_MODULE_NAME,
@@ -644,7 +644,7 @@ void astrocyte_network_destroy(astrocyte_network_t* network) {
 }
 
 nimcp_result_t astrocyte_network_add(astrocyte_network_t* network, astrocyte_t* astro) {
-    if (!network || !astro) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(network && astro, NIMCP_ERROR_NULL_POINTER, "network or astro is NULL");
 
     nimcp_mutex_lock(&network->lock);
 

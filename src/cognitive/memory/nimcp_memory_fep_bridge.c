@@ -16,7 +16,7 @@
 #define LOG_MODULE "memory_fep_bridge"
 
 int memory_fep_bridge_default_config(memory_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->wm_capacity_factor = 1.0f;
     config->consolidation_threshold = MEMORY_FEP_CONSOLIDATION_THRESHOLD;
     config->retrieval_precision_boost = 1.5f;
@@ -53,7 +53,7 @@ void memory_fep_bridge_destroy(memory_fep_bridge_t* bridge) {
 }
 
 int memory_fep_bridge_connect_fep(memory_fep_bridge_t* bridge, fep_system_t* fep) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -61,7 +61,7 @@ int memory_fep_bridge_connect_fep(memory_fep_bridge_t* bridge, fep_system_t* fep
 }
 
 int memory_fep_bridge_connect_memory(memory_fep_bridge_t* bridge, semantic_memory_system_t* memory) {
-    if (!bridge || !memory) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && memory, NIMCP_ERROR_NULL_POINTER, "bridge or memory is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->memory_system = memory;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -69,7 +69,7 @@ int memory_fep_bridge_connect_memory(memory_fep_bridge_t* bridge, semantic_memor
 }
 
 int memory_fep_bridge_disconnect(memory_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->memory_system = NULL;
@@ -78,7 +78,7 @@ int memory_fep_bridge_disconnect(memory_fep_bridge_t* bridge) {
 }
 
 int memory_fep_maintain_wm_beliefs(memory_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_wm_belief_buffer) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_effects.wm_capacity_remaining = (float)MEMORY_FEP_WM_CAPACITY - bridge->state.current_wm_load;
@@ -88,7 +88,7 @@ int memory_fep_maintain_wm_beliefs(memory_fep_bridge_t* bridge) {
 }
 
 int memory_fep_trigger_consolidation(memory_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_consolidation_replay) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     if (bridge->state.current_wm_load > bridge->config.consolidation_threshold) {
@@ -101,7 +101,7 @@ int memory_fep_trigger_consolidation(memory_fep_bridge_t* bridge) {
 }
 
 int memory_fep_boost_retrieval_precision(memory_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_retrieval_active_inference) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_effects.retrieval_precision = bridge->config.retrieval_precision_boost;
@@ -111,7 +111,7 @@ int memory_fep_boost_retrieval_precision(memory_fep_bridge_t* bridge) {
 }
 
 int memory_fep_apply_belief_priors(memory_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_belief_priors) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->memory_effects.belief_prior_bias = bridge->config.belief_prior_strength;
@@ -122,7 +122,7 @@ int memory_fep_apply_belief_priors(memory_fep_bridge_t* bridge) {
 }
 
 int memory_fep_apply_trace_persistence(memory_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_trace_persistence) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->memory_effects.trace_persistence_factor = bridge->config.memory_trace_persistence;
@@ -131,7 +131,7 @@ int memory_fep_apply_trace_persistence(memory_fep_bridge_t* bridge) {
 }
 
 int memory_fep_bridge_update(memory_fep_bridge_t* bridge, uint64_t delta_ms) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     memory_fep_maintain_wm_beliefs(bridge);
     memory_fep_trigger_consolidation(bridge);
     memory_fep_boost_retrieval_precision(bridge);
@@ -141,7 +141,7 @@ int memory_fep_bridge_update(memory_fep_bridge_t* bridge, uint64_t delta_ms) {
 }
 
 int memory_fep_bridge_get_state(const memory_fep_bridge_t* bridge, memory_fep_state_t* state) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -149,7 +149,7 @@ int memory_fep_bridge_get_state(const memory_fep_bridge_t* bridge, memory_fep_st
 }
 
 int memory_fep_bridge_get_stats(const memory_fep_bridge_t* bridge, memory_fep_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -157,7 +157,7 @@ int memory_fep_bridge_get_stats(const memory_fep_bridge_t* bridge, memory_fep_st
 }
 
 int memory_fep_bridge_connect_bio_async(memory_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_MEMORY_BRIDGE,

@@ -132,7 +132,7 @@ static int find_goal_by_id(const omni_wm_cognitive_bridge_t* bridge, uint32_t go
  * @brief Allocate prediction buffers
  */
 static nimcp_error_t allocate_prediction_buffers(omni_wm_cognitive_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Allocate state prediction buffer */
     bridge->state_prediction_buffer = nimcp_calloc(DEFAULT_STATE_BUFFER_SIZE, sizeof(float));
@@ -190,7 +190,7 @@ static void free_prediction_buffers(omni_wm_cognitive_bridge_t* bridge) {
  * @brief Allocate WM context cache
  */
 static nimcp_error_t allocate_wm_context_cache(omni_wm_cognitive_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     uint32_t dim = DEFAULT_STATE_BUFFER_SIZE;
     bridge->wm_context_cache = nimcp_calloc(dim, sizeof(float));
@@ -219,7 +219,7 @@ static void free_wm_context_cache(omni_wm_cognitive_bridge_t* bridge) {
  * @brief Update effects flowing from WM to cognitive systems
  */
 static nimcp_error_t update_wm_to_cognitive_effects(omni_wm_cognitive_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     omni_wm_to_cognitive_effects_t* effects = &bridge->wm_to_cognitive;
 
@@ -254,7 +254,7 @@ static nimcp_error_t update_wm_to_cognitive_effects(omni_wm_cognitive_bridge_t* 
  * @brief Update effects flowing from cognitive systems to WM
  */
 static nimcp_error_t update_cognitive_to_wm_effects(omni_wm_cognitive_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     cognitive_to_omni_wm_effects_t* effects = &bridge->cognitive_to_wm;
 
@@ -302,7 +302,7 @@ static nimcp_error_t update_cognitive_to_wm_effects(omni_wm_cognitive_bridge_t* 
  * @brief Process goal updates (progress, deadline checks)
  */
 static nimcp_error_t process_goal_updates(omni_wm_cognitive_bridge_t* bridge, float dt) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     uint64_t now = get_current_time_us();
 
@@ -354,7 +354,7 @@ static nimcp_error_t process_goal_updates(omni_wm_cognitive_bridge_t* bridge, fl
  * @brief Process attention focus decay
  */
 static nimcp_error_t process_attention_decay(omni_wm_cognitive_bridge_t* bridge, float dt) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->focus_active) return NIMCP_SUCCESS;
 
     /* Apply decay to focus strength */
@@ -375,7 +375,7 @@ static nimcp_error_t process_attention_decay(omni_wm_cognitive_bridge_t* bridge,
  * @brief Compute combined salience from components
  */
 static nimcp_error_t compute_combined_salience(omni_wm_cognitive_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     wm_cognitive_salience_t* sal = &bridge->current_salience;
 
@@ -413,7 +413,8 @@ static nimcp_error_t handle_state_prediction(const void* msg, size_t msg_size,
                                               nimcp_bio_promise_t promise, void* user_data) {
     (void)msg_size;
     (void)promise;
-    if (!msg || !user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(msg, NIMCP_ERROR_NULL_POINTER, "msg is NULL");
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_cognitive_bridge_t* bridge = (omni_wm_cognitive_bridge_t*)user_data;
 
@@ -429,7 +430,7 @@ static nimcp_error_t handle_goal_update(const void* msg, size_t msg_size,
     (void)msg;
     (void)msg_size;
     (void)promise;
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_cognitive_bridge_t* bridge = (omni_wm_cognitive_bridge_t*)user_data;
 
@@ -445,7 +446,7 @@ static nimcp_error_t handle_attention_focus(const void* msg, size_t msg_size,
     (void)msg;
     (void)msg_size;
     (void)promise;
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_cognitive_bridge_t* bridge = (omni_wm_cognitive_bridge_t*)user_data;
 
@@ -461,7 +462,7 @@ static nimcp_error_t handle_salience_update(const void* msg, size_t msg_size,
     (void)msg;
     (void)msg_size;
     (void)promise;
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     /* Salience updates processed in main update cycle */
     return NIMCP_SUCCESS;
@@ -472,7 +473,7 @@ static nimcp_error_t handle_wm_context(const void* msg, size_t msg_size,
     (void)msg;
     (void)msg_size;
     (void)promise;
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     /* WM context processed in main update cycle */
     return NIMCP_SUCCESS;
@@ -483,7 +484,7 @@ static nimcp_error_t handle_meta_lr_update(const void* msg, size_t msg_size,
     (void)msg;
     (void)msg_size;
     (void)promise;
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     /* Meta-learning updates processed in main update cycle */
     return NIMCP_SUCCESS;
@@ -636,7 +637,7 @@ void omni_wm_cognitive_bridge_destroy(omni_wm_cognitive_bridge_t* bridge) {
 }
 
 nimcp_error_t omni_wm_cognitive_bridge_reset(omni_wm_cognitive_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -691,8 +692,8 @@ nimcp_error_t omni_wm_cognitive_bridge_connect(
     salience_evaluator_t salience,
     meta_learner_t meta_learner) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!world_model) return NIMCP_ERROR_INVALID_PARAM; /* WM required */
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_INVALID_PARAM, "world_model is NULL (required)");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -720,7 +721,8 @@ nimcp_error_t omni_wm_cognitive_bridge_connect_world_model(
     omni_wm_cognitive_bridge_t* bridge,
     omni_world_model_t* world_model) {
 
-    if (!bridge || !world_model) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_NULL_POINTER, "world_model is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->world_model = world_model;
@@ -736,7 +738,8 @@ nimcp_error_t omni_wm_cognitive_bridge_connect_executive(
     omni_wm_cognitive_bridge_t* bridge,
     executive_controller_t* executive) {
 
-    if (!bridge || !executive) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(executive, NIMCP_ERROR_NULL_POINTER, "executive is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->executive = executive;
@@ -749,7 +752,8 @@ nimcp_error_t omni_wm_cognitive_bridge_connect_working_memory(
     omni_wm_cognitive_bridge_t* bridge,
     working_memory_t* working_memory) {
 
-    if (!bridge || !working_memory) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(working_memory, NIMCP_ERROR_NULL_POINTER, "working_memory is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->working_memory = working_memory;
@@ -762,7 +766,8 @@ nimcp_error_t omni_wm_cognitive_bridge_connect_salience(
     omni_wm_cognitive_bridge_t* bridge,
     salience_evaluator_t salience) {
 
-    if (!bridge || !salience) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(salience, NIMCP_ERROR_NULL_POINTER, "salience is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->salience = salience;
@@ -775,7 +780,8 @@ nimcp_error_t omni_wm_cognitive_bridge_connect_meta_learner(
     omni_wm_cognitive_bridge_t* bridge,
     meta_learner_t meta_learner) {
 
-    if (!bridge || !meta_learner) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(meta_learner, NIMCP_ERROR_NULL_POINTER, "meta_learner is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->meta_learner = meta_learner;
@@ -788,7 +794,8 @@ nimcp_error_t omni_wm_cognitive_bridge_connect_attention(
     omni_wm_cognitive_bridge_t* bridge,
     attention_system_t* attention) {
 
-    if (!bridge || !attention) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(attention, NIMCP_ERROR_NULL_POINTER, "attention is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention = attention;
@@ -810,7 +817,7 @@ nimcp_error_t omni_wm_cognitive_bridge_update(
     omni_wm_cognitive_bridge_t* bridge,
     float dt) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_modulation) return NIMCP_SUCCESS;
 
     uint64_t start_time = get_current_time_us();
@@ -878,9 +885,10 @@ nimcp_error_t omni_wm_cognitive_bridge_register_goal(
     const char* description,
     uint32_t* goal_id_out) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!target_state || state_dim == 0) return NIMCP_ERROR_INVALID_PARAM;
-    if (state_dim > 64) return NIMCP_ERROR_INVALID_PARAM; /* Max state dim in struct */
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(target_state, NIMCP_ERROR_INVALID_PARAM, "target_state is NULL");
+    NIMCP_CHECK_THROW(state_dim > 0, NIMCP_ERROR_INVALID_PARAM, "state_dim must be greater than 0");
+    NIMCP_CHECK_THROW(state_dim <= 64, NIMCP_ERROR_INVALID_PARAM, "state_dim exceeds max of 64");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -930,7 +938,7 @@ nimcp_error_t omni_wm_cognitive_bridge_update_goal_progress(
     uint32_t goal_id,
     float progress) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -952,7 +960,7 @@ nimcp_error_t omni_wm_cognitive_bridge_goal_achieved(
     omni_wm_cognitive_bridge_t* bridge,
     uint32_t goal_id) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -977,7 +985,7 @@ nimcp_error_t omni_wm_cognitive_bridge_goal_failed(
     omni_wm_cognitive_bridge_t* bridge,
     uint32_t goal_id) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1001,7 +1009,7 @@ nimcp_error_t omni_wm_cognitive_bridge_remove_goal(
     omni_wm_cognitive_bridge_t* bridge,
     uint32_t goal_id) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1027,10 +1035,10 @@ nimcp_error_t omni_wm_cognitive_bridge_set_intention(
     uint32_t goal_id,
     float confidence) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!action_sequence || action_dim == 0 || sequence_length == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(action_sequence, NIMCP_ERROR_INVALID_PARAM, "action_sequence is NULL");
+    NIMCP_CHECK_THROW(action_dim > 0, NIMCP_ERROR_INVALID_PARAM, "action_dim must be greater than 0");
+    NIMCP_CHECK_THROW(sequence_length > 0, NIMCP_ERROR_INVALID_PARAM, "sequence_length must be greater than 0");
     if (sequence_length > WM_COGNITIVE_MAX_ACTION_SEQUENCE) {
         sequence_length = WM_COGNITIVE_MAX_ACTION_SEQUENCE;
     }
@@ -1069,8 +1077,9 @@ nimcp_error_t omni_wm_cognitive_bridge_set_attention_focus(
     float strength,
     float bandwidth) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!focus_location || focus_dim == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(focus_location, NIMCP_ERROR_INVALID_PARAM, "focus_location is NULL");
+    NIMCP_CHECK_THROW(focus_dim > 0, NIMCP_ERROR_INVALID_PARAM, "focus_dim must be greater than 0");
     if (focus_dim > 64) focus_dim = 64; /* Max dim in struct */
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1103,7 +1112,7 @@ nimcp_error_t omni_wm_cognitive_bridge_attention_shift(
     uint32_t focus_dim,
     float new_strength) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1133,7 +1142,7 @@ nimcp_error_t omni_wm_cognitive_bridge_attention_shift(
 nimcp_error_t omni_wm_cognitive_bridge_clear_attention(
     omni_wm_cognitive_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1158,8 +1167,9 @@ nimcp_error_t omni_wm_cognitive_bridge_predict_state(
     float* predicted_state_out,
     float* confidence_out) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!predicted_state_out || state_dim == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(predicted_state_out, NIMCP_ERROR_INVALID_PARAM, "predicted_state_out is NULL");
+    NIMCP_CHECK_THROW(state_dim > 0, NIMCP_ERROR_INVALID_PARAM, "state_dim must be greater than 0");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1218,9 +1228,11 @@ nimcp_error_t omni_wm_cognitive_bridge_predict_action_consequences(
     float** consequences_out,
     float* values_out) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!actions || !consequences_out) return NIMCP_ERROR_NULL_POINTER;
-    if (state_dim == 0 || num_actions == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(actions, NIMCP_ERROR_NULL_POINTER, "actions is NULL");
+    NIMCP_CHECK_THROW(consequences_out, NIMCP_ERROR_NULL_POINTER, "consequences_out is NULL");
+    NIMCP_CHECK_THROW(state_dim > 0, NIMCP_ERROR_INVALID_PARAM, "state_dim must be greater than 0");
+    NIMCP_CHECK_THROW(num_actions > 0, NIMCP_ERROR_INVALID_PARAM, "num_actions must be greater than 0");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1285,9 +1297,11 @@ nimcp_error_t omni_wm_cognitive_bridge_evaluate_plan(
     float* expected_value_out,
     float* success_prob_out) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!initial_state || !action_sequence) return NIMCP_ERROR_INVALID_PARAM;
-    if (state_dim == 0 || sequence_length == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(initial_state, NIMCP_ERROR_INVALID_PARAM, "initial_state is NULL");
+    NIMCP_CHECK_THROW(action_sequence, NIMCP_ERROR_INVALID_PARAM, "action_sequence is NULL");
+    NIMCP_CHECK_THROW(state_dim > 0, NIMCP_ERROR_INVALID_PARAM, "state_dim must be greater than 0");
+    NIMCP_CHECK_THROW(sequence_length > 0, NIMCP_ERROR_INVALID_PARAM, "sequence_length must be greater than 0");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1379,7 +1393,7 @@ nimcp_error_t omni_wm_cognitive_bridge_update_salience(
     float surprise,
     float urgency) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1423,8 +1437,9 @@ nimcp_error_t omni_wm_cognitive_bridge_get_prediction_error_map(
     uint32_t map_dim,
     float* max_pe_out) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!pe_map_out || map_dim == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(pe_map_out, NIMCP_ERROR_INVALID_PARAM, "pe_map_out is NULL");
+    NIMCP_CHECK_THROW(map_dim > 0, NIMCP_ERROR_INVALID_PARAM, "map_dim must be greater than 0");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1468,7 +1483,7 @@ nimcp_error_t omni_wm_cognitive_bridge_get_prediction_error_map(
 nimcp_error_t omni_wm_cognitive_bridge_update_wm_context(
     omni_wm_cognitive_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1493,8 +1508,9 @@ nimcp_error_t omni_wm_cognitive_bridge_get_wm_context(
     uint32_t context_dim,
     float* utilization_out) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!context_out || context_dim == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(context_out, NIMCP_ERROR_INVALID_PARAM, "context_out is NULL");
+    NIMCP_CHECK_THROW(context_dim > 0, NIMCP_ERROR_INVALID_PARAM, "context_dim must be greater than 0");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1524,8 +1540,8 @@ nimcp_error_t omni_wm_cognitive_bridge_get_recommended_lr(
     const omni_wm_cognitive_bridge_t* bridge,
     float* recommended_lr_out) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!recommended_lr_out) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(recommended_lr_out, NIMCP_ERROR_INVALID_PARAM, "recommended_lr_out is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1541,7 +1557,7 @@ nimcp_error_t omni_wm_cognitive_bridge_trigger_adaptation(
     omni_wm_cognitive_bridge_t* bridge,
     float prediction_error) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1586,7 +1602,8 @@ nimcp_error_t omni_wm_cognitive_bridge_get_stats(
     const omni_wm_cognitive_bridge_t* bridge,
     omni_wm_cognitive_bridge_stats_t* stats) {
 
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -1598,7 +1615,7 @@ nimcp_error_t omni_wm_cognitive_bridge_get_stats(
 nimcp_error_t omni_wm_cognitive_bridge_reset_stats(
     omni_wm_cognitive_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(omni_wm_cognitive_bridge_stats_t));
@@ -1633,7 +1650,7 @@ uint32_t omni_wm_cognitive_bridge_get_num_goals(
 nimcp_error_t omni_wm_cognitive_bridge_connect_bio_async(
     omni_wm_cognitive_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_bio_async) return NIMCP_SUCCESS;
     if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS; /* Already connected */
 
@@ -1686,7 +1703,7 @@ nimcp_error_t omni_wm_cognitive_bridge_connect_bio_async(
 nimcp_error_t omni_wm_cognitive_bridge_disconnect_bio_async(
     omni_wm_cognitive_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     if (bridge->base.bio_ctx) {
@@ -1736,7 +1753,7 @@ const char* omni_wm_cognitive_msg_type_to_string(omni_wm_cognitive_msg_type_t ms
 nimcp_error_t omni_wm_cognitive_bridge_validate_config(
     const omni_wm_cognitive_bridge_config_t* config) {
 
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Validate sensitivity range */
     if (config->sensitivity < 0.5f || config->sensitivity > 2.0f) {

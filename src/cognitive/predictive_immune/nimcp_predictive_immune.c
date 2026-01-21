@@ -66,7 +66,7 @@ static float compute_cytokine_factor(const float* cytokine_levels, const predict
  * ============================================================================ */
 
 nimcp_result_t predictive_immune_default_config(predictive_immune_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Interoceptive prediction defaults */
     config->intero_mode = INTERO_PREDICT_INFLAMMATION;
@@ -210,7 +210,7 @@ void predictive_immune_destroy(predictive_immune_system_t* system) {
 }
 
 nimcp_result_t predictive_immune_start(predictive_immune_system_t* system) {
-    if (!system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
     if (system->running) return NIMCP_SUCCESS;
 
     system->running = true;
@@ -222,7 +222,7 @@ nimcp_result_t predictive_immune_start(predictive_immune_system_t* system) {
 }
 
 nimcp_result_t predictive_immune_stop(predictive_immune_system_t* system) {
-    if (!system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
     if (!system->running) return NIMCP_SUCCESS;
 
     system->running = false;
@@ -240,8 +240,8 @@ nimcp_result_t predictive_immune_update_interoception(
     predictive_immune_system_t* system,
     float dt)
 {
-    if (!system) return NIMCP_ERROR_NULL_POINTER;
-    if (!system->running) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
+    NIMCP_CHECK_THROW(system->running, NIMCP_ERROR_INVALID_STATE, "system is not running");
     if (system->config.intero_mode == INTERO_PREDICT_NONE) return NIMCP_SUCCESS;
 
     /* Update current immune state from immune system */
@@ -298,7 +298,7 @@ nimcp_result_t predictive_immune_get_interoceptive_state(
     predictive_immune_system_t* system,
     interoceptive_state_t* state)
 {
-    if (!system || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(system && state, NIMCP_ERROR_NULL_POINTER, "system or state is NULL");
 
     memcpy(state, &system->intero_state, sizeof(interoceptive_state_t));
 
@@ -309,7 +309,7 @@ nimcp_result_t predictive_immune_trigger_sickness_behavior(
     predictive_immune_system_t* system,
     float intero_error)
 {
-    if (!system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
 
     /* Reduce learning rate in predictive network based on error */
     /* This models behavioral conservation during sickness */
@@ -329,8 +329,8 @@ nimcp_result_t predictive_immune_apply_immune_modulation(
     predictive_immune_system_t* system,
     brain_region_t* region)
 {
-    if (!system) return NIMCP_ERROR_NULL_POINTER;
-    if (!system->running) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
+    NIMCP_CHECK_THROW(system->running, NIMCP_ERROR_INVALID_STATE, "system is not running");
 
     /* Find or create region precision state */
     uint32_t region_idx = system->num_regions;
@@ -368,7 +368,7 @@ nimcp_result_t predictive_immune_compute_cytokine_precision_effect(
     const float* cytokine_levels,
     float* precision_out)
 {
-    if (!system || !cytokine_levels || !precision_out) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(system && cytokine_levels && precision_out, NIMCP_ERROR_NULL_POINTER, "system, cytokine_levels, or precision_out is NULL");
 
     float factor = compute_cytokine_factor(cytokine_levels, &system->config);
     *precision_out = PREDICTIVE_IMMUNE_BASELINE_PRECISION * factor;
@@ -386,7 +386,7 @@ nimcp_result_t predictive_immune_get_precision_modulation(
     brain_region_t* region,
     immune_modulated_precision_t* precision_state)
 {
-    if (!system || !precision_state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(system && precision_state, NIMCP_ERROR_NULL_POINTER, "system or precision_state is NULL");
 
     /* Find region precision state */
     if (system->num_regions > 0) {
@@ -410,13 +410,13 @@ nimcp_result_t predictive_immune_monitor_prediction_errors(
     brain_region_t* region,
     float dt)
 {
-    if (!system || !region) return NIMCP_ERROR_NULL_POINTER;
-    if (!system->running) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(system && region, NIMCP_ERROR_NULL_POINTER, "system or region is NULL");
+    NIMCP_CHECK_THROW(system->running, NIMCP_ERROR_INVALID_STATE, "system is not running");
     if (system->config.error_response_mode == PRED_ERROR_RESPONSE_NONE) return NIMCP_SUCCESS;
 
     /* Get prediction error from region */
     brain_region_predictive_t* pred_ext = brain_region_get_predictive(region);
-    if (!pred_ext) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(pred_ext, NIMCP_ERROR_INVALID_STATE, "pred_ext is NULL");
 
     /* Compute mean error magnitude */
     float total_error = 0.0f;
@@ -440,7 +440,7 @@ nimcp_result_t predictive_immune_trigger_error_response(
     float error_magnitude,
     uint32_t* antigen_id)
 {
-    if (!system || !region || !antigen_id) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(system && region && antigen_id, NIMCP_ERROR_NULL_POINTER, "system, region, or antigen_id is NULL");
 
     /* Create epitope from error signature */
     uint8_t epitope[BRAIN_IMMUNE_EPITOPE_SIZE];
@@ -478,7 +478,7 @@ nimcp_result_t predictive_immune_get_error_trigger_state(
     brain_region_t* region,
     prediction_error_trigger_t* trigger_state)
 {
-    if (!system || !trigger_state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(system && trigger_state, NIMCP_ERROR_NULL_POINTER, "system or trigger_state is NULL");
 
     /* Return first trigger state as example */
     if (system->num_error_triggers > 0) {
@@ -500,8 +500,8 @@ nimcp_result_t predictive_immune_update(
     predictive_immune_system_t* system,
     float dt)
 {
-    if (!system) return NIMCP_ERROR_NULL_POINTER;
-    if (!system->running) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
+    NIMCP_CHECK_THROW(system->running, NIMCP_ERROR_INVALID_STATE, "system is not running");
 
     /* 1. Update interoceptive predictions */
     nimcp_result_t result = predictive_immune_update_interoception(system, dt);
@@ -521,7 +521,7 @@ nimcp_result_t predictive_immune_get_stats(
     predictive_immune_system_t* system,
     predictive_immune_stats_t* stats)
 {
-    if (!system || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(system && stats, NIMCP_ERROR_NULL_POINTER, "system or stats is NULL");
 
     memcpy(stats, &system->stats, sizeof(predictive_immune_stats_t));
 
@@ -535,7 +535,7 @@ nimcp_result_t predictive_immune_get_stats(
 }
 
 nimcp_result_t predictive_immune_reset(predictive_immune_system_t* system) {
-    if (!system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_POINTER, "system is NULL");
 
     /* Reset interoceptive state */
     memset(&system->intero_state, 0, sizeof(interoceptive_state_t));
@@ -568,7 +568,7 @@ nimcp_result_t predictive_immune_connect_region(
     predictive_immune_system_t* system,
     brain_region_t* region)
 {
-    if (!system || !region) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(system && region, NIMCP_ERROR_NULL_POINTER, "system or region is NULL");
 
     /* Expand capacity if needed */
     if (system->num_regions >= system->region_capacity) {
@@ -602,7 +602,7 @@ nimcp_result_t predictive_immune_disconnect_region(
     predictive_immune_system_t* system,
     brain_region_t* region)
 {
-    if (!system || !region) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(system && region, NIMCP_ERROR_NULL_POINTER, "system or region is NULL");
 
     /* Restore baseline precision to region */
     brain_region_predictive_t* pred_ext = brain_region_get_predictive(region);
@@ -628,12 +628,12 @@ nimcp_result_t predictive_immune_disconnect_region(
  * ============================================================================ */
 
 static nimcp_result_t update_interoceptive_state(predictive_immune_system_t* sys) {
-    if (!sys || !sys->immune_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(sys && sys->immune_system, NIMCP_ERROR_NULL_POINTER, "sys or immune_system is NULL");
 
     /* Get current immune statistics */
     brain_immune_stats_t immune_stats;
     int result = brain_immune_get_stats(sys->immune_system, &immune_stats);
-    if (result != 0) return NIMCP_ERROR_OPERATION_FAILED;
+    NIMCP_CHECK_THROW(result == 0, NIMCP_ERROR_OPERATION_FAILED, "operation failed");
 
     /* Map immune stats to interoceptive state */
     sys->intero_state.active_threats = immune_stats.inflammation_sites;
@@ -664,8 +664,8 @@ static nimcp_result_t compute_precision_modulation(
     predictive_immune_system_t* sys,
     uint32_t region_idx)
 {
-    if (!sys) return NIMCP_ERROR_NULL_POINTER;
-    if (region_idx >= sys->region_capacity) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(sys, NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+    NIMCP_CHECK_THROW(region_idx < sys->region_capacity, NIMCP_ERROR_INVALID_PARAM, "region_idx out of range");
 
     immune_modulated_precision_t* prec = &sys->region_precisions[region_idx];
 
@@ -711,8 +711,8 @@ static nimcp_result_t check_error_threshold(
     uint32_t region_idx,
     float error)
 {
-    if (!sys) return NIMCP_ERROR_NULL_POINTER;
-    if (region_idx >= sys->num_error_triggers) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(sys, NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+    NIMCP_CHECK_THROW(region_idx < sys->num_error_triggers, NIMCP_ERROR_INVALID_PARAM, "region_idx out of range");
 
     prediction_error_trigger_t* trigger = &sys->error_triggers[region_idx];
     trigger->current_error = error;

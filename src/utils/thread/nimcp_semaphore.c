@@ -326,9 +326,7 @@ nimcp_result_t nimcp_semaphore_init(nimcp_semaphore_t* sem, uint32_t initial_cou
 {
     // GUARD CLAUSE: Validate parameters
     // WHY: Prevent NULL dereference, catch programming errors early
-    if (!sem) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(sem, NIMCP_ERROR_INVALID_PARAM, "semaphore is NULL");
 
     // Initialize mutex (normal type)
     // WHY: Protect count and statistics from concurrent access
@@ -384,9 +382,7 @@ nimcp_result_t nimcp_semaphore_init(nimcp_semaphore_t* sem, uint32_t initial_cou
 nimcp_result_t nimcp_semaphore_destroy(nimcp_semaphore_t* sem)
 {
     // GUARD CLAUSE: Validate parameters
-    if (!sem) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(sem, NIMCP_ERROR_INVALID_PARAM, "semaphore is NULL");
 
     // Destroy condition variable
     // WHY: Free condvar resources first (no dependencies on mutex)
@@ -440,9 +436,7 @@ nimcp_result_t nimcp_semaphore_destroy(nimcp_semaphore_t* sem)
 nimcp_result_t nimcp_semaphore_wait(nimcp_semaphore_t* sem)
 {
     // GUARD CLAUSE: Validate parameters
-    if (!sem) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(sem, NIMCP_ERROR_INVALID_PARAM, "semaphore is NULL");
 
     // CRITICAL SECTION START: Lock mutex
     // WHY: Protect count and statistics from concurrent modification
@@ -521,9 +515,7 @@ nimcp_result_t nimcp_semaphore_wait(nimcp_semaphore_t* sem)
 nimcp_result_t nimcp_semaphore_trywait(nimcp_semaphore_t* sem)
 {
     // GUARD CLAUSE: Validate parameters
-    if (!sem) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(sem, NIMCP_ERROR_INVALID_PARAM, "semaphore is NULL");
 
     // CRITICAL SECTION START: Lock mutex
     nimcp_result_t result = nimcp_mutex_lock(&sem->mutex);
@@ -582,9 +574,7 @@ nimcp_result_t nimcp_semaphore_trywait(nimcp_semaphore_t* sem)
 nimcp_result_t nimcp_semaphore_timedwait(nimcp_semaphore_t* sem, uint32_t timeout_ms)
 {
     // GUARD CLAUSE: Validate parameters
-    if (!sem) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(sem, NIMCP_ERROR_INVALID_PARAM, "semaphore is NULL");
 
     // CRITICAL SECTION START: Lock mutex
     nimcp_result_t result = nimcp_mutex_lock(&sem->mutex);
@@ -675,9 +665,7 @@ nimcp_result_t nimcp_semaphore_timedwait(nimcp_semaphore_t* sem, uint32_t timeou
 nimcp_result_t nimcp_semaphore_post(nimcp_semaphore_t* sem)
 {
     // GUARD CLAUSE: Validate parameters
-    if (!sem) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(sem, NIMCP_ERROR_INVALID_PARAM, "semaphore is NULL");
 
     // CRITICAL SECTION START: Lock mutex
     nimcp_result_t result = nimcp_mutex_lock(&sem->mutex);

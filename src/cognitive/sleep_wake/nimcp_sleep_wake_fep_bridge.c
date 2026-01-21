@@ -31,7 +31,7 @@
  * HOW:  Set standard thresholds and enable all features
  */
 int sleep_wake_fep_bridge_default_config(sleep_wake_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* FEP → Sleep-Wake */
     config->fe_pressure_scaling = SLEEP_FEP_FE_PRESSURE_SCALING;
@@ -133,7 +133,7 @@ int sleep_wake_fep_bridge_connect_fep(
     sleep_wake_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -152,7 +152,7 @@ int sleep_wake_fep_bridge_connect_sleep_wake(
     sleep_wake_fep_bridge_t* bridge,
     sleep_system_t sleep
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->sleep_system = sleep;
@@ -168,7 +168,7 @@ int sleep_wake_fep_bridge_connect_sleep_wake(
  * HOW:  Clear system pointers with thread safety
  */
 int sleep_wake_fep_bridge_disconnect(sleep_wake_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -189,8 +189,8 @@ int sleep_wake_fep_bridge_disconnect(sleep_wake_fep_bridge_t* bridge) {
  * HOW:  Check both systems, apply modulations, update statistics
  */
 int sleep_wake_fep_bridge_update(sleep_wake_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->fep_system || !bridge->sleep_system) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->fep_system && bridge->sleep_system, NIMCP_ERROR_INVALID_STATE, "fep_system or sleep_system is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -264,7 +264,7 @@ int sleep_wake_fep_bridge_get_state(
     const sleep_wake_fep_bridge_t* bridge,
     sleep_wake_fep_state_t* state
 ) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -282,7 +282,7 @@ int sleep_wake_fep_bridge_get_stats(
     const sleep_wake_fep_bridge_t* bridge,
     sleep_wake_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -301,7 +301,7 @@ int sleep_wake_fep_bridge_get_stats(
  * HOW:  Register module with bio-async router
  */
 int sleep_wake_fep_bridge_connect_bio_async(sleep_wake_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -326,7 +326,7 @@ int sleep_wake_fep_bridge_connect_bio_async(sleep_wake_fep_bridge_t* bridge) {
  * HOW:  Unregister module, clear context
  */
 int sleep_wake_fep_bridge_disconnect_bio_async(sleep_wake_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

@@ -590,10 +590,8 @@ nimcp_error_t nimcp_promise_complete(nimcp_promise_t promise, const void* result
 
     // Bio-async backend: delegate to bio-promise
     if (promise->is_bio_mode) {
-        if (!promise->bio_promise) {
-            LOG_ERROR("Promise complete failed: NULL bio-promise");
-            return NIMCP_ERROR_INVALID_STATE;
-        }
+        NIMCP_CHECK_THROW(promise->bio_promise != NULL, NIMCP_ERROR_INVALID_STATE,
+                          "Promise complete failed: NULL bio-promise");
 
         nimcp_error_t err = nimcp_bio_promise_complete(promise->bio_promise, result);
         if (err == NIMCP_SUCCESS) {
@@ -607,10 +605,8 @@ nimcp_error_t nimcp_promise_complete(nimcp_promise_t promise, const void* result
 
     // Traditional mode: use shared state
     nimcp_future_shared_state_t* shared = promise->shared;
-    if (!shared || shared->magic != FUTURE_MAGIC) {
-        LOG_ERROR("Promise complete failed: invalid shared state");
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(shared && shared->magic == FUTURE_MAGIC, NIMCP_ERROR_INVALID_STATE,
+                      "Promise complete failed: invalid shared state");
 
     // Validate result parameter if result_size > 0
     NIMCP_CHECK_THROW(shared->result_size == 0 || result != NULL,
@@ -713,10 +709,8 @@ nimcp_error_t nimcp_promise_fail(nimcp_promise_t promise, nimcp_error_t error)
 
     // Bio-async backend: delegate to bio-promise
     if (promise->is_bio_mode) {
-        if (!promise->bio_promise) {
-            LOG_ERROR("Promise fail failed: NULL bio-promise");
-            return NIMCP_ERROR_INVALID_STATE;
-        }
+        NIMCP_CHECK_THROW(promise->bio_promise != NULL, NIMCP_ERROR_INVALID_STATE,
+                          "Promise fail failed: NULL bio-promise");
 
         nimcp_error_t err = nimcp_bio_promise_fail(promise->bio_promise, error);
         if (err == NIMCP_SUCCESS) {
@@ -727,10 +721,8 @@ nimcp_error_t nimcp_promise_fail(nimcp_promise_t promise, nimcp_error_t error)
 
     // Traditional mode: use shared state
     nimcp_future_shared_state_t* shared = promise->shared;
-    if (!shared || shared->magic != FUTURE_MAGIC) {
-        LOG_ERROR("Promise fail failed: invalid shared state");
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(shared && shared->magic == FUTURE_MAGIC, NIMCP_ERROR_INVALID_STATE,
+                      "Promise fail failed: invalid shared state");
 
     // Try to transition from PENDING to FAILED (CAS operation)
     uint32_t expected = NIMCP_FUTURE_PENDING;
@@ -1084,15 +1076,13 @@ nimcp_error_t nimcp_future_get(nimcp_future_t future, void* out_result)
     NIMCP_CHECK_THROW(out_result != NULL, NIMCP_ERROR_NULL_POINTER, "out_result is NULL");
 
     nimcp_future_shared_state_t* shared = future->shared;
-    if (!shared || shared->magic != FUTURE_MAGIC) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(shared && shared->magic == FUTURE_MAGIC, NIMCP_ERROR_INVALID_STATE,
+                      "nimcp_future_get_result: invalid shared state");
 
     // Check if completed
     uint32_t state = nimcp_atomic_load_u32(&shared->state, NIMCP_MEMORY_ORDER_ACQUIRE);
-    if (state != NIMCP_FUTURE_COMPLETED) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(state == NIMCP_FUTURE_COMPLETED, NIMCP_ERROR_INVALID_STATE,
+                      "nimcp_future_get_result: future not completed (state=%u)", state);
 
     // Copy result
     if (shared->result_size > 0 && shared->result) {
@@ -1255,9 +1245,8 @@ nimcp_error_t nimcp_future_then(nimcp_future_t future, nimcp_future_callback_t c
     NIMCP_CHECK_THROW(callback != NULL, NIMCP_ERROR_NULL_POINTER, "callback is NULL");
 
     nimcp_future_shared_state_t* shared = future->shared;
-    if (!shared || shared->magic != FUTURE_MAGIC) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(shared && shared->magic == FUTURE_MAGIC, NIMCP_ERROR_INVALID_STATE,
+                      "nimcp_future_then: invalid shared state");
 
     // Check if already completed (invoke immediately)
     uint32_t state = nimcp_atomic_load_u32(&shared->state, NIMCP_MEMORY_ORDER_ACQUIRE);
@@ -1323,9 +1312,8 @@ static nimcp_error_t future_then_with_destructor(
                        NIMCP_ERROR_NULL_POINTER, "future or callback is NULL/invalid");
 
     nimcp_future_shared_state_t* shared = future->shared;
-    if (!shared || shared->magic != FUTURE_MAGIC) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(shared && shared->magic == FUTURE_MAGIC, NIMCP_ERROR_INVALID_STATE,
+                      "nimcp_future_then_with_cleanup: invalid shared state");
 
     // Check if already completed (invoke immediately)
     uint32_t state = nimcp_atomic_load_u32(&shared->state, NIMCP_MEMORY_ORDER_ACQUIRE);
@@ -2001,14 +1989,13 @@ nimcp_error_t nimcp_future_init_bio(
  */
 nimcp_error_t nimcp_future_set_bio_backend(bool enable)
 {
-    if (!nimcp_atomic_load_bool(&g_future_initialized, NIMCP_MEMORY_ORDER_ACQUIRE)) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(nimcp_atomic_load_bool(&g_future_initialized, NIMCP_MEMORY_ORDER_ACQUIRE),
+                      NIMCP_ERROR_INVALID_STATE,
+                      "nimcp_future_set_bio_backend: future module not initialized");
 
-    if (enable && !nimcp_bio_async_is_initialized()) {
-        LOG_ERROR("Cannot enable bio-async backend: bio-async not initialized");
-        return NIMCP_BIO_ERROR_NOT_INITIALIZED;
-    }
+    NIMCP_CHECK_THROW(!enable || nimcp_bio_async_is_initialized(),
+                      NIMCP_BIO_ERROR_NOT_INITIALIZED,
+                      "nimcp_future_set_bio_backend: bio-async not initialized");
 
     g_bio_async_backend_enabled = enable;
     LOG_INFO("Bio-async backend %s", enable ? "enabled" : "disabled");

@@ -30,7 +30,7 @@ static int on_learning_complete(const cognitive_event_data_t* event, void* user_
  * ============================================================================ */
 
 int symbolic_logic_hub_bridge_default_config(symbolic_logic_hub_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Event subscriptions */
     config->subscribe_memory_access = true;
@@ -120,7 +120,7 @@ int symbolic_logic_hub_bridge_connect_hub(
     symbolic_logic_hub_bridge_t* bridge,
     cognitive_integration_hub_t hub)
 {
-    if (!bridge || !hub) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && hub, NIMCP_ERROR_NULL_POINTER, "bridge or hub is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -171,7 +171,7 @@ int symbolic_logic_hub_bridge_connect_logic(
     symbolic_logic_hub_bridge_t* bridge,
     symbolic_logic_t* logic)
 {
-    if (!bridge || !logic) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && logic, NIMCP_ERROR_NULL_POINTER, "bridge or logic is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->logic = logic;
@@ -182,7 +182,7 @@ int symbolic_logic_hub_bridge_connect_logic(
 }
 
 int symbolic_logic_hub_bridge_disconnect(symbolic_logic_hub_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -209,7 +209,7 @@ int symbolic_logic_hub_bridge_handle_event(
     symbolic_logic_hub_bridge_t* bridge,
     const cognitive_event_data_t* event)
 {
-    if (!bridge || !event) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && event, NIMCP_ERROR_NULL_POINTER, "bridge or event is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.events_received++;
@@ -226,7 +226,7 @@ int symbolic_logic_hub_bridge_publish_inference(
     const char* conclusion,
     float confidence)
 {
-    if (!bridge || !conclusion) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && conclusion, NIMCP_ERROR_NULL_POINTER, "bridge or conclusion is NULL");
     if (!bridge->hub || !bridge->config.publish_inference_results) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -261,7 +261,7 @@ int symbolic_logic_hub_bridge_publish_contradiction(
     const char* fact1,
     const char* fact2)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->hub || !bridge->config.publish_contradiction_found) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -299,7 +299,7 @@ int symbolic_logic_hub_bridge_handle_query(
     const void* query_data,
     void* result)
 {
-    if (!bridge || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && result, NIMCP_ERROR_NULL_POINTER, "bridge or result is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.queries_answered++;
@@ -336,7 +336,7 @@ int symbolic_logic_hub_bridge_update(
     symbolic_logic_hub_bridge_t* bridge,
     uint64_t delta_ms)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     (void)delta_ms;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -354,7 +354,7 @@ int symbolic_logic_hub_bridge_update(
 }
 
 int symbolic_logic_hub_bridge_force_update(symbolic_logic_hub_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     return symbolic_logic_hub_bridge_update(bridge, 0);
 }
 
@@ -366,7 +366,7 @@ int symbolic_logic_hub_bridge_get_state(
     const symbolic_logic_hub_bridge_t* bridge,
     symbolic_logic_hub_state_t* state)
 {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -379,7 +379,7 @@ int symbolic_logic_hub_bridge_get_stats(
     const symbolic_logic_hub_bridge_t* bridge,
     symbolic_logic_hub_stats_t* stats)
 {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -389,7 +389,7 @@ int symbolic_logic_hub_bridge_get_stats(
 }
 
 int symbolic_logic_hub_bridge_reset_stats(symbolic_logic_hub_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(symbolic_logic_hub_stats_t));
@@ -403,7 +403,7 @@ int symbolic_logic_hub_bridge_reset_stats(symbolic_logic_hub_bridge_t* bridge) {
  * ============================================================================ */
 
 int symbolic_logic_hub_bridge_connect_bio_async(symbolic_logic_hub_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {

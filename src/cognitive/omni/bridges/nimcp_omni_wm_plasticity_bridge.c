@@ -127,7 +127,7 @@ static float clamp_float(float value, float min_val, float max_val) {
  * @brief Allocate STDP event buffer
  */
 static nimcp_error_t allocate_stdp_event_buffer(omni_wm_plasticity_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     uint32_t capacity = bridge->config.stdp_event_batch_size;
     if (capacity == 0) capacity = DEFAULT_STDP_EVENT_CAPACITY;
@@ -157,7 +157,7 @@ static void free_stdp_event_buffer(omni_wm_plasticity_bridge_t* bridge) {
  * @brief Allocate spike sequence buffer
  */
 static nimcp_error_t allocate_spike_seq_buffer(omni_wm_plasticity_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     uint32_t capacity = DEFAULT_SPIKE_SEQ_CAPACITY;
 
@@ -192,7 +192,7 @@ static void free_spike_seq_buffer(omni_wm_plasticity_bridge_t* bridge) {
  * @brief Allocate encoder delta buffer
  */
 static nimcp_error_t allocate_encoder_deltas(omni_wm_plasticity_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     uint32_t dim = DEFAULT_ENCODER_DELTA_DIM;
 
@@ -221,7 +221,7 @@ static void free_encoder_deltas(omni_wm_plasticity_bridge_t* bridge) {
  * @brief Allocate SNN prediction buffer
  */
 static nimcp_error_t allocate_snn_prediction(omni_wm_plasticity_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     bridge->snn_prediction = nimcp_calloc(1, sizeof(wm_to_snn_prediction_t));
     if (!bridge->snn_prediction) return NIMCP_ERROR_NO_MEMORY;
@@ -262,7 +262,7 @@ static void free_snn_prediction(omni_wm_plasticity_bridge_t* bridge) {
  * @brief Update effects flowing from plasticity to WM
  */
 static nimcp_error_t update_plasticity_to_wm_effects(omni_wm_plasticity_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     plasticity_to_omni_wm_effects_t* effects = &bridge->plasticity_to_wm;
 
@@ -297,7 +297,7 @@ static nimcp_error_t update_plasticity_to_wm_effects(omni_wm_plasticity_bridge_t
  * @brief Update effects flowing from WM to plasticity
  */
 static nimcp_error_t update_wm_to_plasticity_effects(omni_wm_plasticity_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     omni_wm_to_plasticity_effects_t* effects = &bridge->wm_to_plasticity;
 
@@ -329,7 +329,7 @@ static nimcp_error_t update_wm_to_plasticity_effects(omni_wm_plasticity_bridge_t
  * HOW:  Linear mapping with clamping to safe ranges
  */
 static nimcp_error_t compute_stdp_modulation(omni_wm_plasticity_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     wm_to_plasticity_modulation_t* mod = &bridge->current_modulation;
 
@@ -392,7 +392,7 @@ static nimcp_error_t compute_stdp_modulation(omni_wm_plasticity_bridge_t* bridge
  * HOW:  Transform weight changes to encoder gradient, apply to RSSM
  */
 static nimcp_error_t process_stdp_events(omni_wm_plasticity_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->stdp_event_count == 0) return NIMCP_SUCCESS;
     if (!bridge->world_model) return NIMCP_SUCCESS; /* No WM to update */
 
@@ -451,7 +451,7 @@ static nimcp_error_t process_stdp_events(omni_wm_plasticity_bridge_t* bridge) {
  * HOW:  Extract temporal patterns, create (state, action) pairs
  */
 static nimcp_error_t process_spike_sequences(omni_wm_plasticity_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->spike_seq_count == 0) return NIMCP_SUCCESS;
     if (!bridge->world_model) return NIMCP_SUCCESS; /* No WM to train */
 
@@ -493,7 +493,7 @@ static nimcp_error_t process_spike_sequences(omni_wm_plasticity_bridge_t* bridge
  * HOW:  Query WM for predicted state, map to neural activations
  */
 static nimcp_error_t update_snn_prediction(omni_wm_plasticity_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_prediction_guidance) return NIMCP_SUCCESS;
     if (!bridge->world_model || !bridge->snn) return NIMCP_SUCCESS;
 
@@ -524,8 +524,9 @@ static nimcp_error_t handle_stdp_event(const void* msg, size_t msg_size,
                                         nimcp_bio_promise_t promise, void* user_data) {
     (void)promise;
 
-    if (!msg || !user_data) return NIMCP_ERROR_NULL_POINTER;
-    if (msg_size < sizeof(wm_stdp_event_t)) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(msg, NIMCP_ERROR_NULL_POINTER, "msg is NULL");
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
+    NIMCP_CHECK_THROW(msg_size >= sizeof(wm_stdp_event_t), NIMCP_ERROR_INVALID_PARAM, "msg_size too small for wm_stdp_event_t");
 
     omni_wm_plasticity_bridge_t* bridge = (omni_wm_plasticity_bridge_t*)user_data;
     const wm_stdp_event_t* event = (const wm_stdp_event_t*)msg;
@@ -540,8 +541,9 @@ static nimcp_error_t handle_spike_seq(const void* msg, size_t msg_size,
                                        nimcp_bio_promise_t promise, void* user_data) {
     (void)promise;
 
-    if (!msg || !user_data) return NIMCP_ERROR_NULL_POINTER;
-    if (msg_size < sizeof(wm_spike_sequence_t)) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(msg, NIMCP_ERROR_NULL_POINTER, "msg is NULL");
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
+    NIMCP_CHECK_THROW(msg_size >= sizeof(wm_spike_sequence_t), NIMCP_ERROR_INVALID_PARAM, "msg_size too small for wm_spike_sequence_t");
 
     omni_wm_plasticity_bridge_t* bridge = (omni_wm_plasticity_bridge_t*)user_data;
     const wm_spike_sequence_t* seq = (const wm_spike_sequence_t*)msg;
@@ -556,8 +558,9 @@ static nimcp_error_t handle_bcm_threshold(const void* msg, size_t msg_size,
                                            nimcp_bio_promise_t promise, void* user_data) {
     (void)promise;
 
-    if (!msg || !user_data) return NIMCP_ERROR_NULL_POINTER;
-    if (msg_size < sizeof(float)) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(msg, NIMCP_ERROR_NULL_POINTER, "msg is NULL");
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
+    NIMCP_CHECK_THROW(msg_size >= sizeof(float), NIMCP_ERROR_INVALID_PARAM, "msg_size too small for float");
 
     omni_wm_plasticity_bridge_t* bridge = (omni_wm_plasticity_bridge_t*)user_data;
     const float* threshold = (const float*)msg;
@@ -574,7 +577,7 @@ static nimcp_error_t handle_eligibility(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_plasticity_bridge_t* bridge = (omni_wm_plasticity_bridge_t*)user_data;
 
@@ -592,8 +595,9 @@ static nimcp_error_t handle_pe_feedback(const void* msg, size_t msg_size,
                                          nimcp_bio_promise_t promise, void* user_data) {
     (void)promise;
 
-    if (!msg || !user_data) return NIMCP_ERROR_NULL_POINTER;
-    if (msg_size < 4 * sizeof(float)) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(msg, NIMCP_ERROR_NULL_POINTER, "msg is NULL");
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
+    NIMCP_CHECK_THROW(msg_size >= 4 * sizeof(float), NIMCP_ERROR_INVALID_PARAM, "msg_size too small for PE feedback data");
 
     omni_wm_plasticity_bridge_t* bridge = (omni_wm_plasticity_bridge_t*)user_data;
     const float* pe_data = (const float*)msg;
@@ -609,8 +613,9 @@ static nimcp_error_t handle_stp_state(const void* msg, size_t msg_size,
                                        nimcp_bio_promise_t promise, void* user_data) {
     (void)promise;
 
-    if (!msg || !user_data) return NIMCP_ERROR_NULL_POINTER;
-    if (msg_size < 3 * sizeof(float)) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(msg, NIMCP_ERROR_NULL_POINTER, "msg is NULL");
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
+    NIMCP_CHECK_THROW(msg_size >= 3 * sizeof(float), NIMCP_ERROR_INVALID_PARAM, "msg_size too small for STP state data");
 
     omni_wm_plasticity_bridge_t* bridge = (omni_wm_plasticity_bridge_t*)user_data;
     const float* stp_data = (const float*)msg;
@@ -626,7 +631,7 @@ static nimcp_error_t handle_stp_state(const void* msg, size_t msg_size,
 nimcp_error_t omni_wm_plasticity_bridge_default_config(
     omni_wm_plasticity_bridge_config_t* config)
 {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(omni_wm_plasticity_bridge_config_t));
 
@@ -686,30 +691,25 @@ nimcp_error_t omni_wm_plasticity_bridge_default_config(
 nimcp_error_t omni_wm_plasticity_bridge_validate_config(
     const omni_wm_plasticity_bridge_config_t* config)
 {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Validate sensitivity range */
-    if (config->sensitivity < 0.5f || config->sensitivity > 2.0f) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config->sensitivity >= 0.5f && config->sensitivity <= 2.0f,
+                      NIMCP_ERROR_INVALID_PARAM, "sensitivity must be between 0.5 and 2.0");
 
     /* Validate learning rates */
-    if (config->encoder_learning_rate < 0.0f || config->encoder_learning_rate > 1.0f) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config->encoder_learning_rate >= 0.0f && config->encoder_learning_rate <= 1.0f,
+                      NIMCP_ERROR_INVALID_PARAM, "encoder_learning_rate must be between 0.0 and 1.0");
 
     /* Validate modulation ranges */
-    if (config->a_plus_modulation_range < 1.0f || config->a_plus_modulation_range > 3.0f) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-    if (config->a_minus_modulation_range < 1.0f || config->a_minus_modulation_range > 3.0f) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config->a_plus_modulation_range >= 1.0f && config->a_plus_modulation_range <= 3.0f,
+                      NIMCP_ERROR_INVALID_PARAM, "a_plus_modulation_range must be between 1.0 and 3.0");
+    NIMCP_CHECK_THROW(config->a_minus_modulation_range >= 1.0f && config->a_minus_modulation_range <= 3.0f,
+                      NIMCP_ERROR_INVALID_PARAM, "a_minus_modulation_range must be between 1.0 and 3.0");
 
     /* Validate PE thresholds */
-    if (config->pe_threshold_low >= config->pe_threshold_high) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config->pe_threshold_low < config->pe_threshold_high,
+                      NIMCP_ERROR_INVALID_PARAM, "pe_threshold_low must be less than pe_threshold_high");
 
     return NIMCP_SUCCESS;
 }
@@ -834,7 +834,7 @@ void omni_wm_plasticity_bridge_destroy(omni_wm_plasticity_bridge_t* bridge) {
 }
 
 nimcp_error_t omni_wm_plasticity_bridge_reset(omni_wm_plasticity_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -880,8 +880,8 @@ nimcp_error_t omni_wm_plasticity_bridge_connect(
     plasticity_coordinator_t* coordinator,
     neural_network_t snn)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!world_model) return NIMCP_ERROR_NULL_POINTER; /* WM is required */
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_NULL_POINTER, "world_model is NULL (required)");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -908,7 +908,8 @@ nimcp_error_t omni_wm_plasticity_bridge_connect_world_model(
     omni_wm_plasticity_bridge_t* bridge,
     omni_world_model_t* world_model)
 {
-    if (!bridge || !world_model) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_NULL_POINTER, "world_model is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->world_model = world_model;
@@ -922,7 +923,8 @@ nimcp_error_t omni_wm_plasticity_bridge_connect_stdp_bridge(
     omni_wm_plasticity_bridge_t* bridge,
     stdp_omni_bridge_t stdp_bridge)
 {
-    if (!bridge || !stdp_bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stdp_bridge, NIMCP_ERROR_NULL_POINTER, "stdp_bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->stdp_bridge = stdp_bridge;
@@ -935,7 +937,8 @@ nimcp_error_t omni_wm_plasticity_bridge_connect_coordinator(
     omni_wm_plasticity_bridge_t* bridge,
     plasticity_coordinator_t* coordinator)
 {
-    if (!bridge || !coordinator) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(coordinator, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->coordinator = coordinator;
@@ -948,7 +951,8 @@ nimcp_error_t omni_wm_plasticity_bridge_connect_snn(
     omni_wm_plasticity_bridge_t* bridge,
     neural_network_t snn)
 {
-    if (!bridge || !snn) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(snn, NIMCP_ERROR_NULL_POINTER, "snn is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     bridge->snn = snn;
@@ -970,8 +974,8 @@ nimcp_error_t omni_wm_plasticity_bridge_update(
     omni_wm_plasticity_bridge_t* bridge,
     float dt)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (dt <= 0.0f) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(dt > 0.0f, NIMCP_ERROR_INVALID_PARAM, "dt must be positive");
 
     uint64_t start_time = get_current_time_us();
 
@@ -1026,7 +1030,8 @@ nimcp_error_t omni_wm_plasticity_bridge_on_stdp_event(
     omni_wm_plasticity_bridge_t* bridge,
     const wm_stdp_event_t* event)
 {
-    if (!bridge || !event) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(event, NIMCP_ERROR_NULL_POINTER, "event is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -1050,7 +1055,7 @@ nimcp_error_t omni_wm_plasticity_bridge_on_stdp_event(
 nimcp_error_t omni_wm_plasticity_bridge_apply_stdp_to_rssm(
     omni_wm_plasticity_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     nimcp_error_t result = process_stdp_events(bridge);
@@ -1077,7 +1082,8 @@ nimcp_error_t omni_wm_plasticity_bridge_get_stdp_modulation(
     omni_wm_plasticity_bridge_t* bridge,
     wm_to_plasticity_modulation_t* out_modulation)
 {
-    if (!bridge || !out_modulation) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(out_modulation, NIMCP_ERROR_NULL_POINTER, "out_modulation is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     memcpy(out_modulation, &bridge->current_modulation, sizeof(wm_to_plasticity_modulation_t));
@@ -1094,7 +1100,7 @@ nimcp_error_t omni_wm_plasticity_bridge_set_prediction_error(
     float lateral_pe,
     float precision)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -1151,7 +1157,8 @@ nimcp_error_t omni_wm_plasticity_bridge_train_from_spikes(
     omni_wm_plasticity_bridge_t* bridge,
     const wm_spike_sequence_t* sequence)
 {
-    if (!bridge || !sequence) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(sequence, NIMCP_ERROR_NULL_POINTER, "sequence is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -1197,7 +1204,8 @@ nimcp_error_t omni_wm_plasticity_bridge_predict_snn_activity(
     uint32_t horizon_ms,
     wm_to_snn_prediction_t* out_prediction)
 {
-    if (!bridge || !out_prediction) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(out_prediction, NIMCP_ERROR_NULL_POINTER, "out_prediction is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -1227,7 +1235,7 @@ nimcp_error_t omni_wm_plasticity_bridge_on_bcm_threshold_shift(
     omni_wm_plasticity_bridge_t* bridge,
     float new_threshold)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -1256,7 +1264,8 @@ nimcp_error_t omni_wm_plasticity_bridge_apply_eligibility(
     uint32_t trace_count,
     float reward_signal)
 {
-    if (!bridge || !eligibility_traces) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(eligibility_traces, NIMCP_ERROR_NULL_POINTER, "eligibility_traces is NULL");
     if (trace_count == 0) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->mutex);
@@ -1313,7 +1322,7 @@ nimcp_error_t omni_wm_plasticity_bridge_update_stp_state(
     float depression,
     float utilization)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -1351,7 +1360,8 @@ nimcp_error_t omni_wm_plasticity_bridge_get_plasticity_state(
     omni_wm_plasticity_bridge_t* bridge,
     plasticity_to_wm_state_t* out_state)
 {
-    if (!bridge || !out_state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(out_state, NIMCP_ERROR_NULL_POINTER, "out_state is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -1394,7 +1404,8 @@ nimcp_error_t omni_wm_plasticity_bridge_get_stats(
     const omni_wm_plasticity_bridge_t* bridge,
     omni_wm_plasticity_bridge_stats_t* stats)
 {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     /* Note: Const cast needed for mutex lock. In production, use read-write lock. */
     nimcp_mutex_lock(((omni_wm_plasticity_bridge_t*)bridge)->mutex);
@@ -1405,7 +1416,7 @@ nimcp_error_t omni_wm_plasticity_bridge_get_stats(
 }
 
 nimcp_error_t omni_wm_plasticity_bridge_reset_stats(omni_wm_plasticity_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
     memset(&bridge->stats, 0, sizeof(omni_wm_plasticity_bridge_stats_t));
@@ -1421,7 +1432,7 @@ nimcp_error_t omni_wm_plasticity_bridge_reset_stats(omni_wm_plasticity_bridge_t*
 nimcp_error_t omni_wm_plasticity_bridge_connect_bio_async(
     omni_wm_plasticity_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -1456,7 +1467,7 @@ nimcp_error_t omni_wm_plasticity_bridge_connect_bio_async(
 nimcp_error_t omni_wm_plasticity_bridge_disconnect_bio_async(
     omni_wm_plasticity_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 

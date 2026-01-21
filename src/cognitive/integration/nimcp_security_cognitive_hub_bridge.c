@@ -241,7 +241,7 @@ static int security_query_handler(
 
 int security_cognitive_default_config(security_cognitive_config_t* config)
 {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(*config));
 
@@ -319,7 +319,7 @@ void security_cognitive_bridge_destroy(security_cognitive_bridge_t bridge)
 
 int security_cognitive_bridge_reset(security_cognitive_bridge_t bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -343,7 +343,7 @@ int security_cognitive_connect_security(
     security_orchestrator_t orchestrator
 )
 {
-    if (!bridge || !orchestrator) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && orchestrator, NIMCP_ERROR_NULL_POINTER, "bridge or orchestrator is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -398,7 +398,7 @@ int security_cognitive_connect_cognitive(
     cognitive_integration_hub_t cognitive_hub
 )
 {
-    if (!bridge || !cognitive_hub) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && cognitive_hub, NIMCP_ERROR_NULL_POINTER, "bridge or cognitive_hub is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -453,7 +453,7 @@ int security_cognitive_connect_cognitive(
 
 int security_cognitive_disconnect_security(security_cognitive_bridge_t bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -480,7 +480,7 @@ int security_cognitive_disconnect_security(security_cognitive_bridge_t bridge)
 
 int security_cognitive_disconnect_cognitive(security_cognitive_bridge_t bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -521,7 +521,7 @@ int security_cognitive_translate_security_event(
     const security_event_data_t* security_event
 )
 {
-    if (!bridge || !security_event) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && security_event, NIMCP_ERROR_NULL_POINTER, "bridge or security_event is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -620,7 +620,7 @@ int security_cognitive_translate_cognitive_event(
     const char* description
 )
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -683,7 +683,7 @@ int security_cognitive_coordinate_lockdown(
     const char* reason
 )
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -716,7 +716,7 @@ int security_cognitive_coordinate_lockdown(
 
 int security_cognitive_release_lockdown(security_cognitive_bridge_t bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -748,7 +748,7 @@ int security_cognitive_protect_memory(
     float threat_level
 )
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -783,7 +783,7 @@ int security_cognitive_shift_attention(
     cognitive_category_t target_category
 )
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -824,7 +824,7 @@ int security_cognitive_query_cognitive(
     void* result_out
 )
 {
-    if (!bridge || !result_out) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && result_out, NIMCP_ERROR_NULL_POINTER, "bridge or result_out is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -864,7 +864,7 @@ int security_cognitive_get_security_assessment(
     security_threat_assessment_t* assessment_out
 )
 {
-    if (!bridge || !assessment_out) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && assessment_out, NIMCP_ERROR_NULL_POINTER, "bridge or assessment_out is NULL");
 
     BRIDGE_LOCK(bridge);
 
@@ -884,7 +884,7 @@ int security_cognitive_get_state(
     security_cognitive_state_t* state_out
 )
 {
-    if (!bridge || !state_out) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state_out, NIMCP_ERROR_NULL_POINTER, "bridge or state_out is NULL");
 
     BRIDGE_LOCK(bridge);
     *state_out = bridge->state;
@@ -898,7 +898,7 @@ int security_cognitive_get_stats(
     security_cognitive_stats_t* stats_out
 )
 {
-    if (!bridge || !stats_out) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats_out, NIMCP_ERROR_NULL_POINTER, "bridge or stats_out is NULL");
 
     BRIDGE_LOCK(bridge);
     memcpy(stats_out, &bridge->stats, sizeof(*stats_out));
@@ -910,7 +910,7 @@ int security_cognitive_get_stats(
 
 int security_cognitive_reset_stats(security_cognitive_bridge_t bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     BRIDGE_LOCK(bridge);
     memset(&bridge->stats, 0, sizeof(bridge->stats));

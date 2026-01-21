@@ -17,7 +17,7 @@
 #define LOG_MODULE_KNOWLEDGE_FEP "[KNOWLEDGE_FEP]"
 
 int knowledge_fep_bridge_default_config(knowledge_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->knowledge_update_threshold = KNOWLEDGE_FEP_UPDATE_THRESHOLD;
     config->semantic_prior_weight = KNOWLEDGE_FEP_SEMANTIC_PRIOR_WEIGHT;
     config->enable_knowledge_updates = true;
@@ -49,7 +49,7 @@ void knowledge_fep_bridge_destroy(knowledge_fep_bridge_t* bridge) {
 }
 
 int knowledge_fep_bridge_connect_fep(knowledge_fep_bridge_t* bridge, fep_system_t* fep) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -57,7 +57,7 @@ int knowledge_fep_bridge_connect_fep(knowledge_fep_bridge_t* bridge, fep_system_
 }
 
 int knowledge_fep_bridge_connect_knowledge(knowledge_fep_bridge_t* bridge, knowledge_system_t knowledge) {
-    if (!bridge || !knowledge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && knowledge, NIMCP_ERROR_NULL_POINTER, "bridge or knowledge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->knowledge_system = knowledge;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -65,7 +65,7 @@ int knowledge_fep_bridge_connect_knowledge(knowledge_fep_bridge_t* bridge, knowl
 }
 
 int knowledge_fep_update_knowledge(knowledge_fep_bridge_t* bridge, float prediction_error) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_knowledge_updates) return NIMCP_SUCCESS;
     nimcp_mutex_lock(bridge->base.mutex);
     if (fabsf(prediction_error) > bridge->config.knowledge_update_threshold) {
@@ -79,7 +79,7 @@ int knowledge_fep_update_knowledge(knowledge_fep_bridge_t* bridge, float predict
 }
 
 int knowledge_fep_apply_semantic_priors(knowledge_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     /* Apply knowledge as semantic priors to FEP */
     bridge->state.current_semantic_prior = bridge->config.semantic_prior_weight;
@@ -88,7 +88,7 @@ int knowledge_fep_apply_semantic_priors(knowledge_fep_bridge_t* bridge) {
 }
 
 int knowledge_fep_bridge_update(knowledge_fep_bridge_t* bridge, uint64_t delta_ms) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->effects.knowledge_confidence = 1.0f - (bridge->effects.semantic_pe / 10.0f);
     if (bridge->effects.knowledge_confidence < 0.0f) bridge->effects.knowledge_confidence = 0.0f;
@@ -97,7 +97,7 @@ int knowledge_fep_bridge_update(knowledge_fep_bridge_t* bridge, uint64_t delta_m
 }
 
 int knowledge_fep_bridge_get_state(const knowledge_fep_bridge_t* bridge, knowledge_fep_state_t* state) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -105,7 +105,7 @@ int knowledge_fep_bridge_get_state(const knowledge_fep_bridge_t* bridge, knowled
 }
 
 int knowledge_fep_bridge_get_stats(const knowledge_fep_bridge_t* bridge, knowledge_fep_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -113,7 +113,7 @@ int knowledge_fep_bridge_get_stats(const knowledge_fep_bridge_t* bridge, knowled
 }
 
 int knowledge_fep_bridge_connect_bio_async(knowledge_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_KNOWLEDGE_BRIDGE,

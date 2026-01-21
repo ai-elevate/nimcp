@@ -210,10 +210,12 @@ static void init_router_mutex_once(void) {
  * HOW:  Allocate ring buffer, initialize mutex and condvars
  */
 static nimcp_error_t bio_msg_queue_init(bio_msg_queue_t* queue, uint32_t capacity) {
-    if (!queue || capacity == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(queue && capacity > 0, NIMCP_ERROR_INVALID_PARAM,
+                      "bio_msg_queue_init: queue is NULL or capacity is 0");
 
     queue->entries = nimcp_calloc(capacity, sizeof(bio_msg_queue_entry_t));
-    if (!queue->entries) return NIMCP_ERROR_NO_MEMORY;
+    NIMCP_CHECK_THROW(queue->entries != NULL, NIMCP_ERROR_NO_MEMORY,
+                      "bio_msg_queue_init: failed to allocate queue entries");
 
     queue->capacity = capacity;
     queue->read_idx = 0;
@@ -260,7 +262,8 @@ static nimcp_error_t bio_msg_queue_init(bio_msg_queue_t* queue, uint32_t capacit
  *     are visible to any thread that later acquires the mutex
  */
 static nimcp_error_t bio_msg_queue_grow(bio_msg_queue_t* queue) {
-    if (!queue || !queue->entries) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(queue && queue->entries, NIMCP_ERROR_NULL_POINTER,
+                      "bio_msg_queue_grow: queue or entries is NULL");
 
     // DEBUG: Verify mutex is held by attempting trylock (should fail if held)
     // This assertion helps catch incorrect usage during development
@@ -369,7 +372,8 @@ static nimcp_error_t bio_msg_queue_enqueue(bio_msg_queue_t* queue,
                                             size_t msg_size,
                                             nimcp_bio_promise_t response_promise,
                                             uint32_t timeout_ms) {
-    if (!queue || !msg || msg_size == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(queue && msg && msg_size > 0, NIMCP_ERROR_INVALID_PARAM,
+                      "bio_msg_queue_enqueue: invalid queue, msg, or msg_size");
 
     // DEADLOCK FIX: Early check for shutdown before acquiring any locks
     if (g_router && g_router->shutdown_requested) {
@@ -458,7 +462,8 @@ static nimcp_error_t bio_msg_queue_dequeue(bio_msg_queue_t* queue,
                                             size_t* out_size,
                                             nimcp_bio_promise_t* out_promise,
                                             uint32_t timeout_ms) {
-    if (!queue || !out_msg || !out_size) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(queue && out_msg && out_size, NIMCP_ERROR_INVALID_PARAM,
+                      "bio_msg_queue_dequeue: invalid queue or output params");
 
     // DEADLOCK FIX: Early check for shutdown before acquiring any locks
     if (g_router && g_router->shutdown_requested) {
@@ -776,7 +781,8 @@ bool bio_router_is_initialized(void) {
 }
 
 nimcp_error_t bio_router_get_stats(bio_router_stats_t* stats) {
-    if (!g_router || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(g_router && stats, NIMCP_ERROR_NULL_POINTER,
+                      "bio_router_get_stats: router or stats is NULL");
 
     nimcp_platform_mutex_lock(&g_router->stats_mutex);
     *stats = g_router->stats;
@@ -976,10 +982,14 @@ void bio_router_unregister_module(bio_module_context_t ctx) {
 nimcp_error_t bio_router_register_handler(bio_module_context_t ctx,
                                            bio_message_type_t msg_type,
                                            bio_message_handler_t handler) {
-    if (!ctx || ctx->magic != BIO_MODULE_MAGIC || !handler) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx && ctx->magic == BIO_MODULE_MAGIC && handler,
+                      NIMCP_ERROR_INVALID_PARAM,
+                      "bio_router_register_handler: invalid context or handler");
 
     bio_module_entry_t* entry = ctx->entry;
-    if (!entry || entry->magic != BIO_MODULE_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(entry && entry->magic == BIO_MODULE_MAGIC,
+                      NIMCP_ERROR_INVALID_STATE,
+                      "bio_router_register_handler: invalid module entry");
 
     nimcp_platform_mutex_lock(&entry->handler_mutex);
 
@@ -1028,10 +1038,14 @@ nimcp_error_t bio_router_register_handler(bio_module_context_t ctx,
 nimcp_error_t bio_router_register_category_handler(bio_module_context_t ctx,
                                                      uint32_t category_base,
                                                      bio_message_handler_t handler) {
-    if (!ctx || ctx->magic != BIO_MODULE_MAGIC || !handler) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx && ctx->magic == BIO_MODULE_MAGIC && handler,
+                      NIMCP_ERROR_INVALID_PARAM,
+                      "bio_router_register_category_handler: invalid context or handler");
 
     bio_module_entry_t* entry = ctx->entry;
-    if (!entry || entry->magic != BIO_MODULE_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(entry && entry->magic == BIO_MODULE_MAGIC,
+                      NIMCP_ERROR_INVALID_STATE,
+                      "bio_router_register_category_handler: invalid module entry");
 
     nimcp_platform_mutex_lock(&entry->handler_mutex);
 
@@ -1077,10 +1091,14 @@ nimcp_error_t bio_router_register_category_handler(bio_module_context_t ctx,
 
 nimcp_error_t bio_router_unregister_handler(bio_module_context_t ctx,
                                              bio_message_type_t msg_type) {
-    if (!ctx || ctx->magic != BIO_MODULE_MAGIC) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx && ctx->magic == BIO_MODULE_MAGIC,
+                      NIMCP_ERROR_INVALID_PARAM,
+                      "bio_router_unregister_handler: invalid context");
 
     bio_module_entry_t* entry = ctx->entry;
-    if (!entry || entry->magic != BIO_MODULE_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(entry && entry->magic == BIO_MODULE_MAGIC,
+                      NIMCP_ERROR_INVALID_STATE,
+                      "bio_router_unregister_handler: invalid module entry");
 
     nimcp_platform_mutex_lock(&entry->handler_mutex);
 
@@ -1113,10 +1131,14 @@ nimcp_error_t bio_router_unregister_handler(bio_module_context_t ctx,
 }
 
 nimcp_error_t bio_router_clear_handlers(bio_module_context_t ctx) {
-    if (!ctx || ctx->magic != BIO_MODULE_MAGIC) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx && ctx->magic == BIO_MODULE_MAGIC,
+                      NIMCP_ERROR_INVALID_PARAM,
+                      "bio_router_clear_handlers: invalid context");
 
     bio_module_entry_t* entry = ctx->entry;
-    if (!entry || entry->magic != BIO_MODULE_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(entry && entry->magic == BIO_MODULE_MAGIC,
+                      NIMCP_ERROR_INVALID_STATE,
+                      "bio_router_clear_handlers: invalid module entry");
 
     nimcp_platform_mutex_lock(&entry->handler_mutex);
 
@@ -1154,9 +1176,9 @@ nimcp_error_t bio_router_send(bio_module_context_t ctx,
                                const void* msg,
                                size_t msg_size,
                                uint32_t timeout_ms) {
-    if (!g_router || !ctx || ctx->magic != BIO_MODULE_MAGIC || !msg || msg_size == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(g_router && ctx && ctx->magic == BIO_MODULE_MAGIC && msg && msg_size > 0,
+                      NIMCP_ERROR_INVALID_PARAM,
+                      "bio_router_send: invalid router, context, or message");
 
     const bio_message_header_t* header = (const bio_message_header_t*)msg;
     uint32_t target_id = header->target_module;
@@ -1321,9 +1343,9 @@ static nimcp_error_t bio_router_send_with_promise(bio_module_context_t ctx,
                                                    size_t msg_size,
                                                    nimcp_bio_promise_t response_promise,
                                                    uint32_t timeout_ms) {
-    if (!g_router || !ctx || ctx->magic != BIO_MODULE_MAGIC || !msg || msg_size == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(g_router && ctx && ctx->magic == BIO_MODULE_MAGIC && msg && msg_size > 0,
+                      NIMCP_ERROR_INVALID_PARAM,
+                      "bio_router_send_with_promise: invalid router, context, or message");
 
     const bio_message_header_t* header = (const bio_message_header_t*)msg;
     uint32_t target_id = header->target_module;
@@ -1421,10 +1443,12 @@ nimcp_error_t bio_router_request(bio_module_context_t ctx,
                                   void* response,
                                   size_t response_size,
                                   uint32_t timeout_ms) {
-    if (!ctx || !request || !response) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx && request && response, NIMCP_ERROR_INVALID_PARAM,
+                      "bio_router_request: invalid context, request, or response buffer");
 
     bio_module_entry_t* entry = ctx->entry;
-    if (!entry || entry->magic != BIO_MODULE_MAGIC) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(entry && entry->magic == BIO_MODULE_MAGIC, NIMCP_ERROR_INVALID_STATE,
+                      "bio_router_request: invalid module entry");
 
     // Create a promise for the response
     nimcp_bio_promise_t promise = nimcp_bio_promise_create(BIO_CHANNEL_DOPAMINE, response_size);
@@ -1476,7 +1500,8 @@ nimcp_error_t bio_router_request(bio_module_context_t ctx,
 nimcp_error_t bio_router_broadcast(bio_module_context_t ctx,
                                     const void* msg,
                                     size_t msg_size) {
-    if (!ctx || !msg || msg_size == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx && msg && msg_size > 0, NIMCP_ERROR_INVALID_PARAM,
+                      "bio_router_broadcast: invalid context or message");
 
     // Create a copy with target set to 0 (broadcast)
     bio_message_header_t* header = (bio_message_header_t*)msg;
@@ -1650,7 +1675,8 @@ nimcp_error_t bio_router_observe_signal(bio_module_context_t ctx,
                                          float initial_prediction,
                                          float precision,
                                          bio_prediction_observer_t callback) {
-    if (!ctx || !signal_name || !callback) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx && signal_name && callback, NIMCP_ERROR_INVALID_PARAM,
+                      "bio_router_observe_signal: invalid context, signal_name, or callback");
 
     // Initialize mutex on first use (thread-safe via pthread_once)
     nimcp_platform_once(&g_signal_mutex_once, init_signal_mutex_once);
@@ -1686,7 +1712,8 @@ nimcp_error_t bio_router_observe_signal(bio_module_context_t ctx,
 nimcp_error_t bio_router_publish_signal(bio_module_context_t ctx,
                                          const char* signal_name,
                                          float value) {
-    if (!ctx || !signal_name) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx && signal_name, NIMCP_ERROR_INVALID_PARAM,
+                      "bio_router_publish_signal: invalid context or signal_name");
 
     // Initialize mutex on first use (thread-safe via pthread_once)
     nimcp_platform_once(&g_signal_mutex_once, init_signal_mutex_once);
@@ -1916,7 +1943,8 @@ nimcp_glial_wave_t bio_router_initiate_wave(bio_module_context_t ctx,
 nimcp_error_t bio_router_on_wave_arrival(bio_module_context_t ctx,
                                           nimcp_wave_callback_t callback,
                                           void* user_data) {
-    if (!ctx || !callback) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx && callback, NIMCP_ERROR_INVALID_PARAM,
+                      "bio_router_on_wave_arrival: invalid context or callback");
 
     // Initialize mutex on first use (thread-safe via pthread_once)
     nimcp_platform_once(&g_wave_mutex_once, init_wave_mutex_once);
@@ -2209,17 +2237,11 @@ static nimcp_error_t bio_immune_message_handler(
  * @return NIMCP_SUCCESS or error
  */
 nimcp_error_t bio_async_connect_immune(void* immune_system) {
-    /* Guard clause: Validate parameters */
-    if (!immune_system) {
-        LOG_ERROR("bio_async_connect_immune: NULL immune system");
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(immune_system != NULL, NIMCP_ERROR_NULL_POINTER,
+                      "bio_async_connect_immune: NULL immune system");
 
-    /* Guard clause: Router must be initialized */
-    if (!g_router || !g_router->initialized) {
-        LOG_ERROR("bio_async_connect_immune: Router not initialized");
-        return NIMCP_ERROR_NOT_INITIALIZED;
-    }
+    NIMCP_CHECK_THROW(g_router && g_router->initialized, NIMCP_ERROR_NOT_INITIALIZED,
+                      "bio_async_connect_immune: Router not initialized");
 
     /* Store immune system reference (simplified implementation) */
     g_router->brain_immune_system = immune_system;
@@ -2414,15 +2436,11 @@ nimcp_error_t bio_router_register_wiring_callback(
     void* callback,
     void* user_data
 ) {
-    if (!g_router_orchestrator) {
-        LOG_WARN("bio_router_register_wiring_callback: no orchestrator set");
-        return NIMCP_ERROR_NOT_INITIALIZED;
-    }
+    NIMCP_CHECK_THROW(g_router_orchestrator != NULL, NIMCP_ERROR_NOT_INITIALIZED,
+                      "bio_router_register_wiring_callback: no orchestrator set");
 
-    if (!callback) {
-        LOG_WARN("bio_router_register_wiring_callback: NULL callback");
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(callback != NULL, NIMCP_ERROR_INVALID_PARAMETER,
+                      "bio_router_register_wiring_callback: NULL callback");
 
     /* Include orchestrator header for register function */
     extern int bio_orchestrator_register_handler_callback(

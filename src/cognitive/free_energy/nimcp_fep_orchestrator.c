@@ -116,7 +116,7 @@ static int update_single_bridge(
  * ============================================================================ */
 
 int fep_orchestrator_default_config(fep_orchestrator_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     
     memset(config, 0, sizeof(fep_orchestrator_config_t));
     
@@ -256,7 +256,7 @@ void fep_orchestrator_destroy(fep_orchestrator_t* orchestrator) {
 }
 
 int fep_orchestrator_start(fep_orchestrator_t* orchestrator) {
-    if (!orchestrator) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
     
@@ -285,7 +285,7 @@ int fep_orchestrator_start(fep_orchestrator_t* orchestrator) {
 }
 
 int fep_orchestrator_stop(fep_orchestrator_t* orchestrator) {
-    if (!orchestrator) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
     
@@ -306,7 +306,7 @@ int fep_orchestrator_stop(fep_orchestrator_t* orchestrator) {
 }
 
 int fep_orchestrator_pause(fep_orchestrator_t* orchestrator) {
-    if (!orchestrator) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
     
@@ -326,7 +326,7 @@ int fep_orchestrator_pause(fep_orchestrator_t* orchestrator) {
 }
 
 int fep_orchestrator_resume(fep_orchestrator_t* orchestrator) {
-    if (!orchestrator) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
     
@@ -413,7 +413,7 @@ int fep_orchestrator_unregister_bridge(
     fep_orchestrator_t* orchestrator,
     uint32_t bridge_id
 ) {
-    if (!orchestrator) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
     
@@ -460,7 +460,7 @@ int fep_orchestrator_set_bridge_enabled(
     uint32_t bridge_id,
     bool enabled
 ) {
-    if (!orchestrator) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
     
@@ -522,7 +522,7 @@ int fep_orchestrator_update(
     fep_orchestrator_t* orchestrator,
     uint64_t current_time_ms
 ) {
-    if (!orchestrator) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
     
@@ -594,8 +594,8 @@ int fep_orchestrator_update_category(
     fep_bridge_category_t category,
     uint64_t current_time_ms
 ) {
-    if (!orchestrator) return NIMCP_ERROR_NULL_POINTER;
-    if (category >= FEP_BRIDGE_CATEGORY_COUNT) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
+    NIMCP_CHECK_THROW(category < FEP_BRIDGE_CATEGORY_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid bridge category");
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
     
@@ -627,7 +627,7 @@ int fep_orchestrator_update_bridge(
     fep_orchestrator_t* orchestrator,
     uint32_t bridge_id
 ) {
-    if (!orchestrator) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
     
@@ -650,7 +650,7 @@ int fep_orchestrator_update_bridge(
 }
 
 int fep_orchestrator_force_update_all(fep_orchestrator_t* orchestrator) {
-    if (!orchestrator) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -702,8 +702,8 @@ int fep_orchestrator_set_update_interval(
     fep_bridge_category_t category,
     uint64_t interval_ms
 ) {
-    if (!orchestrator) return NIMCP_ERROR_NULL_POINTER;
-    if (category >= FEP_BRIDGE_CATEGORY_COUNT) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
+    NIMCP_CHECK_THROW(category < FEP_BRIDGE_CATEGORY_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid bridge category");
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
     orchestrator->config.categories[category].update_interval_ms = interval_ms;
@@ -717,8 +717,8 @@ int fep_orchestrator_set_category_enabled(
     fep_bridge_category_t category,
     bool enabled
 ) {
-    if (!orchestrator) return NIMCP_ERROR_NULL_POINTER;
-    if (category >= FEP_BRIDGE_CATEGORY_COUNT) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
+    NIMCP_CHECK_THROW(category < FEP_BRIDGE_CATEGORY_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid bridge category");
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
     orchestrator->config.categories[category].enabled = enabled;
@@ -732,8 +732,8 @@ int fep_orchestrator_get_category_config(
     fep_bridge_category_t category,
     fep_category_config_t* config
 ) {
-    if (!orchestrator || !config) return NIMCP_ERROR_NULL_POINTER;
-    if (category >= FEP_BRIDGE_CATEGORY_COUNT) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(orchestrator && config, NIMCP_ERROR_NULL_POINTER, "orchestrator or config is NULL");
+    NIMCP_CHECK_THROW(category < FEP_BRIDGE_CATEGORY_COUNT, NIMCP_ERROR_INVALID_PARAM, "invalid bridge category");
     
     *config = orchestrator->config.categories[category];
     return 0;
@@ -747,7 +747,7 @@ int fep_orchestrator_connect_brain_immune(
     fep_orchestrator_t* orchestrator,
     brain_immune_system_t* immune
 ) {
-    if (!orchestrator) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
     
@@ -763,7 +763,7 @@ int fep_orchestrator_connect_brain_immune(
 }
 
 int fep_orchestrator_disconnect_brain_immune(fep_orchestrator_t* orchestrator) {
-    if (!orchestrator) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
     
     nimcp_platform_mutex_lock(orchestrator->mutex);
     
@@ -779,7 +779,7 @@ int fep_orchestrator_disconnect_brain_immune(fep_orchestrator_t* orchestrator) {
 }
 
 int fep_orchestrator_connect_bio_async(fep_orchestrator_t* orchestrator) {
-    if (!orchestrator) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
     
     if (!bio_router_is_initialized()) {
         if (orchestrator->config.enable_logging) {
@@ -815,7 +815,7 @@ int fep_orchestrator_connect_bio_async(fep_orchestrator_t* orchestrator) {
 }
 
 int fep_orchestrator_disconnect_bio_async(fep_orchestrator_t* orchestrator) {
-    if (!orchestrator) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -841,7 +841,7 @@ int fep_orchestrator_connect_internal_kg(
     fep_orchestrator_t* orchestrator,
     brain_t brain)
 {
-    if (!orchestrator) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -872,7 +872,7 @@ int fep_orchestrator_connect_internal_kg(
 }
 
 int fep_orchestrator_disconnect_internal_kg(fep_orchestrator_t* orchestrator) {
-    if (!orchestrator) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orchestrator, NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
 
     nimcp_platform_mutex_lock(orchestrator->mutex);
 
@@ -995,7 +995,7 @@ int fep_orchestrator_get_stats(
     const fep_orchestrator_t* orchestrator,
     fep_orchestrator_stats_t* stats
 ) {
-    if (!orchestrator || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(orchestrator && stats, NIMCP_ERROR_NULL_POINTER, "orchestrator or stats is NULL");
 
     /* Thread-safe copy under lock for consistency */
     fep_orchestrator_t* mutable_orch = (fep_orchestrator_t*)orchestrator;

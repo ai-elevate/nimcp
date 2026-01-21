@@ -18,9 +18,7 @@
  * ============================================================================ */
 
 int amygdala_attention_default_config(amygdala_attention_config_t* config) {
-    if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     config->enable_threat_salience_boost = true;
     config->enable_hypervigilance_mode = AMYG_ATT_DEFAULT_HYPERVIGILANCE_ENABLED;
@@ -37,25 +35,15 @@ int amygdala_attention_default_config(amygdala_attention_config_t* config) {
 }
 
 int amygdala_attention_validate_config(const amygdala_attention_config_t* config) {
-    if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (config->threat_sensitivity < 0.5f || config->threat_sensitivity > 2.0f) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (config->attention_sensitivity < 0.5f || config->attention_sensitivity > 2.0f) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (config->hypervigilance_threshold < 0.5f || config->hypervigilance_threshold > 0.9f) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (config->attention_focus_threshold < 0.3f || config->attention_focus_threshold > 0.7f) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
+    NIMCP_CHECK_THROW(config->threat_sensitivity >= 0.5f && config->threat_sensitivity <= 2.0f,
+                      NIMCP_ERROR_INVALID_PARAM, "threat_sensitivity must be between 0.5 and 2.0");
+    NIMCP_CHECK_THROW(config->attention_sensitivity >= 0.5f && config->attention_sensitivity <= 2.0f,
+                      NIMCP_ERROR_INVALID_PARAM, "attention_sensitivity must be between 0.5 and 2.0");
+    NIMCP_CHECK_THROW(config->hypervigilance_threshold >= 0.5f && config->hypervigilance_threshold <= 0.9f,
+                      NIMCP_ERROR_INVALID_PARAM, "hypervigilance_threshold must be between 0.5 and 0.9");
+    NIMCP_CHECK_THROW(config->attention_focus_threshold >= 0.3f && config->attention_focus_threshold <= 0.7f,
+                      NIMCP_ERROR_INVALID_PARAM, "attention_focus_threshold must be between 0.3 and 0.7");
 
     return 0;
 }
@@ -120,9 +108,7 @@ void amygdala_attention_destroy(amygdala_attention_bridge_t* bridge) {
 }
 
 int amygdala_attention_reset(amygdala_attention_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -152,12 +138,8 @@ int amygdala_attention_connect_amygdala(
     amygdala_attention_bridge_t* bridge,
     amygdala_t* amygdala
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!amygdala) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(amygdala, NIMCP_ERROR_NULL_POINTER, "amygdala is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->amygdala = amygdala;
@@ -176,12 +158,8 @@ int amygdala_attention_connect_attention(
     amygdala_attention_bridge_t* bridge,
     void* attention
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!attention) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(attention, NIMCP_ERROR_NULL_POINTER, "attention is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention = attention;
@@ -197,9 +175,7 @@ int amygdala_attention_connect_attention(
 }
 
 int amygdala_attention_disconnect_amygdala(amygdala_attention_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->amygdala = NULL;
@@ -214,9 +190,7 @@ int amygdala_attention_disconnect_amygdala(amygdala_attention_bridge_t* bridge) 
 }
 
 int amygdala_attention_disconnect_attention(amygdala_attention_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention = NULL;
@@ -240,12 +214,8 @@ bool amygdala_attention_is_connected(const amygdala_attention_bridge_t* bridge) 
  * ============================================================================ */
 
 int amygdala_attention_apply_amygdala_effects(amygdala_attention_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bridge->amygdala_connected) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->amygdala_connected, NIMCP_ERROR_INVALID_STATE, "amygdala is not connected");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -360,12 +330,8 @@ float amygdala_attention_compute_disengagement_difficulty(
  * ============================================================================ */
 
 int amygdala_attention_apply_attention_effects(amygdala_attention_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!bridge->attention_connected) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->attention_connected, NIMCP_ERROR_INVALID_STATE, "attention is not connected");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -436,13 +402,8 @@ float amygdala_attention_compute_distraction_suppression(
  * ============================================================================ */
 
 int amygdala_attention_update(amygdala_attention_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (!bridge->bridge_active) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->bridge_active, NIMCP_ERROR_INVALID_STATE, "bridge is not active");
 
     /* Apply amygdala → attention effects */
     int result = amygdala_attention_apply_amygdala_effects(bridge);
@@ -465,13 +426,8 @@ int amygdala_attention_update(amygdala_attention_bridge_t* bridge) {
 }
 
 int amygdala_attention_apply_modulation(amygdala_attention_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (!bridge->bridge_active) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->bridge_active, NIMCP_ERROR_INVALID_STATE, "bridge is not active");
 
     /* NOTE: Actual modulation would be applied here.
      * For amygdala: adjust prefrontal inhibition based on attention
@@ -500,9 +456,7 @@ int amygdala_attention_get_amygdala_effects(
     const amygdala_attention_bridge_t* bridge,
     amygdala_attention_effects_t* effects
 ) {
-    if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_NULL_POINTER, "bridge or effects is NULL");
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *effects = bridge->amygdala_effects;
@@ -515,9 +469,7 @@ int amygdala_attention_get_attention_effects(
     const amygdala_attention_bridge_t* bridge,
     attention_amygdala_effects_t* effects
 ) {
-    if (!bridge || !effects) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_NULL_POINTER, "bridge or effects is NULL");
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *effects = bridge->attention_effects;
@@ -551,9 +503,7 @@ int amygdala_attention_get_statistics(
     uint32_t* threat_boosts,
     uint32_t* attention_enhancements
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
@@ -579,9 +529,7 @@ int amygdala_attention_get_statistics(
  * ============================================================================ */
 
 int amygdala_attention_connect_bio_async(amygdala_attention_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (bridge->base.bio_async_enabled) {
         return 0; /* Already connected */
@@ -606,9 +554,7 @@ int amygdala_attention_connect_bio_async(amygdala_attention_bridge_t* bridge) {
 }
 
 int amygdala_attention_disconnect_bio_async(amygdala_attention_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->base.bio_async_enabled) {
         return 0; /* Not connected */

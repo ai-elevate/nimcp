@@ -109,7 +109,7 @@ static int find_module_index_by_node(const omni_kg_sync_t* sync,
  * ============================================================================ */
 
 int omni_kg_sync_default_config(omni_kg_sync_config_t* config) {
-    if (!config) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     memset(config, 0, sizeof(omni_kg_sync_config_t));
 
@@ -342,7 +342,7 @@ int omni_kg_add_prediction_edge(omni_kg_sync_t* sync,
                                  brain_kg_node_id_t to_node,
                                  omni_kg_edge_type_t edge_type,
                                  float precision) {
-    if (!sync) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(sync, NIMCP_ERROR_INVALID_PARAM, "sync is NULL");
 
     nimcp_mutex_lock(sync->mutex);
 
@@ -378,7 +378,7 @@ int omni_kg_add_bidirectional_edge(omni_kg_sync_t* sync,
                                     brain_kg_node_id_t node_a,
                                     brain_kg_node_id_t node_b,
                                     float precision) {
-    if (!sync) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(sync, NIMCP_ERROR_INVALID_PARAM, "sync is NULL");
 
     int result = omni_kg_add_prediction_edge(sync, node_a, node_b,
                                               OMNI_KG_EDGE_PREDICTS_FORWARD,
@@ -394,7 +394,7 @@ int omni_kg_add_hierarchical_edges(omni_kg_sync_t* sync,
                                     brain_kg_node_id_t lower_node,
                                     brain_kg_node_id_t upper_node,
                                     float precision) {
-    if (!sync) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(sync, NIMCP_ERROR_INVALID_PARAM, "sync is NULL");
 
     /* Bottom-up (lower → upper) */
     int result = omni_kg_add_prediction_edge(sync, lower_node, upper_node,
@@ -413,7 +413,7 @@ int omni_kg_update_edge_precision(omni_kg_sync_t* sync,
                                    brain_kg_node_id_t to_node,
                                    omni_kg_edge_type_t edge_type,
                                    float new_precision) {
-    if (!sync) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(sync, NIMCP_ERROR_INVALID_PARAM, "sync is NULL");
 
     nimcp_mutex_lock(sync->mutex);
 
@@ -537,7 +537,7 @@ omni_kg_capability_t omni_kg_get_capabilities(const omni_kg_sync_t* sync,
  * ============================================================================ */
 
 int omni_kg_sync_all(omni_kg_sync_t* sync) {
-    if (!sync) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(sync, NIMCP_ERROR_INVALID_PARAM, "sync is NULL");
 
     nimcp_mutex_lock(sync->mutex);
 
@@ -550,7 +550,7 @@ int omni_kg_sync_all(omni_kg_sync_t* sync) {
 }
 
 int omni_kg_sync_precision(omni_kg_sync_t* sync) {
-    if (!sync) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(sync, NIMCP_ERROR_INVALID_PARAM, "sync is NULL");
 
     nimcp_mutex_lock(sync->mutex);
 
@@ -572,7 +572,7 @@ int omni_kg_sync_precision(omni_kg_sync_t* sync) {
 }
 
 int omni_kg_sync_capabilities(omni_kg_sync_t* sync) {
-    if (!sync) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(sync, NIMCP_ERROR_INVALID_PARAM, "sync is NULL");
 
     nimcp_mutex_lock(sync->mutex);
 
@@ -595,7 +595,8 @@ int omni_kg_sync_capabilities(omni_kg_sync_t* sync) {
 
 int omni_kg_get_sync_stats(const omni_kg_sync_t* sync,
                             omni_kg_sync_stats_t* stats) {
-    if (!sync || !stats) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(sync, NIMCP_ERROR_INVALID_PARAM, "sync is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_INVALID_PARAM, "stats is NULL");
 
     nimcp_mutex_lock(((omni_kg_sync_t*)sync)->mutex);
     memcpy(stats, &sync->stats, sizeof(omni_kg_sync_stats_t));
@@ -604,7 +605,7 @@ int omni_kg_get_sync_stats(const omni_kg_sync_t* sync,
 }
 
 int omni_kg_reset_sync_stats(omni_kg_sync_t* sync) {
-    if (!sync) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(sync, NIMCP_ERROR_INVALID_PARAM, "sync is NULL");
 
     nimcp_mutex_lock(sync->mutex);
     memset(&sync->stats, 0, sizeof(omni_kg_sync_stats_t));

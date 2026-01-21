@@ -16,7 +16,7 @@
 #define LOG_MODULE "emotion_fep_bridge"
 
 int emotion_fep_bridge_default_config(emotion_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->pe_valence_scaling = 1.0f;
     config->pe_arousal_scaling = EMOTION_FEP_AROUSAL_PE_SCALING;
     config->precision_intensity_scaling = 1.0f;
@@ -53,7 +53,7 @@ void emotion_fep_bridge_destroy(emotion_fep_bridge_t* bridge) {
 }
 
 int emotion_fep_bridge_connect_fep(emotion_fep_bridge_t* bridge, fep_system_t* fep) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -61,7 +61,7 @@ int emotion_fep_bridge_connect_fep(emotion_fep_bridge_t* bridge, fep_system_t* f
 }
 
 int emotion_fep_bridge_connect_emotion(emotion_fep_bridge_t* bridge, emotion_recognition_system_t* emotion) {
-    if (!bridge || !emotion) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && emotion, NIMCP_ERROR_NULL_POINTER, "bridge or emotion is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->emotion_system = emotion;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -69,7 +69,7 @@ int emotion_fep_bridge_connect_emotion(emotion_fep_bridge_t* bridge, emotion_rec
 }
 
 int emotion_fep_bridge_disconnect(emotion_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->emotion_system = NULL;
@@ -78,7 +78,7 @@ int emotion_fep_bridge_disconnect(emotion_fep_bridge_t* bridge) {
 }
 
 int emotion_fep_generate_valenced_pe(emotion_fep_bridge_t* bridge, float pe_magnitude) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_pe_emotion_generation) return 0;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_effects.prediction_error_valence = (pe_magnitude > 0) ? 1.0f : -1.0f;
@@ -91,7 +91,7 @@ int emotion_fep_generate_valenced_pe(emotion_fep_bridge_t* bridge, float pe_magn
 }
 
 int emotion_fep_modulate_precision_by_intensity(emotion_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_precision_intensity) return 0;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_effects.precision_intensity = bridge->state.current_precision * bridge->config.precision_intensity_scaling;
@@ -100,7 +100,7 @@ int emotion_fep_modulate_precision_by_intensity(emotion_fep_bridge_t* bridge) {
 }
 
 int emotion_fep_apply_emotion_precision_modulation(emotion_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_emotion_precision) return 0;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->emotion_effects.emotion_precision_modifier = bridge->config.emotion_precision_modulation;
@@ -110,7 +110,7 @@ int emotion_fep_apply_emotion_precision_modulation(emotion_fep_bridge_t* bridge)
 }
 
 int emotion_fep_apply_emotion_learning_modulation(emotion_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_emotion_learning) return 0;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->emotion_effects.emotion_learning_modifier = bridge->config.emotion_learning_modulation;
@@ -119,7 +119,7 @@ int emotion_fep_apply_emotion_learning_modulation(emotion_fep_bridge_t* bridge) 
 }
 
 int emotion_fep_bridge_update(emotion_fep_bridge_t* bridge, uint64_t delta_ms) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     emotion_fep_modulate_precision_by_intensity(bridge);
     emotion_fep_apply_emotion_precision_modulation(bridge);
     emotion_fep_apply_emotion_learning_modulation(bridge);
@@ -127,7 +127,7 @@ int emotion_fep_bridge_update(emotion_fep_bridge_t* bridge, uint64_t delta_ms) {
 }
 
 int emotion_fep_bridge_get_state(const emotion_fep_bridge_t* bridge, emotion_fep_state_t* state) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -135,7 +135,7 @@ int emotion_fep_bridge_get_state(const emotion_fep_bridge_t* bridge, emotion_fep
 }
 
 int emotion_fep_bridge_get_stats(const emotion_fep_bridge_t* bridge, emotion_fep_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -143,7 +143,7 @@ int emotion_fep_bridge_get_stats(const emotion_fep_bridge_t* bridge, emotion_fep
 }
 
 int emotion_fep_bridge_connect_bio_async(emotion_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_EMOTION_BRIDGE,

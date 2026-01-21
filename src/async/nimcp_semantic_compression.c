@@ -712,9 +712,8 @@ nimcp_result_t nimcp_semantic_compressor_get_stats(
     const nimcp_semantic_compressor_t* compressor,
     nimcp_compression_stats_t* stats) {
 
-    if (!compressor || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(compressor && stats, NIMCP_ERROR_NULL_POINTER,
+                      "nimcp_semantic_compressor_get_stats: compressor or stats is NULL");
 
     /* Copy stats without locking to avoid casting away const (undefined behavior).
      * Reading stats without a lock may result in slightly stale data, but this is
@@ -728,7 +727,8 @@ nimcp_result_t nimcp_semantic_compressor_get_stats(
 nimcp_result_t nimcp_semantic_compressor_reset_primitives(
     nimcp_semantic_compressor_t* compressor) {
 
-    if (!compressor) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(compressor != NULL, NIMCP_ERROR_NULL_POINTER,
+                      "nimcp_semantic_compressor_reset_primitives: compressor is NULL");
 
     nimcp_platform_mutex_lock(&compressor->mutex);
 
@@ -841,7 +841,8 @@ float nimcp_semantic_similarity(
 nimcp_result_t nimcp_semantic_compressor_register_bio_async(
     nimcp_semantic_compressor_t* compressor) {
 
-    if (!compressor) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(compressor != NULL, NIMCP_ERROR_NULL_POINTER,
+                      "nimcp_semantic_compressor_register_bio_async: compressor is NULL");
 
     LOG_INFO(COMPRESSION_MODULE, "Registering with bio-async system");
 

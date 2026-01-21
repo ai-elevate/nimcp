@@ -79,9 +79,7 @@ nimcp_result_t nimcp_barrier_init(nimcp_barrier_t** barrier, uint32_t count)
 {
     // Validate parameters
     // WHY CHECK: barrier == NULL → crash, count == 0 → deadlock
-    if (!barrier) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(barrier, NIMCP_ERROR_INVALID_PARAM, "barrier output pointer is NULL");
 
     if (count == 0) {
         *barrier = NULL;
@@ -145,9 +143,7 @@ nimcp_result_t nimcp_barrier_init(nimcp_barrier_t** barrier, uint32_t count)
 nimcp_result_t nimcp_barrier_destroy(nimcp_barrier_t** barrier)
 {
     // Validate parameters
-    if (!barrier || !*barrier) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(barrier && *barrier, NIMCP_ERROR_INVALID_PARAM, "barrier is NULL");
 
     nimcp_barrier_t* b = *barrier;
 
@@ -217,9 +213,7 @@ nimcp_result_t nimcp_barrier_destroy(nimcp_barrier_t** barrier)
 nimcp_result_t nimcp_barrier_wait(nimcp_barrier_t* barrier)
 {
     // Validate barrier
-    if (!barrier) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(barrier, NIMCP_ERROR_INVALID_PARAM, "barrier is NULL");
 
     // Enter critical section
     nimcp_result_t result = nimcp_mutex_lock(&barrier->mutex);
@@ -323,13 +317,8 @@ uint32_t nimcp_barrier_get_waiting(const nimcp_barrier_t* barrier)
 nimcp_result_t nimcp_barrier_reset(nimcp_barrier_t* barrier, uint32_t count)
 {
     // Validate parameters
-    if (!barrier) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
-
-    if (count == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(barrier, NIMCP_ERROR_INVALID_PARAM, "barrier is NULL");
+    NIMCP_CHECK_THROW(count > 0, NIMCP_ERROR_INVALID_PARAM, "count must be greater than 0");
 
     // Lock mutex
     nimcp_result_t result = nimcp_mutex_lock(&barrier->mutex);

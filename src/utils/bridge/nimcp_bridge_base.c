@@ -18,9 +18,7 @@
  * ============================================================================ */
 
 int bridge_base_init(bridge_base_t* base, uint32_t module_id, const char* module_name) {
-    if (!base) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(base, NIMCP_ERROR_NULL_POINTER, "bridge base is NULL");
 
     /* Zero all fields */
     memset(base, 0, sizeof(bridge_base_t));
@@ -70,9 +68,7 @@ void bridge_base_cleanup(bridge_base_t* base) {
 }
 
 int bridge_base_reset(bridge_base_t* base) {
-    if (!base) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(base, NIMCP_ERROR_NULL_POINTER, "bridge base is NULL");
 
     nimcp_mutex_lock(base->mutex);
 
@@ -93,12 +89,8 @@ int bridge_base_reset(bridge_base_t* base) {
  * ============================================================================ */
 
 int bridge_base_connect_a(bridge_base_t* base, void* system_a) {
-    if (!base) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!system_a) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(base, NIMCP_ERROR_NULL_POINTER, "bridge base is NULL");
+    NIMCP_CHECK_THROW(system_a, NIMCP_ERROR_NULL_POINTER, "system_a is NULL");
 
     nimcp_mutex_lock(base->mutex);
 
@@ -115,12 +107,8 @@ int bridge_base_connect_a(bridge_base_t* base, void* system_a) {
 }
 
 int bridge_base_connect_b(bridge_base_t* base, void* system_b) {
-    if (!base) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-    if (!system_b) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(base, NIMCP_ERROR_NULL_POINTER, "bridge base is NULL");
+    NIMCP_CHECK_THROW(system_b, NIMCP_ERROR_NULL_POINTER, "system_b is NULL");
 
     nimcp_mutex_lock(base->mutex);
 
@@ -137,9 +125,7 @@ int bridge_base_connect_b(bridge_base_t* base, void* system_b) {
 }
 
 int bridge_base_disconnect_a(bridge_base_t* base) {
-    if (!base) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(base, NIMCP_ERROR_NULL_POINTER, "bridge base is NULL");
 
     nimcp_mutex_lock(base->mutex);
 
@@ -156,9 +142,7 @@ int bridge_base_disconnect_a(bridge_base_t* base) {
 }
 
 int bridge_base_disconnect_b(bridge_base_t* base) {
-    if (!base) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(base, NIMCP_ERROR_NULL_POINTER, "bridge base is NULL");
 
     nimcp_mutex_lock(base->mutex);
 
@@ -186,9 +170,7 @@ bool bridge_base_is_connected(const bridge_base_t* base) {
  * ============================================================================ */
 
 int bridge_base_connect_bio_async(bridge_base_t* base) {
-    if (!base) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(base, NIMCP_ERROR_NULL_POINTER, "bridge base is NULL");
 
     /* Already connected */
     if (base->bio_async_enabled) {
@@ -219,9 +201,7 @@ int bridge_base_connect_bio_async(bridge_base_t* base) {
 }
 
 int bridge_base_disconnect_bio_async(bridge_base_t* base) {
-    if (!base) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(base, NIMCP_ERROR_NULL_POINTER, "bridge base is NULL");
 
     if (!base->bio_async_enabled) {
         return 0;
@@ -251,9 +231,7 @@ bool bridge_base_is_bio_async_connected(const bridge_base_t* base) {
  * ============================================================================ */
 
 int bridge_base_record_update(bridge_base_t* base) {
-    if (!base) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(base, NIMCP_ERROR_NULL_POINTER, "bridge base is NULL");
 
     /* NOTE: Callers are expected to already hold the bridge lock.
      * This function does not acquire the lock to avoid deadlocks.
@@ -267,9 +245,7 @@ int bridge_base_record_update(bridge_base_t* base) {
 int bridge_base_get_stats(const bridge_base_t* base,
                           uint64_t* total_updates,
                           uint64_t* last_update) {
-    if (!base) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(base, NIMCP_ERROR_NULL_POINTER, "bridge base is NULL");
 
     nimcp_mutex_lock((nimcp_mutex_t*)base->mutex);
 

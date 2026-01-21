@@ -167,8 +167,8 @@ static nimcp_error_t handle_salience_query(
     nimcp_bio_promise_t response_promise, void* user_data)
 {
     /* Guard clauses */
-    if (!msg || !user_data) { return NIMCP_ERROR_NULL_ARG; }
-    if (msg_size < sizeof(bio_msg_salience_query_t)) { return NIMCP_ERROR_INVALID_PARAM; }
+    NIMCP_CHECK_THROW(msg && user_data, NIMCP_ERROR_NULL_ARG, "msg or user_data is NULL");
+    NIMCP_CHECK_THROW(msg_size >= sizeof(bio_msg_salience_query_t), NIMCP_ERROR_INVALID_PARAM, "message size too small");
 
     const bio_msg_salience_query_t* query = (const bio_msg_salience_query_t*)msg;
     emotional_system_t* system = (emotional_system_t*)user_data;

@@ -17,7 +17,7 @@
 #define LOG_MODULE_BIAS_FEP "[BIAS_FEP]"
 
 int bias_fep_bridge_default_config(bias_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->systematic_pe_threshold = BIAS_FEP_SYSTEMATIC_PE_THRESHOLD;
     config->confirmation_threshold = BIAS_FEP_CONFIRMATION_THRESHOLD;
     config->prior_correction_rate = BIAS_FEP_PRIOR_CORRECTION_RATE;
@@ -49,7 +49,7 @@ void bias_fep_bridge_destroy(bias_fep_bridge_t* bridge) {
 }
 
 int bias_fep_bridge_connect_fep(bias_fep_bridge_t* bridge, fep_system_t* fep) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -57,7 +57,7 @@ int bias_fep_bridge_connect_fep(bias_fep_bridge_t* bridge, fep_system_t* fep) {
 }
 
 int bias_fep_detect_bias(bias_fep_bridge_t* bridge, float prediction_error) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_bias_detection) return NIMCP_SUCCESS;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     float pe_abs = fabsf(prediction_error);
@@ -77,7 +77,7 @@ int bias_fep_detect_bias(bias_fep_bridge_t* bridge, float prediction_error) {
 }
 
 int bias_fep_correct_prior(bias_fep_bridge_t* bridge, cognitive_bias_type_t bias) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_prior_correction) return NIMCP_SUCCESS;
     nimcp_platform_mutex_lock(bridge->base.mutex);
     float correction = bridge->config.prior_correction_rate;
@@ -88,7 +88,7 @@ int bias_fep_correct_prior(bias_fep_bridge_t* bridge, cognitive_bias_type_t bias
 }
 
 int bias_fep_bridge_update(bias_fep_bridge_t* bridge, uint64_t delta_ms) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->effects.bias_active) {
         bridge->effects.systematic_pe *= 0.95f;
@@ -101,7 +101,7 @@ int bias_fep_bridge_update(bias_fep_bridge_t* bridge, uint64_t delta_ms) {
 }
 
 int bias_fep_bridge_get_state(const bias_fep_bridge_t* bridge, bias_fep_state_t* state) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -109,7 +109,7 @@ int bias_fep_bridge_get_state(const bias_fep_bridge_t* bridge, bias_fep_state_t*
 }
 
 int bias_fep_bridge_get_stats(const bias_fep_bridge_t* bridge, bias_fep_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -117,7 +117,7 @@ int bias_fep_bridge_get_stats(const bias_fep_bridge_t* bridge, bias_fep_stats_t*
 }
 
 int bias_fep_bridge_connect_bio_async(bias_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_BIAS_BRIDGE,

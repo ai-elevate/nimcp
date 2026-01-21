@@ -42,9 +42,7 @@ static int init_predictive_layer(
     uint32_t num_units,
     pc_population_type_t type
 ) {
-    if (!layer || num_units == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(layer && num_units > 0, NIMCP_ERROR_INVALID_PARAM, "layer is NULL or num_units is 0");
 
     layer->num_units = num_units;
     layer->type = type;
@@ -167,9 +165,7 @@ static float compute_precision_term(const float* precisions, uint32_t size) {
  * ============================================================================ */
 
 int cortical_predictive_default_config(predictive_config_t* config) {
-    if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     config->prediction_learning_rate = PC_DEFAULT_PREDICTION_LR;
     config->precision_learning_rate = PC_DEFAULT_PRECISION_LR;
@@ -278,13 +274,8 @@ int cortical_predictive_add_level(
     uint32_t num_prediction_units,
     uint32_t num_error_units
 ) {
-    if (!pc) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (num_prediction_units == 0 || num_error_units == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(pc, NIMCP_ERROR_NULL_POINTER, "pc is NULL");
+    NIMCP_CHECK_THROW(num_prediction_units > 0 && num_error_units > 0, NIMCP_ERROR_INVALID_PARAM, "num_prediction_units or num_error_units is 0");
 
     nimcp_mutex_lock(pc->mutex);
 
@@ -362,13 +353,8 @@ int cortical_predictive_compute_prediction(
     float* output,
     uint32_t output_size
 ) {
-    if (!pc || !output) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (level_idx >= pc->hierarchy.num_levels) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(pc && output, NIMCP_ERROR_NULL_POINTER, "pc or output is NULL");
+    NIMCP_CHECK_THROW(level_idx < pc->hierarchy.num_levels, NIMCP_ERROR_INVALID_PARAM, "level_idx exceeds num_levels");
 
     const predictive_level_t* level = &pc->hierarchy.levels[level_idx];
     uint32_t num_to_copy = (output_size < level->prediction_pop.num_units) ?
@@ -386,13 +372,8 @@ int cortical_predictive_compute_error(
     float* output,
     uint32_t output_size
 ) {
-    if (!pc || !observation || !output) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (level_idx >= pc->hierarchy.num_levels) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(pc && observation && output, NIMCP_ERROR_NULL_POINTER, "pc, observation, or output is NULL");
+    NIMCP_CHECK_THROW(level_idx < pc->hierarchy.num_levels, NIMCP_ERROR_INVALID_PARAM, "level_idx exceeds num_levels");
 
     nimcp_mutex_lock(pc->mutex);
 
@@ -429,13 +410,8 @@ int cortical_predictive_weight_by_precision(
     float* weighted_errors,
     uint32_t output_size
 ) {
-    if (!pc || !errors || !weighted_errors) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (level_idx >= pc->hierarchy.num_levels) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(pc && errors && weighted_errors, NIMCP_ERROR_NULL_POINTER, "pc, errors, or weighted_errors is NULL");
+    NIMCP_CHECK_THROW(level_idx < pc->hierarchy.num_levels, NIMCP_ERROR_INVALID_PARAM, "level_idx exceeds num_levels");
 
     if (!pc->config.enable_precision_weighting) {
         /* If precision weighting disabled, just copy errors */
@@ -465,9 +441,7 @@ int cortical_predictive_propagate_up(
     cortical_predictive_t* pc,
     uint32_t source_level
 ) {
-    if (!pc) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(pc, NIMCP_ERROR_NULL_POINTER, "pc is NULL");
 
     if (source_level >= pc->hierarchy.num_levels - 1) {
         /* Highest level has nowhere to propagate to */
@@ -518,9 +492,7 @@ int cortical_predictive_propagate_down(
     cortical_predictive_t* pc,
     uint32_t source_level
 ) {
-    if (!pc) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(pc, NIMCP_ERROR_NULL_POINTER, "pc is NULL");
 
     if (source_level == 0) {
         /* Lowest level has nowhere to propagate to */
@@ -557,13 +529,8 @@ int cortical_predictive_update_predictions(
     cortical_predictive_t* pc,
     uint32_t level_idx
 ) {
-    if (!pc) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (level_idx >= pc->hierarchy.num_levels) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(pc, NIMCP_ERROR_NULL_POINTER, "pc is NULL");
+    NIMCP_CHECK_THROW(level_idx < pc->hierarchy.num_levels, NIMCP_ERROR_INVALID_PARAM, "level_idx exceeds num_levels");
 
     nimcp_mutex_lock(pc->mutex);
 
@@ -592,13 +559,8 @@ int cortical_predictive_update_precisions(
     cortical_predictive_t* pc,
     uint32_t level_idx
 ) {
-    if (!pc) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (level_idx >= pc->hierarchy.num_levels) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(pc, NIMCP_ERROR_NULL_POINTER, "pc is NULL");
+    NIMCP_CHECK_THROW(level_idx < pc->hierarchy.num_levels, NIMCP_ERROR_INVALID_PARAM, "level_idx exceeds num_levels");
 
     nimcp_mutex_lock(pc->mutex);
 
@@ -647,9 +609,7 @@ int cortical_predictive_compute_free_energy(
     const cortical_predictive_t* pc,
     float* free_energy
 ) {
-    if (!pc || !free_energy) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(pc && free_energy, NIMCP_ERROR_NULL_POINTER, "pc or free_energy is NULL");
 
     float total_fe = 0.0f;
 
@@ -685,9 +645,7 @@ int cortical_predictive_get_stats(
     const cortical_predictive_t* pc,
     predictive_stats_t* stats
 ) {
-    if (!pc || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(pc && stats, NIMCP_ERROR_NULL_POINTER, "pc or stats is NULL");
 
     nimcp_mutex_lock(pc->mutex);
     *stats = pc->stats;
@@ -702,13 +660,8 @@ int cortical_predictive_get_predictions(
     float* predictions,
     uint32_t size
 ) {
-    if (!pc || !predictions) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (level_idx >= pc->hierarchy.num_levels) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(pc && predictions, NIMCP_ERROR_NULL_POINTER, "pc or predictions is NULL");
+    NIMCP_CHECK_THROW(level_idx < pc->hierarchy.num_levels, NIMCP_ERROR_INVALID_PARAM, "level_idx exceeds num_levels");
 
     const predictive_level_t* level = &pc->hierarchy.levels[level_idx];
     uint32_t num_to_copy = (size < level->prediction_pop.num_units) ?
@@ -724,13 +677,8 @@ int cortical_predictive_get_errors(
     float* errors,
     uint32_t size
 ) {
-    if (!pc || !errors) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (level_idx >= pc->hierarchy.num_levels) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(pc && errors, NIMCP_ERROR_NULL_POINTER, "pc or errors is NULL");
+    NIMCP_CHECK_THROW(level_idx < pc->hierarchy.num_levels, NIMCP_ERROR_INVALID_PARAM, "level_idx exceeds num_levels");
 
     const predictive_level_t* level = &pc->hierarchy.levels[level_idx];
     uint32_t num_to_copy = (size < level->error_pop.num_units) ?
@@ -746,13 +694,8 @@ int cortical_predictive_get_precisions(
     float* precisions,
     uint32_t size
 ) {
-    if (!pc || !precisions) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (level_idx >= pc->hierarchy.num_levels) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(pc && precisions, NIMCP_ERROR_NULL_POINTER, "pc or precisions is NULL");
+    NIMCP_CHECK_THROW(level_idx < pc->hierarchy.num_levels, NIMCP_ERROR_INVALID_PARAM, "level_idx exceeds num_levels");
 
     const predictive_level_t* level = &pc->hierarchy.levels[level_idx];
     uint32_t num_to_copy = (size < level->error_pop.num_units) ?
@@ -767,9 +710,7 @@ int cortical_predictive_get_precisions(
  * ============================================================================ */
 
 int cortical_predictive_connect_bio_async(cortical_predictive_t* pc) {
-    if (!pc) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(pc, NIMCP_ERROR_NULL_POINTER, "pc is NULL");
 
     if (pc->bio_async_enabled) {
         return 0;  /* Already connected */
@@ -798,9 +739,7 @@ int cortical_predictive_connect_bio_async(cortical_predictive_t* pc) {
 }
 
 int cortical_predictive_disconnect_bio_async(cortical_predictive_t* pc) {
-    if (!pc) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(pc, NIMCP_ERROR_NULL_POINTER, "pc is NULL");
 
     if (!pc->bio_async_enabled) {
         return 0;  /* Not connected */

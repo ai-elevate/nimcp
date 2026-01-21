@@ -26,7 +26,7 @@
  * ============================================================================ */
 
 int emotion_recognition_fep_default_config(emotion_recognition_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* FEP -> Emotion Recognition */
     config->pe_inference_gain = 1.0f;
@@ -111,7 +111,7 @@ int emotion_recognition_fep_connect_fep(
     emotion_recognition_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -125,7 +125,7 @@ int emotion_recognition_fep_connect_emotion(
     emotion_recognition_fep_bridge_t* bridge,
     emotion_recognition_system_t* emotion
 ) {
-    if (!bridge || !emotion) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && emotion, NIMCP_ERROR_NULL_POINTER, "bridge or emotion is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->emotion_system = emotion;
@@ -136,7 +136,7 @@ int emotion_recognition_fep_connect_emotion(
 }
 
 int emotion_recognition_fep_disconnect(emotion_recognition_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -155,7 +155,7 @@ int emotion_recognition_fep_infer_emotion(
     emotion_recognition_fep_bridge_t* bridge,
     float pe_magnitude
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_pe_emotion_inference) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -217,7 +217,7 @@ int emotion_recognition_fep_infer_emotion(
 int emotion_recognition_fep_modulate_modality_precision(
     emotion_recognition_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_precision_confidence) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -270,7 +270,7 @@ int emotion_recognition_fep_update(
     emotion_recognition_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Update modality precision modulation */
     emotion_recognition_fep_modulate_modality_precision(bridge);
@@ -300,7 +300,7 @@ int emotion_recognition_fep_get_state(
     const emotion_recognition_fep_bridge_t* bridge,
     emotion_recognition_fep_state_t* state
 ) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -313,7 +313,7 @@ int emotion_recognition_fep_get_stats(
     const emotion_recognition_fep_bridge_t* bridge,
     emotion_recognition_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -329,7 +329,7 @@ int emotion_recognition_fep_get_stats(
 int emotion_recognition_fep_connect_bio_async(
     emotion_recognition_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -353,7 +353,7 @@ int emotion_recognition_fep_connect_bio_async(
 int emotion_recognition_fep_disconnect_bio_async(
     emotion_recognition_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

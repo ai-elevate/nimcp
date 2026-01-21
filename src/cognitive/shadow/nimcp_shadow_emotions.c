@@ -40,7 +40,7 @@ static nimcp_error_t handle_introspection_query(
 {
     (void)msg_size;
     (void)response_promise;
-    if (!msg || !user_data) { return NIMCP_ERROR_NULL_ARG; }
+    NIMCP_CHECK_THROW(msg && user_data, NIMCP_ERROR_NULL_ARG, "msg or user_data is NULL");
 
     const bio_msg_introspection_query_t* query = (const bio_msg_introspection_query_t*)msg;
     shadow_emotion_system_t* system = (shadow_emotion_system_t*)user_data;

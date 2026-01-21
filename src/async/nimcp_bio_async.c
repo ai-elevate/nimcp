@@ -1055,9 +1055,8 @@ void nimcp_bio_async_reset_stats(void) {
 }
 
 nimcp_error_t nimcp_bio_async_step(float dt_ms) {
-    if (!g_bio_async.initialized) {
-        return NIMCP_BIO_ERROR_NOT_INITIALIZED;
-    }
+    NIMCP_CHECK_THROW(g_bio_async.initialized, NIMCP_BIO_ERROR_NOT_INITIALIZED,
+                      "nimcp_bio_async_step: bio-async system not initialized");
 
     if (dt_ms <= 0.0F) {
         dt_ms = g_bio_async.config.simulation_dt_ms;
@@ -1132,10 +1131,9 @@ nimcp_error_t nimcp_bio_promise_complete_sized(
                        NIMCP_ERROR_NULL_POINTER, "nimcp_bio_promise_complete_sized: invalid promise");
 
     nimcp_bio_shared_state_t* shared = promise->shared;
-    if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
-        LOG_ERROR("nimcp_bio_promise_complete_sized: invalid shared state");
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(shared && shared->magic == BIO_MAGIC_PROMISE,
+                      NIMCP_ERROR_INVALID_STATE,
+                      "nimcp_bio_promise_complete_sized: invalid shared state");
 
     /* Validate result */
     NIMCP_CHECK_THROW(result_size == 0 || result != NULL,
@@ -1245,10 +1243,9 @@ nimcp_error_t nimcp_bio_promise_complete(
                        NIMCP_ERROR_NULL_POINTER, "nimcp_bio_promise_complete: invalid promise");
 
     nimcp_bio_shared_state_t* shared = promise->shared;
-    if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
-        LOG_ERROR("nimcp_bio_promise_complete: invalid shared state");
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(shared && shared->magic == BIO_MAGIC_PROMISE,
+                      NIMCP_ERROR_INVALID_STATE,
+                      "nimcp_bio_promise_complete: invalid shared state");
 
     /* Use pre-set result_size or 0 for void results */
     return nimcp_bio_promise_complete_sized(promise, result, shared->result_size);
@@ -1264,10 +1261,9 @@ nimcp_error_t nimcp_bio_promise_fail(
                        NIMCP_ERROR_NULL_POINTER, "nimcp_bio_promise_fail: invalid promise");
 
     nimcp_bio_shared_state_t* shared = promise->shared;
-    if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
-        LOG_ERROR("nimcp_bio_promise_fail: invalid shared state");
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(shared && shared->magic == BIO_MAGIC_PROMISE,
+                      NIMCP_ERROR_INVALID_STATE,
+                      "nimcp_bio_promise_fail: invalid shared state");
 
     NIMCP_CHECK_THROW(error != NIMCP_SUCCESS, NIMCP_ERROR_INVALID_PARAM,
                        "nimcp_bio_promise_fail: cannot fail with NIMCP_SUCCESS");
@@ -1378,10 +1374,9 @@ nimcp_error_t nimcp_bio_future_wait(
                        NIMCP_ERROR_NULL_POINTER, "nimcp_bio_future_wait: invalid future");
 
     nimcp_bio_shared_state_t* shared = future->shared;
-    if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
-        LOG_ERROR("nimcp_bio_future_wait: invalid shared state");
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(shared && shared->magic == BIO_MAGIC_PROMISE,
+                      NIMCP_ERROR_INVALID_STATE,
+                      "nimcp_bio_future_wait: invalid shared state");
 
     /* Fast path: check if already ready */
     uint32_t state = nimcp_atomic_load_u32(&shared->state, NIMCP_MEMORY_ORDER_ACQUIRE);
@@ -1515,9 +1510,9 @@ nimcp_error_t nimcp_bio_future_then(
                        NIMCP_ERROR_NULL_POINTER, "nimcp_bio_future_then: future or callback is NULL/invalid");
 
     nimcp_bio_shared_state_t* shared = future->shared;
-    if (!shared || shared->magic != BIO_MAGIC_PROMISE) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(shared && shared->magic == BIO_MAGIC_PROMISE,
+                      NIMCP_ERROR_INVALID_STATE,
+                      "nimcp_bio_future_then: invalid shared state");
 
     /* Check if already ready */
     uint32_t state = nimcp_atomic_load_u32(&shared->state, NIMCP_MEMORY_ORDER_ACQUIRE);
@@ -2067,9 +2062,9 @@ nimcp_error_t nimcp_predictive_set_prediction(
     float new_prediction,
     float new_precision)
 {
-    if (!model || model->magic != BIO_MAGIC_PREDICT) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(model && model->magic == BIO_MAGIC_PREDICT,
+                      NIMCP_ERROR_NULL_POINTER,
+                      "nimcp_predictive_set_prediction: model is NULL/invalid");
 
     nimcp_rwlock_wrlock(&model->rwlock);
     model->prediction = new_prediction;

@@ -28,7 +28,7 @@
  * ============================================================================ */
 
 int remorse_fep_default_config(remorse_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* FEP -> Remorse */
     config->counterfactual_pe_gain = 1.0f;
@@ -113,7 +113,7 @@ int remorse_fep_connect_fep(
     remorse_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -127,7 +127,7 @@ int remorse_fep_connect_remorse(
     remorse_fep_bridge_t* bridge,
     remorse_regret_system_t* remorse
 ) {
-    if (!bridge || !remorse) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && remorse, NIMCP_ERROR_NULL_POINTER, "bridge or remorse is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->remorse_system = remorse;
@@ -138,7 +138,7 @@ int remorse_fep_connect_remorse(
 }
 
 int remorse_fep_disconnect(remorse_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -158,7 +158,7 @@ int remorse_fep_compute_counterfactual_pe(
     float actual_value,
     float alternative_value
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_counterfactual_pe) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -219,7 +219,7 @@ int remorse_fep_compute_counterfactual_pe(
 int remorse_fep_modulate_policy_learning(
     remorse_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_remorse_policy_learning) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -258,7 +258,7 @@ int remorse_fep_update(
     remorse_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Apply policy learning modulation */
     remorse_fep_modulate_policy_learning(bridge);
@@ -289,7 +289,7 @@ int remorse_fep_get_state(
     const remorse_fep_bridge_t* bridge,
     remorse_fep_state_t* state
 ) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -302,7 +302,7 @@ int remorse_fep_get_stats(
     const remorse_fep_bridge_t* bridge,
     remorse_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -318,7 +318,7 @@ int remorse_fep_get_stats(
 int remorse_fep_connect_bio_async(
     remorse_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -342,7 +342,7 @@ int remorse_fep_connect_bio_async(
 int remorse_fep_disconnect_bio_async(
     remorse_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

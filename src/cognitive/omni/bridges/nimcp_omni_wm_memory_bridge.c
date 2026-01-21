@@ -100,7 +100,7 @@ static uint64_t get_current_time_us(void) {
  * HOW:  Allocate 2D arrays for states/actions, 1D for rewards
  */
 static nimcp_error_t allocate_replay_buffer(omni_wm_memory_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     uint32_t capacity = bridge->config.replay_batch_size;
     if (capacity == 0) capacity = DEFAULT_REPLAY_BUFFER_CAPACITY;
@@ -166,7 +166,7 @@ static void free_replay_buffer(omni_wm_memory_bridge_t* bridge) {
  * @brief Allocate context cache
  */
 static nimcp_error_t allocate_context_cache(omni_wm_memory_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     uint32_t dim = WM_MEMORY_MAX_CONTEXT_DIM;
     bridge->context_cache = nimcp_calloc(dim, sizeof(float));
@@ -199,7 +199,7 @@ static void free_context_cache(omni_wm_memory_bridge_t* bridge) {
  * HOW:  Check buffer, create training batch, invoke WM training
  */
 static nimcp_error_t process_replay_buffer(omni_wm_memory_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->world_model) return NIMCP_SUCCESS; /* No WM connected */
     if (bridge->replay_buffer_size == 0) return NIMCP_SUCCESS; /* Nothing to process */
 
@@ -224,7 +224,7 @@ static nimcp_error_t process_replay_buffer(omni_wm_memory_bridge_t* bridge) {
  * @brief Update effects flowing from WM to memory systems
  */
 static nimcp_error_t update_wm_to_memory_effects(omni_wm_memory_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     omni_wm_to_memory_effects_t* effects = &bridge->wm_to_memory;
 
@@ -251,7 +251,7 @@ static nimcp_error_t update_wm_to_memory_effects(omni_wm_memory_bridge_t* bridge
  * @brief Update effects flowing from memory systems to WM
  */
 static nimcp_error_t update_memory_to_wm_effects(omni_wm_memory_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     memory_to_omni_wm_effects_t* effects = &bridge->memory_to_wm;
 
@@ -283,7 +283,8 @@ static nimcp_error_t handle_replay_sequence(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!msg || !user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(msg, NIMCP_ERROR_NULL_POINTER, "msg is NULL");
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_memory_bridge_t* bridge = (omni_wm_memory_bridge_t*)user_data;
 
@@ -303,7 +304,7 @@ static nimcp_error_t handle_engram_encode(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_memory_bridge_t* bridge = (omni_wm_memory_bridge_t*)user_data;
 
@@ -323,7 +324,7 @@ static nimcp_error_t handle_engram_retrieve(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_memory_bridge_t* bridge = (omni_wm_memory_bridge_t*)user_data;
 
@@ -343,7 +344,7 @@ static nimcp_error_t handle_consolidation(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_memory_bridge_t* bridge = (omni_wm_memory_bridge_t*)user_data;
 
@@ -363,7 +364,7 @@ static nimcp_error_t handle_pattern_complete(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_memory_bridge_t* bridge = (omni_wm_memory_bridge_t*)user_data;
 
@@ -383,7 +384,7 @@ static nimcp_error_t handle_pattern_separate(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_memory_bridge_t* bridge = (omni_wm_memory_bridge_t*)user_data;
 
@@ -401,7 +402,7 @@ static nimcp_error_t handle_pattern_separate(const void* msg, size_t msg_size,
 nimcp_error_t omni_wm_memory_bridge_default_config(
     omni_wm_memory_bridge_config_t* config) {
 
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(omni_wm_memory_bridge_config_t));
 
@@ -540,7 +541,7 @@ void omni_wm_memory_bridge_destroy(omni_wm_memory_bridge_t* bridge) {
 }
 
 nimcp_error_t omni_wm_memory_bridge_reset(omni_wm_memory_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -588,8 +589,8 @@ nimcp_error_t omni_wm_memory_bridge_connect(
     engram_system_t* engram_system,
     systems_consolidation_system_t* consolidation) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!world_model) return NIMCP_ERROR_INVALID_PARAM; /* WM required */
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_INVALID_PARAM, "world_model is required");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -616,7 +617,8 @@ nimcp_error_t omni_wm_memory_bridge_connect_world_model(
     omni_wm_memory_bridge_t* bridge,
     omni_world_model_t* world_model) {
 
-    if (!bridge || !world_model) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_NULL_POINTER, "world_model is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->world_model = world_model;
@@ -632,7 +634,8 @@ nimcp_error_t omni_wm_memory_bridge_connect_hippocampus(
     omni_wm_memory_bridge_t* bridge,
     nimcp_hippocampus_t* hippocampus) {
 
-    if (!bridge || !hippocampus) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(hippocampus, NIMCP_ERROR_NULL_POINTER, "hippocampus is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->hippocampus = hippocampus;
@@ -645,7 +648,8 @@ nimcp_error_t omni_wm_memory_bridge_connect_engram(
     omni_wm_memory_bridge_t* bridge,
     engram_system_t* engram_system) {
 
-    if (!bridge || !engram_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(engram_system, NIMCP_ERROR_NULL_POINTER, "engram_system is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->engram_system = engram_system;
@@ -658,7 +662,8 @@ nimcp_error_t omni_wm_memory_bridge_connect_consolidation(
     omni_wm_memory_bridge_t* bridge,
     systems_consolidation_system_t* consolidation) {
 
-    if (!bridge || !consolidation) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(consolidation, NIMCP_ERROR_NULL_POINTER, "consolidation is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->consolidation = consolidation;
@@ -680,7 +685,7 @@ nimcp_error_t omni_wm_memory_bridge_update(
     omni_wm_memory_bridge_t* bridge,
     float dt) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_modulation) return NIMCP_SUCCESS;
 
     uint64_t start_time = get_current_time_us();
@@ -730,7 +735,7 @@ nimcp_error_t omni_wm_memory_bridge_set_sleep_state(
     bool is_sleeping,
     float sleep_stage) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -767,11 +772,12 @@ nimcp_error_t omni_wm_memory_bridge_train_from_replay(
     uint32_t length,
     bool is_reverse) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!states || !actions || !rewards) return NIMCP_ERROR_NULL_POINTER;
-    if (length == 0 || length > WM_MEMORY_MAX_REPLAY_LENGTH) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(states, NIMCP_ERROR_NULL_POINTER, "states is NULL");
+    NIMCP_CHECK_THROW(actions, NIMCP_ERROR_NULL_POINTER, "actions is NULL");
+    NIMCP_CHECK_THROW(rewards, NIMCP_ERROR_NULL_POINTER, "rewards is NULL");
+    NIMCP_CHECK_THROW(length > 0, NIMCP_ERROR_INVALID_PARAM, "length must be greater than 0");
+    NIMCP_CHECK_THROW(length <= WM_MEMORY_MAX_REPLAY_LENGTH, NIMCP_ERROR_INVALID_PARAM, "length exceeds max replay length");
 
     if (!bridge->config.enable_replay_training) return NIMCP_SUCCESS;
 
@@ -818,8 +824,8 @@ nimcp_error_t omni_wm_memory_bridge_on_ripple(
     omni_wm_memory_bridge_t* bridge,
     const struct nimcp_ripple_event* ripple) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!ripple) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(ripple, NIMCP_ERROR_NULL_POINTER, "ripple is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -845,7 +851,7 @@ nimcp_error_t omni_wm_memory_bridge_encode_engram(
     bool force_encode,
     uint64_t* engram_id_out) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_engram_encoding) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -897,8 +903,9 @@ nimcp_error_t omni_wm_memory_bridge_retrieve_episodic_context(
     uint32_t context_dim,
     float* confidence_out) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!context_out || context_dim == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(context_out, NIMCP_ERROR_INVALID_PARAM, "context_out is NULL");
+    NIMCP_CHECK_THROW(context_dim > 0, NIMCP_ERROR_INVALID_PARAM, "context_dim must be greater than 0");
     if (!bridge->config.enable_context_retrieval) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -957,9 +964,11 @@ nimcp_error_t omni_wm_memory_bridge_pattern_complete(
     uint32_t completed_dim,
     float* confidence_out) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!partial_pattern || !completed_out) return NIMCP_ERROR_NULL_POINTER;
-    if (partial_dim == 0 || completed_dim == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(partial_pattern, NIMCP_ERROR_NULL_POINTER, "partial_pattern is NULL");
+    NIMCP_CHECK_THROW(completed_out, NIMCP_ERROR_NULL_POINTER, "completed_out is NULL");
+    NIMCP_CHECK_THROW(partial_dim > 0, NIMCP_ERROR_INVALID_PARAM, "partial_dim must be greater than 0");
+    NIMCP_CHECK_THROW(completed_dim > 0, NIMCP_ERROR_INVALID_PARAM, "completed_dim must be greater than 0");
     if (!bridge->config.enable_pattern_completion) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1001,9 +1010,11 @@ nimcp_error_t omni_wm_memory_bridge_pattern_separate(
     uint32_t separated_dim,
     float* separation_strength_out) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!input_pattern || !separated_out) return NIMCP_ERROR_NULL_POINTER;
-    if (input_dim == 0 || separated_dim == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(input_pattern, NIMCP_ERROR_NULL_POINTER, "input_pattern is NULL");
+    NIMCP_CHECK_THROW(separated_out, NIMCP_ERROR_NULL_POINTER, "separated_out is NULL");
+    NIMCP_CHECK_THROW(input_dim > 0, NIMCP_ERROR_INVALID_PARAM, "input_dim must be greater than 0");
+    NIMCP_CHECK_THROW(separated_dim > 0, NIMCP_ERROR_INVALID_PARAM, "separated_dim must be greater than 0");
     if (!bridge->config.enable_pattern_separation) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1051,8 +1062,9 @@ nimcp_error_t omni_wm_memory_bridge_extract_semantics(
     float* features_out,
     uint32_t features_dim) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!features_out || features_dim == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(features_out, NIMCP_ERROR_INVALID_PARAM, "features_out is NULL");
+    NIMCP_CHECK_THROW(features_dim > 0, NIMCP_ERROR_INVALID_PARAM, "features_dim must be greater than 0");
     if (!bridge->config.enable_semantic_extraction) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1085,7 +1097,7 @@ nimcp_error_t omni_wm_memory_bridge_consolidation_sync(
     omni_wm_memory_bridge_t* bridge,
     float consolidation_signal) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_consolidation_sync) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1138,7 +1150,8 @@ nimcp_error_t omni_wm_memory_bridge_get_stats(
     const omni_wm_memory_bridge_t* bridge,
     omni_wm_memory_bridge_stats_t* stats) {
 
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -1150,7 +1163,7 @@ nimcp_error_t omni_wm_memory_bridge_get_stats(
 nimcp_error_t omni_wm_memory_bridge_reset_stats(
     omni_wm_memory_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(omni_wm_memory_bridge_stats_t));
@@ -1166,7 +1179,7 @@ nimcp_error_t omni_wm_memory_bridge_reset_stats(
 nimcp_error_t omni_wm_memory_bridge_connect_bio_async(
     omni_wm_memory_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_bio_async) return NIMCP_SUCCESS;
     if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS; /* Already connected */
 
@@ -1219,7 +1232,7 @@ nimcp_error_t omni_wm_memory_bridge_connect_bio_async(
 nimcp_error_t omni_wm_memory_bridge_disconnect_bio_async(
     omni_wm_memory_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     if (bridge->base.bio_ctx) {
@@ -1286,7 +1299,7 @@ const char* omni_wm_memory_msg_type_to_string(omni_wm_memory_msg_type_t msg_type
 nimcp_error_t omni_wm_memory_bridge_validate_config(
     const omni_wm_memory_bridge_config_t* config) {
 
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Validate sensitivity range */
     if (config->sensitivity < 0.5f || config->sensitivity > 2.0f) {

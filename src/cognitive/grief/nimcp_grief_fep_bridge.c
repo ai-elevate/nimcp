@@ -28,7 +28,7 @@
  * ============================================================================ */
 
 int grief_fep_default_config(grief_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* FEP -> Grief */
     config->pe_grief_intensity_gain = 1.0f;
@@ -112,7 +112,7 @@ int grief_fep_connect_fep(
     grief_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -126,7 +126,7 @@ int grief_fep_connect_grief(
     grief_fep_bridge_t* bridge,
     grief_system_t* grief
 ) {
-    if (!bridge || !grief) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && grief, NIMCP_ERROR_NULL_POINTER, "bridge or grief is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->grief_system = grief;
@@ -137,7 +137,7 @@ int grief_fep_connect_grief(
 }
 
 int grief_fep_disconnect(grief_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -157,7 +157,7 @@ int grief_fep_process_persistent_pe(
     float pe_magnitude,
     uint64_t duration_ms
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_pe_grief_generation) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -224,7 +224,7 @@ int grief_fep_process_persistent_pe(
 int grief_fep_modulate_learning_rate(
     grief_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_grief_learning_slowdown) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -266,7 +266,7 @@ int grief_fep_update(
     grief_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Apply learning rate modulation */
     grief_fep_modulate_learning_rate(bridge);
@@ -297,7 +297,7 @@ int grief_fep_get_state(
     const grief_fep_bridge_t* bridge,
     grief_fep_state_t* state
 ) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -310,7 +310,7 @@ int grief_fep_get_stats(
     const grief_fep_bridge_t* bridge,
     grief_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -326,7 +326,7 @@ int grief_fep_get_stats(
 int grief_fep_connect_bio_async(
     grief_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -350,7 +350,7 @@ int grief_fep_connect_bio_async(
 int grief_fep_disconnect_bio_async(
     grief_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

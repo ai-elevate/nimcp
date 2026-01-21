@@ -87,7 +87,7 @@ void myelin_immune_destroy(myelin_immune_bridge_t* bridge)
 
 int myelin_immune_connect_bio_async(myelin_immune_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -117,7 +117,7 @@ bool myelin_immune_is_bio_async_connected(const myelin_immune_bridge_t* bridge)
 
 int myelin_immune_update_cytokine_effects(myelin_immune_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
 
     float il1 = 0, tnf = 0, ifn = 0, il10 = 0;
@@ -144,7 +144,7 @@ int myelin_immune_update_cytokine_effects(myelin_immune_bridge_t* bridge)
 
 int myelin_immune_apply_damage(myelin_immune_bridge_t* bridge, float dt_ms)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
 
     float damage = bridge->cytokine_effects.net_damage * (dt_ms / 1000.0f);
@@ -163,7 +163,7 @@ int myelin_immune_apply_damage(myelin_immune_bridge_t* bridge, float dt_ms)
 
 int myelin_immune_apply_repair(myelin_immune_bridge_t* bridge, float dt_ms)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->cytokine_effects.net_damage < 0.1f && bridge->sheath_integrity < 1.0f) {
@@ -180,7 +180,7 @@ int myelin_immune_apply_repair(myelin_immune_bridge_t* bridge, float dt_ms)
 
 int myelin_immune_update(myelin_immune_bridge_t* bridge, float dt_ms)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     myelin_immune_update_cytokine_effects(bridge);
     myelin_immune_apply_damage(bridge, dt_ms);
     myelin_immune_apply_repair(bridge, dt_ms);
@@ -199,7 +199,7 @@ float myelin_immune_get_conduction_efficiency(const myelin_immune_bridge_t* brid
 
 int myelin_immune_get_stats(const myelin_immune_bridge_t* bridge, myelin_immune_stats_t* stats)
 {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     *stats = bridge->stats;
     return 0;
 }

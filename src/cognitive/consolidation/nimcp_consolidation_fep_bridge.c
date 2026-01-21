@@ -17,7 +17,7 @@
 #define LOG_MODULE "consolidation_fep_bridge"
 
 int consolidation_fep_bridge_default_config(consolidation_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->complexity_replay_scaling = 1.0f;
     config->fe_urgency_threshold = CONSOLIDATION_FEP_HIGH_FE_THRESHOLD;
     config->enable_complexity_guided_consolidation = true;
@@ -69,7 +69,7 @@ void consolidation_fep_bridge_destroy(consolidation_fep_bridge_t* bridge) {
 }
 
 int consolidation_fep_bridge_connect_fep(consolidation_fep_bridge_t* bridge, fep_system_t* fep) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -78,7 +78,7 @@ int consolidation_fep_bridge_connect_fep(consolidation_fep_bridge_t* bridge, fep
 }
 
 int consolidation_fep_bridge_disconnect(consolidation_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -87,7 +87,7 @@ int consolidation_fep_bridge_disconnect(consolidation_fep_bridge_t* bridge) {
 }
 
 int consolidation_fep_bridge_update(consolidation_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "bridge or fep_system is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.current_free_energy = fep_get_free_energy(bridge->fep_system);
     bridge->fep_effects.current_free_energy = bridge->state.current_free_energy;
@@ -104,7 +104,7 @@ int consolidation_fep_bridge_update(consolidation_fep_bridge_t* bridge) {
 
 int consolidation_fep_bridge_get_state(const consolidation_fep_bridge_t* bridge,
                                         consolidation_fep_state_t* state) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -113,7 +113,7 @@ int consolidation_fep_bridge_get_state(const consolidation_fep_bridge_t* bridge,
 
 int consolidation_fep_bridge_get_stats(const consolidation_fep_bridge_t* bridge,
                                         consolidation_fep_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -121,7 +121,7 @@ int consolidation_fep_bridge_get_stats(const consolidation_fep_bridge_t* bridge,
 }
 
 int consolidation_fep_bridge_connect_bio_async(consolidation_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_CONSOLIDATION_BRIDGE,

@@ -165,7 +165,7 @@ int oligo_immune_connect_network(
     oligo_immune_bridge_t* bridge,
     oligodendrocyte_network_t* network)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->oligo_network = network;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -174,7 +174,7 @@ int oligo_immune_connect_network(
 
 int oligo_immune_connect_bio_async(oligo_immune_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -194,7 +194,7 @@ int oligo_immune_connect_bio_async(oligo_immune_bridge_t* bridge)
 
 int oligo_immune_disconnect_bio_async(oligo_immune_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {
@@ -217,7 +217,7 @@ bool oligo_immune_is_bio_async_connected(const oligo_immune_bridge_t* bridge)
 
 int oligo_immune_update_cytokine_effects(oligo_immune_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -259,14 +259,14 @@ int oligo_immune_get_cytokine_effects(
     const oligo_immune_bridge_t* bridge,
     oligo_cytokine_effects_t* effects)
 {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_NULL_POINTER, "bridge or effects is NULL");
     *effects = bridge->cytokine_effects;
     return 0;
 }
 
 int oligo_immune_apply_modulation(oligo_immune_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -300,7 +300,7 @@ int oligo_immune_accumulate_damage(
     oligo_immune_bridge_t* bridge,
     float dt_ms)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -367,7 +367,7 @@ int oligo_immune_process_demyelination(
     oligo_immune_bridge_t* bridge,
     float dt_ms)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -405,7 +405,7 @@ int oligo_immune_process_remyelination(
     oligo_immune_bridge_t* bridge,
     float dt_ms)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_remyelination) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -454,7 +454,7 @@ float oligo_immune_get_remyelination_capacity(
 
 int oligo_immune_update(oligo_immune_bridge_t* bridge, float dt_ms)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Update cytokine effects */
     oligo_immune_update_cytokine_effects(bridge);
@@ -483,7 +483,7 @@ int oligo_immune_get_stats(
     const oligo_immune_bridge_t* bridge,
     oligo_immune_stats_t* stats)
 {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     *stats = bridge->stats;
     return 0;
 }

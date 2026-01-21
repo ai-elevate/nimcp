@@ -126,9 +126,7 @@ nimcp_mutex_t* nimcp_mutex_create(const mutex_attr_t* attr)
  */
 nimcp_result_t nimcp_mutex_destroy(nimcp_mutex_t* mutex)
 {
-    if (!mutex) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mutex, NIMCP_ERROR_INVALID_PARAM, "mutex is NULL");
 
     int result = nimcp_platform_mutex_destroy(mutex);
     if (result != 0) {
@@ -158,9 +156,7 @@ nimcp_result_t nimcp_mutex_destroy(nimcp_mutex_t* mutex)
  */
 nimcp_result_t nimcp_mutex_free(nimcp_mutex_t* mutex)
 {
-    if (!mutex) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mutex, NIMCP_ERROR_INVALID_PARAM, "mutex is NULL");
 
     nimcp_result_t result = nimcp_mutex_destroy(mutex);
 
@@ -186,9 +182,7 @@ nimcp_result_t nimcp_mutex_free(nimcp_mutex_t* mutex)
  */
 nimcp_result_t nimcp_mutex_lock(nimcp_mutex_t* mutex)
 {
-    if (!mutex) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mutex, NIMCP_ERROR_INVALID_PARAM, "mutex is NULL");
 
     int result = nimcp_platform_mutex_lock(mutex);
     if (result != 0) {
@@ -215,9 +209,7 @@ nimcp_result_t nimcp_mutex_lock(nimcp_mutex_t* mutex)
  */
 nimcp_result_t nimcp_mutex_trylock(nimcp_mutex_t* mutex)
 {
-    if (!mutex) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mutex, NIMCP_ERROR_INVALID_PARAM, "mutex is NULL");
 
     int result = nimcp_platform_mutex_trylock(mutex);
 
@@ -248,9 +240,7 @@ nimcp_result_t nimcp_mutex_trylock(nimcp_mutex_t* mutex)
  */
 nimcp_result_t nimcp_mutex_unlock(nimcp_mutex_t* mutex)
 {
-    if (!mutex) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(mutex, NIMCP_ERROR_INVALID_PARAM, "mutex is NULL");
 
     int result = nimcp_platform_mutex_unlock(mutex);
     if (result != 0) {
@@ -312,9 +302,7 @@ nimcp_result_t nimcp_spinlock_init(nimcp_spinlock_t* lock)
  */
 nimcp_result_t nimcp_spinlock_destroy(nimcp_spinlock_t* lock)
 {
-    if (!lock) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(lock, NIMCP_ERROR_INVALID_PARAM, "spinlock is NULL");
 
     int result = nimcp_platform_mutex_destroy(lock);
     if (result != 0) {
@@ -341,9 +329,7 @@ nimcp_result_t nimcp_spinlock_destroy(nimcp_spinlock_t* lock)
  */
 nimcp_result_t nimcp_spinlock_lock(nimcp_spinlock_t* lock)
 {
-    if (!lock) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(lock, NIMCP_ERROR_INVALID_PARAM, "spinlock is NULL");
 
     int result = nimcp_platform_mutex_lock(lock);
     if (result != 0) {
@@ -370,9 +356,7 @@ nimcp_result_t nimcp_spinlock_lock(nimcp_spinlock_t* lock)
  */
 nimcp_result_t nimcp_spinlock_unlock(nimcp_spinlock_t* lock)
 {
-    if (!lock) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(lock, NIMCP_ERROR_INVALID_PARAM, "spinlock is NULL");
 
     int result = nimcp_platform_mutex_unlock(lock);
     if (result != 0) {

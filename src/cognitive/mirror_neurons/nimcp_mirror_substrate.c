@@ -461,7 +461,7 @@ mirror_substrate_backing_t* mirror_substrate_cow_copy(
 
 nimcp_result_t mirror_substrate_cow_prepare_write(mirror_substrate_backing_t* backing)
 {
-    if (!backing) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(backing, NIMCP_ERROR_INVALID_PARAM, "backing is NULL");
 
     nimcp_spinlock_lock(&backing->lock);
 
@@ -539,7 +539,7 @@ nimcp_result_t mirror_substrate_bind_observation_axon(
     mirror_substrate_backing_t* backing,
     void* axon_ptr)
 {
-    if (!backing) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(backing, NIMCP_ERROR_INVALID_PARAM, "backing is NULL");
 
     backing->observation_axon = axon_ptr;
     axon_t* axon = (axon_t*)axon_ptr;
@@ -560,7 +560,7 @@ nimcp_result_t mirror_substrate_bind_execution_axon(
     mirror_substrate_backing_t* backing,
     void* axon_ptr)
 {
-    if (!backing) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(backing, NIMCP_ERROR_INVALID_PARAM, "backing is NULL");
 
     backing->execution_axon = axon_ptr;
     axon_t* axon = (axon_t*)axon_ptr;
@@ -612,7 +612,7 @@ nimcp_result_t mirror_substrate_bind_myelin_sheath(
     mirror_substrate_backing_t* backing,
     void* sheath_ptr)
 {
-    if (!backing) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(backing, NIMCP_ERROR_INVALID_PARAM, "backing is NULL");
 
     backing->myelin_sheath = sheath_ptr;
     myelin_sheath_t* sheath = (myelin_sheath_t*)sheath_ptr;
@@ -671,7 +671,7 @@ nimcp_result_t mirror_substrate_bind_dendrite(
     mirror_substrate_backing_t* backing,
     void* dendrite_ptr)
 {
-    if (!backing) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(backing, NIMCP_ERROR_INVALID_PARAM, "backing is NULL");
 
     backing->dendrite = dendrite_ptr;
     dendrite_t* dendrite = (dendrite_t*)dendrite_ptr;
@@ -788,7 +788,7 @@ nimcp_result_t mirror_substrate_bind_astrocyte(
     mirror_substrate_backing_t* backing,
     void* astrocyte)
 {
-    if (!backing) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(backing, NIMCP_ERROR_INVALID_PARAM, "backing is NULL");
 
     backing->astrocyte = astrocyte;
     backing->astrocyte_id = astrocyte ? 1 : 0;  /* Simplified ID */
@@ -801,7 +801,7 @@ nimcp_result_t mirror_substrate_bind_oligodendrocyte(
     mirror_substrate_backing_t* backing,
     void* oligo)
 {
-    if (!backing) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(backing, NIMCP_ERROR_INVALID_PARAM, "backing is NULL");
 
     backing->oligodendrocyte = oligo;
     backing->oligodendrocyte_id = oligo ? 1 : 0;
@@ -814,7 +814,7 @@ nimcp_result_t mirror_substrate_bind_microglia(
     mirror_substrate_backing_t* backing,
     void* microglia)
 {
-    if (!backing) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(backing, NIMCP_ERROR_INVALID_PARAM, "backing is NULL");
 
     backing->microglia = microglia;
     backing->microglia_id = microglia ? 1 : 0;
@@ -959,7 +959,7 @@ nimcp_result_t mirror_substrate_get_stats(
     mirror_neurons_t mirror,
     mirror_substrate_stats_t* stats)
 {
-    if (!stats) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_INVALID_PARAM, "stats is NULL");
 
     /* Zero initialize */
     memset(stats, 0, sizeof(mirror_substrate_stats_t));
@@ -1023,7 +1023,7 @@ nimcp_result_t mirror_substrate_integrate_system(
     mirror_neurons_t mirror,
     const mirror_substrate_config_t* config)
 {
-    if (!mirror) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(mirror, NIMCP_ERROR_INVALID_PARAM, "mirror is NULL");
 
     /* Get default config if none provided */
     mirror_substrate_config_t effective_config;
@@ -1046,7 +1046,7 @@ nimcp_result_t mirror_substrate_connect_glial_integration(
     mirror_neurons_t mirror,
     void* glial_integration)
 {
-    if (!mirror) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(mirror, NIMCP_ERROR_INVALID_PARAM, "mirror is NULL");
 
     /* Wire to existing glial integration via mirror_neurons_integrate_glial */
     glial_integration_t* glial = (glial_integration_t*)glial_integration;
@@ -1064,7 +1064,7 @@ nimcp_result_t mirror_substrate_connect_myelin_network(
     mirror_neurons_t mirror,
     void* myelin_network)
 {
-    if (!mirror || !myelin_network) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(mirror && myelin_network, NIMCP_ERROR_INVALID_PARAM, "mirror or myelin_network is NULL");
 
     SUBSTRATE_LOG_INFO("Mirror substrate: connected to myelin sheath network");
 
@@ -1078,7 +1078,7 @@ nimcp_result_t mirror_substrate_connect_axon_network(
     mirror_neurons_t mirror,
     void* axon_network)
 {
-    if (!mirror || !axon_network) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(mirror && axon_network, NIMCP_ERROR_INVALID_PARAM, "mirror or axon_network is NULL");
 
     SUBSTRATE_LOG_INFO("Mirror substrate: connected to axon network");
 
@@ -1089,7 +1089,7 @@ nimcp_result_t mirror_substrate_connect_dendrite_network(
     mirror_neurons_t mirror,
     void* dendrite_network)
 {
-    if (!mirror || !dendrite_network) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(mirror && dendrite_network, NIMCP_ERROR_INVALID_PARAM, "mirror or dendrite_network is NULL");
 
     SUBSTRATE_LOG_INFO("Mirror substrate: connected to dendrite network");
 

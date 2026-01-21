@@ -258,7 +258,7 @@ void jepa_mask_generator_destroy(jepa_mask_generator_t* generator) {
 }
 
 int jepa_mask_generator_reset(jepa_mask_generator_t* generator, uint32_t new_seed) {
-    if (!generator) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(generator, NIMCP_ERROR_NULL_POINTER, "generator is NULL");
 
     if (new_seed != 0) {
         generator->random_state = new_seed;

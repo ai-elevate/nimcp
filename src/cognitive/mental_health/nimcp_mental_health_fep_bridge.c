@@ -16,7 +16,7 @@
 #define LOG_MODULE "mental_health_fep_bridge"
 
 int mental_health_fep_bridge_default_config(mental_health_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->aberrant_precision_threshold = MENTAL_HEALTH_FEP_ABERRANT_PRECISION_THRESHOLD;
     config->pathological_lr_threshold = MENTAL_HEALTH_FEP_PATHOLOGICAL_LR_THRESHOLD;
     config->negative_prior_threshold = -1.0f;
@@ -53,7 +53,7 @@ void mental_health_fep_bridge_destroy(mental_health_fep_bridge_t* bridge) {
 }
 
 int mental_health_fep_bridge_connect_fep(mental_health_fep_bridge_t* bridge, fep_system_t* fep) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -61,7 +61,7 @@ int mental_health_fep_bridge_connect_fep(mental_health_fep_bridge_t* bridge, fep
 }
 
 int mental_health_fep_bridge_connect_mental_health(mental_health_fep_bridge_t* bridge, mental_health_monitor_t* mh) {
-    if (!bridge || !mh) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && mh, NIMCP_ERROR_NULL_POINTER, "bridge or mental_health is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->mental_health_system = mh;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -69,7 +69,7 @@ int mental_health_fep_bridge_connect_mental_health(mental_health_fep_bridge_t* b
 }
 
 int mental_health_fep_bridge_disconnect(mental_health_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->mental_health_system = NULL;
@@ -78,7 +78,7 @@ int mental_health_fep_bridge_disconnect(mental_health_fep_bridge_t* bridge) {
 }
 
 int mental_health_fep_detect_aberrant_precision(mental_health_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_aberrant_precision_detection) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     if (bridge->state.current_precision > bridge->config.aberrant_precision_threshold) {
@@ -91,7 +91,7 @@ int mental_health_fep_detect_aberrant_precision(mental_health_fep_bridge_t* brid
 }
 
 int mental_health_fep_detect_pathological_learning(mental_health_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_pathological_learning_detection) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     if (bridge->state.current_learning_rate < bridge->config.pathological_lr_threshold) {
@@ -104,7 +104,7 @@ int mental_health_fep_detect_pathological_learning(mental_health_fep_bridge_t* b
 }
 
 int mental_health_fep_detect_negative_priors(mental_health_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_negative_prior_detection) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_effects.negative_priors_detected = false;
@@ -114,7 +114,7 @@ int mental_health_fep_detect_negative_priors(mental_health_fep_bridge_t* bridge)
 }
 
 int mental_health_fep_apply_precision_intervention(mental_health_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_precision_intervention) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     if (bridge->fep_effects.aberrant_precision_detected) {
@@ -127,7 +127,7 @@ int mental_health_fep_apply_precision_intervention(mental_health_fep_bridge_t* b
 }
 
 int mental_health_fep_apply_lr_intervention(mental_health_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_lr_intervention) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     if (bridge->fep_effects.pathological_learning_detected) {
@@ -140,7 +140,7 @@ int mental_health_fep_apply_lr_intervention(mental_health_fep_bridge_t* bridge) 
 }
 
 int mental_health_fep_bridge_update(mental_health_fep_bridge_t* bridge, uint64_t delta_ms) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     mental_health_fep_detect_aberrant_precision(bridge);
     mental_health_fep_detect_pathological_learning(bridge);
     mental_health_fep_detect_negative_priors(bridge);
@@ -150,7 +150,7 @@ int mental_health_fep_bridge_update(mental_health_fep_bridge_t* bridge, uint64_t
 }
 
 int mental_health_fep_bridge_get_state(const mental_health_fep_bridge_t* bridge, mental_health_fep_state_t* state) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -158,7 +158,7 @@ int mental_health_fep_bridge_get_state(const mental_health_fep_bridge_t* bridge,
 }
 
 int mental_health_fep_bridge_get_stats(const mental_health_fep_bridge_t* bridge, mental_health_fep_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -166,7 +166,7 @@ int mental_health_fep_bridge_get_stats(const mental_health_fep_bridge_t* bridge,
 }
 
 int mental_health_fep_bridge_connect_bio_async(mental_health_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_MENTAL_HEALTH_BRIDGE,

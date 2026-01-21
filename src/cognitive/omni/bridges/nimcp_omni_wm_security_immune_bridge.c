@@ -144,7 +144,7 @@ static float clamp_float(float value, float min_val, float max_val) {
 static nimcp_error_t allocate_prediction_buffer(
     omni_wm_security_immune_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     uint32_t capacity = bridge->config.max_active_forecasts;
     if (capacity == 0) capacity = DEFAULT_PREDICTION_BUFFER_CAPACITY;
@@ -183,7 +183,7 @@ static void free_prediction_buffer(omni_wm_security_immune_bridge_t* bridge) {
 static nimcp_error_t allocate_event_buffer(
     omni_wm_security_immune_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     uint32_t capacity = bridge->config.max_pending_events;
     if (capacity == 0) capacity = DEFAULT_EVENT_BUFFER_CAPACITY;
@@ -223,7 +223,7 @@ static void free_event_buffer(omni_wm_security_immune_bridge_t* bridge) {
 static nimcp_error_t allocate_signature_cache(
     omni_wm_security_immune_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     uint32_t capacity = DEFAULT_SIGNATURE_CAPACITY;
     bridge->signature_cache = nimcp_calloc(capacity, sizeof(float*));
@@ -263,7 +263,7 @@ static void free_signature_cache(omni_wm_security_immune_bridge_t* bridge) {
 static nimcp_error_t decay_cytokines(
     omni_wm_security_immune_bridge_t* bridge, float dt) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     immune_to_wm_modulation_t* mod = &bridge->current_modulation;
     float decay = expf(-mod->decay_rate * dt);
@@ -297,7 +297,7 @@ static nimcp_error_t decay_cytokines(
 static nimcp_error_t update_cytokine_effects(
     omni_wm_security_immune_bridge_t* bridge, float dt) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     const omni_wm_security_immune_config_t* cfg = &bridge->config;
     immune_to_wm_modulation_t* mod = &bridge->current_modulation;
@@ -416,7 +416,7 @@ static nimcp_error_t update_cytokine_effects(
 static nimcp_error_t update_wm_to_security_effects(
     omni_wm_security_immune_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     omni_wm_to_security_effects_t* effects = &bridge->wm_to_security;
 
@@ -455,7 +455,7 @@ static nimcp_error_t update_wm_to_security_effects(
 static nimcp_error_t update_security_to_wm_effects(
     omni_wm_security_immune_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     security_immune_to_wm_effects_t* effects = &bridge->security_to_wm;
 
@@ -476,7 +476,7 @@ static nimcp_error_t update_security_to_wm_effects(
 static nimcp_error_t process_pending_events(
     omni_wm_security_immune_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->world_model) return NIMCP_SUCCESS;
     if (bridge->event_buffer_size == 0) return NIMCP_SUCCESS;
 
@@ -618,7 +618,7 @@ static nimcp_error_t handle_inflammation_state(
 nimcp_error_t omni_wm_security_immune_bridge_default_config(
     omni_wm_security_immune_config_t* config) {
 
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(omni_wm_security_immune_config_t));
 
@@ -818,7 +818,7 @@ void omni_wm_security_immune_bridge_destroy(
 nimcp_error_t omni_wm_security_immune_bridge_reset(
     omni_wm_security_immune_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -869,8 +869,8 @@ nimcp_error_t omni_wm_security_immune_bridge_connect(
     bbb_system_t bbb_system,
     brain_immune_system_t* immune) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!world_model) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_INVALID_PARAM, "world_model is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -898,7 +898,8 @@ nimcp_error_t omni_wm_security_immune_bridge_connect_world_model(
     omni_wm_security_immune_bridge_t* bridge,
     omni_world_model_t* world_model) {
 
-    if (!bridge || !world_model) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_NULL_POINTER, "world_model is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->world_model = world_model;
@@ -914,7 +915,8 @@ nimcp_error_t omni_wm_security_immune_bridge_connect_security(
     omni_wm_security_immune_bridge_t* bridge,
     nimcp_security_system_t* security) {
 
-    if (!bridge || !security) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(security, NIMCP_ERROR_NULL_POINTER, "security is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->security = security;
@@ -927,7 +929,8 @@ nimcp_error_t omni_wm_security_immune_bridge_connect_bbb(
     omni_wm_security_immune_bridge_t* bridge,
     bbb_system_t bbb_system) {
 
-    if (!bridge || !bbb_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bbb_system, NIMCP_ERROR_NULL_POINTER, "bbb_system is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bbb_system = bbb_system;
@@ -940,7 +943,8 @@ nimcp_error_t omni_wm_security_immune_bridge_connect_immune(
     omni_wm_security_immune_bridge_t* bridge,
     brain_immune_system_t* immune) {
 
-    if (!bridge || !immune) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(immune, NIMCP_ERROR_NULL_POINTER, "immune is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->immune = immune;
@@ -953,7 +957,8 @@ nimcp_error_t omni_wm_security_immune_bridge_connect_anomaly_detector(
     omni_wm_security_immune_bridge_t* bridge,
     nimcp_anomaly_detector_t detector) {
 
-    if (!bridge || !detector) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(detector, NIMCP_ERROR_NULL_POINTER, "detector is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->anomaly_detector = detector;
@@ -977,7 +982,7 @@ nimcp_error_t omni_wm_security_immune_bridge_update(
     omni_wm_security_immune_bridge_t* bridge,
     float dt) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_modulation) return NIMCP_SUCCESS;
 
     uint64_t start_time = get_current_time_us();
@@ -1032,9 +1037,9 @@ nimcp_error_t omni_wm_security_immune_bridge_predict_anomaly(
     float* anomaly_score_out,
     float* confidence_out) {
 
-    if (!bridge || !anomaly_score_out || !confidence_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(anomaly_score_out, NIMCP_ERROR_NULL_POINTER, "anomaly_score_out is NULL");
+    NIMCP_CHECK_THROW(confidence_out, NIMCP_ERROR_NULL_POINTER, "confidence_out is NULL");
 
     if (!bridge->config.enable_anomaly_prediction) {
         *anomaly_score_out = 0.0f;
@@ -1082,7 +1087,7 @@ nimcp_error_t omni_wm_security_immune_bridge_report_anomaly(
     bool was_true_positive,
     float actual_severity) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1120,7 +1125,8 @@ nimcp_error_t omni_wm_security_immune_bridge_forecast_threat(
     uint32_t threat_type,
     wm_threat_prediction_t* prediction_out) {
 
-    if (!bridge || !prediction_out) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(prediction_out, NIMCP_ERROR_NULL_POINTER, "prediction_out is NULL");
 
     if (!bridge->config.enable_threat_forecasting) {
         memset(prediction_out, 0, sizeof(wm_threat_prediction_t));
@@ -1172,7 +1178,8 @@ nimcp_error_t omni_wm_security_immune_bridge_process_security_event(
     omni_wm_security_immune_bridge_t* bridge,
     const security_event_for_wm_t* event) {
 
-    if (!bridge || !event) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(event, NIMCP_ERROR_NULL_POINTER, "event is NULL");
 
     if (!bridge->config.enable_security_training) return NIMCP_SUCCESS;
 
@@ -1232,7 +1239,8 @@ nimcp_error_t omni_wm_security_immune_bridge_update_bbb_state(
     omni_wm_security_immune_bridge_t* bridge,
     const bbb_state_for_wm_t* bbb_state) {
 
-    if (!bridge || !bbb_state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bbb_state, NIMCP_ERROR_NULL_POINTER, "bbb_state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1260,7 +1268,7 @@ nimcp_error_t omni_wm_security_immune_bridge_set_alert_level(
     uint32_t alert_level,
     bool under_attack) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (alert_level > 4) alert_level = 4;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1300,7 +1308,7 @@ nimcp_error_t omni_wm_security_immune_bridge_update_cytokines(
     float il10_level,
     float ifn_gamma_level) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1325,7 +1333,7 @@ nimcp_error_t omni_wm_security_immune_bridge_set_inflammation(
     omni_wm_security_immune_bridge_t* bridge,
     uint32_t inflammation_level) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (inflammation_level > 4) inflammation_level = 4;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1360,9 +1368,9 @@ nimcp_error_t omni_wm_security_immune_bridge_check_pe_trigger(
     bool* should_trigger_out,
     float* trigger_strength_out) {
 
-    if (!bridge || !should_trigger_out || !trigger_strength_out) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(should_trigger_out, NIMCP_ERROR_NULL_POINTER, "should_trigger_out is NULL");
+    NIMCP_CHECK_THROW(trigger_strength_out, NIMCP_ERROR_NULL_POINTER, "trigger_strength_out is NULL");
 
     if (!bridge->config.enable_pe_immune_trigger) {
         *should_trigger_out = false;
@@ -1391,7 +1399,7 @@ nimcp_error_t omni_wm_security_immune_bridge_trigger_immune(
     float prediction_error,
     uint32_t error_source) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1435,7 +1443,8 @@ nimcp_error_t omni_wm_security_immune_bridge_get_stats(
     const omni_wm_security_immune_bridge_t* bridge,
     omni_wm_security_immune_stats_t* stats) {
 
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -1447,7 +1456,7 @@ nimcp_error_t omni_wm_security_immune_bridge_get_stats(
 nimcp_error_t omni_wm_security_immune_bridge_reset_stats(
     omni_wm_security_immune_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(omni_wm_security_immune_stats_t));
@@ -1489,7 +1498,7 @@ float omni_wm_security_immune_bridge_get_modulated_learning_rate(
 nimcp_error_t omni_wm_security_immune_bridge_connect_bio_async(
     omni_wm_security_immune_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_bio_async) return NIMCP_SUCCESS;
     if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
@@ -1539,7 +1548,7 @@ nimcp_error_t omni_wm_security_immune_bridge_connect_bio_async(
 nimcp_error_t omni_wm_security_immune_bridge_disconnect_bio_async(
     omni_wm_security_immune_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     if (bridge->base.bio_ctx) {
@@ -1612,7 +1621,7 @@ const char* omni_wm_security_immune_msg_type_to_string(
 nimcp_error_t omni_wm_security_immune_bridge_validate_config(
     const omni_wm_security_immune_config_t* config) {
 
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Validate sensitivity range */
     if (config->sensitivity < 0.5f || config->sensitivity > 2.0f) {
@@ -1681,7 +1690,7 @@ nimcp_error_t omni_wm_security_immune_bridge_validate_config(
 nimcp_error_t omni_wm_security_immune_bridge_compute_modulation(
     omni_wm_security_immune_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     nimcp_error_t err = update_cytokine_effects(bridge, 0.0f);

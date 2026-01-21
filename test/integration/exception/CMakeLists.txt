@@ -148,3 +148,93 @@ set_tests_properties(integration_exception_test_exception_immune_integration
     LABELS "integration;exception;immune"
     TIMEOUT 120
 )
+
+# =============================================================================
+# Exception Module Integration Tests
+# =============================================================================
+
+add_executable(integration_exception_test_exception_module_integration
+    test_exception_module_integration.cpp
+)
+
+target_link_libraries(integration_exception_test_exception_module_integration
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_compile_features(integration_exception_test_exception_module_integration PRIVATE cxx_std_17)
+
+add_test(
+    NAME integration_exception_test_exception_module_integration
+    COMMAND integration_exception_test_exception_module_integration
+)
+
+set_tests_properties(integration_exception_test_exception_module_integration
+    PROPERTIES
+    LABELS "integration;exception;module"
+    TIMEOUT 180
+)
+
+# =============================================================================
+# Exception Async Integration Tests
+# =============================================================================
+
+add_executable(integration_exception_test_exception_async_integration
+    test_exception_async_integration.cpp
+)
+
+target_link_libraries(integration_exception_test_exception_async_integration
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_compile_features(integration_exception_test_exception_async_integration PRIVATE cxx_std_17)
+
+add_test(
+    NAME integration_exception_test_exception_async_integration
+    COMMAND integration_exception_test_exception_async_integration
+)
+
+set_tests_properties(integration_exception_test_exception_async_integration
+    PROPERTIES
+    LABELS "integration;exception;async"
+    TIMEOUT 180
+)
+
+# =============================================================================
+# Exception Cognitive Integration Tests
+# =============================================================================
+
+add_executable(integration_exception_test_exception_cognitive_integration
+    test_exception_cognitive_integration.cpp
+)
+
+target_link_libraries(integration_exception_test_exception_cognitive_integration
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_compile_features(integration_exception_test_exception_cognitive_integration PRIVATE cxx_std_17)
+
+add_test(
+    NAME integration_exception_test_exception_cognitive_integration
+    COMMAND integration_exception_test_exception_cognitive_integration
+)
+
+set_tests_properties(integration_exception_test_exception_cognitive_integration
+    PROPERTIES
+    LABELS "integration;exception;cognitive"
+    TIMEOUT 180
+)

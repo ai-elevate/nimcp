@@ -16,9 +16,7 @@
  * ============================================================================ */
 
 int astrocytes_fep_default_config(astrocytes_fep_config_t* config) {
-    if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     config->precision_sensitivity = ASTROCYTES_FEP_DEFAULT_PRECISION_SENSITIVITY;
     config->glutamate_gain = ASTROCYTES_FEP_DEFAULT_GLUTAMATE_GAIN;
@@ -89,9 +87,7 @@ void astrocytes_fep_destroy(astrocytes_fep_bridge_t* bridge) {
  * ============================================================================ */
 
 int astrocytes_fep_update_fep_to_astrocyte(astrocytes_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
 
     // Get current FEP free energy and precision
     float free_energy = fep_get_free_energy(bridge->fep_system);
@@ -129,9 +125,7 @@ int astrocytes_fep_update_fep_to_astrocyte(astrocytes_fep_bridge_t* bridge) {
 }
 
 int astrocytes_fep_update_astrocyte_to_fep(astrocytes_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->astrocyte_network) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->astrocyte_network, NIMCP_ERROR_NULL_POINTER, "bridge or astrocyte_network is NULL");
 
     // Get astrocyte network statistics
     float avg_calcium = 0.0f;
@@ -165,9 +159,7 @@ int astrocytes_fep_update_astrocyte_to_fep(astrocytes_fep_bridge_t* bridge) {
 }
 
 int astrocytes_fep_update(astrocytes_fep_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     int ret = astrocytes_fep_update_fep_to_astrocyte(bridge);
     if (ret != 0) {
@@ -183,9 +175,7 @@ int astrocytes_fep_update(astrocytes_fep_bridge_t* bridge) {
 }
 
 int astrocytes_fep_apply_modulation(astrocytes_fep_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     // Note: Actual application would modify astrocyte network state
     // This is a simplified version showing the pattern
@@ -224,9 +214,7 @@ int astrocytes_fep_get_stats(
     const astrocytes_fep_bridge_t* bridge,
     astrocytes_fep_stats_t* stats)
 {
-    if (!bridge || !stats) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     memcpy(stats, &bridge->stats, sizeof(astrocytes_fep_stats_t));
     return 0;

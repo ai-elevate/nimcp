@@ -362,9 +362,7 @@ void hemispheric_immune_destroy(hemispheric_immune_bridge_t* bridge) {
 //=============================================================================
 
 int hemispheric_immune_update(hemispheric_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -447,9 +445,7 @@ int hemispheric_immune_update(hemispheric_immune_bridge_t* bridge) {
 }
 
 int hemispheric_immune_apply_modulation(hemispheric_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized || !bridge->brain) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized && bridge->brain, NIMCP_ERROR_NULL_POINTER, "bridge is NULL, not initialized, or brain is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -598,9 +594,7 @@ int hemispheric_immune_set_inflammation(
     hemispheric_immune_bridge_t* bridge,
     brain_inflammation_level_t level
 ) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->current_inflammation = level;
@@ -613,9 +607,7 @@ int hemispheric_immune_set_inflammation(
 int hemispheric_immune_trigger_emergency_bilateral(
     hemispheric_immune_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->lateralization_effects.emergency_bilateral = true;
@@ -631,9 +623,7 @@ int hemispheric_immune_trigger_emergency_bilateral(
 }
 
 int hemispheric_immune_clear_emergency(hemispheric_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->lateralization_effects.emergency_bilateral = false;
@@ -675,9 +665,7 @@ void hemispheric_immune_reset_stats(hemispheric_immune_bridge_t* bridge) {
 //=============================================================================
 
 int hemispheric_immune_connect_bio_async(hemispheric_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  // Already connected
@@ -702,9 +690,7 @@ int hemispheric_immune_connect_bio_async(hemispheric_immune_bridge_t* bridge) {
 }
 
 int hemispheric_immune_disconnect_bio_async(hemispheric_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  // Already disconnected

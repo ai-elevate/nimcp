@@ -27,7 +27,7 @@
  * ============================================================================ */
 
 int joy_fep_default_config(joy_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* FEP -> Joy */
     config->positive_pe_joy_gain = 1.0f;
@@ -112,7 +112,7 @@ int joy_fep_connect_fep(
     joy_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -126,7 +126,7 @@ int joy_fep_connect_joy(
     joy_fep_bridge_t* bridge,
     joy_system_t* joy
 ) {
-    if (!bridge || !joy) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && joy, NIMCP_ERROR_NULL_POINTER, "bridge or joy is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->joy_system = joy;
@@ -137,7 +137,7 @@ int joy_fep_connect_joy(
 }
 
 int joy_fep_disconnect(joy_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -156,7 +156,7 @@ int joy_fep_process_positive_pe(
     joy_fep_bridge_t* bridge,
     float pe_magnitude
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_positive_pe_joy) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -214,7 +214,7 @@ int joy_fep_process_positive_pe(
 int joy_fep_boost_learning_rate(
     joy_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_joy_learning_boost) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -251,7 +251,7 @@ int joy_fep_update(
     joy_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Apply learning rate boost */
     joy_fep_boost_learning_rate(bridge);
@@ -285,7 +285,7 @@ int joy_fep_get_state(
     const joy_fep_bridge_t* bridge,
     joy_fep_state_t* state
 ) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -298,7 +298,7 @@ int joy_fep_get_stats(
     const joy_fep_bridge_t* bridge,
     joy_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -314,7 +314,7 @@ int joy_fep_get_stats(
 int joy_fep_connect_bio_async(
     joy_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -338,7 +338,7 @@ int joy_fep_connect_bio_async(
 int joy_fep_disconnect_bio_async(
     joy_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

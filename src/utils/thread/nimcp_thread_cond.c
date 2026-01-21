@@ -72,9 +72,7 @@ nimcp_result_t nimcp_cond_init(nimcp_cond_t* cond)
  */
 nimcp_result_t nimcp_cond_destroy(nimcp_cond_t* cond)
 {
-    if (!cond) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(cond, NIMCP_ERROR_INVALID_PARAM, "cond is NULL");
 
     int result = nimcp_platform_cond_destroy(cond);
     if (result != 0) {
@@ -116,9 +114,7 @@ nimcp_result_t nimcp_cond_destroy(nimcp_cond_t* cond)
  */
 nimcp_result_t nimcp_cond_wait(nimcp_cond_t* cond, nimcp_mutex_t* mutex)
 {
-    if (!cond || !mutex) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(cond && mutex, NIMCP_ERROR_INVALID_PARAM, "cond or mutex is NULL");
 
     int result = nimcp_platform_cond_wait(cond, mutex);
     if (result != 0) {
@@ -157,9 +153,7 @@ nimcp_result_t nimcp_cond_wait(nimcp_cond_t* cond, nimcp_mutex_t* mutex)
  */
 nimcp_result_t nimcp_cond_timedwait(nimcp_cond_t* cond, nimcp_mutex_t* mutex, uint32_t timeout_ms)
 {
-    if (!cond || !mutex) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(cond && mutex, NIMCP_ERROR_INVALID_PARAM, "cond or mutex is NULL");
 
     // Use platform abstraction for timed wait
     int result = nimcp_platform_cond_timedwait(cond, mutex, timeout_ms);
@@ -207,9 +201,7 @@ nimcp_result_t nimcp_cond_timedwait(nimcp_cond_t* cond, nimcp_mutex_t* mutex, ui
  */
 nimcp_result_t nimcp_cond_signal(nimcp_cond_t* cond)
 {
-    if (!cond) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(cond, NIMCP_ERROR_INVALID_PARAM, "cond is NULL");
 
     int result = nimcp_platform_cond_signal(cond);
     if (result != 0) {
@@ -253,9 +245,7 @@ nimcp_result_t nimcp_cond_signal(nimcp_cond_t* cond)
  */
 nimcp_result_t nimcp_cond_broadcast(nimcp_cond_t* cond)
 {
-    if (!cond) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(cond, NIMCP_ERROR_INVALID_PARAM, "cond is NULL");
 
     int result = nimcp_platform_cond_broadcast(cond);
     if (result != 0) {

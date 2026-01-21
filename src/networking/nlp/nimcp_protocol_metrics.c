@@ -224,9 +224,8 @@ static nimcp_result_t bio_message_handler(
     size_t msg_size
 ) {
     protocol_metrics_t* pm = (protocol_metrics_t*)context;
-    if (!pm || !msg) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(pm && msg, NIMCP_ERROR_INVALID_PARAM,
+        "bio_message_handler: protocol metrics context or message is NULL");
 
     /* Handle metrics-related messages */
     switch (msg->type) {
@@ -348,9 +347,8 @@ int metrics_record_message(
     float latency_ms,
     bool success
 ) {
-    if (!pm) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(pm, NIMCP_ERROR_INVALID_PARAM,
+        "metrics_record_message: protocol metrics context is NULL");
 
     nimcp_platform_mutex_lock(&pm->mutex);
 
@@ -412,9 +410,8 @@ int metrics_get_stats_history(
     protocol_stats_t** history,
     uint32_t* count
 ) {
-    if (!pm || !history || !count) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(pm && history && count, NIMCP_ERROR_INVALID_PARAM,
+        "metrics_get_stats_history: protocol metrics context, history, or count is NULL");
 
     nimcp_platform_mutex_lock(&pm->mutex);
 
@@ -457,9 +454,8 @@ int metrics_record_primitive_usage(
     uint32_t primitive_id,
     float context_relevance
 ) {
-    if (!pm) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(pm, NIMCP_ERROR_INVALID_PARAM,
+        "metrics_record_primitive_usage: protocol metrics context is NULL");
 
     /* Guard clause: semantic tracking disabled */
     if (!pm->config.enable_semantic_tracking) {
@@ -486,9 +482,8 @@ int metrics_get_primitive_stats(
     semantic_primitive_stats_t** stats,
     uint32_t* count
 ) {
-    if (!pm || !stats || !count) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(pm && stats && count, NIMCP_ERROR_INVALID_PARAM,
+        "metrics_get_primitive_stats: protocol metrics context, stats, or count is NULL");
 
     nimcp_platform_mutex_lock(&pm->mutex);
 
@@ -533,9 +528,8 @@ int metrics_get_top_primitives(
     uint32_t top_n,
     semantic_primitive_stats_t** stats
 ) {
-    if (!pm || !stats) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(pm && stats, NIMCP_ERROR_INVALID_PARAM,
+        "metrics_get_top_primitives: protocol metrics context or stats is NULL");
 
     /* Get all primitives first */
     semantic_primitive_stats_t* all_stats = NULL;
@@ -591,9 +585,8 @@ int metrics_get_dashboard_summary(
     char* json_output,
     uint32_t max_size
 ) {
-    if (!pm || !json_output || max_size == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(pm && json_output && max_size > 0, NIMCP_ERROR_INVALID_PARAM,
+        "metrics_get_dashboard_summary: protocol metrics context, json_output, or max_size is invalid");
 
     nimcp_platform_mutex_lock(&pm->mutex);
 
@@ -642,9 +635,8 @@ int metrics_get_dashboard_summary(
 }
 
 int metrics_export_csv(protocol_metrics_t* pm, const char* filepath) {
-    if (!pm || !filepath) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(pm && filepath, NIMCP_ERROR_INVALID_PARAM,
+        "metrics_export_csv: protocol metrics context or filepath is NULL");
 
     FILE* fp = fopen(filepath, "w");
     if (!fp) {
@@ -690,9 +682,8 @@ int metrics_set_alert_callback(
     protocol_metrics_t* pm,
     metrics_alert_callback_t callback
 ) {
-    if (!pm) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(pm, NIMCP_ERROR_INVALID_PARAM,
+        "metrics_set_alert_callback: protocol metrics context is NULL");
 
     nimcp_platform_mutex_lock(&pm->mutex);
     pm->alert_callback = callback;
@@ -762,9 +753,8 @@ metrics_config_t metrics_default_config(void) {
 }
 
 int metrics_reset_all(protocol_metrics_t* pm) {
-    if (!pm) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(pm, NIMCP_ERROR_INVALID_PARAM,
+        "metrics_reset_all: protocol metrics context is NULL");
 
     nimcp_platform_mutex_lock(&pm->mutex);
 
@@ -811,9 +801,8 @@ int metrics_set_primitive_name(
     uint32_t primitive_id,
     const char* name
 ) {
-    if (!pm || !name) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(pm && name, NIMCP_ERROR_INVALID_PARAM,
+        "metrics_set_primitive_name: protocol metrics context or name is NULL");
 
     nimcp_platform_mutex_lock(&pm->mutex);
 

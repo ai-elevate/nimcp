@@ -44,7 +44,7 @@ static nimcp_error_t handle_ethics_response(
 {
     (void)msg_size;
     (void)response_promise;
-    if (!msg || !user_data) { return NIMCP_ERROR_NULL_ARG; }
+    NIMCP_CHECK_THROW(msg && user_data, NIMCP_ERROR_NULL_ARG, "msg or user_data is NULL");
 
     const bio_msg_ethics_response_t* response = (const bio_msg_ethics_response_t*)msg;
     remorse_regret_system_t* system = (remorse_regret_system_t*)user_data;

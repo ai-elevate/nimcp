@@ -158,7 +158,7 @@ int fep_consciousness_connect_fep(
     fep_consciousness_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -172,7 +172,7 @@ int fep_consciousness_connect_introspection(
     fep_consciousness_bridge_t* bridge,
     introspection_context_t introspection
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->introspection = introspection;
@@ -183,7 +183,7 @@ int fep_consciousness_connect_introspection(
 }
 
 int fep_consciousness_disconnect(fep_consciousness_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -202,7 +202,7 @@ int fep_consciousness_gate_action(
     uint32_t proposed_action,
     uint32_t* gated_action
 ) {
-    if (!bridge || !gated_action) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && gated_action, NIMCP_ERROR_NULL_POINTER, "bridge or gated_action is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -243,7 +243,7 @@ int fep_consciousness_modulate_precision(
     fep_consciousness_bridge_t* bridge,
     float* precision
 ) {
-    if (!bridge || !precision) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && precision, NIMCP_ERROR_NULL_POINTER, "bridge or precision is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -264,7 +264,7 @@ int fep_consciousness_evaluate_coherence(
     const fep_policy_t* policy,
     float* coherence
 ) {
-    if (!bridge || !policy || !coherence) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && policy && coherence, NIMCP_ERROR_NULL_POINTER, "bridge, policy, or coherence is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -297,8 +297,8 @@ int fep_consciousness_assess_model_quality(
     fep_consciousness_bridge_t* bridge,
     float* quality
 ) {
-    if (!bridge || !quality) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->fep_system) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(bridge && quality, NIMCP_ERROR_NULL_POINTER, "bridge or quality is NULL");
+    NIMCP_CHECK_THROW(bridge->fep_system, NIMCP_ERROR_INVALID_STATE, "fep_system is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -326,9 +326,9 @@ int fep_consciousness_request_attention(
     uint32_t target,
     float priority
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (priority < 0.0f || priority > 1.0f) return NIMCP_ERROR_INVALID_PARAM;
-    if (!bridge->config.enable_global_workspace) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(priority >= 0.0f && priority <= 1.0f, NIMCP_ERROR_INVALID_PARAM, "priority out of range");
+    NIMCP_CHECK_THROW(bridge->config.enable_global_workspace, NIMCP_ERROR_INVALID_STATE, "global workspace not enabled");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -359,7 +359,7 @@ int fep_consciousness_update(
     fep_consciousness_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -401,7 +401,7 @@ int fep_consciousness_get_state(
     const fep_consciousness_bridge_t* bridge,
     fep_consciousness_state_t* state
 ) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     *state = bridge->state;
     return 0;
 }
@@ -411,7 +411,7 @@ int fep_consciousness_get_state(
  * ============================================================================ */
 
 int fep_consciousness_connect_bio_async(fep_consciousness_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -432,7 +432,7 @@ int fep_consciousness_connect_bio_async(fep_consciousness_bridge_t* bridge) {
 }
 
 int fep_consciousness_disconnect_bio_async(fep_consciousness_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

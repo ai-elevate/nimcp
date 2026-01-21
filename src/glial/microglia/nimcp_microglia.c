@@ -799,7 +799,7 @@ void microglia_network_destroy(microglia_network_t* network)
 nimcp_result_t microglia_monitor_synapse_at(microglia_t* mg, uint32_t synapse_id,
                                              float x, float y, float z)
 {
-    if (!mg) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(mg, NIMCP_ERROR_INVALID_PARAM, "mg is NULL");
 
     nimcp_spinlock_lock(&mg->lock);
 
@@ -851,7 +851,7 @@ nimcp_result_t microglia_monitor_synapse_at(microglia_t* mg, uint32_t synapse_id
 nimcp_result_t microglia_monitor_synapse(microglia_t* mg, uint32_t synapse_id)
 {
     // Default position at microglia location
-    if (!mg) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(mg, NIMCP_ERROR_INVALID_PARAM, "mg is NULL");
     return microglia_monitor_synapse_at(mg, synapse_id,
                                          mg->position[0], mg->position[1], mg->position[2]);
 }
@@ -1353,8 +1353,8 @@ bool microglia_should_prune_synapse(const microglia_t* mg, uint32_t synapse_id)
 
 nimcp_result_t microglia_network_add(microglia_network_t* network, microglia_t* mg)
 {
-    if (!network || !mg) return NIMCP_ERROR_INVALID_PARAM;
-    if (!network->microglia) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(network && mg, NIMCP_ERROR_INVALID_PARAM, "network or mg is NULL");
+    NIMCP_CHECK_THROW(network->microglia, NIMCP_ERROR_INVALID_PARAM, "network->microglia is NULL");
 
     nimcp_mutex_lock(&network->lock);
 
@@ -1896,7 +1896,7 @@ microglia_t* microglia_cow_copy(microglia_t* mg)
 
 nimcp_result_t microglia_cow_prepare_write(microglia_t* mg)
 {
-    if (!mg) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(mg, NIMCP_ERROR_INVALID_PARAM, "mg is NULL");
 
     nimcp_spinlock_lock(&mg->lock);
 

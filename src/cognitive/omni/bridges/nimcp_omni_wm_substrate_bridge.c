@@ -100,7 +100,7 @@ static inline float clampf(float value, float min_val, float max_val) {
  * HOW:  Query substrate API, compute derived metrics
  */
 static nimcp_error_t update_metabolic_availability(omni_wm_substrate_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     wm_metabolic_availability_t* avail = &bridge->availability;
 
@@ -184,7 +184,7 @@ static nimcp_error_t update_metabolic_availability(omni_wm_substrate_bridge_t* b
  * HOW:  Apply thresholds and scaling to availability
  */
 static nimcp_error_t compute_substrate_to_wm_effects(omni_wm_substrate_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     substrate_to_wm_effects_t* effects = &bridge->substrate_effects;
     const wm_metabolic_availability_t* avail = &bridge->availability;
@@ -324,7 +324,7 @@ static nimcp_error_t compute_substrate_to_wm_effects(omni_wm_substrate_bridge_t*
  * HOW:  Accumulate consumption based on activity reports
  */
 static nimcp_error_t update_wm_to_substrate_effects(omni_wm_substrate_bridge_t* bridge, float dt) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     wm_to_substrate_effects_t* effects = &bridge->wm_effects;
     const omni_wm_substrate_bridge_config_t* cfg = &bridge->config;
@@ -382,7 +382,7 @@ static nimcp_error_t update_wm_to_substrate_effects(omni_wm_substrate_bridge_t* 
  * HOW:  Compare current alerts to previous, update counters
  */
 static nimcp_error_t check_and_update_alerts(omni_wm_substrate_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     substrate_to_wm_effects_t* effects = &bridge->substrate_effects;
     uint32_t prev_alerts = bridge->active_alerts;
@@ -447,7 +447,7 @@ static nimcp_error_t check_and_update_alerts(omni_wm_substrate_bridge_t* bridge)
  * HOW:  Set WM parameters based on computed effects
  */
 static nimcp_error_t apply_constraints_to_wm(omni_wm_substrate_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->world_model) return NIMCP_SUCCESS;
 
     const substrate_to_wm_effects_t* effects = &bridge->substrate_effects;
@@ -492,7 +492,7 @@ static nimcp_error_t apply_constraints_to_wm(omni_wm_substrate_bridge_t* bridge)
  * HOW:  Check interval, format and log state
  */
 static nimcp_error_t log_metabolic_state(omni_wm_substrate_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_metabolic_logging) return NIMCP_SUCCESS;
 
     uint64_t now = get_current_time_us();
@@ -534,7 +534,8 @@ static nimcp_error_t handle_metabolic_update(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!msg || !user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(msg, NIMCP_ERROR_NULL_POINTER, "msg is NULL");
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_substrate_bridge_t* bridge = (omni_wm_substrate_bridge_t*)user_data;
 
@@ -557,7 +558,7 @@ static nimcp_error_t handle_demand_signal(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     /* Demand signals typically come from WM, would update demand state */
     return NIMCP_SUCCESS;
@@ -572,7 +573,7 @@ static nimcp_error_t handle_constraint_response(const void* msg, size_t msg_size
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     /* Would handle acknowledgement of constraints from WM */
     return NIMCP_SUCCESS;
@@ -585,7 +586,7 @@ static nimcp_error_t handle_constraint_response(const void* msg, size_t msg_size
 nimcp_error_t omni_wm_substrate_bridge_default_config(
     omni_wm_substrate_bridge_config_t* config) {
 
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(omni_wm_substrate_bridge_config_t));
 
@@ -720,7 +721,7 @@ void omni_wm_substrate_bridge_destroy(omni_wm_substrate_bridge_t* bridge) {
 }
 
 nimcp_error_t omni_wm_substrate_bridge_reset(omni_wm_substrate_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -784,8 +785,9 @@ nimcp_error_t omni_wm_substrate_bridge_connect(
     neural_substrate_t* substrate,
     metabolic_plasticity_t* metabolic) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!world_model || !substrate) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_INVALID_PARAM, "world_model is required");
+    NIMCP_CHECK_THROW(substrate, NIMCP_ERROR_INVALID_PARAM, "substrate is required");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -816,7 +818,8 @@ nimcp_error_t omni_wm_substrate_bridge_connect_world_model(
     omni_wm_substrate_bridge_t* bridge,
     omni_world_model_t* world_model) {
 
-    if (!bridge || !world_model) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_NULL_POINTER, "world_model is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->world_model = world_model;
@@ -832,7 +835,8 @@ nimcp_error_t omni_wm_substrate_bridge_connect_substrate(
     omni_wm_substrate_bridge_t* bridge,
     neural_substrate_t* substrate) {
 
-    if (!bridge || !substrate) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(substrate, NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->substrate = substrate;
@@ -852,7 +856,8 @@ nimcp_error_t omni_wm_substrate_bridge_connect_metabolic(
     omni_wm_substrate_bridge_t* bridge,
     metabolic_plasticity_t* metabolic) {
 
-    if (!bridge || !metabolic) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(metabolic, NIMCP_ERROR_NULL_POINTER, "metabolic is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metabolic = metabolic;
@@ -874,7 +879,7 @@ nimcp_error_t omni_wm_substrate_bridge_update(
     omni_wm_substrate_bridge_t* bridge,
     float dt) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_modulation) return NIMCP_SUCCESS;
 
     uint64_t start_time = get_current_time_us();
@@ -924,7 +929,7 @@ nimcp_error_t omni_wm_substrate_bridge_update(
 nimcp_error_t omni_wm_substrate_bridge_refresh_metabolic_state(
     omni_wm_substrate_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -949,7 +954,8 @@ nimcp_error_t omni_wm_substrate_bridge_get_availability(
     const omni_wm_substrate_bridge_t* bridge,
     wm_metabolic_availability_t* availability) {
 
-    if (!bridge || !availability) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(availability, NIMCP_ERROR_NULL_POINTER, "availability is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *availability = bridge->availability;
@@ -997,7 +1003,8 @@ nimcp_error_t omni_wm_substrate_bridge_signal_demand(
     omni_wm_substrate_bridge_t* bridge,
     const wm_computational_demand_t* demand) {
 
-    if (!bridge || !demand) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(demand, NIMCP_ERROR_NULL_POINTER, "demand is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1024,7 +1031,7 @@ nimcp_error_t omni_wm_substrate_bridge_report_predictions(
     uint32_t num_predictions,
     uint32_t horizon) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1044,7 +1051,7 @@ nimcp_error_t omni_wm_substrate_bridge_report_training(
     omni_wm_substrate_bridge_t* bridge,
     uint32_t num_steps) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1065,7 +1072,7 @@ nimcp_error_t omni_wm_substrate_bridge_report_rollouts(
     uint32_t num_rollouts,
     uint32_t total_steps) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1126,7 +1133,8 @@ nimcp_error_t omni_wm_substrate_bridge_get_stats(
     const omni_wm_substrate_bridge_t* bridge,
     omni_wm_substrate_bridge_stats_t* stats) {
 
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -1138,7 +1146,7 @@ nimcp_error_t omni_wm_substrate_bridge_get_stats(
 nimcp_error_t omni_wm_substrate_bridge_reset_stats(
     omni_wm_substrate_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1170,7 +1178,7 @@ nimcp_error_t omni_wm_substrate_bridge_reset_stats(
 nimcp_error_t omni_wm_substrate_bridge_connect_bio_async(
     omni_wm_substrate_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_bio_async) return NIMCP_SUCCESS;
     if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
@@ -1214,7 +1222,7 @@ nimcp_error_t omni_wm_substrate_bridge_connect_bio_async(
 nimcp_error_t omni_wm_substrate_bridge_disconnect_bio_async(
     omni_wm_substrate_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     if (bridge->base.bio_ctx) {
@@ -1287,7 +1295,7 @@ const char* omni_wm_substrate_core_msg_to_string(uint32_t msg_type) {
 nimcp_error_t omni_wm_substrate_bridge_validate_config(
     const omni_wm_substrate_bridge_config_t* config) {
 
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Validate sensitivity range */
     if (config->sensitivity < 0.5f || config->sensitivity > 2.0f) {

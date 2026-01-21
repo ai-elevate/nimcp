@@ -279,7 +279,7 @@ static void replay_buffer_destroy(omni_wm_replay_buffer_t* buf) {
  * ============================================================================ */
 
 nimcp_error_t omni_wm_get_default_config(omni_wm_config_t* config) {
-    if (!config) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     memset(config, 0, sizeof(omni_wm_config_t));
 
@@ -533,7 +533,8 @@ void omni_wm_state_destroy(omni_wm_state_t* state) {
 
 nimcp_error_t omni_wm_set_state(omni_world_model_t* wm,
                                  const omni_wm_state_t* state) {
-    if (!wm || !state) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_INVALID_PARAM, "state is NULL");
 
     if (wm->current_state) {
         omni_wm_state_destroy(wm->current_state);
@@ -608,7 +609,8 @@ const omni_wm_rssm_state_t* omni_wm_get_rssm_state(const omni_world_model_t* wm)
 
 nimcp_error_t omni_wm_set_rssm_state(omni_world_model_t* wm,
                                       const omni_wm_rssm_state_t* state) {
-    if (!wm || !state) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_INVALID_PARAM, "RSSM state is NULL");
 
     if (wm->rssm_state) {
         omni_wm_rssm_state_destroy(wm->rssm_state);
@@ -627,14 +629,17 @@ nimcp_error_t omni_wm_rssm_step(omni_world_model_t* wm,
                                  const float* action,
                                  uint32_t action_dim,
                                  omni_wm_rssm_state_t* next_state) {
-    if (!wm || !state || !action || !next_state) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_INVALID_PARAM, "state is NULL");
+    NIMCP_CHECK_THROW(action, NIMCP_ERROR_INVALID_PARAM, "action is NULL");
+    NIMCP_CHECK_THROW(next_state, NIMCP_ERROR_INVALID_PARAM, "next_state is NULL");
 
     omni_wm_dynamics_t* dyn = wm->forward_dynamics;
 
     /* Concatenate input: [h, z, a] */
     uint32_t input_dim = state->h_dim + state->z_dim + action_dim;
     float* input = nimcp_calloc(input_dim, sizeof(float));
-    if (!input) return NIMCP_ERROR_NO_MEMORY;
+    NIMCP_CHECK_THROW(input, NIMCP_ERROR_NO_MEMORY, "failed to allocate RSSM input buffer");
 
     memcpy(input, state->h, state->h_dim * sizeof(float));
     memcpy(input + state->h_dim, state->z, state->z_dim * sizeof(float));
@@ -680,12 +685,16 @@ nimcp_error_t omni_wm_rssm_imagine(omni_world_model_t* wm,
                                     const float* const* actions,
                                     uint32_t horizon,
                                     omni_wm_rssm_state_t** trajectory) {
-    if (!wm || !initial_state || !actions || !trajectory) return NIMCP_ERROR_INVALID_PARAM;
-    if (horizon == 0 || horizon > OMNI_WM_MAX_HORIZON) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(initial_state, NIMCP_ERROR_INVALID_PARAM, "initial_state is NULL");
+    NIMCP_CHECK_THROW(actions, NIMCP_ERROR_INVALID_PARAM, "actions is NULL");
+    NIMCP_CHECK_THROW(trajectory, NIMCP_ERROR_INVALID_PARAM, "trajectory is NULL");
+    NIMCP_CHECK_THROW(horizon > 0 && horizon <= OMNI_WM_MAX_HORIZON, NIMCP_ERROR_INVALID_PARAM,
+                      "horizon must be between 1 and OMNI_WM_MAX_HORIZON");
 
     /* First state is initial */
     trajectory[0] = omni_wm_rssm_state_clone(initial_state);
-    if (!trajectory[0]) return NIMCP_ERROR_NO_MEMORY;
+    NIMCP_CHECK_THROW(trajectory[0], NIMCP_ERROR_NO_MEMORY, "failed to clone initial state");
 
     /* Roll out imagination */
     for (uint32_t t = 1; t < horizon; t++) {
@@ -723,7 +732,9 @@ nimcp_error_t omni_wm_predict_forward(omni_world_model_t* wm,
                                        const float* action,
                                        uint32_t action_dim,
                                        omni_wm_transition_t* result) {
-    if (!wm || !action || !result) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(action, NIMCP_ERROR_INVALID_PARAM, "action is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
 
     /* Use RSSM if enabled */
     if (wm->config.use_rssm && wm->rssm_state) {
@@ -731,7 +742,7 @@ nimcp_error_t omni_wm_predict_forward(omni_world_model_t* wm,
             wm->config.rssm_h_dim,
             wm->config.rssm_z_dim
         );
-        if (!next_rssm) return NIMCP_ERROR_NO_MEMORY;
+        NIMCP_CHECK_THROW(next_rssm, NIMCP_ERROR_NO_MEMORY, "failed to create next RSSM state");
 
         nimcp_error_t err = omni_wm_rssm_step(wm, wm->rssm_state,
                                                action, action_dim, next_rssm);
@@ -780,10 +791,10 @@ nimcp_error_t omni_wm_predict_forward(omni_world_model_t* wm,
     }
 
     /* Simple linear prediction fallback */
-    if (!wm->current_state) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm->current_state, NIMCP_ERROR_INVALID_PARAM, "current_state is NULL");
 
     result->next_state = omni_wm_state_clone(wm->current_state);
-    if (!result->next_state) return NIMCP_ERROR_NO_MEMORY;
+    NIMCP_CHECK_THROW(result->next_state, NIMCP_ERROR_NO_MEMORY, "failed to clone current state");
 
     /* Simple dynamics: next = current + action_effect */
     uint32_t min_dim = action_dim < result->next_state->dim ?
@@ -801,11 +812,13 @@ nimcp_error_t omni_wm_predict_forward(omni_world_model_t* wm,
 nimcp_error_t omni_wm_infer_backward(omni_world_model_t* wm,
                                       const omni_wm_state_t* current_state,
                                       omni_wm_transition_t* result) {
-    if (!wm || !current_state || !result) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(current_state, NIMCP_ERROR_INVALID_PARAM, "current_state is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
 
     /* Create previous state estimate */
     result->next_state = omni_wm_state_clone(current_state);
-    if (!result->next_state) return NIMCP_ERROR_NO_MEMORY;
+    NIMCP_CHECK_THROW(result->next_state, NIMCP_ERROR_NO_MEMORY, "failed to clone current state");
 
     /* Backward dynamics: infer what action led here */
     /* This is an inverse problem - approximate solution */
@@ -831,8 +844,10 @@ nimcp_error_t omni_wm_predict_lateral(omni_world_model_t* wm,
                                        const omni_wm_state_t* source_state,
                                        uint32_t target_modality,
                                        omni_wm_state_t* result) {
-    if (!wm || !source_state || !result) return NIMCP_ERROR_INVALID_PARAM;
-    if (!wm->config.enable_lateral) return NIMCP_ERROR_NOT_IMPLEMENTED;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(source_state, NIMCP_ERROR_INVALID_PARAM, "source_state is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
+    NIMCP_CHECK_THROW(wm->config.enable_lateral, NIMCP_ERROR_NOT_IMPLEMENTED, "lateral prediction not enabled");
 
     /* Cross-modal prediction using lateral dynamics */
     memset(result->values, 0, result->dim * sizeof(float));
@@ -854,8 +869,10 @@ nimcp_error_t omni_wm_predict_hierarchical(omni_world_model_t* wm,
                                             const omni_wm_state_t* state,
                                             uint32_t target_level,
                                             omni_wm_state_t* result) {
-    if (!wm || !state || !result) return NIMCP_ERROR_INVALID_PARAM;
-    if (!wm->config.enable_hierarchical) return NIMCP_ERROR_NOT_IMPLEMENTED;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_INVALID_PARAM, "state is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
+    NIMCP_CHECK_THROW(wm->config.enable_hierarchical, NIMCP_ERROR_NOT_IMPLEMENTED, "hierarchical prediction not enabled");
 
     /* Hierarchical abstraction/concretization */
     uint32_t level_diff = target_level > state->level ?
@@ -908,7 +925,9 @@ nimcp_error_t omni_wm_encode(omni_world_model_t* wm,
                               const float* observation,
                               uint32_t obs_dim,
                               omni_wm_latent_t* latent) {
-    if (!wm || !observation || !latent) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(observation, NIMCP_ERROR_INVALID_PARAM, "observation is NULL");
+    NIMCP_CHECK_THROW(latent, NIMCP_ERROR_INVALID_PARAM, "latent is NULL");
 
     /* Linear encoding: latent = ReLU(W * obs + b) */
     for (uint32_t i = 0; i < latent->dim; i++) {
@@ -935,7 +954,9 @@ nimcp_error_t omni_wm_decode(omni_world_model_t* wm,
                               const omni_wm_latent_t* latent,
                               float* observation,
                               uint32_t obs_dim) {
-    if (!wm || !latent || !observation) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(latent, NIMCP_ERROR_INVALID_PARAM, "latent is NULL");
+    NIMCP_CHECK_THROW(observation, NIMCP_ERROR_INVALID_PARAM, "observation is NULL");
 
     /* Linear decoding: obs = W * latent + b */
     for (uint32_t i = 0; i < obs_dim && i < wm->config.obs_dim; i++) {
@@ -954,7 +975,10 @@ nimcp_error_t omni_wm_predict_latent(omni_world_model_t* wm,
                                       const float* action,
                                       uint32_t action_dim,
                                       omni_wm_latent_t* predicted_latent) {
-    if (!wm || !latent || !action || !predicted_latent) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(latent, NIMCP_ERROR_INVALID_PARAM, "latent is NULL");
+    NIMCP_CHECK_THROW(action, NIMCP_ERROR_INVALID_PARAM, "action is NULL");
+    NIMCP_CHECK_THROW(predicted_latent, NIMCP_ERROR_INVALID_PARAM, "predicted_latent is NULL");
 
     /* JEPA-style: predict in latent space */
     /* Simple dynamics: next_latent = f(latent, action) */
@@ -1024,7 +1048,10 @@ nimcp_error_t omni_wm_predict_mdn(omni_world_model_t* wm,
                                    const float* action,
                                    uint32_t action_dim,
                                    omni_wm_mdn_prediction_t* pred) {
-    if (!wm || !state || !action || !pred) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_INVALID_PARAM, "state is NULL");
+    NIMCP_CHECK_THROW(action, NIMCP_ERROR_INVALID_PARAM, "action is NULL");
+    NIMCP_CHECK_THROW(pred, NIMCP_ERROR_INVALID_PARAM, "MDN prediction is NULL");
 
     /* Generate mixture components based on state and action */
     for (uint32_t k = 0; k < pred->num_components; k++) {
@@ -1045,7 +1072,8 @@ nimcp_error_t omni_wm_predict_mdn(omni_world_model_t* wm,
 
 nimcp_error_t omni_wm_mdn_sample(const omni_wm_mdn_prediction_t* pred,
                                   float* sample) {
-    if (!pred || !sample) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(pred, NIMCP_ERROR_INVALID_PARAM, "MDN prediction is NULL");
+    NIMCP_CHECK_THROW(sample, NIMCP_ERROR_INVALID_PARAM, "sample buffer is NULL");
 
     /* Select component based on weights */
     unsigned int seed = (unsigned int)time(NULL);
@@ -1072,7 +1100,8 @@ nimcp_error_t omni_wm_mdn_sample(const omni_wm_mdn_prediction_t* pred,
 
 nimcp_error_t omni_wm_mdn_mode(const omni_wm_mdn_prediction_t* pred,
                                 float* mode) {
-    if (!pred || !mode) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(pred, NIMCP_ERROR_INVALID_PARAM, "MDN prediction is NULL");
+    NIMCP_CHECK_THROW(mode, NIMCP_ERROR_INVALID_PARAM, "mode buffer is NULL");
 
     /* Find component with highest weight */
     uint32_t best = 0;
@@ -1171,7 +1200,8 @@ void omni_wm_experience_destroy(omni_wm_experience_t* exp) {
 
 nimcp_error_t omni_wm_add_experience(omni_world_model_t* wm,
                                       const omni_wm_experience_t* exp) {
-    if (!wm || !exp) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(exp, NIMCP_ERROR_INVALID_PARAM, "experience is NULL");
 
     omni_wm_replay_buffer_t* buf = wm->replay_buffer;
 
@@ -1181,7 +1211,7 @@ nimcp_error_t omni_wm_add_experience(omni_world_model_t* wm,
         exp->action_dim,
         exp->obs_dim
     );
-    if (!clone) return NIMCP_ERROR_NO_MEMORY;
+    NIMCP_CHECK_THROW(clone, NIMCP_ERROR_NO_MEMORY, "failed to create experience clone");
 
     memcpy(clone->action, exp->action, exp->action_dim * sizeof(float));
     clone->reward = exp->reward;
@@ -1232,7 +1262,8 @@ uint32_t omni_wm_get_replay_size(const omni_world_model_t* wm) {
 }
 
 nimcp_error_t omni_wm_clear_replay(omni_world_model_t* wm) {
-    if (!wm || !wm->replay_buffer) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(wm->replay_buffer, NIMCP_ERROR_INVALID_PARAM, "replay buffer is NULL");
 
     for (uint32_t i = 0; i < wm->replay_buffer->size; i++) {
         omni_wm_experience_destroy(wm->replay_buffer->experiences[i]);
@@ -1254,7 +1285,10 @@ nimcp_error_t omni_wm_update(omni_world_model_t* wm,
                               uint32_t action_dim,
                               const omni_wm_state_t* next_state,
                               float reward) {
-    if (!wm || !state || !action || !next_state) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_INVALID_PARAM, "state is NULL");
+    NIMCP_CHECK_THROW(action, NIMCP_ERROR_INVALID_PARAM, "action is NULL");
+    NIMCP_CHECK_THROW(next_state, NIMCP_ERROR_INVALID_PARAM, "next_state is NULL");
 
     /* Compute prediction error */
     omni_wm_transition_t pred;
@@ -1297,8 +1331,8 @@ nimcp_error_t omni_wm_update(omni_world_model_t* wm,
 nimcp_error_t omni_wm_dream(omni_world_model_t* wm,
                              uint32_t num_episodes,
                              uint32_t episode_length) {
-    if (!wm) return NIMCP_ERROR_INVALID_PARAM;
-    if (!wm->config.enable_dreaming) return NIMCP_ERROR_NOT_IMPLEMENTED;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(wm->config.enable_dreaming, NIMCP_ERROR_NOT_IMPLEMENTED, "dreaming not enabled");
 
     for (uint32_t ep = 0; ep < num_episodes; ep++) {
         /* Start from random experience or current state */
@@ -1351,8 +1385,9 @@ nimcp_error_t omni_wm_dream(omni_world_model_t* wm,
 }
 
 nimcp_error_t omni_wm_set_learning_rate(omni_world_model_t* wm, float learning_rate) {
-    if (!wm) return NIMCP_ERROR_INVALID_PARAM;
-    if (learning_rate < 0.0f || learning_rate > 1.0f) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(learning_rate >= 0.0f && learning_rate <= 1.0f, NIMCP_ERROR_INVALID_PARAM,
+                      "learning_rate must be between 0.0 and 1.0");
     wm->config.learning_rate = learning_rate;
     return NIMCP_SUCCESS;
 }
@@ -1401,13 +1436,15 @@ void omni_wm_cf_query_destroy(omni_wm_counterfactual_query_t* query) {
 nimcp_error_t omni_wm_counterfactual(omni_world_model_t* wm,
                                       const omni_wm_counterfactual_query_t* query,
                                       omni_wm_counterfactual_result_t* result) {
-    if (!wm || !query || !result) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(query, NIMCP_ERROR_INVALID_PARAM, "query is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
 
     memset(result, 0, sizeof(omni_wm_counterfactual_result_t));
 
     /* Allocate trajectory */
     result->trajectory = nimcp_calloc(query->horizon, sizeof(omni_wm_state_t*));
-    if (!result->trajectory) return NIMCP_ERROR_NO_MEMORY;
+    NIMCP_CHECK_THROW(result->trajectory, NIMCP_ERROR_NO_MEMORY, "failed to allocate trajectory");
 
     result->trajectory[0] = omni_wm_state_clone(query->initial_state);
     if (!result->trajectory[0]) {
@@ -1474,8 +1511,10 @@ nimcp_error_t omni_wm_what_if(omni_world_model_t* wm,
                                uint32_t action_dim,
                                uint32_t horizon,
                                omni_wm_counterfactual_result_t* result) {
-    if (!wm || !action || !result) return NIMCP_ERROR_INVALID_PARAM;
-    if (!wm->current_state) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(action, NIMCP_ERROR_INVALID_PARAM, "action is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
+    NIMCP_CHECK_THROW(wm->current_state, NIMCP_ERROR_INVALID_PARAM, "current_state is NULL");
 
     omni_wm_counterfactual_query_t* query = omni_wm_cf_query_create(
         OMNI_WM_CF_ACTION,
@@ -1484,7 +1523,7 @@ nimcp_error_t omni_wm_what_if(omni_world_model_t* wm,
         action_dim,
         horizon
     );
-    if (!query) return NIMCP_ERROR_NO_MEMORY;
+    NIMCP_CHECK_THROW(query, NIMCP_ERROR_NO_MEMORY, "failed to create counterfactual query");
 
     nimcp_error_t err = omni_wm_counterfactual(wm, query, result);
     omni_wm_cf_query_destroy(query);
@@ -1549,11 +1588,13 @@ nimcp_error_t omni_wm_rollout(omni_world_model_t* wm,
                                uint32_t horizon,
                                omni_wm_rollout_t* rollout,
                                void* user_data) {
-    if (!wm || !policy || !rollout) return NIMCP_ERROR_INVALID_PARAM;
-    if (!wm->current_state) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(policy, NIMCP_ERROR_INVALID_PARAM, "policy function is NULL");
+    NIMCP_CHECK_THROW(rollout, NIMCP_ERROR_INVALID_PARAM, "rollout is NULL");
+    NIMCP_CHECK_THROW(wm->current_state, NIMCP_ERROR_INVALID_PARAM, "current_state is NULL");
 
     rollout->states[0] = omni_wm_state_clone(wm->current_state);
-    if (!rollout->states[0]) return NIMCP_ERROR_NO_MEMORY;
+    NIMCP_CHECK_THROW(rollout->states[0], NIMCP_ERROR_NO_MEMORY, "failed to clone current state for rollout");
 
     float total_reward = 0.0f;
 
@@ -1639,7 +1680,9 @@ nimcp_error_t omni_wm_predict_observations(omni_world_model_t* wm,
                                             const omni_wm_state_t* state,
                                             float* predicted_obs,
                                             uint32_t obs_dim) {
-    if (!wm || !state || !predicted_obs) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_INVALID_PARAM, "state is NULL");
+    NIMCP_CHECK_THROW(predicted_obs, NIMCP_ERROR_INVALID_PARAM, "predicted_obs buffer is NULL");
 
     /* Use decoder to predict observations from state */
     omni_wm_latent_t latent;
@@ -1653,11 +1696,13 @@ nimcp_error_t omni_wm_infer_state(omni_world_model_t* wm,
                                    const float* observations,
                                    uint32_t obs_dim,
                                    omni_wm_state_t* inferred_state) {
-    if (!wm || !observations || !inferred_state) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(observations, NIMCP_ERROR_INVALID_PARAM, "observations is NULL");
+    NIMCP_CHECK_THROW(inferred_state, NIMCP_ERROR_INVALID_PARAM, "inferred_state is NULL");
 
     /* Use encoder to infer state from observations */
     omni_wm_latent_t* latent = omni_wm_latent_create(inferred_state->dim);
-    if (!latent) return NIMCP_ERROR_NO_MEMORY;
+    NIMCP_CHECK_THROW(latent, NIMCP_ERROR_NO_MEMORY, "failed to create latent for state inference");
 
     nimcp_error_t err = omni_wm_encode(wm, observations, obs_dim, latent);
     if (err == NIMCP_SUCCESS) {
@@ -1676,7 +1721,7 @@ nimcp_error_t omni_wm_infer_state(omni_world_model_t* wm,
 
 nimcp_error_t omni_wm_connect_active_inference(omni_world_model_t* wm,
                                                 struct omni_active_inference* ai) {
-    if (!wm) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     wm->ai_ctx = ai;
     return NIMCP_SUCCESS;
 }
@@ -1746,13 +1791,14 @@ float omni_wm_evaluate_policy(omni_world_model_t* wm,
 
 nimcp_error_t omni_wm_get_stats(const omni_world_model_t* wm,
                                  omni_wm_stats_t* stats) {
-    if (!wm || !stats) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_INVALID_PARAM, "stats is NULL");
     memcpy(stats, &wm->stats, sizeof(omni_wm_stats_t));
     return NIMCP_SUCCESS;
 }
 
 nimcp_error_t omni_wm_reset_stats(omni_world_model_t* wm) {
-    if (!wm) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
     memset(&wm->stats, 0, sizeof(omni_wm_stats_t));
     return NIMCP_SUCCESS;
 }
@@ -1907,14 +1953,11 @@ static nimcp_error_t handle_omni_wm_predict(
     nimcp_bio_promise_t response_promise,
     void* user_data)
 {
-    if (!msg || !user_data) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(msg, NIMCP_ERROR_NULL_POINTER, "message is NULL");
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
-    if (msg_size < sizeof(bio_msg_omni_wm_predict_t)) {
-        NIMCP_LOGGING_ERROR("Predict request too small: %zu bytes", msg_size);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(msg_size >= sizeof(bio_msg_omni_wm_predict_t), NIMCP_ERROR_INVALID_PARAM,
+                      "Predict request too small: expected %zu bytes", sizeof(bio_msg_omni_wm_predict_t));
 
     const bio_msg_omni_wm_predict_t* req = (const bio_msg_omni_wm_predict_t*)msg;
     omni_world_model_t* wm = (omni_world_model_t*)user_data;
@@ -1924,17 +1967,13 @@ static nimcp_error_t handle_omni_wm_predict(
                         req->state_dim, req->action_dim);
 
     /* Validate dimensions */
-    if (req->state_dim == 0 || req->state_dim > OMNI_WM_MAX_STATE_DIM ||
-        req->action_dim > OMNI_WM_MAX_ACTION_DIM) {
-        NIMCP_LOGGING_ERROR("Invalid dimensions in predict request");
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(req->state_dim > 0 && req->state_dim <= OMNI_WM_MAX_STATE_DIM &&
+                      req->action_dim <= OMNI_WM_MAX_ACTION_DIM, NIMCP_ERROR_INVALID_PARAM,
+                      "Invalid dimensions in predict request");
 
     /* Create temporary state from request */
     omni_wm_state_t* state = omni_wm_state_from_values(req->state, req->state_dim);
-    if (!state) {
-        return NIMCP_ERROR_NO_MEMORY;
-    }
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NO_MEMORY, "failed to create state from request values");
 
     /* Prepare response */
     bio_msg_omni_wm_predict_response_t response = {0};
@@ -2017,14 +2056,11 @@ static nimcp_error_t handle_omni_wm_counterfactual(
     nimcp_bio_promise_t response_promise,
     void* user_data)
 {
-    if (!msg || !user_data) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(msg, NIMCP_ERROR_NULL_POINTER, "message is NULL");
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
-    if (msg_size < sizeof(bio_msg_omni_wm_counterfactual_t)) {
-        NIMCP_LOGGING_ERROR("Counterfactual request too small: %zu bytes", msg_size);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(msg_size >= sizeof(bio_msg_omni_wm_counterfactual_t), NIMCP_ERROR_INVALID_PARAM,
+                      "Counterfactual request too small: expected %zu bytes", sizeof(bio_msg_omni_wm_counterfactual_t));
 
     const bio_msg_omni_wm_counterfactual_t* req = (const bio_msg_omni_wm_counterfactual_t*)msg;
     omni_world_model_t* wm = (omni_world_model_t*)user_data;
@@ -2033,18 +2069,14 @@ static nimcp_error_t handle_omni_wm_counterfactual(
                         omni_wm_cf_type_to_string(req->cf_type), req->horizon);
 
     /* Validate dimensions */
-    if (req->state_dim == 0 || req->state_dim > OMNI_WM_MAX_STATE_DIM ||
-        req->action_dim > OMNI_WM_MAX_ACTION_DIM ||
-        req->horizon > OMNI_WM_MAX_HORIZON) {
-        NIMCP_LOGGING_ERROR("Invalid dimensions in counterfactual request");
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(req->state_dim > 0 && req->state_dim <= OMNI_WM_MAX_STATE_DIM &&
+                      req->action_dim <= OMNI_WM_MAX_ACTION_DIM &&
+                      req->horizon <= OMNI_WM_MAX_HORIZON, NIMCP_ERROR_INVALID_PARAM,
+                      "Invalid dimensions in counterfactual request");
 
     /* Create temporary state from request */
     omni_wm_state_t* state = omni_wm_state_from_values(req->initial_state, req->state_dim);
-    if (!state) {
-        return NIMCP_ERROR_NO_MEMORY;
-    }
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NO_MEMORY, "failed to create state from counterfactual request");
 
     /* Prepare response */
     bio_msg_omni_wm_counterfactual_response_t response = {0};
@@ -2101,14 +2133,11 @@ static nimcp_error_t handle_omni_wm_update(
     nimcp_bio_promise_t response_promise,
     void* user_data)
 {
-    if (!msg || !user_data) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(msg, NIMCP_ERROR_NULL_POINTER, "message is NULL");
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
-    if (msg_size < sizeof(bio_msg_omni_wm_update_t)) {
-        NIMCP_LOGGING_ERROR("Update request too small: %zu bytes", msg_size);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(msg_size >= sizeof(bio_msg_omni_wm_update_t), NIMCP_ERROR_INVALID_PARAM,
+                      "Update request too small: expected %zu bytes", sizeof(bio_msg_omni_wm_update_t));
 
     const bio_msg_omni_wm_update_t* req = (const bio_msg_omni_wm_update_t*)msg;
     omni_world_model_t* wm = (omni_world_model_t*)user_data;
@@ -2117,11 +2146,9 @@ static nimcp_error_t handle_omni_wm_update(
                         req->state_dim, req->action_dim, req->reward);
 
     /* Validate dimensions */
-    if (req->state_dim == 0 || req->state_dim > OMNI_WM_MAX_STATE_DIM ||
-        req->action_dim > OMNI_WM_MAX_ACTION_DIM) {
-        NIMCP_LOGGING_ERROR("Invalid dimensions in update request");
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(req->state_dim > 0 && req->state_dim <= OMNI_WM_MAX_STATE_DIM &&
+                      req->action_dim <= OMNI_WM_MAX_ACTION_DIM, NIMCP_ERROR_INVALID_PARAM,
+                      "Invalid dimensions in update request");
 
     /* Create temporary states from request */
     omni_wm_state_t* state = omni_wm_state_from_values(req->state, req->state_dim);
@@ -2195,14 +2222,11 @@ static nimcp_error_t handle_omni_wm_rollout(
     nimcp_bio_promise_t response_promise,
     void* user_data)
 {
-    if (!msg || !user_data) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(msg, NIMCP_ERROR_NULL_POINTER, "message is NULL");
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
-    if (msg_size < sizeof(bio_msg_omni_wm_rollout_t)) {
-        NIMCP_LOGGING_ERROR("Rollout request too small: %zu bytes", msg_size);
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(msg_size >= sizeof(bio_msg_omni_wm_rollout_t), NIMCP_ERROR_INVALID_PARAM,
+                      "Rollout request too small: expected %zu bytes", sizeof(bio_msg_omni_wm_rollout_t));
 
     const bio_msg_omni_wm_rollout_t* req = (const bio_msg_omni_wm_rollout_t*)msg;
     omni_world_model_t* wm = (omni_world_model_t*)user_data;
@@ -2211,20 +2235,16 @@ static nimcp_error_t handle_omni_wm_rollout(
                         req->horizon, req->state_dim);
 
     /* Validate dimensions */
-    if (req->state_dim == 0 || req->state_dim > OMNI_WM_MAX_STATE_DIM ||
-        req->action_dim > OMNI_WM_MAX_ACTION_DIM ||
-        req->horizon > OMNI_WM_MAX_HORIZON ||
-        req->obs_dim > OMNI_WM_MAX_OBS_DIM) {
-        NIMCP_LOGGING_ERROR("Invalid dimensions in rollout request");
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(req->state_dim > 0 && req->state_dim <= OMNI_WM_MAX_STATE_DIM &&
+                      req->action_dim <= OMNI_WM_MAX_ACTION_DIM &&
+                      req->horizon <= OMNI_WM_MAX_HORIZON &&
+                      req->obs_dim <= OMNI_WM_MAX_OBS_DIM, NIMCP_ERROR_INVALID_PARAM,
+                      "Invalid dimensions in rollout request");
 
     /* Create initial state from request */
     omni_wm_state_t* initial_state = omni_wm_state_from_values(req->initial_state,
                                                                 req->state_dim);
-    if (!initial_state) {
-        return NIMCP_ERROR_NO_MEMORY;
-    }
+    NIMCP_CHECK_THROW(initial_state, NIMCP_ERROR_NO_MEMORY, "failed to create initial state for rollout");
 
     /* Prepare response */
     bio_msg_omni_wm_rollout_response_t response = {0};
@@ -2315,7 +2335,7 @@ static nimcp_error_t handle_omni_wm_rollout(
  * ============================================================================ */
 
 nimcp_error_t omni_wm_connect_bio_async(omni_world_model_t* wm) {
-    if (!wm) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
 
     /* Already connected? */
     if (wm->bio_async_connected) {
@@ -2377,7 +2397,7 @@ nimcp_error_t omni_wm_connect_bio_async(omni_world_model_t* wm) {
 }
 
 nimcp_error_t omni_wm_disconnect_bio_async(omni_world_model_t* wm) {
-    if (!wm) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
 
     /* Not connected? */
     if (!wm->bio_async_connected) {
@@ -3072,15 +3092,16 @@ omni_world_model_t* omni_wm_deserialize(const uint8_t* buffer,
 
 nimcp_error_t omni_wm_save(const omni_world_model_t* wm,
                             const char* filepath) {
-    if (!wm || !filepath) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(filepath, NIMCP_ERROR_INVALID_PARAM, "filepath is NULL");
 
     /* Get required size */
     size_t required_size = omni_wm_serialize(wm, NULL, 0);
-    if (required_size == 0) return NIMCP_ERROR_SERIALIZATION;
+    NIMCP_CHECK_THROW(required_size > 0, NIMCP_ERROR_SERIALIZATION, "failed to compute serialization size");
 
     /* Allocate buffer */
     uint8_t* buffer = nimcp_malloc(required_size);
-    if (!buffer) return NIMCP_ERROR_NO_MEMORY;
+    NIMCP_CHECK_THROW(buffer, NIMCP_ERROR_NO_MEMORY, "failed to allocate serialization buffer");
 
     /* Serialize */
     size_t written = omni_wm_serialize(wm, buffer, required_size);
@@ -3217,9 +3238,9 @@ uint64_t omni_wm_checkpoint(omni_world_model_t* wm) {
 
 nimcp_error_t omni_wm_restore_checkpoint(omni_world_model_t* wm,
                                           uint64_t checkpoint_id) {
-    if (!wm || !wm->checkpoint_store || checkpoint_id == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(wm->checkpoint_store, NIMCP_ERROR_INVALID_PARAM, "checkpoint store is NULL");
+    NIMCP_CHECK_THROW(checkpoint_id != 0, NIMCP_ERROR_INVALID_PARAM, "checkpoint_id is zero");
 
     /* Find checkpoint */
     omni_wm_checkpoint_t* cp = NULL;
@@ -3230,11 +3251,11 @@ nimcp_error_t omni_wm_restore_checkpoint(omni_world_model_t* wm,
         }
     }
 
-    if (!cp) return NIMCP_ERROR_NOT_FOUND;
+    NIMCP_CHECK_THROW(cp, NIMCP_ERROR_NOT_FOUND, "checkpoint not found");
 
     /* Deserialize into temporary */
     omni_world_model_t* restored = omni_wm_deserialize(cp->data, cp->data_size);
-    if (!restored) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(restored, NIMCP_ERROR_INVALID_STATE, "failed to deserialize checkpoint");
 
     /* Preserve checkpoint store and mutex from current wm */
     omni_wm_checkpoint_store_t* store = wm->checkpoint_store;
@@ -3292,9 +3313,9 @@ nimcp_error_t omni_wm_restore_checkpoint(omni_world_model_t* wm,
 
 nimcp_error_t omni_wm_delete_checkpoint(omni_world_model_t* wm,
                                          uint64_t checkpoint_id) {
-    if (!wm || !wm->checkpoint_store || checkpoint_id == 0) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
+    NIMCP_CHECK_THROW(wm->checkpoint_store, NIMCP_ERROR_INVALID_PARAM, "checkpoint store is NULL");
+    NIMCP_CHECK_THROW(checkpoint_id != 0, NIMCP_ERROR_INVALID_PARAM, "checkpoint_id is zero");
 
     /* Find and remove checkpoint */
     for (uint32_t i = 0; i < wm->checkpoint_store->count; i++) {
@@ -3320,7 +3341,7 @@ uint32_t omni_wm_get_checkpoint_count(const omni_world_model_t* wm) {
 }
 
 nimcp_error_t omni_wm_clear_checkpoints(omni_world_model_t* wm) {
-    if (!wm) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(wm, NIMCP_ERROR_INVALID_PARAM, "world model is NULL");
 
     if (wm->checkpoint_store) {
         for (uint32_t i = 0; i < wm->checkpoint_store->count; i++) {

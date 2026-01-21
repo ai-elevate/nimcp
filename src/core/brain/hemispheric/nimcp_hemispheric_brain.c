@@ -1016,9 +1016,7 @@ int hemispheric_brain_apply_lateralization_shift(
     hemispheric_brain_t* brain,
     float shift
 ) {
-    if (!brain) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_POINTER, "brain is NULL");
 
     // Clamp shift to reasonable range
     if (shift < -1.0f) shift = -1.0f;
@@ -1046,9 +1044,7 @@ int hemispheric_brain_set_bilateral_mode(
     hemispheric_brain_t* brain,
     bool bilateral
 ) {
-    if (!brain) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_POINTER, "brain is NULL");
 
     if (nimcp_mutex_lock(brain->mutex) != 0) {
         NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");

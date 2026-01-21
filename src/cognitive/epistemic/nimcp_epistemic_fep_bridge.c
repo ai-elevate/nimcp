@@ -33,7 +33,7 @@
  * ============================================================================ */
 
 int epistemic_fep_bridge_default_config(epistemic_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* FEP -> Epistemic */
     config->uncertainty_epistemic_threshold = EPISTEMIC_FEP_HIGH_UNCERTAINTY_THRESHOLD;
@@ -118,7 +118,7 @@ int epistemic_fep_bridge_connect_fep(
     epistemic_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -132,7 +132,7 @@ int epistemic_fep_bridge_connect_epistemic(
     epistemic_fep_bridge_t* bridge,
     epistemic_filter_t filter
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->epistemic_filter = filter;
@@ -143,7 +143,7 @@ int epistemic_fep_bridge_connect_epistemic(
 }
 
 int epistemic_fep_bridge_disconnect(epistemic_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -161,7 +161,7 @@ int epistemic_fep_bridge_disconnect(epistemic_fep_bridge_t* bridge) {
 int epistemic_fep_compute_epistemic_value(
     epistemic_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_uncertainty_seeking) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -212,7 +212,7 @@ int epistemic_fep_compute_epistemic_value(
 int epistemic_fep_detect_bias_from_precision(
     epistemic_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_bias_detection) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -246,7 +246,7 @@ int epistemic_fep_detect_bias_from_precision(
 int epistemic_fep_trigger_information_seeking(
     epistemic_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -269,7 +269,7 @@ int epistemic_fep_update_evidence_precision(
     epistemic_fep_bridge_t* bridge,
     float evidence_quality
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_quality_updates) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -303,7 +303,7 @@ int epistemic_fep_update_evidence_precision(
 int epistemic_fep_revise_priors_from_bias(
     epistemic_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_bias_detection) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -335,7 +335,7 @@ int epistemic_fep_weight_by_source_reliability(
     epistemic_fep_bridge_t* bridge,
     float reliability
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_source_precision) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -364,7 +364,7 @@ int epistemic_fep_bridge_update(
     epistemic_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Compute epistemic value from current uncertainty */
     epistemic_fep_compute_epistemic_value(bridge);
@@ -400,7 +400,7 @@ int epistemic_fep_bridge_get_state(
     const epistemic_fep_bridge_t* bridge,
     epistemic_fep_state_t* state
 ) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -413,7 +413,7 @@ int epistemic_fep_bridge_get_stats(
     const epistemic_fep_bridge_t* bridge,
     epistemic_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -429,7 +429,7 @@ int epistemic_fep_bridge_get_stats(
 int epistemic_fep_bridge_connect_bio_async(
     epistemic_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -453,7 +453,7 @@ int epistemic_fep_bridge_connect_bio_async(
 int epistemic_fep_bridge_disconnect_bio_async(
     epistemic_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

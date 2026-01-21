@@ -20,9 +20,7 @@
  * ============================================================================ */
 
 int amygdala_autobio_default_config(amygdala_autobio_config_t* config) {
-    if (!config) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     config->enable_emotional_tagging = true;
     config->enable_flashbulb_memories = true;
@@ -97,9 +95,7 @@ int amygdala_autobio_connect_amygdala(
     amygdala_autobio_bridge_t* bridge,
     amygdala_t* amygdala
 ) {
-    if (!bridge || !amygdala) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && amygdala, NIMCP_ERROR_NULL_POINTER, "bridge or amygdala is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->amygdala = amygdala;
@@ -116,9 +112,7 @@ int amygdala_autobio_connect_memory(
     amygdala_autobio_bridge_t* bridge,
     autobiographical_memory_t autobio
 ) {
-    if (!bridge || !autobio) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && autobio, NIMCP_ERROR_NULL_POINTER, "bridge or autobio is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->autobio_memory = autobio;
@@ -136,13 +130,8 @@ int amygdala_autobio_connect_memory(
  * ============================================================================ */
 
 int amygdala_autobio_update(amygdala_autobio_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (!bridge->connected) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->connected, NIMCP_ERROR_INVALID_STATE, "bridge is not connected");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -198,13 +187,8 @@ int amygdala_autobio_tag_memory(
     uint64_t memory_id,
     float emotional_intensity
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (!bridge->connected) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->connected, NIMCP_ERROR_INVALID_STATE, "bridge is not connected");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -281,13 +265,9 @@ int amygdala_autobio_on_recall(
     amygdala_autobio_bridge_t* bridge,
     uint64_t memory_id
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (!bridge->connected || !bridge->config.enable_recall_reactivation) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->connected && bridge->config.enable_recall_reactivation,
+                      NIMCP_ERROR_INVALID_STATE, "bridge not connected or recall reactivation disabled");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -390,13 +370,8 @@ int amygdala_autobio_reactivate_trauma(
     amygdala_autobio_bridge_t* bridge,
     const autobiographical_memory_entry_t* trauma_memory
 ) {
-    if (!bridge || !trauma_memory) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (!bridge->connected) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge && trauma_memory, NIMCP_ERROR_NULL_POINTER, "bridge or trauma_memory is NULL");
+    NIMCP_CHECK_THROW(bridge->connected, NIMCP_ERROR_INVALID_STATE, "bridge is not connected");
 
     /* Call on_recall with the trauma memory ID */
     return amygdala_autobio_on_recall(bridge, trauma_memory->memory_id);
@@ -406,18 +381,12 @@ int amygdala_autobio_regulate_from_positive(
     amygdala_autobio_bridge_t* bridge,
     const autobiographical_memory_entry_t* positive_memory
 ) {
-    if (!bridge || !positive_memory) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (!bridge->connected || !bridge->config.enable_positive_regulation) {
-        return NIMCP_ERROR_INVALID_STATE;
-    }
+    NIMCP_CHECK_THROW(bridge && positive_memory, NIMCP_ERROR_NULL_POINTER, "bridge or positive_memory is NULL");
+    NIMCP_CHECK_THROW(bridge->connected && bridge->config.enable_positive_regulation,
+                      NIMCP_ERROR_INVALID_STATE, "bridge not connected or positive regulation disabled");
 
     /* Verify memory is positive */
-    if (positive_memory->valence <= VALENCE_NEUTRAL) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(positive_memory->valence > VALENCE_NEUTRAL, NIMCP_ERROR_INVALID_PARAM, "memory must have positive valence");
 
     /* Call on_recall with the positive memory ID */
     return amygdala_autobio_on_recall(bridge, positive_memory->memory_id);
@@ -428,9 +397,7 @@ int amygdala_autobio_get_reactivation(
     float* fear_reactivation,
     float* anxiety_reactivation
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (fear_reactivation) {
         *fear_reactivation = bridge->reactivation_state.fear_reactivation;
@@ -451,9 +418,7 @@ int amygdala_autobio_get_tagging_state(
     const amygdala_autobio_bridge_t* bridge,
     emotional_tagging_state_t* state
 ) {
-    if (!bridge || !state) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     *state = bridge->tagging_state;
     return 0;
@@ -463,9 +428,7 @@ int amygdala_autobio_get_reactivation_state(
     const amygdala_autobio_bridge_t* bridge,
     recall_reactivation_state_t* state
 ) {
-    if (!bridge || !state) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     *state = bridge->reactivation_state;
     return 0;
@@ -477,9 +440,7 @@ int amygdala_autobio_get_statistics(
     uint32_t* memories_tagged,
     uint32_t* trauma_reactivations
 ) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (total_updates) {
         *total_updates = bridge->total_updates;
@@ -501,9 +462,7 @@ int amygdala_autobio_get_statistics(
  * ============================================================================ */
 
 int amygdala_autobio_connect_bio_async(amygdala_autobio_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (bridge->base.bio_async_enabled) {
         return 0;  /* Already connected */
@@ -528,9 +487,7 @@ int amygdala_autobio_connect_bio_async(amygdala_autobio_bridge_t* bridge) {
 }
 
 int amygdala_autobio_disconnect_bio_async(amygdala_autobio_bridge_t* bridge) {
-    if (!bridge) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     if (!bridge->base.bio_async_enabled) {
         return 0;

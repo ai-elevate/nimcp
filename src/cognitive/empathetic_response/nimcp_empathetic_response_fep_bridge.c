@@ -26,7 +26,7 @@
  * ============================================================================ */
 
 int empathetic_response_fep_default_config(empathetic_response_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* FEP -> Empathetic Response */
     config->pe_empathy_gain = 1.0f;
@@ -109,7 +109,7 @@ int empathetic_response_fep_connect_fep(
     empathetic_response_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -123,7 +123,7 @@ int empathetic_response_fep_connect_empathy(
     empathetic_response_fep_bridge_t* bridge,
     empathetic_response_engine_t empathy
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->empathetic_system = empathy;
@@ -134,7 +134,7 @@ int empathetic_response_fep_connect_empathy(
 }
 
 int empathetic_response_fep_disconnect(empathetic_response_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -153,7 +153,7 @@ int empathetic_response_fep_infer_user_state(
     empathetic_response_fep_bridge_t* bridge,
     float pe_magnitude
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_pe_empathy_generation) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -205,7 +205,7 @@ int empathetic_response_fep_infer_user_state(
 int empathetic_response_fep_modulate_social_precision(
     empathetic_response_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_empathy_precision) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -236,7 +236,7 @@ int empathetic_response_fep_update(
     empathetic_response_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Apply social precision modulation */
     empathetic_response_fep_modulate_social_precision(bridge);
@@ -263,7 +263,7 @@ int empathetic_response_fep_get_state(
     const empathetic_response_fep_bridge_t* bridge,
     empathetic_response_fep_state_t* state
 ) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -276,7 +276,7 @@ int empathetic_response_fep_get_stats(
     const empathetic_response_fep_bridge_t* bridge,
     empathetic_response_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -292,7 +292,7 @@ int empathetic_response_fep_get_stats(
 int empathetic_response_fep_connect_bio_async(
     empathetic_response_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -316,7 +316,7 @@ int empathetic_response_fep_connect_bio_async(
 int empathetic_response_fep_disconnect_bio_async(
     empathetic_response_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

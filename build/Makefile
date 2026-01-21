@@ -27381,6 +27381,45 @@ integration_exception_test_exception_immune_integration/fast:
 .PHONY : integration_exception_test_exception_immune_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_exception_test_exception_module_integration
+
+# Build rule for target.
+integration_exception_test_exception_module_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_exception_test_exception_module_integration
+.PHONY : integration_exception_test_exception_module_integration
+
+# fast build rule for target.
+integration_exception_test_exception_module_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/exception/CMakeFiles/integration_exception_test_exception_module_integration.dir/build.make test/integration/exception/CMakeFiles/integration_exception_test_exception_module_integration.dir/build
+.PHONY : integration_exception_test_exception_module_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_exception_test_exception_async_integration
+
+# Build rule for target.
+integration_exception_test_exception_async_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_exception_test_exception_async_integration
+.PHONY : integration_exception_test_exception_async_integration
+
+# fast build rule for target.
+integration_exception_test_exception_async_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/exception/CMakeFiles/integration_exception_test_exception_async_integration.dir/build.make test/integration/exception/CMakeFiles/integration_exception_test_exception_async_integration.dir/build
+.PHONY : integration_exception_test_exception_async_integration/fast
+
+#=============================================================================
+# Target rules for targets named integration_exception_test_exception_cognitive_integration
+
+# Build rule for target.
+integration_exception_test_exception_cognitive_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_exception_test_exception_cognitive_integration
+.PHONY : integration_exception_test_exception_cognitive_integration
+
+# fast build rule for target.
+integration_exception_test_exception_cognitive_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/exception/CMakeFiles/integration_exception_test_exception_cognitive_integration.dir/build.make test/integration/exception/CMakeFiles/integration_exception_test_exception_cognitive_integration.dir/build
+.PHONY : integration_exception_test_exception_cognitive_integration/fast
+
+#=============================================================================
 # Target rules for targets named integration_gpu_test_gpu_cpu_equivalence
 
 # Build rule for target.
@@ -30384,6 +30423,84 @@ regression_exception_test_exception_immune_regression/fast:
 .PHONY : regression_exception_test_exception_immune_regression/fast
 
 #=============================================================================
+# Target rules for targets named regression_exception_api_stability
+
+# Build rule for target.
+regression_exception_api_stability: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_exception_api_stability
+.PHONY : regression_exception_api_stability
+
+# fast build rule for target.
+regression_exception_api_stability/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/exception/CMakeFiles/regression_exception_api_stability.dir/build.make test/regression/exception/CMakeFiles/regression_exception_api_stability.dir/build
+.PHONY : regression_exception_api_stability/fast
+
+#=============================================================================
+# Target rules for targets named regression_exception_error_codes
+
+# Build rule for target.
+regression_exception_error_codes: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_exception_error_codes
+.PHONY : regression_exception_error_codes
+
+# fast build rule for target.
+regression_exception_error_codes/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/exception/CMakeFiles/regression_exception_error_codes.dir/build.make test/regression/exception/CMakeFiles/regression_exception_error_codes.dir/build
+.PHONY : regression_exception_error_codes/fast
+
+#=============================================================================
+# Target rules for targets named regression_exception_performance
+
+# Build rule for target.
+regression_exception_performance: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_exception_performance
+.PHONY : regression_exception_performance
+
+# fast build rule for target.
+regression_exception_performance/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/exception/CMakeFiles/regression_exception_performance.dir/build.make test/regression/exception/CMakeFiles/regression_exception_performance.dir/build
+.PHONY : regression_exception_performance/fast
+
+#=============================================================================
+# Target rules for targets named test_exception_regression
+
+# Build rule for target.
+test_exception_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_exception_regression
+.PHONY : test_exception_regression
+
+# fast build rule for target.
+test_exception_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/exception/CMakeFiles/test_exception_regression.dir/build.make test/regression/exception/CMakeFiles/test_exception_regression.dir/build
+.PHONY : test_exception_regression/fast
+
+#=============================================================================
+# Target rules for targets named test_exception_stability
+
+# Build rule for target.
+test_exception_stability: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_exception_stability
+.PHONY : test_exception_stability
+
+# fast build rule for target.
+test_exception_stability/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/exception/CMakeFiles/test_exception_stability.dir/build.make test/regression/exception/CMakeFiles/test_exception_stability.dir/build
+.PHONY : test_exception_stability/fast
+
+#=============================================================================
+# Target rules for targets named test_exception_performance_only
+
+# Build rule for target.
+test_exception_performance_only: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_exception_performance_only
+.PHONY : test_exception_performance_only
+
+# fast build rule for target.
+test_exception_performance_only/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/exception/CMakeFiles/test_exception_performance_only.dir/build.make test/regression/exception/CMakeFiles/test_exception_performance_only.dir/build
+.PHONY : test_exception_performance_only/fast
+
+#=============================================================================
 # Target rules for targets named e2e_cognitive_test_world_model_e2e
 
 # Build rule for target.
@@ -30842,6 +30959,9 @@ help:
 	@echo "... run_bench_benchmark_complex_pac_detection"
 	@echo "... run_bench_benchmark_complex_vs_real_oscillations"
 	@echo "... ternary_e2e_tests"
+	@echo "... test_exception_performance_only"
+	@echo "... test_exception_regression"
+	@echo "... test_exception_stability"
 	@echo "... test_portia_integration"
 	@echo "... bench_benchmark_complex_fft"
 	@echo "... bench_benchmark_complex_pac_detection"
@@ -31278,7 +31398,10 @@ help:
 	@echo "... integration_dragonfly_sensory"
 	@echo "... integration_emotion_immune_pipeline"
 	@echo "... integration_error_propagation"
+	@echo "... integration_exception_test_exception_async_integration"
+	@echo "... integration_exception_test_exception_cognitive_integration"
 	@echo "... integration_exception_test_exception_immune_integration"
+	@echo "... integration_exception_test_exception_module_integration"
 	@echo "... integration_exception_test_exception_propagation_integration"
 	@echo "... integration_exception_test_exception_recovery_integration"
 	@echo "... integration_exception_test_handler_chain_integration"
@@ -31663,6 +31786,9 @@ help:
 	@echo "... regression_dragonfly_numerical"
 	@echo "... regression_dragonfly_parameters"
 	@echo "... regression_dragonfly_performance"
+	@echo "... regression_exception_api_stability"
+	@echo "... regression_exception_error_codes"
+	@echo "... regression_exception_performance"
 	@echo "... regression_exception_test_exception_api_regression"
 	@echo "... regression_exception_test_exception_contracts_regression"
 	@echo "... regression_exception_test_exception_immune_regression"

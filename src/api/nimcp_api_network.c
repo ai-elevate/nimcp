@@ -53,7 +53,6 @@ nimcp_network_t nimcp_network_create(
     // Allocate handle
     nimcp_network_t handle = (nimcp_network_t)nimcp_malloc(sizeof(struct nimcp_network_handle));
     if (!handle) {
-        set_error("Failed to allocate network handle");
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(struct nimcp_network_handle),
             "Failed to allocate network handle");
         return NULL;
@@ -71,13 +70,11 @@ nimcp_network_t nimcp_network_create(
     handle->internal_network = neural_network_create(&config);
 
     if (!handle->internal_network) {
-        set_error("Failed to create internal neural network");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create internal neural network");
         nimcp_free(handle);
         return NULL;
     }
 
-    set_error("No error");
     return handle;
 }
 
@@ -100,23 +97,9 @@ nimcp_status_t nimcp_network_forward(
     float* outputs,
     uint32_t num_outputs)
 {
-    if (!network) {
-        set_error("Network handle is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Network handle is NULL in network_forward");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!inputs) {
-        set_error("Inputs array is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Inputs array is NULL in network_forward");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!outputs) {
-        set_error("Outputs array is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Outputs array is NULL in network_forward");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(network, NIMCP_ERROR_NULL_ARG, "Network handle is NULL in network_forward");
+    NIMCP_CHECK_THROW(inputs, NIMCP_ERROR_NULL_ARG, "Inputs array is NULL in network_forward");
+    NIMCP_CHECK_THROW(outputs, NIMCP_ERROR_NULL_ARG, "Outputs array is NULL in network_forward");
 
     // Call internal network API
     bool success = neural_network_forward(network->internal_network,
@@ -124,12 +107,10 @@ nimcp_status_t nimcp_network_forward(
                                          outputs, num_outputs);
 
     if (!success) {
-        set_error("Network forward pass failed");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Network forward pass failed");
         return NIMCP_ERROR;
     }
 
-    set_error("No error");
     return NIMCP_OK;
 }
 
@@ -140,14 +121,9 @@ nimcp_status_t nimcp_network_train(
     const float* targets,
     uint32_t num_targets)
 {
-    if (!network) {
-        set_error("Network handle is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Network handle is NULL in network_train");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(network, NIMCP_ERROR_NULL_ARG, "Network handle is NULL in network_train");
 
     // Training not yet implemented in internal API
-    set_error("Training not yet implemented");
     NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Network training not yet implemented");
     return NIMCP_ERROR;
 }

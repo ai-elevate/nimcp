@@ -16,7 +16,7 @@
 #define LOG_MODULE "self_awareness_extended_fep_bridge"
 
 int self_awareness_extended_fep_bridge_default_config(self_awareness_extended_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->uncertainty_threshold = SELF_AWARENESS_FEP_HIGH_UNCERTAINTY_THRESHOLD;
     config->coherence_factor = SELF_AWARENESS_FEP_COHERENCE_FACTOR;
     config->enable_metacognitive_monitoring = true;
@@ -52,7 +52,7 @@ void self_awareness_extended_fep_bridge_destroy(self_awareness_extended_fep_brid
 }
 
 int self_awareness_extended_fep_bridge_connect_fep(self_awareness_extended_fep_bridge_t* bridge, fep_system_t* fep) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -60,7 +60,7 @@ int self_awareness_extended_fep_bridge_connect_fep(self_awareness_extended_fep_b
 }
 
 int self_awareness_extended_fep_bridge_connect_awareness(self_awareness_extended_fep_bridge_t* bridge, self_awareness_system_t awareness) {
-    if (!bridge || !awareness) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && awareness, NIMCP_ERROR_NULL_POINTER, "bridge or awareness is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->awareness_system = awareness;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -68,7 +68,7 @@ int self_awareness_extended_fep_bridge_connect_awareness(self_awareness_extended
 }
 
 int self_awareness_extended_fep_bridge_disconnect(self_awareness_extended_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->awareness_system = NULL;
@@ -77,7 +77,7 @@ int self_awareness_extended_fep_bridge_disconnect(self_awareness_extended_fep_br
 }
 
 int self_awareness_extended_fep_trigger_monitoring(self_awareness_extended_fep_bridge_t* bridge, float uncertainty) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_metacognitive_monitoring) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_effects.current_uncertainty = uncertainty;
@@ -92,7 +92,7 @@ int self_awareness_extended_fep_trigger_monitoring(self_awareness_extended_fep_b
 }
 
 int self_awareness_extended_fep_check_self_harm(self_awareness_extended_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_self_harm_detection) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_effects.self_harm_check_active = true;
@@ -102,7 +102,7 @@ int self_awareness_extended_fep_check_self_harm(self_awareness_extended_fep_brid
 }
 
 int self_awareness_extended_fep_modulate_depth(self_awareness_extended_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_precision_modulation) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.regulation_actions++;
@@ -111,7 +111,7 @@ int self_awareness_extended_fep_modulate_depth(self_awareness_extended_fep_bridg
 }
 
 int self_awareness_extended_fep_apply_narrative_coherence(self_awareness_extended_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_narrative_coherence) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->awareness_effects.self_model_updating_beliefs = true;
@@ -121,7 +121,7 @@ int self_awareness_extended_fep_apply_narrative_coherence(self_awareness_extende
 }
 
 int self_awareness_extended_fep_update_from_regulation(self_awareness_extended_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->awareness_effects.agency_attribution_active = true;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -129,7 +129,7 @@ int self_awareness_extended_fep_update_from_regulation(self_awareness_extended_f
 }
 
 int self_awareness_extended_fep_bridge_update(self_awareness_extended_fep_bridge_t* bridge, uint64_t delta_ms) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     self_awareness_extended_fep_check_self_harm(bridge);
     self_awareness_extended_fep_modulate_depth(bridge);
     self_awareness_extended_fep_apply_narrative_coherence(bridge);
@@ -138,7 +138,7 @@ int self_awareness_extended_fep_bridge_update(self_awareness_extended_fep_bridge
 }
 
 int self_awareness_extended_fep_bridge_get_state(const self_awareness_extended_fep_bridge_t* bridge, self_awareness_extended_fep_state_t* state) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -146,7 +146,7 @@ int self_awareness_extended_fep_bridge_get_state(const self_awareness_extended_f
 }
 
 int self_awareness_extended_fep_bridge_get_stats(const self_awareness_extended_fep_bridge_t* bridge, self_awareness_extended_fep_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -154,7 +154,7 @@ int self_awareness_extended_fep_bridge_get_stats(const self_awareness_extended_f
 }
 
 int self_awareness_extended_fep_bridge_connect_bio_async(self_awareness_extended_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_SELF_AWARENESS_BRIDGE,

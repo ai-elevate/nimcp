@@ -116,13 +116,13 @@ static uint64_t get_current_time_us(void) {
  * @brief Allocate agent tracking array
  */
 static nimcp_error_t allocate_agent_tracking(omni_wm_tom_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     uint32_t capacity = bridge->config.max_tracked_agents;
     if (capacity == 0) capacity = DEFAULT_TRACKED_AGENT_CAPACITY;
 
     bridge->tracked_agents = nimcp_calloc(capacity, sizeof(tom_agent_mental_state_t));
-    if (!bridge->tracked_agents) return NIMCP_ERROR_NO_MEMORY;
+    NIMCP_CHECK_THROW(bridge->tracked_agents, NIMCP_ERROR_NO_MEMORY, "failed to allocate tracked_agents");
 
     bridge->tracked_agent_capacity = capacity;
     bridge->tracked_agent_count = 0;
@@ -146,13 +146,13 @@ static void free_agent_tracking(omni_wm_tom_bridge_t* bridge) {
  * @brief Allocate belief-reality gap tracking array
  */
 static nimcp_error_t allocate_belief_gap_tracking(omni_wm_tom_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     uint32_t capacity = bridge->config.max_tracked_agents;
     if (capacity == 0) capacity = DEFAULT_BELIEF_GAP_CAPACITY;
 
     bridge->belief_gaps = nimcp_calloc(capacity, sizeof(tom_belief_reality_gap_t));
-    if (!bridge->belief_gaps) return NIMCP_ERROR_NO_MEMORY;
+    NIMCP_CHECK_THROW(bridge->belief_gaps, NIMCP_ERROR_NO_MEMORY, "failed to allocate belief_gaps");
 
     bridge->belief_gap_capacity = capacity;
     bridge->belief_gap_count = 0;
@@ -176,13 +176,13 @@ static void free_belief_gap_tracking(omni_wm_tom_bridge_t* bridge) {
  * @brief Allocate interaction buffer
  */
 static nimcp_error_t allocate_interaction_buffer(omni_wm_tom_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     uint32_t capacity = bridge->config.interaction_buffer_size;
     if (capacity == 0) capacity = DEFAULT_INTERACTION_BUFFER_CAPACITY;
 
     bridge->interaction_buffer = nimcp_calloc(capacity, sizeof(tom_social_interaction_t));
-    if (!bridge->interaction_buffer) return NIMCP_ERROR_NO_MEMORY;
+    NIMCP_CHECK_THROW(bridge->interaction_buffer, NIMCP_ERROR_NO_MEMORY, "failed to allocate interaction_buffer");
 
     bridge->interaction_buffer_capacity = capacity;
     bridge->interaction_buffer_head = 0;
@@ -208,13 +208,13 @@ static void free_interaction_buffer(omni_wm_tom_bridge_t* bridge) {
  * @brief Allocate counterfactual cache
  */
 static nimcp_error_t allocate_cf_cache(omni_wm_tom_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     uint32_t capacity = bridge->config.max_counterfactuals;
     if (capacity == 0) capacity = DEFAULT_CF_CACHE_CAPACITY;
 
     bridge->cf_cache = nimcp_calloc(capacity, sizeof(tom_social_trajectory_t));
-    if (!bridge->cf_cache) return NIMCP_ERROR_NO_MEMORY;
+    NIMCP_CHECK_THROW(bridge->cf_cache, NIMCP_ERROR_NO_MEMORY, "failed to allocate cf_cache");
 
     bridge->cf_cache_capacity = capacity;
     bridge->cf_cache_size = 0;
@@ -282,7 +282,7 @@ static float compute_state_divergence(const float* state1, const float* state2, 
  * @brief Update effects flowing from WM to ToM
  */
 static nimcp_error_t update_wm_to_tom_effects(omni_wm_tom_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     omni_wm_to_tom_effects_t* effects = &bridge->wm_to_tom;
 
@@ -303,7 +303,7 @@ static nimcp_error_t update_wm_to_tom_effects(omni_wm_tom_bridge_t* bridge) {
  * @brief Update effects flowing from ToM to WM
  */
 static nimcp_error_t update_tom_to_wm_effects(omni_wm_tom_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     tom_to_omni_wm_effects_t* effects = &bridge->tom_to_wm;
 
@@ -331,7 +331,7 @@ static nimcp_error_t update_tom_to_wm_effects(omni_wm_tom_bridge_t* bridge) {
  * @brief Update belief-reality gaps for all tracked agents
  */
 static nimcp_error_t update_belief_reality_gaps(omni_wm_tom_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_false_belief_detection) return NIMCP_SUCCESS;
 
     for (uint32_t i = 0; i < bridge->tracked_agent_count; i++) {
@@ -406,7 +406,7 @@ static nimcp_error_t handle_mental_state_pred(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_tom_bridge_t* bridge = (omni_wm_tom_bridge_t*)user_data;
 
@@ -426,7 +426,7 @@ static nimcp_error_t handle_trajectory_pred(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_tom_bridge_t* bridge = (omni_wm_tom_bridge_t*)user_data;
 
@@ -446,7 +446,7 @@ static nimcp_error_t handle_counterfactual_req(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_tom_bridge_t* bridge = (omni_wm_tom_bridge_t*)user_data;
 
@@ -466,7 +466,7 @@ static nimcp_error_t handle_false_belief_detect(const void* msg, size_t msg_size
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_tom_bridge_t* bridge = (omni_wm_tom_bridge_t*)user_data;
 
@@ -486,7 +486,7 @@ static nimcp_error_t handle_social_interaction(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_tom_bridge_t* bridge = (omni_wm_tom_bridge_t*)user_data;
 
@@ -506,7 +506,7 @@ static nimcp_error_t handle_empathy_simulation(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_tom_bridge_t* bridge = (omni_wm_tom_bridge_t*)user_data;
 
@@ -524,7 +524,7 @@ static nimcp_error_t handle_empathy_simulation(const void* msg, size_t msg_size,
 nimcp_error_t omni_wm_tom_bridge_default_config(
     omni_wm_tom_bridge_config_t* config) {
 
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(omni_wm_tom_bridge_config_t));
 
@@ -680,7 +680,7 @@ void omni_wm_tom_bridge_destroy(omni_wm_tom_bridge_t* bridge) {
 }
 
 nimcp_error_t omni_wm_tom_bridge_reset(omni_wm_tom_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -736,8 +736,9 @@ nimcp_error_t omni_wm_tom_bridge_connect(
     theory_of_mind_t tom,
     mirror_neurons_t mirror) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!world_model || !tom) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_INVALID_PARAM, "world_model is NULL");
+    NIMCP_CHECK_THROW(tom, NIMCP_ERROR_INVALID_PARAM, "tom is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -764,7 +765,8 @@ nimcp_error_t omni_wm_tom_bridge_connect_world_model(
     omni_wm_tom_bridge_t* bridge,
     omni_world_model_t* world_model) {
 
-    if (!bridge || !world_model) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_NULL_POINTER, "world_model is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->world_model = world_model;
@@ -780,7 +782,8 @@ nimcp_error_t omni_wm_tom_bridge_connect_tom(
     omni_wm_tom_bridge_t* bridge,
     theory_of_mind_t tom) {
 
-    if (!bridge || !tom) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(tom, NIMCP_ERROR_NULL_POINTER, "tom is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->tom = tom;
@@ -796,7 +799,8 @@ nimcp_error_t omni_wm_tom_bridge_connect_mirror(
     omni_wm_tom_bridge_t* bridge,
     mirror_neurons_t mirror) {
 
-    if (!bridge || !mirror) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(mirror, NIMCP_ERROR_NULL_POINTER, "mirror is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->mirror = mirror;
@@ -809,7 +813,8 @@ nimcp_error_t omni_wm_tom_bridge_connect_social(
     omni_wm_tom_bridge_t* bridge,
     tom_social_bridge_t* social_bridge) {
 
-    if (!bridge || !social_bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(social_bridge, NIMCP_ERROR_NULL_POINTER, "social_bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->social_bridge = social_bridge;
@@ -831,7 +836,7 @@ nimcp_error_t omni_wm_tom_bridge_update(
     omni_wm_tom_bridge_t* bridge,
     float dt) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_modulation) return NIMCP_SUCCESS;
 
     uint64_t start_time = get_current_time_us();
@@ -884,10 +889,10 @@ nimcp_error_t omni_wm_tom_bridge_predict_mental_state(
     uint32_t horizon_steps,
     tom_agent_mental_state_t* out_predicted_state) {
 
-    if (!bridge || !out_predicted_state) return NIMCP_ERROR_NULL_POINTER;
-    if (horizon_steps == 0 || horizon_steps > WM_TOM_MAX_HORIZON) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(out_predicted_state, NIMCP_ERROR_NULL_POINTER, "out_predicted_state is NULL");
+    NIMCP_CHECK_THROW(horizon_steps > 0, NIMCP_ERROR_INVALID_PARAM, "horizon_steps must be greater than 0");
+    NIMCP_CHECK_THROW(horizon_steps <= WM_TOM_MAX_HORIZON, NIMCP_ERROR_INVALID_PARAM, "horizon_steps exceeds WM_TOM_MAX_HORIZON");
     if (!bridge->config.enable_mental_state_prediction) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -943,7 +948,8 @@ nimcp_error_t omni_wm_tom_bridge_update_mental_state(
     agent_id_t agent_id,
     const tom_agent_mental_state_t* observed_state) {
 
-    if (!bridge || !observed_state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(observed_state, NIMCP_ERROR_NULL_POINTER, "observed_state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1005,10 +1011,10 @@ nimcp_error_t omni_wm_tom_bridge_predict_social_trajectory(
     uint32_t horizon_steps,
     tom_social_trajectory_t* out_trajectory) {
 
-    if (!bridge || !out_trajectory) return NIMCP_ERROR_NULL_POINTER;
-    if (horizon_steps == 0 || horizon_steps > WM_TOM_MAX_HORIZON) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(out_trajectory, NIMCP_ERROR_NULL_POINTER, "out_trajectory is NULL");
+    NIMCP_CHECK_THROW(horizon_steps > 0, NIMCP_ERROR_INVALID_PARAM, "horizon_steps must be greater than 0");
+    NIMCP_CHECK_THROW(horizon_steps <= WM_TOM_MAX_HORIZON, NIMCP_ERROR_INVALID_PARAM, "horizon_steps exceeds WM_TOM_MAX_HORIZON");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1082,9 +1088,13 @@ nimcp_error_t omni_wm_tom_bridge_predict_joint_trajectory(
     uint32_t horizon_steps,
     tom_social_trajectory_t* out_trajectories) {
 
-    if (!bridge || !agent_ids || !out_trajectories) return NIMCP_ERROR_NULL_POINTER;
-    if (agent_count == 0 || agent_count > WM_TOM_MAX_AGENTS) return NIMCP_ERROR_INVALID_PARAM;
-    if (horizon_steps == 0 || horizon_steps > WM_TOM_MAX_HORIZON) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(agent_ids, NIMCP_ERROR_NULL_POINTER, "agent_ids is NULL");
+    NIMCP_CHECK_THROW(out_trajectories, NIMCP_ERROR_NULL_POINTER, "out_trajectories is NULL");
+    NIMCP_CHECK_THROW(agent_count > 0, NIMCP_ERROR_INVALID_PARAM, "agent_count must be greater than 0");
+    NIMCP_CHECK_THROW(agent_count <= WM_TOM_MAX_AGENTS, NIMCP_ERROR_INVALID_PARAM, "agent_count exceeds WM_TOM_MAX_AGENTS");
+    NIMCP_CHECK_THROW(horizon_steps > 0, NIMCP_ERROR_INVALID_PARAM, "horizon_steps must be greater than 0");
+    NIMCP_CHECK_THROW(horizon_steps <= WM_TOM_MAX_HORIZON, NIMCP_ERROR_INVALID_PARAM, "horizon_steps exceeds WM_TOM_MAX_HORIZON");
     if (!bridge->config.enable_joint_prediction) return NIMCP_SUCCESS;
 
     /* Predict each agent's trajectory */
@@ -1116,7 +1126,9 @@ nimcp_error_t omni_wm_tom_bridge_counterfactual_belief(
     const float* hypothetical_belief,
     tom_social_trajectory_t* out_trajectory) {
 
-    if (!bridge || !hypothetical_belief || !out_trajectory) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(hypothetical_belief, NIMCP_ERROR_NULL_POINTER, "hypothetical_belief is NULL");
+    NIMCP_CHECK_THROW(out_trajectory, NIMCP_ERROR_NULL_POINTER, "out_trajectory is NULL");
     if (!bridge->config.enable_counterfactual_reasoning) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1176,8 +1188,11 @@ nimcp_error_t omni_wm_tom_bridge_counterfactual_action(
     uint32_t action_dim,
     tom_social_trajectory_t* out_trajectory) {
 
-    if (!bridge || !hypothetical_action || !out_trajectory) return NIMCP_ERROR_NULL_POINTER;
-    if (action_dim == 0 || action_dim > OMNI_WM_ACTION_DIM) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(hypothetical_action, NIMCP_ERROR_NULL_POINTER, "hypothetical_action is NULL");
+    NIMCP_CHECK_THROW(out_trajectory, NIMCP_ERROR_NULL_POINTER, "out_trajectory is NULL");
+    NIMCP_CHECK_THROW(action_dim > 0, NIMCP_ERROR_INVALID_PARAM, "action_dim must be greater than 0");
+    NIMCP_CHECK_THROW(action_dim <= OMNI_WM_ACTION_DIM, NIMCP_ERROR_INVALID_PARAM, "action_dim exceeds OMNI_WM_ACTION_DIM");
     if (!bridge->config.enable_counterfactual_reasoning) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1227,7 +1242,9 @@ nimcp_error_t omni_wm_tom_bridge_detect_false_beliefs(
     tom_belief_reality_gap_t* out_gaps,
     uint32_t* out_gap_count) {
 
-    if (!bridge || !out_gaps || !out_gap_count) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(out_gaps, NIMCP_ERROR_NULL_POINTER, "out_gaps is NULL");
+    NIMCP_CHECK_THROW(out_gap_count, NIMCP_ERROR_NULL_POINTER, "out_gap_count is NULL");
     if (!bridge->config.enable_false_belief_detection) {
         *out_gap_count = 0;
         return NIMCP_SUCCESS;
@@ -1261,7 +1278,8 @@ nimcp_error_t omni_wm_tom_bridge_get_belief_gap(
     agent_id_t agent_id,
     tom_belief_reality_gap_t* out_gap) {
 
-    if (!bridge || !out_gap) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(out_gap, NIMCP_ERROR_NULL_POINTER, "out_gap is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1286,7 +1304,8 @@ nimcp_error_t omni_wm_tom_bridge_train_from_interaction(
     omni_wm_tom_bridge_t* bridge,
     const tom_social_interaction_t* interaction) {
 
-    if (!bridge || !interaction) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(interaction, NIMCP_ERROR_NULL_POINTER, "interaction is NULL");
     if (!bridge->config.enable_social_training) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1332,7 +1351,7 @@ nimcp_error_t omni_wm_tom_bridge_train_from_interaction(
 }
 
 nimcp_error_t omni_wm_tom_bridge_train_batch(omni_wm_tom_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_social_training) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1367,8 +1386,10 @@ nimcp_error_t omni_wm_tom_bridge_on_mirror_action(
     uint32_t action_dim,
     float confidence) {
 
-    if (!bridge || !action) return NIMCP_ERROR_NULL_POINTER;
-    if (action_dim == 0 || action_dim > OMNI_WM_ACTION_DIM) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(action, NIMCP_ERROR_NULL_POINTER, "action is NULL");
+    NIMCP_CHECK_THROW(action_dim > 0, NIMCP_ERROR_INVALID_PARAM, "action_dim must be greater than 0");
+    NIMCP_CHECK_THROW(action_dim <= OMNI_WM_ACTION_DIM, NIMCP_ERROR_INVALID_PARAM, "action_dim exceeds OMNI_WM_ACTION_DIM");
     if (!bridge->config.enable_mirror_integration) return NIMCP_SUCCESS;
     if (confidence < bridge->config.mirror_action_threshold) return NIMCP_SUCCESS;
 
@@ -1416,7 +1437,8 @@ nimcp_error_t omni_wm_tom_bridge_empathy_simulation(
     agent_id_t agent_id,
     float* out_simulated_state) {
 
-    if (!bridge || !out_simulated_state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(out_simulated_state, NIMCP_ERROR_NULL_POINTER, "out_simulated_state is NULL");
     if (!bridge->config.enable_empathy_simulation) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1468,7 +1490,7 @@ nimcp_error_t omni_wm_tom_bridge_track_agent(
     agent_id_t agent_id,
     const tom_agent_mental_state_t* initial_state) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1509,7 +1531,7 @@ nimcp_error_t omni_wm_tom_bridge_untrack_agent(
     omni_wm_tom_bridge_t* bridge,
     agent_id_t agent_id) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1546,7 +1568,8 @@ nimcp_error_t omni_wm_tom_bridge_get_agent_state(
     agent_id_t agent_id,
     tom_agent_mental_state_t* out_state) {
 
-    if (!bridge || !out_state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(out_state, NIMCP_ERROR_NULL_POINTER, "out_state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1567,7 +1590,7 @@ nimcp_error_t omni_wm_tom_bridge_set_focus_agent(
     omni_wm_tom_bridge_t* bridge,
     agent_id_t agent_id) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1599,7 +1622,7 @@ nimcp_error_t omni_wm_tom_bridge_set_cooperative_context(
     omni_wm_tom_bridge_t* bridge,
     bool is_cooperative) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->cooperative_mode = is_cooperative;
@@ -1617,7 +1640,7 @@ nimcp_error_t omni_wm_tom_bridge_set_competitive_context(
     omni_wm_tom_bridge_t* bridge,
     bool is_competitive) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->competitive_mode = is_competitive;
@@ -1653,7 +1676,8 @@ nimcp_error_t omni_wm_tom_bridge_get_stats(
     const omni_wm_tom_bridge_t* bridge,
     omni_wm_tom_bridge_stats_t* stats) {
 
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -1665,7 +1689,7 @@ nimcp_error_t omni_wm_tom_bridge_get_stats(
 nimcp_error_t omni_wm_tom_bridge_reset_stats(
     omni_wm_tom_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(omni_wm_tom_bridge_stats_t));
@@ -1681,7 +1705,7 @@ nimcp_error_t omni_wm_tom_bridge_reset_stats(
 nimcp_error_t omni_wm_tom_bridge_connect_bio_async(
     omni_wm_tom_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_bio_async) return NIMCP_SUCCESS;
     if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
@@ -1734,7 +1758,7 @@ nimcp_error_t omni_wm_tom_bridge_connect_bio_async(
 nimcp_error_t omni_wm_tom_bridge_disconnect_bio_async(
     omni_wm_tom_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     if (bridge->base.bio_ctx) {
@@ -1850,7 +1874,7 @@ const char* omni_wm_tom_emotion_to_string(wm_tom_emotion_t emotion) {
 nimcp_error_t omni_wm_tom_bridge_validate_config(
     const omni_wm_tom_bridge_config_t* config) {
 
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Validate sensitivity range */
     if (config->sensitivity < 0.5f || config->sensitivity > 2.0f) {

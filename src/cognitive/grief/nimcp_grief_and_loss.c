@@ -76,7 +76,7 @@ static nimcp_error_t handle_grief_query(
 {
     (void)msg_size;
     (void)response_promise;
-    if (!msg || !user_data) { return NIMCP_ERROR_NULL_ARG; }
+    NIMCP_CHECK_THROW(msg && user_data, NIMCP_ERROR_NULL_ARG, "msg or user_data is NULL");
 
     grief_system_t* system = (grief_system_t*)user_data;
     LOG_DEBUG(LOG_MODULE, "Received grief query: experiencing=%d, pain=%.2f",

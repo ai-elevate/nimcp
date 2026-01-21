@@ -24,7 +24,7 @@
  * ============================================================================ */
 
 int tom_fep_bridge_default_config(tom_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     config->action_pe_threshold = TOM_FEP_PE_ACTION_THRESHOLD;
     config->belief_pe_threshold = TOM_FEP_PE_BELIEF_THRESHOLD;
@@ -89,7 +89,7 @@ void tom_fep_bridge_destroy(tom_fep_bridge_t* bridge) {
  * ============================================================================ */
 
 int tom_fep_bridge_connect_fep(tom_fep_bridge_t* bridge, fep_system_t* fep) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -100,7 +100,7 @@ int tom_fep_bridge_connect_fep(tom_fep_bridge_t* bridge, fep_system_t* fep) {
 }
 
 int tom_fep_bridge_connect_tom(tom_fep_bridge_t* bridge, theory_of_mind_t tom) {
-    if (!bridge || !tom) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && tom, NIMCP_ERROR_NULL_POINTER, "bridge or tom is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->tom_system = tom;
@@ -115,7 +115,7 @@ int tom_fep_bridge_connect_tom(tom_fep_bridge_t* bridge, theory_of_mind_t tom) {
  * ============================================================================ */
 
 int tom_fep_infer_belief(tom_fep_bridge_t* bridge, float prediction_error) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_belief_inference) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -145,7 +145,7 @@ int tom_fep_infer_belief(tom_fep_bridge_t* bridge, float prediction_error) {
 }
 
 int tom_fep_infer_intention(tom_fep_bridge_t* bridge, float action_pe) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_intention_inference) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -171,7 +171,7 @@ int tom_fep_activate_empathy(
     tom_fep_bridge_t* bridge,
     tom_emotion_t observed_emotion
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_empathy) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -220,7 +220,7 @@ int tom_fep_activate_empathy(
  * ============================================================================ */
 
 int tom_fep_apply_social_priors(tom_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -237,7 +237,7 @@ int tom_fep_modulate_empathic_precision(
     tom_fep_bridge_t* bridge,
     tom_emotion_t emotion
 ) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -259,7 +259,7 @@ int tom_fep_add_mentalizing_overhead(
     tom_fep_bridge_t* bridge,
     uint32_t recursion_depth
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -290,7 +290,7 @@ int tom_fep_add_mentalizing_overhead(
  * ============================================================================ */
 
 int tom_fep_bridge_update(tom_fep_bridge_t* bridge, uint64_t delta_ms) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -334,7 +334,7 @@ int tom_fep_bridge_get_state(
     const tom_fep_bridge_t* bridge,
     tom_fep_state_t* state
 ) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -347,7 +347,7 @@ int tom_fep_bridge_get_stats(
     const tom_fep_bridge_t* bridge,
     tom_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -371,7 +371,7 @@ uint32_t tom_fep_get_mentalizing_depth(const tom_fep_bridge_t* bridge) {
  * ============================================================================ */
 
 int tom_fep_bridge_connect_bio_async(tom_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     bio_module_info_t info = {
@@ -394,7 +394,7 @@ int tom_fep_bridge_connect_bio_async(tom_fep_bridge_t* bridge) {
 }
 
 int tom_fep_bridge_disconnect_bio_async(tom_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     if (bridge->base.bio_ctx) {

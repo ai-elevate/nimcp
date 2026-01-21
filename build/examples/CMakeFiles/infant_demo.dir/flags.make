@@ -6,5 +6,5 @@ C_DEFINES = -DNIMCP_ENABLE_CUDA
 
 C_INCLUDES = -I/home/bbrelin/nimcp/src -I/home/bbrelin/nimcp/include -isystem /usr/include/python3.12
 
-C_FLAGS = -g -O0 -O3 -DNDEBUG -std=gnu11 -mavx2 -mfma
+C_FLAGS = -g -O0 -g -std=gnu11 -mavx2 -mfma
 

@@ -306,9 +306,7 @@ void hemispheric_sleep_destroy(hemispheric_sleep_bridge_t* bridge) {
 //=============================================================================
 
 int hemispheric_sleep_update(hemispheric_sleep_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -380,9 +378,7 @@ int hemispheric_sleep_update(hemispheric_sleep_bridge_t* bridge) {
 }
 
 int hemispheric_sleep_apply_modulation(hemispheric_sleep_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized || !bridge->brain) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized && bridge->brain, NIMCP_ERROR_NULL_POINTER, "bridge is NULL, not initialized, or brain is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -497,9 +493,7 @@ int hemispheric_sleep_set_stage(
     hemispheric_sleep_bridge_t* bridge,
     fep_sleep_stage_t stage
 ) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->current_stage = stage;
@@ -510,9 +504,7 @@ int hemispheric_sleep_set_stage(
 }
 
 int hemispheric_sleep_trigger_transfer(hemispheric_sleep_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -528,9 +520,7 @@ int hemispheric_sleep_trigger_transfer(hemispheric_sleep_bridge_t* bridge) {
 }
 
 int hemispheric_sleep_reset_callosum(hemispheric_sleep_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->callosum_effects.current_efficiency = 1.0f;
@@ -568,9 +558,7 @@ void hemispheric_sleep_reset_stats(hemispheric_sleep_bridge_t* bridge) {
 //=============================================================================
 
 int hemispheric_sleep_connect_bio_async(hemispheric_sleep_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  // Already connected
@@ -595,9 +583,7 @@ int hemispheric_sleep_connect_bio_async(hemispheric_sleep_bridge_t* bridge) {
 }
 
 int hemispheric_sleep_disconnect_bio_async(hemispheric_sleep_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  // Already disconnected

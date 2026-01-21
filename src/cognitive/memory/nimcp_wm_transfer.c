@@ -213,7 +213,7 @@ static nimcp_error_t handle_wm_store_request(
 {
     (void)msg_size;
     (void)response_promise;
-    if (!msg || !user_data) { return NIMCP_ERROR_NULL_ARG; }
+    NIMCP_CHECK_THROW(msg && user_data, NIMCP_ERROR_NULL_ARG, "msg or user_data is NULL");
     wm_transfer_system_t* system = (wm_transfer_system_t*)user_data;
     LOG_DEBUG(LOG_MODULE, "Received WM store request, current_wm_items=%u",
               system->stats.current_wm_items);

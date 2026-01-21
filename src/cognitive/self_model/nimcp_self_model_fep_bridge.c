@@ -24,7 +24,7 @@
  * ============================================================================ */
 
 int self_model_fep_bridge_default_config(self_model_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     config->capability_pe_threshold = SELF_FEP_PE_CAPABILITY_THRESHOLD;
     config->belief_pe_threshold = SELF_FEP_PE_BELIEF_THRESHOLD;
@@ -97,7 +97,7 @@ int self_model_fep_bridge_connect_fep(
     self_model_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -111,7 +111,7 @@ int self_model_fep_bridge_connect_self_model(
     self_model_fep_bridge_t* bridge,
     self_model_t* self_model
 ) {
-    if (!bridge || !self_model) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && self_model, NIMCP_ERROR_NULL_POINTER, "bridge or self_model is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->self_model_system = self_model;
@@ -130,7 +130,7 @@ int self_model_fep_update_belief(
     uint32_t belief_index,
     float prediction_error
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_belief_updates) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -159,7 +159,7 @@ int self_model_fep_update_capability(
     uint32_t capability_index,
     float prediction_error
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_capability_learning) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -185,7 +185,7 @@ int self_model_fep_update_capability(
 }
 
 int self_model_fep_explore_self(self_model_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_self_exploration) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -205,7 +205,7 @@ int self_model_fep_explore_self(self_model_fep_bridge_t* bridge) {
  * ============================================================================ */
 
 int self_model_fep_apply_belief_priors(self_model_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -219,7 +219,7 @@ int self_model_fep_apply_belief_priors(self_model_fep_bridge_t* bridge) {
 }
 
 int self_model_fep_constrain_policies(self_model_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -236,7 +236,7 @@ int self_model_fep_apply_sensory_attenuation(
     self_model_fep_bridge_t* bridge,
     bool is_self_generated
 ) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -259,7 +259,7 @@ int self_model_fep_bridge_update(
     self_model_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -317,7 +317,7 @@ int self_model_fep_bridge_get_state(
     const self_model_fep_bridge_t* bridge,
     self_model_fep_state_t* state
 ) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -330,7 +330,7 @@ int self_model_fep_bridge_get_stats(
     const self_model_fep_bridge_t* bridge,
     self_model_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -354,7 +354,7 @@ float self_model_fep_get_self_certainty(const self_model_fep_bridge_t* bridge) {
  * ============================================================================ */
 
 int self_model_fep_bridge_connect_bio_async(self_model_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     bio_module_info_t info = {
@@ -379,7 +379,7 @@ int self_model_fep_bridge_connect_bio_async(self_model_fep_bridge_t* bridge) {
 int self_model_fep_bridge_disconnect_bio_async(
     self_model_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     if (bridge->base.bio_ctx) {

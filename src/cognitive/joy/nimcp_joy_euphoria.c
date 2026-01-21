@@ -39,7 +39,7 @@ static nimcp_error_t handle_curiosity_signal(
 {
     (void)msg_size;
     (void)response_promise;
-    if (!msg || !user_data) { return NIMCP_ERROR_NULL_ARG; }
+    NIMCP_CHECK_THROW(msg && user_data, NIMCP_ERROR_NULL_ARG, "msg or user_data is NULL");
 
     const bio_msg_curiosity_signal_t* signal = (const bio_msg_curiosity_signal_t*)msg;
     joy_system_t* system = (joy_system_t*)user_data;

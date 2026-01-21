@@ -94,9 +94,7 @@ static uint32_t simple_hash(const void* data, size_t len) {
  * ============================================================================ */
 
 nimcp_error_t omni_metacog_get_default_config(omni_metacog_config_t* config) {
-    if (!config) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAMETER, "config is NULL");
 
     memset(config, 0, sizeof(*config));
 
@@ -195,9 +193,7 @@ void omni_metacog_destroy(omni_metacog_ctx_t* ctx) {
 }
 
 nimcp_error_t omni_metacog_reset(omni_metacog_ctx_t* ctx) {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -227,9 +223,8 @@ nimcp_error_t omni_metacog_reset(omni_metacog_ctx_t* ctx) {
  * ============================================================================ */
 
 nimcp_error_t omni_metacog_init_self_model(omni_metacog_ctx_t* ctx) {
-    if (!ctx || !ctx->self_model) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
+    NIMCP_CHECK_THROW(ctx->self_model, NIMCP_ERROR_INVALID_PARAMETER, "self_model is NULL");
 
     omni_self_model_t* model = ctx->self_model;
     memset(model, 0, sizeof(*model));
@@ -286,13 +281,9 @@ nimcp_error_t omni_metacog_update_self_model(
     float latency,
     bool success) {
 
-    if (!ctx || !ctx->self_model) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
-
-    if (mode >= OMNI_METACOG_MODE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
+    NIMCP_CHECK_THROW(ctx->self_model, NIMCP_ERROR_INVALID_PARAMETER, "self_model is NULL");
+    NIMCP_CHECK_THROW(mode < OMNI_METACOG_MODE_COUNT, NIMCP_ERROR_INVALID_PARAMETER, "mode out of range");
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -358,13 +349,10 @@ nimcp_error_t omni_metacog_get_capability(
     omni_metacog_mode_t mode,
     omni_capability_t* capability) {
 
-    if (!ctx || !ctx->self_model || !capability) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
-
-    if (mode >= OMNI_METACOG_MODE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
+    NIMCP_CHECK_THROW(ctx->self_model, NIMCP_ERROR_INVALID_PARAMETER, "self_model is NULL");
+    NIMCP_CHECK_THROW(capability, NIMCP_ERROR_INVALID_PARAMETER, "capability is NULL");
+    NIMCP_CHECK_THROW(mode < OMNI_METACOG_MODE_COUNT, NIMCP_ERROR_INVALID_PARAMETER, "mode out of range");
 
     nimcp_mutex_lock(ctx->mutex);
     memcpy(capability, &ctx->self_model->capabilities[mode], sizeof(*capability));
@@ -377,9 +365,9 @@ nimcp_error_t omni_metacog_get_resources(
     omni_metacog_ctx_t* ctx,
     omni_resource_state_t* resources) {
 
-    if (!ctx || !ctx->self_model || !resources) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
+    NIMCP_CHECK_THROW(ctx->self_model, NIMCP_ERROR_INVALID_PARAMETER, "self_model is NULL");
+    NIMCP_CHECK_THROW(resources, NIMCP_ERROR_INVALID_PARAMETER, "resources is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
     memcpy(resources, &ctx->self_model->resources, sizeof(*resources));
@@ -393,13 +381,9 @@ nimcp_error_t omni_metacog_set_resource_budget(
     omni_resource_type_t resource,
     float budget) {
 
-    if (!ctx || !ctx->self_model) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
-
-    if (resource >= OMNI_RESOURCE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
+    NIMCP_CHECK_THROW(ctx->self_model, NIMCP_ERROR_INVALID_PARAMETER, "self_model is NULL");
+    NIMCP_CHECK_THROW(resource < OMNI_RESOURCE_COUNT, NIMCP_ERROR_INVALID_PARAMETER, "resource out of range");
 
     nimcp_mutex_lock(ctx->mutex);
     ctx->self_model->resources.budget[resource] = clamp01(budget);
@@ -416,9 +400,8 @@ nimcp_error_t omni_metacog_monitor(
     omni_metacog_ctx_t* ctx,
     omni_monitoring_snapshot_t* snapshot) {
 
-    if (!ctx || !snapshot) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
+    NIMCP_CHECK_THROW(snapshot, NIMCP_ERROR_INVALID_PARAMETER, "snapshot is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -466,9 +449,8 @@ nimcp_error_t omni_metacog_check_coherence(
     uint32_t num_inferences,
     omni_coherence_result_t* result) {
 
-    if (!ctx || !result) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAMETER, "result is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -533,9 +515,9 @@ nimcp_error_t omni_metacog_detect_anomaly(
     float* anomaly_score,
     char* description) {
 
-    if (!ctx || !snapshot || !anomaly_score) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
+    NIMCP_CHECK_THROW(snapshot, NIMCP_ERROR_INVALID_PARAMETER, "snapshot is NULL");
+    NIMCP_CHECK_THROW(anomaly_score, NIMCP_ERROR_INVALID_PARAMETER, "anomaly_score is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -596,9 +578,9 @@ nimcp_error_t omni_metacog_evaluate_performance(
     float* accuracy,
     float* confidence) {
 
-    if (!ctx || !accuracy || !confidence) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
+    NIMCP_CHECK_THROW(accuracy, NIMCP_ERROR_INVALID_PARAMETER, "accuracy is NULL");
+    NIMCP_CHECK_THROW(confidence, NIMCP_ERROR_INVALID_PARAMETER, "confidence is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -628,13 +610,10 @@ nimcp_error_t omni_metacog_predict_performance(
     float* expected_accuracy,
     float* expected_cost) {
 
-    if (!ctx || !expected_accuracy || !expected_cost) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
-
-    if (mode >= OMNI_METACOG_MODE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
+    NIMCP_CHECK_THROW(expected_accuracy, NIMCP_ERROR_INVALID_PARAMETER, "expected_accuracy is NULL");
+    NIMCP_CHECK_THROW(expected_cost, NIMCP_ERROR_INVALID_PARAMETER, "expected_cost is NULL");
+    NIMCP_CHECK_THROW(mode < OMNI_METACOG_MODE_COUNT, NIMCP_ERROR_INVALID_PARAMETER, "mode out of range");
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -694,9 +673,8 @@ nimcp_error_t omni_metacog_select_mode(
     uint32_t context_hash,
     omni_mode_recommendation_t* recommendation) {
 
-    if (!ctx || !recommendation) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
+    NIMCP_CHECK_THROW(recommendation, NIMCP_ERROR_INVALID_PARAMETER, "recommendation is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -793,13 +771,9 @@ nimcp_error_t omni_metacog_plan_resources(
     float accuracy_target,
     omni_resource_plan_t* plan) {
 
-    if (!ctx || !plan) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
-
-    if (mode >= OMNI_METACOG_MODE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
+    NIMCP_CHECK_THROW(plan, NIMCP_ERROR_INVALID_PARAMETER, "plan is NULL");
+    NIMCP_CHECK_THROW(mode < OMNI_METACOG_MODE_COUNT, NIMCP_ERROR_INVALID_PARAMETER, "mode out of range");
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -846,9 +820,9 @@ nimcp_error_t omni_metacog_decide_intervention(
     const omni_monitoring_snapshot_t* snapshot,
     omni_intervention_t* intervention) {
 
-    if (!ctx || !snapshot || !intervention) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
+    NIMCP_CHECK_THROW(snapshot, NIMCP_ERROR_INVALID_PARAMETER, "snapshot is NULL");
+    NIMCP_CHECK_THROW(intervention, NIMCP_ERROR_INVALID_PARAMETER, "intervention is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -916,9 +890,8 @@ nimcp_error_t omni_metacog_execute_intervention(
     omni_metacog_ctx_t* ctx,
     const omni_intervention_t* intervention) {
 
-    if (!ctx || !intervention) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
+    NIMCP_CHECK_THROW(intervention, NIMCP_ERROR_INVALID_PARAMETER, "intervention is NULL");
 
     if (!intervention->should_intervene) {
         return NIMCP_SUCCESS;  /* Nothing to do */
@@ -957,13 +930,8 @@ nimcp_error_t omni_metacog_switch_mode(
     omni_metacog_ctx_t* ctx,
     omni_metacog_mode_t new_mode) {
 
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
-
-    if (new_mode >= OMNI_METACOG_MODE_COUNT) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
+    NIMCP_CHECK_THROW(new_mode < OMNI_METACOG_MODE_COUNT, NIMCP_ERROR_INVALID_PARAMETER, "new_mode out of range");
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -981,9 +949,7 @@ nimcp_error_t omni_metacog_adjust_precision(
     omni_metacog_ctx_t* ctx,
     float adjustment) {
 
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
 
     /* Clamp adjustment */
     if (adjustment < -1.0f) adjustment = -1.0f;
@@ -1012,9 +978,8 @@ nimcp_error_t omni_metacog_learn(
     omni_metacog_ctx_t* ctx,
     uint32_t num_entries) {
 
-    if (!ctx || !ctx->self_model) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
+    NIMCP_CHECK_THROW(ctx->self_model, NIMCP_ERROR_INVALID_PARAMETER, "self_model is NULL");
 
     if (num_entries == 0) {
         num_entries = ctx->self_model->history_count;
@@ -1068,9 +1033,7 @@ nimcp_error_t omni_metacog_update_policy(
     omni_metacog_ctx_t* ctx,
     float reward) {
 
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -1108,9 +1071,10 @@ nimcp_error_t omni_metacog_get_learning_stats(
     float* improvement,
     float* convergence) {
 
-    if (!ctx || !ctx->self_model || !improvement || !convergence) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
+    NIMCP_CHECK_THROW(ctx->self_model, NIMCP_ERROR_INVALID_PARAMETER, "self_model is NULL");
+    NIMCP_CHECK_THROW(improvement, NIMCP_ERROR_INVALID_PARAMETER, "improvement is NULL");
+    NIMCP_CHECK_THROW(convergence, NIMCP_ERROR_INVALID_PARAMETER, "convergence is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -1176,9 +1140,7 @@ nimcp_error_t omni_metacog_connect_world_model(
     omni_metacog_ctx_t* ctx,
     void* world_model) {
 
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
     ctx->world_model = world_model;
@@ -1191,9 +1153,7 @@ nimcp_error_t omni_metacog_connect_active_inference(
     omni_metacog_ctx_t* ctx,
     void* active_inference) {
 
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
     ctx->active_inference = active_inference;
@@ -1206,9 +1166,7 @@ nimcp_error_t omni_metacog_connect_precision(
     omni_metacog_ctx_t* ctx,
     void* precision_system) {
 
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
     ctx->precision_system = precision_system;
@@ -1218,9 +1176,7 @@ nimcp_error_t omni_metacog_connect_precision(
 }
 
 nimcp_error_t omni_metacog_step(omni_metacog_ctx_t* ctx) {
-    if (!ctx) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -1286,9 +1242,10 @@ nimcp_error_t omni_metacog_get_statistics(
     float* success_rate,
     float* avg_efficiency) {
 
-    if (!ctx || !total_inferences || !success_rate || !avg_efficiency) {
-        return NIMCP_ERROR_INVALID_PARAMETER;
-    }
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAMETER, "context is NULL");
+    NIMCP_CHECK_THROW(total_inferences, NIMCP_ERROR_INVALID_PARAMETER, "total_inferences is NULL");
+    NIMCP_CHECK_THROW(success_rate, NIMCP_ERROR_INVALID_PARAMETER, "success_rate is NULL");
+    NIMCP_CHECK_THROW(avg_efficiency, NIMCP_ERROR_INVALID_PARAMETER, "avg_efficiency is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
 

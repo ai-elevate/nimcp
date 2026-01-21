@@ -435,7 +435,7 @@ void jepa_predictor_destroy(jepa_predictor_t* predictor) {
 }
 
 int jepa_predictor_reset(jepa_predictor_t* predictor) {
-    if (!predictor) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
 
     /* Reinitialize weights */
     if (predictor->type == JEPA_PREDICTOR_MLP || predictor->type == JEPA_PREDICTOR_LINEAR) {
@@ -627,7 +627,7 @@ float jepa_predictor_compute_loss(jepa_predictor_t* predictor,
  * ============================================================================ */
 
 int jepa_predictor_set_training(jepa_predictor_t* predictor, bool training) {
-    if (!predictor) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
     predictor->training_mode = training;
     return NIMCP_SUCCESS;
 }
@@ -646,7 +646,7 @@ int jepa_predictor_backward(jepa_predictor_t* predictor,
 
     /* Start with output error gradient */
     float* grad_out = nimcp_malloc(predictor->config.output_dim * sizeof(float));
-    if (!grad_out) return NIMCP_ERROR_MEMORY;
+    NIMCP_CHECK_THROW(grad_out, NIMCP_ERROR_MEMORY, "failed to allocate grad_out");
 
     /* For MSE: dL/dout = 2 * (pred - target) / dim = 2 * error / dim */
     float scale = 2.0f / error->dim;
@@ -721,7 +721,7 @@ int jepa_predictor_backward(jepa_predictor_t* predictor,
 }
 
 int jepa_predictor_update_weights(jepa_predictor_t* predictor, float learning_rate) {
-    if (!predictor) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
 
     if (learning_rate <= 0.0f) {
         learning_rate = predictor->config.learning_rate;
@@ -777,7 +777,7 @@ int jepa_predictor_train_step(jepa_predictor_t* predictor,
 
     /* Create temporary prediction */
     jepa_latent_t* pred = jepa_latent_create_dim(predictor->config.output_dim);
-    if (!pred) return NIMCP_ERROR_MEMORY;
+    NIMCP_CHECK_THROW(pred, NIMCP_ERROR_MEMORY, "failed to allocate pred");
 
     /* Forward pass */
     int result = jepa_predictor_predict(predictor, context, pred);
@@ -978,7 +978,7 @@ int jepa_predictor_get_stats(const jepa_predictor_t* predictor,
 }
 
 int jepa_predictor_reset_stats(jepa_predictor_t* predictor) {
-    if (!predictor) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(predictor, NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
     memset(&predictor->stats, 0, sizeof(jepa_predictor_stats_t));
     predictor->stats.min_loss = FLT_MAX;
     return NIMCP_SUCCESS;
@@ -1329,7 +1329,7 @@ int jepa_predictor_query_self_knowledge(kg_reader_t* kg) {
  * @brief Initialize default QMC configuration
  */
 int jepa_qmc_config_init(jepa_qmc_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     config->num_samples = QMC_DEFAULT_AMPLITUDE_SAMPLES;
     config->num_iterations = 1000;
@@ -1425,7 +1425,7 @@ int jepa_predictor_qmc_amplitude_estimate(
     /* Make multiple predictions to build amplitude distribution */
     uint32_t dim = predictor->config.output_dim;
     float* amplitudes = nimcp_malloc(config->num_samples * sizeof(float));
-    if (!amplitudes) return NIMCP_ERROR_MEMORY;
+    NIMCP_CHECK_THROW(amplitudes, NIMCP_ERROR_MEMORY, "failed to allocate amplitudes");
 
     jepa_latent_t* pred = jepa_latent_create_dim(dim);
     if (!pred) {
@@ -1602,7 +1602,7 @@ int jepa_predictor_qmc_entropy(
 
     /* Make prediction and convert to probabilities */
     jepa_latent_t* pred = jepa_latent_create_dim(dim);
-    if (!pred) return NIMCP_ERROR_MEMORY;
+    NIMCP_CHECK_THROW(pred, NIMCP_ERROR_MEMORY, "failed to allocate pred");
 
     if (jepa_predictor_predict(predictor, context, pred) != NIMCP_SUCCESS) {
         jepa_latent_destroy(pred);
@@ -1735,7 +1735,7 @@ int jepa_predictor_qmc_sample_latent(
 
     /* Get base prediction */
     jepa_latent_t* base = jepa_latent_create_dim(dim);
-    if (!base) return NIMCP_ERROR_MEMORY;
+    NIMCP_CHECK_THROW(base, NIMCP_ERROR_MEMORY, "failed to allocate base");
 
     if (jepa_predictor_predict(predictor, context, base) != NIMCP_SUCCESS) {
         jepa_latent_destroy(base);
@@ -1837,7 +1837,7 @@ int jepa_predictor_qmc_free_energy(
 
     /* Make prediction */
     jepa_latent_t* pred = jepa_latent_create_dim(dim);
-    if (!pred) return NIMCP_ERROR_MEMORY;
+    NIMCP_CHECK_THROW(pred, NIMCP_ERROR_MEMORY, "failed to allocate pred");
 
     if (jepa_predictor_predict(predictor, context, pred) != NIMCP_SUCCESS) {
         jepa_latent_destroy(pred);
@@ -2022,7 +2022,7 @@ int jepa_predictor_qmc_mcts_explore(
 
     /* Create initial state from prediction */
     jepa_latent_t* pred = jepa_latent_create_dim(dim);
-    if (!pred) return NIMCP_ERROR_MEMORY;
+    NIMCP_CHECK_THROW(pred, NIMCP_ERROR_MEMORY, "failed to allocate pred");
 
     if (jepa_predictor_predict(predictor, context, pred) != NIMCP_SUCCESS) {
         jepa_latent_destroy(pred);

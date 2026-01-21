@@ -361,7 +361,7 @@ static nimcp_error_t handle_knowledge_query(
 {
     (void)msg_size;
     (void)response_promise;
-    if (!msg || !user_data) { return NIMCP_ERROR_NULL_ARG; }
+    NIMCP_CHECK_THROW(msg && user_data, NIMCP_ERROR_NULL_ARG, "msg or user_data is NULL");
     semantic_memory_system_t* system = (semantic_memory_system_t*)user_data;
     LOG_DEBUG(LOG_MODULE, "Received knowledge query, concept_count=%u", system->concept_count);
     return NIMCP_SUCCESS;

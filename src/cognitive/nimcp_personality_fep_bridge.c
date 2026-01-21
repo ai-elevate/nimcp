@@ -18,7 +18,7 @@
 #define LOG_MODULE "personality_fep_bridge"
 
 int personality_fep_bridge_default_config(personality_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->enable_openness_exploration = true;
     config->enable_neuroticism_precision = true;
     config->enable_conscientiousness_planning = true;
@@ -62,7 +62,7 @@ void personality_fep_bridge_destroy(personality_fep_bridge_t* bridge) {
 }
 
 int personality_fep_bridge_connect_fep(personality_fep_bridge_t* bridge, fep_system_t* fep) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -72,7 +72,7 @@ int personality_fep_bridge_connect_fep(personality_fep_bridge_t* bridge, fep_sys
 
 int personality_fep_bridge_connect_personality(personality_fep_bridge_t* bridge,
                                                 personality_profile_t* personality) {
-    if (!bridge || !personality) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && personality, NIMCP_ERROR_NULL_POINTER, "bridge or personality is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->personality = personality;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -81,7 +81,7 @@ int personality_fep_bridge_connect_personality(personality_fep_bridge_t* bridge,
 }
 
 int personality_fep_bridge_disconnect(personality_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->personality = NULL;
@@ -91,7 +91,7 @@ int personality_fep_bridge_disconnect(personality_fep_bridge_t* bridge) {
 }
 
 int personality_fep_bridge_update(personality_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system || !bridge->personality) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system && bridge->personality, NIMCP_ERROR_INVALID_STATE, "bridge, fep_system, or personality is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.current_free_energy = fep_get_free_energy(bridge->fep_system);
     if (bridge->config.enable_openness_exploration) {
@@ -113,7 +113,7 @@ int personality_fep_bridge_update(personality_fep_bridge_t* bridge) {
 
 int personality_fep_bridge_get_state(const personality_fep_bridge_t* bridge,
                                       personality_fep_state_t* state) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -122,7 +122,7 @@ int personality_fep_bridge_get_state(const personality_fep_bridge_t* bridge,
 
 int personality_fep_bridge_get_stats(const personality_fep_bridge_t* bridge,
                                       personality_fep_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -130,7 +130,7 @@ int personality_fep_bridge_get_stats(const personality_fep_bridge_t* bridge,
 }
 
 int personality_fep_bridge_connect_bio_async(personality_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_PERSONALITY_BRIDGE,

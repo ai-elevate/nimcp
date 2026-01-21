@@ -498,7 +498,7 @@ myelin_segment_t* myelin_sheath_add_segment(myelin_sheath_t* sheath,
 nimcp_result_t myelin_sheath_remove_segment(myelin_sheath_t* sheath,
                                              uint32_t segment_id)
 {
-    if (!sheath) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(sheath, NIMCP_ERROR_NULL_POINTER, "sheath is NULL");
 
     // Find segment
     int32_t index = -1;
@@ -562,7 +562,7 @@ myelin_segment_t* myelin_sheath_find_segment_at(myelin_sheath_t* sheath,
 nimcp_result_t myelin_segment_set_lamellae(myelin_segment_t* segment,
                                             uint32_t num_lamellae)
 {
-    if (!segment) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(segment, NIMCP_ERROR_NULL_POINTER, "segment is NULL");
 
     // Clamp to valid range
     num_lamellae = (num_lamellae < NIMCP_MYELIN_MIN_LAMELLAE) ?
@@ -588,7 +588,7 @@ nimcp_result_t myelin_segment_set_compaction(myelin_segment_t* segment,
                                               myelin_compaction_t compaction,
                                               float score)
 {
-    if (!segment) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(segment, NIMCP_ERROR_NULL_POINTER, "segment is NULL");
 
     segment->compaction = compaction;
     segment->compaction_score = MYELIN_CLAMP(score, 0.0F, 1.0F);
@@ -771,7 +771,7 @@ nimcp_result_t myelin_segment_apply_damage(myelin_segment_t* segment,
                                             float damage_amount,
                                             uint64_t current_time)
 {
-    if (!segment) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(segment, NIMCP_ERROR_NULL_POINTER, "segment is NULL");
 
     segment->damage_accumulated += damage_amount;
     segment->integrity -= damage_amount;
@@ -790,7 +790,7 @@ nimcp_result_t myelin_segment_repair(myelin_segment_t* segment,
                                       float repair_amount,
                                       uint64_t current_time)
 {
-    if (!segment) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(segment, NIMCP_ERROR_NULL_POINTER, "segment is NULL");
 
     segment->integrity += repair_amount;
     segment->integrity = MYELIN_CLAMP(segment->integrity, 0.0F, 1.0F);
@@ -903,7 +903,7 @@ nimcp_result_t myelin_segment_set_paranodes(myelin_segment_t* segment,
                                              paranode_state_t proximal,
                                              paranode_state_t distal)
 {
-    if (!segment) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(segment, NIMCP_ERROR_NULL_POINTER, "segment is NULL");
 
     segment->proximal_paranode = proximal;
     segment->distal_paranode = distal;
@@ -1170,7 +1170,7 @@ myelin_sheath_t* myelin_sheath_cow_copy(myelin_sheath_t* sheath)
 
 nimcp_result_t myelin_sheath_cow_prepare_write(myelin_sheath_t* sheath)
 {
-    if (!sheath) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(sheath, NIMCP_ERROR_NULL_POINTER, "sheath is NULL");
 
     // If not a CoW copy or already modified, nothing to do
     if (!sheath->cow_original || sheath->cow_modified) {
@@ -1360,7 +1360,7 @@ void myelin_network_destroy(myelin_sheath_network_t* network)
 nimcp_result_t myelin_network_add_sheath(myelin_sheath_network_t* network,
                                           myelin_sheath_t* sheath)
 {
-    if (!network || !sheath) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(network && sheath, NIMCP_ERROR_NULL_POINTER, "network or sheath is NULL");
 
     nimcp_mutex_lock(&network->lock);
 
@@ -1382,7 +1382,7 @@ nimcp_result_t myelin_network_add_sheath(myelin_sheath_network_t* network,
 nimcp_result_t myelin_network_remove_sheath(myelin_sheath_network_t* network,
                                              uint32_t sheath_id)
 {
-    if (!network) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(network, NIMCP_ERROR_NULL_POINTER, "network is NULL");
 
     nimcp_mutex_lock(&network->lock);
 
@@ -1784,7 +1784,7 @@ nimcp_result_t myelin_sheath_init_biophysics(myelin_sheath_t* sheath,
                                               bool use_stochastic,
                                               uint64_t seed)
 {
-    if (!sheath) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(sheath, NIMCP_ERROR_NULL_POINTER, "sheath is NULL");
 
     // Create biophysics state
     sheath->biophysics = nimcp_myelin_biophysics_create(use_stochastic, seed);

@@ -12,7 +12,7 @@
 #include <math.h>
 
 int myelin_sheath_fep_default_config(myelin_sheath_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->integrity_sensitivity = MYELIN_SHEATH_FEP_DEFAULT_INTEGRITY_SENSITIVITY;
     config->g_ratio_gain = MYELIN_SHEATH_FEP_DEFAULT_G_RATIO_GAIN;
     config->velocity_precision_factor = 0.85f;
@@ -66,7 +66,7 @@ void myelin_sheath_fep_destroy(myelin_sheath_fep_bridge_t* bridge) {
 }
 
 int myelin_sheath_fep_update_fep_to_myelin(myelin_sheath_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
 
     float free_energy = fep_get_free_energy(bridge->fep_system);
     float precision_estimate = 1.0f / (1.0f + free_energy);
@@ -92,7 +92,7 @@ int myelin_sheath_fep_update_fep_to_myelin(myelin_sheath_fep_bridge_t* bridge) {
 }
 
 int myelin_sheath_fep_update_myelin_to_fep(myelin_sheath_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->myelin_network) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->myelin_network, NIMCP_ERROR_NULL_POINTER, "bridge or myelin_network is NULL");
 
     myelin_network_stats_t stats;
     myelin_network_get_stats(bridge->myelin_network, &stats);
@@ -116,14 +116,14 @@ int myelin_sheath_fep_update_myelin_to_fep(myelin_sheath_fep_bridge_t* bridge) {
 }
 
 int myelin_sheath_fep_update(myelin_sheath_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     int ret = myelin_sheath_fep_update_fep_to_myelin(bridge);
     if (ret != 0) return ret;
     return myelin_sheath_fep_update_myelin_to_fep(bridge);
 }
 
 int myelin_sheath_fep_apply_modulation(myelin_sheath_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     bridge->stats.g_ratio_optimizations++;
     return 0;
 }
@@ -139,7 +139,7 @@ float myelin_sheath_fep_get_velocity_precision(const myelin_sheath_fep_bridge_t*
 int myelin_sheath_fep_get_stats(const myelin_sheath_fep_bridge_t* bridge,
                                 myelin_sheath_fep_stats_t* stats)
 {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     memcpy(stats, &bridge->stats, sizeof(myelin_sheath_fep_stats_t));
     return 0;
 }

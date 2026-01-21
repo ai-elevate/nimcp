@@ -25,7 +25,7 @@
  * ============================================================================ */
 
 int working_memory_fep_bridge_default_config(working_memory_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* FEP → Working Memory */
     config->precision_capacity_scaling = 1.0f;
@@ -116,7 +116,7 @@ int working_memory_fep_bridge_connect_fep(
     working_memory_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -130,7 +130,7 @@ int working_memory_fep_bridge_connect_working_memory(
     working_memory_fep_bridge_t* bridge,
     working_memory_t* wm
 ) {
-    if (!bridge || !wm) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && wm, NIMCP_ERROR_NULL_POINTER, "bridge or wm is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->working_memory = wm;
@@ -141,7 +141,7 @@ int working_memory_fep_bridge_connect_working_memory(
 }
 
 int working_memory_fep_bridge_disconnect(working_memory_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -208,7 +208,7 @@ int working_memory_fep_pe_auto_refresh(
     working_memory_fep_bridge_t* bridge,
     float pe_magnitude
 ) {
-    if (!bridge || !bridge->working_memory) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->working_memory, NIMCP_ERROR_NULL_POINTER, "bridge or working_memory is NULL");
 
     if (!bridge->config.enable_pe_auto_refresh) {
         return 0;
@@ -362,7 +362,7 @@ int working_memory_fep_signal_capacity_pressure(
 }
 
 int working_memory_fep_signal_eviction(working_memory_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
 
     if (!bridge->config.enable_eviction_signals) {
         return 0;
@@ -397,7 +397,7 @@ int working_memory_fep_bridge_update(
     working_memory_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* FEP → Working Memory */
     working_memory_fep_apply_precision_capacity_modulation(bridge);
@@ -438,7 +438,7 @@ int working_memory_fep_bridge_get_state(
     const working_memory_fep_bridge_t* bridge,
     working_memory_fep_state_t* state
 ) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -451,7 +451,7 @@ int working_memory_fep_bridge_get_stats(
     const working_memory_fep_bridge_t* bridge,
     working_memory_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -467,7 +467,7 @@ int working_memory_fep_bridge_get_stats(
 int working_memory_fep_bridge_connect_bio_async(
     working_memory_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -491,7 +491,7 @@ int working_memory_fep_bridge_connect_bio_async(
 int working_memory_fep_bridge_disconnect_bio_async(
     working_memory_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

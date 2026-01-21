@@ -962,7 +962,7 @@ void curiosity_enhanced_destroy(curiosity_enhanced_system_t* system) {
 }
 
 int curiosity_enhanced_update(curiosity_enhanced_system_t* system, float dt_ms) {
-    if (!system) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1006,7 +1006,7 @@ int curiosity_enhanced_report_stimulus(
     uint64_t stimulus_hash,
     float novelty) {
 
-    if (!system) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
     boredom_report_stimulus(system, stimulus_hash, novelty);
@@ -1043,7 +1043,7 @@ int curiosity_enhanced_record_exposure(
     const char* topic,
     float learning_value) {
 
-    if (!system || !topic) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system && topic, NIMCP_ERROR_NULL_ARG, "system or topic is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1106,7 +1106,7 @@ int curiosity_enhanced_get_type_profile(
     const curiosity_enhanced_system_t* system,
     curiosity_type_profile_t* profile) {
 
-    if (!system || !profile) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system && profile, NIMCP_ERROR_NULL_ARG, "system or profile is NULL");
 
     *profile = system->state.types;
     return 0;
@@ -1117,8 +1117,8 @@ int curiosity_enhanced_set_type_intensity(
     curiosity_type_t type,
     float intensity) {
 
-    if (!system) return NIMCP_ERROR_NULL_ARG;
-    if (type < 0 || type >= CURIOSITY_TYPE_COUNT) return NIMCP_ERROR_INVALID;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
+    NIMCP_CHECK_THROW(type >= 0 && type < CURIOSITY_TYPE_COUNT, NIMCP_ERROR_INVALID, "invalid curiosity type");
 
     nimcp_platform_mutex_lock(system->mutex);
     system->state.types.type_intensities[type] = clampf(intensity, 0.0f, 1.0f);
@@ -1131,8 +1131,8 @@ int curiosity_enhanced_transition_type(
     curiosity_enhanced_system_t* system,
     curiosity_type_t new_type) {
 
-    if (!system) return NIMCP_ERROR_NULL_ARG;
-    if (new_type < 0 || new_type >= CURIOSITY_TYPE_COUNT) return NIMCP_ERROR_INVALID;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
+    NIMCP_CHECK_THROW(new_type >= 0 && new_type < CURIOSITY_TYPE_COUNT, NIMCP_ERROR_INVALID, "invalid new curiosity type");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1159,7 +1159,7 @@ int curiosity_enhanced_connect_anxiety(
     curiosity_enhanced_system_t* system,
     anxiety_system_t* anxiety) {
 
-    if (!system) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
     system->anxiety_system = anxiety;
@@ -1192,7 +1192,7 @@ int curiosity_enhanced_report_conflict_resolution(
     curiosity_enhanced_system_t* system,
     bool approach_won) {
 
-    if (!system) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1218,7 +1218,7 @@ int curiosity_enhanced_connect_tom(
     curiosity_enhanced_system_t* system,
     theory_of_mind_t* tom) {
 
-    if (!system) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
     system->tom_system = tom;
@@ -1260,7 +1260,7 @@ int curiosity_enhanced_record_social_interaction(
     const char* agent_id,
     float info_gained) {
 
-    if (!system || !agent_id) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system && agent_id, NIMCP_ERROR_NULL_ARG, "system or agent_id is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1293,7 +1293,7 @@ int curiosity_enhanced_introspect(
     curiosity_enhanced_system_t* system,
     curiosity_meta_state_t* state) {
 
-    if (!system) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1407,7 +1407,7 @@ int curiosity_enhanced_set_contagion_susceptibility(
     curiosity_enhanced_system_t* system,
     float susceptibility) {
 
-    if (!system) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
     system->state.contagion.contagion_susceptibility = clampf(susceptibility, 0.0f, 1.0f);
@@ -1467,7 +1467,7 @@ int curiosity_enhanced_initiate_recovery(
     curiosity_enhanced_system_t* system,
     float rest_duration_ms) {
 
-    if (!system) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
 
     (void)rest_duration_ms;  /* Could be used to set expected rest duration */
 
@@ -1492,7 +1492,7 @@ bool curiosity_enhanced_needs_rest(
 int curiosity_enhanced_end_recovery(
     curiosity_enhanced_system_t* system) {
 
-    if (!system) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
     system->state.fatigue.is_resting = false;
@@ -1524,7 +1524,7 @@ int curiosity_enhanced_explore_counterfactual(
     curiosity_counterfactual_t* counterfactual,
     float* learning_outcome) {
 
-    if (!system || !counterfactual) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system && counterfactual, NIMCP_ERROR_NULL_ARG, "system or counterfactual is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1561,7 +1561,7 @@ int curiosity_enhanced_get_state(
     const curiosity_enhanced_system_t* system,
     curiosity_enhanced_state_t* state) {
 
-    if (!system || !state) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system && state, NIMCP_ERROR_NULL_ARG, "system or state is NULL");
 
     *state = system->state;
     return 0;
@@ -1571,7 +1571,7 @@ int curiosity_enhanced_get_stats(
     const curiosity_enhanced_system_t* system,
     curiosity_enhanced_stats_t* stats) {
 
-    if (!system || !stats) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system && stats, NIMCP_ERROR_NULL_ARG, "system or stats is NULL");
 
     *stats = system->stats;
     return 0;
@@ -1598,7 +1598,7 @@ float curiosity_enhanced_get_overall_drive(
 int curiosity_enhanced_connect_bio_async(
     curiosity_enhanced_system_t* system) {
 
-    if (!system) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
     if (system->bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -1620,7 +1620,7 @@ int curiosity_enhanced_connect_bio_async(
 int curiosity_enhanced_disconnect_bio_async(
     curiosity_enhanced_system_t* system) {
 
-    if (!system) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
     if (!system->bio_async_enabled) return 0;
 
     bio_router_unregister_module(system->bio_ctx);
@@ -1714,8 +1714,8 @@ int curiosity_enhanced_add_quantum_topic(
     float curiosity_level,
     float novelty_score) {
 
-    if (!system || !topic) return NIMCP_ERROR_NULL_ARG;
-    if (!system->quantum_bridge) return NIMCP_ERROR_INVALID;
+    NIMCP_CHECK_THROW(system && topic, NIMCP_ERROR_NULL_ARG, "system or topic is NULL");
+    NIMCP_CHECK_THROW(system->quantum_bridge, NIMCP_ERROR_INVALID, "quantum_bridge is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1830,7 +1830,7 @@ int curiosity_enhanced_set_qmc_config(
     curiosity_enhanced_system_t* system,
     const curiosity_qmc_config_t* config) {
 
-    if (!system || !config) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system && config, NIMCP_ERROR_NULL_ARG, "system or config is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
     system->qmc_config = *config;
@@ -1853,7 +1853,7 @@ int curiosity_enhanced_estimate_uncertainty(
     const char* topic,
     curiosity_qmc_uncertainty_t* result) {
 
-    if (!system || !topic || !result) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system && topic && result, NIMCP_ERROR_NULL_ARG, "system, topic, or result is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -1934,7 +1934,7 @@ int curiosity_enhanced_estimate_uncertainty_batch(
     uint32_t num_topics,
     curiosity_qmc_uncertainty_t* results) {
 
-    if (!system || !topics || !results) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system && topics && results, NIMCP_ERROR_NULL_ARG, "system, topics, or results is NULL");
     if (num_topics == 0) return 0;
 
     for (uint32_t i = 0; i < num_topics; i++) {
@@ -1953,7 +1953,7 @@ int curiosity_enhanced_compute_empowerment(
     uint32_t horizon,
     curiosity_empowerment_result_t* result) {
 
-    if (!system || !topic || !result) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system && topic && result, NIMCP_ERROR_NULL_ARG, "system, topic, or result is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -2442,7 +2442,7 @@ int curiosity_enhanced_get_qmc_stats(
     const curiosity_enhanced_system_t* system,
     curiosity_qmc_stats_t* stats) {
 
-    if (!system || !stats) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system && stats, NIMCP_ERROR_NULL_ARG, "system or stats is NULL");
 
     *stats = system->qmc_stats;
     return 0;

@@ -208,14 +208,14 @@ static void summarize_vector(const float* src, uint32_t src_dim,
  * @brief Allocate internal buffers
  */
 static nimcp_error_t allocate_buffers(omni_wm_logging_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Allocate general log buffer */
     uint32_t log_capacity = bridge->config.buffer_size;
     if (log_capacity == 0) log_capacity = DEFAULT_LOG_BUFFER_CAPACITY;
 
     bridge->log_buffer = nimcp_calloc(log_capacity, sizeof(wm_general_log_entry_t));
-    if (!bridge->log_buffer) return NIMCP_ERROR_NO_MEMORY;
+    NIMCP_CHECK_THROW(bridge->log_buffer, NIMCP_ERROR_NO_MEMORY, "failed to allocate log_buffer");
     bridge->buffer_capacity = log_capacity;
     bridge->buffer_head = 0;
     bridge->buffer_tail = 0;
@@ -289,7 +289,8 @@ static bool should_sample_prediction(omni_wm_logging_bridge_t* bridge) {
  */
 static nimcp_error_t write_entry_to_outputs(omni_wm_logging_bridge_t* bridge,
                                              const wm_general_log_entry_t* entry) {
-    if (!bridge || !entry) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(entry, NIMCP_ERROR_NULL_POINTER, "entry is NULL");
 
     /* Map WM severity to NIMCP log level */
     log_level_t level = LOG_LEVEL_INFO;
@@ -334,7 +335,7 @@ static nimcp_error_t write_entry_to_outputs(omni_wm_logging_bridge_t* bridge,
  * @brief Flush prediction buffer to outputs
  */
 static nimcp_error_t flush_prediction_buffer(omni_wm_logging_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->pred_buffer_count == 0) return NIMCP_SUCCESS;
 
     /* Create general log entries from prediction entries */
@@ -365,7 +366,7 @@ static nimcp_error_t flush_prediction_buffer(omni_wm_logging_bridge_t* bridge) {
  * @brief Flush training buffer to outputs
  */
 static nimcp_error_t flush_training_buffer(omni_wm_logging_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->train_buffer_count == 0) return NIMCP_SUCCESS;
 
     /* Create general log entries from training entries */
@@ -396,7 +397,7 @@ static nimcp_error_t flush_training_buffer(omni_wm_logging_bridge_t* bridge) {
  * @brief Update bidirectional effects
  */
 static nimcp_error_t update_effects(omni_wm_logging_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     omni_wm_to_logging_effects_t* wm_effects = &bridge->wm_to_logging;
 
@@ -439,7 +440,7 @@ static nimcp_error_t handle_log_prediction(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
     omni_wm_logging_bridge_t* bridge = (omni_wm_logging_bridge_t*)user_data;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -455,7 +456,7 @@ static nimcp_error_t handle_log_training(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
     omni_wm_logging_bridge_t* bridge = (omni_wm_logging_bridge_t*)user_data;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -471,7 +472,7 @@ static nimcp_error_t handle_log_anomaly(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
     omni_wm_logging_bridge_t* bridge = (omni_wm_logging_bridge_t*)user_data;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -487,7 +488,7 @@ static nimcp_error_t handle_flush(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
     omni_wm_logging_bridge_t* bridge = (omni_wm_logging_bridge_t*)user_data;
 
     return omni_wm_logging_bridge_flush(bridge);
@@ -499,7 +500,7 @@ static nimcp_error_t handle_flush(const void* msg, size_t msg_size,
 
 nimcp_error_t omni_wm_logging_bridge_default_config(
     omni_wm_logging_bridge_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(*config));
 
@@ -623,7 +624,7 @@ void omni_wm_logging_bridge_destroy(omni_wm_logging_bridge_t* bridge) {
 }
 
 nimcp_error_t omni_wm_logging_bridge_reset(omni_wm_logging_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -669,8 +670,8 @@ nimcp_error_t omni_wm_logging_bridge_connect(
     nimcp_logger_t logger,
     nimcp_audit_log_t* audit_log) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!world_model) return NIMCP_ERROR_INVALID_PARAMETER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_INVALID_PARAMETER, "world_model is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -696,8 +697,8 @@ nimcp_error_t omni_wm_logging_bridge_connect_world_model(
     omni_wm_logging_bridge_t* bridge,
     omni_world_model_t* world_model) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!world_model) return NIMCP_ERROR_INVALID_PARAMETER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_INVALID_PARAMETER, "world_model is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->world_model = world_model;
@@ -711,7 +712,7 @@ nimcp_error_t omni_wm_logging_bridge_connect_logger(
     omni_wm_logging_bridge_t* bridge,
     nimcp_logger_t logger) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->logger = logger;
@@ -727,7 +728,7 @@ nimcp_error_t omni_wm_logging_bridge_connect_audit(
     omni_wm_logging_bridge_t* bridge,
     nimcp_audit_log_t* audit_log) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->audit_log = audit_log;
@@ -749,7 +750,7 @@ nimcp_error_t omni_wm_logging_bridge_update(
     omni_wm_logging_bridge_t* bridge,
     float dt) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     (void)dt;
 
     uint64_t start_time = get_current_time_us();
@@ -785,7 +786,7 @@ nimcp_error_t omni_wm_logging_bridge_update(
 }
 
 nimcp_error_t omni_wm_logging_bridge_flush(omni_wm_logging_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -811,7 +812,7 @@ nimcp_error_t omni_wm_logging_bridge_log_prediction(
     uint32_t output_dim,
     float confidence) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_prediction_logging) return NIMCP_SUCCESS;
     if (!bridge->logging_active) return NIMCP_SUCCESS;
 
@@ -870,7 +871,8 @@ nimcp_error_t omni_wm_logging_bridge_log_prediction_entry(
     omni_wm_logging_bridge_t* bridge,
     const wm_prediction_log_entry_t* entry) {
 
-    if (!bridge || !entry) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(entry, NIMCP_ERROR_NULL_POINTER, "entry is NULL");
     if (!bridge->config.enable_prediction_logging) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -893,7 +895,7 @@ nimcp_error_t omni_wm_logging_bridge_log_prediction_error(
     uint32_t dim,
     float error_magnitude) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_prediction_logging) return NIMCP_SUCCESS;
 
     (void)predicted;
@@ -931,7 +933,7 @@ nimcp_error_t omni_wm_logging_bridge_log_training_step(
     float loss,
     const wm_training_metrics_t* metrics) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_training_logging) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -996,7 +998,8 @@ nimcp_error_t omni_wm_logging_bridge_log_training_entry(
     omni_wm_logging_bridge_t* bridge,
     const wm_training_log_entry_t* entry) {
 
-    if (!bridge || !entry) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(entry, NIMCP_ERROR_NULL_POINTER, "entry is NULL");
     if (!bridge->config.enable_training_logging) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1018,7 +1021,7 @@ nimcp_error_t omni_wm_logging_bridge_log_lr_change(
     float new_lr,
     const char* reason) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     return omni_wm_logging_bridge_logf(bridge, WM_LOG_CAT_TRAINING, WM_LOG_SEV_NOTICE,
                                         "Learning rate changed: %.6f -> %.6f (%s)",
@@ -1034,7 +1037,7 @@ nimcp_error_t omni_wm_logging_bridge_log_anomaly(
     wm_anomaly_type_t type,
     const char* details) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_anomaly_logging) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1097,7 +1100,8 @@ nimcp_error_t omni_wm_logging_bridge_log_anomaly_entry(
     omni_wm_logging_bridge_t* bridge,
     const wm_anomaly_log_entry_t* entry) {
 
-    if (!bridge || !entry) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(entry, NIMCP_ERROR_NULL_POINTER, "entry is NULL");
 
     return omni_wm_logging_bridge_log_anomaly(bridge, entry->type, entry->details);
 }
@@ -1107,7 +1111,7 @@ nimcp_error_t omni_wm_logging_bridge_log_anomaly_resolved(
     uint64_t original_entry_id,
     const char* resolution_details) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     bridge->stats.auto_resolved_anomalies++;
 
@@ -1125,7 +1129,8 @@ nimcp_error_t omni_wm_logging_bridge_log_calibration(
     omni_wm_logging_bridge_t* bridge,
     const wm_calibration_metrics_t* calibration) {
 
-    if (!bridge || !calibration) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(calibration, NIMCP_ERROR_NULL_POINTER, "calibration is NULL");
     if (!bridge->config.enable_calibration_logging) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1148,7 +1153,7 @@ nimcp_error_t omni_wm_logging_bridge_update_calibration(
     float confidence,
     bool was_accurate) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1191,7 +1196,7 @@ nimcp_error_t omni_wm_logging_bridge_log_replay_operation(
     uint32_t count,
     uint32_t buffer_size) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_replay_logging) return NIMCP_SUCCESS;
 
     return omni_wm_logging_bridge_logf(bridge, WM_LOG_CAT_REPLAY, WM_LOG_SEV_DEBUG,
@@ -1206,7 +1211,7 @@ nimcp_error_t omni_wm_logging_bridge_log_dream(
     float episode_reward,
     uint32_t training_updates) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.log_dream_episodes) return NIMCP_SUCCESS;
 
     return omni_wm_logging_bridge_logf(bridge, WM_LOG_CAT_DREAMING, WM_LOG_SEV_INFO,
@@ -1224,7 +1229,7 @@ nimcp_error_t omni_wm_logging_bridge_log(
     wm_log_severity_t severity,
     const char* message) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->logging_active) return NIMCP_SUCCESS;
 
     /* Check severity filter */
@@ -1267,7 +1272,8 @@ nimcp_error_t omni_wm_logging_bridge_logf(
     const char* format,
     ...) {
 
-    if (!bridge || !format) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(format, NIMCP_ERROR_NULL_POINTER, "format is NULL");
 
     char message[WM_LOG_MAX_MESSAGE_LEN];
     va_list args;
@@ -1298,7 +1304,8 @@ nimcp_error_t omni_wm_logging_bridge_get_stats(
     const omni_wm_logging_bridge_t* bridge,
     omni_wm_logging_bridge_stats_t* stats) {
 
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     nimcp_mutex_lock(((omni_wm_logging_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
@@ -1310,7 +1317,7 @@ nimcp_error_t omni_wm_logging_bridge_get_stats(
 nimcp_error_t omni_wm_logging_bridge_reset_stats(
     omni_wm_logging_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -1337,13 +1344,13 @@ const wm_calibration_metrics_t* omni_wm_logging_bridge_get_calibration(
 
 nimcp_error_t omni_wm_logging_bridge_connect_bio_async(
     omni_wm_logging_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     return bridge_base_connect_bio_async(&bridge->base);
 }
 
 nimcp_error_t omni_wm_logging_bridge_disconnect_bio_async(
     omni_wm_logging_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     return bridge_base_disconnect_bio_async(&bridge->base);
 }
 
@@ -1406,7 +1413,7 @@ const char* wm_anomaly_type_to_string(wm_anomaly_type_t type) {
 nimcp_error_t omni_wm_logging_bridge_validate_config(
     const omni_wm_logging_bridge_config_t* config) {
 
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Validate sensitivity range */
     if (config->sensitivity < 0.5f || config->sensitivity > 2.0f) {

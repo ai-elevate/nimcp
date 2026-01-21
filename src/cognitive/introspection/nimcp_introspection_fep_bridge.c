@@ -17,7 +17,7 @@
 #define LOG_MODULE_INTROSPECTION_FEP "[INTROSPECTION_FEP]"
 
 int introspection_fep_bridge_default_config(introspection_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->pe_threshold = INTROSPECTION_FEP_HIGH_PE_THRESHOLD;
     config->uncertainty_threshold = INTROSPECTION_FEP_HIGH_UNCERTAINTY;
     config->meta_learning_rate = INTROSPECTION_FEP_META_UPDATE_RATE;
@@ -50,7 +50,7 @@ void introspection_fep_bridge_destroy(introspection_fep_bridge_t* bridge) {
 }
 
 int introspection_fep_bridge_connect_fep(introspection_fep_bridge_t* bridge, fep_system_t* fep) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -58,7 +58,7 @@ int introspection_fep_bridge_connect_fep(introspection_fep_bridge_t* bridge, fep
 }
 
 int introspection_fep_bridge_connect_introspection(introspection_fep_bridge_t* bridge, introspection_context_t intro) {
-    if (!bridge || !intro) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && intro, NIMCP_ERROR_NULL_POINTER, "bridge or introspection is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->introspection_system = intro;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -66,7 +66,7 @@ int introspection_fep_bridge_connect_introspection(introspection_fep_bridge_t* b
 }
 
 int introspection_fep_estimate_precision(introspection_fep_bridge_t* bridge, float* precision) {
-    if (!bridge || !precision) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && precision, NIMCP_ERROR_NULL_POINTER, "bridge or precision is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *precision = bridge->state.current_precision;
     bridge->effects.precision_estimate = *precision;
@@ -75,7 +75,7 @@ int introspection_fep_estimate_precision(introspection_fep_bridge_t* bridge, flo
 }
 
 int introspection_fep_monitor_uncertainty(introspection_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->effects.uncertainty_estimate = bridge->state.current_uncertainty;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -83,7 +83,7 @@ int introspection_fep_monitor_uncertainty(introspection_fep_bridge_t* bridge) {
 }
 
 int introspection_fep_meta_learn(introspection_fep_bridge_t* bridge, float prediction_error) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_meta_learning) return NIMCP_SUCCESS;
     nimcp_mutex_lock(bridge->base.mutex);
     float pe_abs = fabsf(prediction_error);
@@ -99,7 +99,7 @@ int introspection_fep_meta_learn(introspection_fep_bridge_t* bridge, float predi
 }
 
 int introspection_fep_bridge_update(introspection_fep_bridge_t* bridge, uint64_t delta_ms) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->effects.meta_confidence = 1.0f - bridge->state.current_uncertainty;
     bridge->stats.avg_precision = (bridge->stats.avg_precision * 0.99f) + (bridge->state.current_precision * 0.01f);
@@ -109,7 +109,7 @@ int introspection_fep_bridge_update(introspection_fep_bridge_t* bridge, uint64_t
 }
 
 int introspection_fep_bridge_get_state(const introspection_fep_bridge_t* bridge, introspection_fep_state_t* state) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -117,7 +117,7 @@ int introspection_fep_bridge_get_state(const introspection_fep_bridge_t* bridge,
 }
 
 int introspection_fep_bridge_get_stats(const introspection_fep_bridge_t* bridge, introspection_fep_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -125,7 +125,7 @@ int introspection_fep_bridge_get_stats(const introspection_fep_bridge_t* bridge,
 }
 
 int introspection_fep_bridge_connect_bio_async(introspection_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_INTROSPECTION_BRIDGE,

@@ -131,7 +131,7 @@ static float compute_drive_priority_boost(float urgency, float threshold, float 
  * @brief Update drive states from connected drive system
  */
 static nimcp_error_t update_drive_states(omni_wm_hypothalamus_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     hypothalamus_to_omni_wm_effects_t* effects = &bridge->hypo_to_wm;
     wm_hypothal_drive_vector_t* dv = &effects->drive_vector;
@@ -188,7 +188,7 @@ static nimcp_error_t update_drive_states(omni_wm_hypothalamus_bridge_t* bridge) 
  * @brief Update circadian state from connected circadian system
  */
 static nimcp_error_t update_circadian_state(omni_wm_hypothalamus_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     hypothalamus_to_omni_wm_effects_t* effects = &bridge->hypo_to_wm;
     wm_circadian_state_t* cs = &effects->circadian_state;
@@ -241,7 +241,7 @@ static nimcp_error_t update_circadian_state(omni_wm_hypothalamus_bridge_t* bridg
  * @brief Check and update conservative prediction mode
  */
 static nimcp_error_t check_conservative_mode(omni_wm_hypothalamus_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     hypothalamus_to_omni_wm_effects_t* effects = &bridge->hypo_to_wm;
     bool was_conservative = bridge->conservative_mode;
@@ -277,7 +277,7 @@ static nimcp_error_t check_conservative_mode(omni_wm_hypothalamus_bridge_t* brid
  * @brief Predict resource availability internally
  */
 static nimcp_error_t predict_resources_internal(omni_wm_hypothalamus_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_resource_prediction) return NIMCP_SUCCESS;
 
     omni_wm_to_hypothalamus_effects_t* effects = &bridge->wm_to_hypo;
@@ -351,7 +351,7 @@ static nimcp_error_t predict_resources_internal(omni_wm_hypothalamus_bridge_t* b
  * @brief Update effects flowing from Hypothalamus to WM
  */
 static nimcp_error_t update_hypo_to_wm_effects(omni_wm_hypothalamus_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     hypothalamus_to_omni_wm_effects_t* effects = &bridge->hypo_to_wm;
 
@@ -407,7 +407,7 @@ static nimcp_error_t update_hypo_to_wm_effects(omni_wm_hypothalamus_bridge_t* br
  * @brief Update effects flowing from WM to Hypothalamus
  */
 static nimcp_error_t update_wm_to_hypo_effects(omni_wm_hypothalamus_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     omni_wm_to_hypothalamus_effects_t* effects = &bridge->wm_to_hypo;
 
@@ -552,7 +552,7 @@ static nimcp_error_t handle_homeostasis(const void* msg, size_t msg_size,
 nimcp_error_t omni_wm_hypothalamus_bridge_default_config(
     omni_wm_hypothalamus_bridge_config_t* config) {
 
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(omni_wm_hypothalamus_bridge_config_t));
 
@@ -733,7 +733,7 @@ void omni_wm_hypothalamus_bridge_destroy(omni_wm_hypothalamus_bridge_t* bridge) 
 }
 
 nimcp_error_t omni_wm_hypothalamus_bridge_reset(omni_wm_hypothalamus_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -791,8 +791,8 @@ nimcp_error_t omni_wm_hypothalamus_bridge_connect(
     hypo_homeostasis_handle_t* homeostasis,
     circadian_rhythm_t* circadian) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!world_model) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_INVALID_PARAM, "world_model is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -819,7 +819,8 @@ nimcp_error_t omni_wm_hypothalamus_bridge_connect_world_model(
     omni_wm_hypothalamus_bridge_t* bridge,
     omni_world_model_t* world_model) {
 
-    if (!bridge || !world_model) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_NULL_POINTER, "world_model is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->world_model = world_model;
@@ -835,7 +836,8 @@ nimcp_error_t omni_wm_hypothalamus_bridge_connect_drives(
     omni_wm_hypothalamus_bridge_t* bridge,
     hypo_drive_system_handle_t* drive_system) {
 
-    if (!bridge || !drive_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(drive_system, NIMCP_ERROR_NULL_POINTER, "drive_system is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->drive_system = drive_system;
@@ -848,7 +850,8 @@ nimcp_error_t omni_wm_hypothalamus_bridge_connect_homeostasis(
     omni_wm_hypothalamus_bridge_t* bridge,
     hypo_homeostasis_handle_t* homeostasis) {
 
-    if (!bridge || !homeostasis) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(homeostasis, NIMCP_ERROR_NULL_POINTER, "homeostasis is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->homeostasis = homeostasis;
@@ -861,7 +864,8 @@ nimcp_error_t omni_wm_hypothalamus_bridge_connect_circadian(
     omni_wm_hypothalamus_bridge_t* bridge,
     circadian_rhythm_t* circadian) {
 
-    if (!bridge || !circadian) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(circadian, NIMCP_ERROR_NULL_POINTER, "circadian is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->circadian = circadian;
@@ -883,7 +887,7 @@ nimcp_error_t omni_wm_hypothalamus_bridge_update(
     omni_wm_hypothalamus_bridge_t* bridge,
     float dt) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_modulation) return NIMCP_SUCCESS;
 
     uint64_t start_time = get_current_time_us();
@@ -924,8 +928,8 @@ nimcp_error_t omni_wm_hypothalamus_bridge_on_drive_change(
     float new_level,
     float new_urgency) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (drive_type >= WM_HYPO_MAX_DRIVES) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(drive_type < WM_HYPO_MAX_DRIVES, NIMCP_ERROR_INVALID_PARAM, "drive_type out of range");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -967,7 +971,7 @@ nimcp_error_t omni_wm_hypothalamus_bridge_on_phase_change(
     uint32_t new_phase,
     float cycle_position) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1117,7 +1121,7 @@ nimcp_error_t omni_wm_hypothalamus_bridge_set_stress(
     omni_wm_hypothalamus_bridge_t* bridge,
     float stress_level) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1143,7 +1147,7 @@ nimcp_error_t omni_wm_hypothalamus_bridge_set_arousal(
     omni_wm_hypothalamus_bridge_t* bridge,
     float arousal_level) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1221,8 +1225,9 @@ nimcp_error_t omni_wm_hypothalamus_bridge_predict_resource(
     uint32_t horizon_steps,
     wm_resource_prediction_t* prediction_out) {
 
-    if (!bridge || !prediction_out) return NIMCP_ERROR_NULL_POINTER;
-    if (resource_type >= WM_RESOURCE_COUNT) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(prediction_out, NIMCP_ERROR_NULL_POINTER, "prediction_out is NULL");
+    NIMCP_CHECK_THROW(resource_type < WM_RESOURCE_COUNT, NIMCP_ERROR_INVALID_PARAM, "resource_type out of range");
     if (!bridge->config.enable_resource_prediction) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1270,7 +1275,8 @@ nimcp_error_t omni_wm_hypothalamus_bridge_forecast_resources(
     omni_wm_hypothalamus_bridge_t* bridge,
     wm_resource_forecast_t* forecast_out) {
 
-    if (!bridge || !forecast_out) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(forecast_out, NIMCP_ERROR_NULL_POINTER, "forecast_out is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1287,8 +1293,8 @@ nimcp_error_t omni_wm_hypothalamus_bridge_update_resource(
     wm_resource_type_t resource_type,
     float level) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (resource_type >= WM_RESOURCE_COUNT) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(resource_type < WM_RESOURCE_COUNT, NIMCP_ERROR_INVALID_PARAM, "resource_type out of range");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1310,9 +1316,10 @@ nimcp_error_t omni_wm_hypothalamus_bridge_predict_reward(
     float* reward_out,
     float* confidence_out) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!action || action_dim == 0) return NIMCP_ERROR_INVALID_PARAM;
-    if (!reward_out) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(action, NIMCP_ERROR_INVALID_PARAM, "action is NULL");
+    NIMCP_CHECK_THROW(action_dim > 0, NIMCP_ERROR_INVALID_PARAM, "action_dim must be greater than 0");
+    NIMCP_CHECK_THROW(reward_out, NIMCP_ERROR_NULL_POINTER, "reward_out is NULL");
     if (!bridge->config.enable_reward_prediction) {
         *reward_out = 0.0f;
         if (confidence_out) *confidence_out = 0.0f;
@@ -1364,7 +1371,7 @@ nimcp_error_t omni_wm_hypothalamus_bridge_update_reward_prediction(
     float predicted_reward,
     float actual_reward) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1404,7 +1411,8 @@ nimcp_error_t omni_wm_hypothalamus_bridge_get_stats(
     const omni_wm_hypothalamus_bridge_t* bridge,
     omni_wm_hypothalamus_bridge_stats_t* stats) {
 
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -1416,7 +1424,7 @@ nimcp_error_t omni_wm_hypothalamus_bridge_get_stats(
 nimcp_error_t omni_wm_hypothalamus_bridge_reset_stats(
     omni_wm_hypothalamus_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(omni_wm_hypothalamus_bridge_stats_t));
@@ -1432,7 +1440,7 @@ nimcp_error_t omni_wm_hypothalamus_bridge_reset_stats(
 nimcp_error_t omni_wm_hypothalamus_bridge_connect_bio_async(
     omni_wm_hypothalamus_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_bio_async) return NIMCP_SUCCESS;
     if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
@@ -1485,7 +1493,7 @@ nimcp_error_t omni_wm_hypothalamus_bridge_connect_bio_async(
 nimcp_error_t omni_wm_hypothalamus_bridge_disconnect_bio_async(
     omni_wm_hypothalamus_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     if (bridge->base.bio_ctx) {
@@ -1587,7 +1595,7 @@ const char* wm_resource_type_to_string(wm_resource_type_t resource_type) {
 nimcp_error_t omni_wm_hypothalamus_bridge_validate_config(
     const omni_wm_hypothalamus_bridge_config_t* config) {
 
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Validate sensitivity range */
     if (config->sensitivity < 0.5f || config->sensitivity > 2.0f) {

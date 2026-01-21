@@ -34,7 +34,7 @@
  * ============================================================================ */
 
 int predictive_fep_bridge_default_config(predictive_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* FEP -> Predictive */
     config->enable_belief_prediction_sync = true;
@@ -145,7 +145,7 @@ int predictive_fep_bridge_connect_fep(
     predictive_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -159,7 +159,7 @@ int predictive_fep_bridge_connect_predictive(
     predictive_fep_bridge_t* bridge,
     predictive_network_t predictive
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->predictive = predictive;
@@ -170,7 +170,7 @@ int predictive_fep_bridge_connect_predictive(
 }
 
 int predictive_fep_bridge_disconnect(predictive_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -188,7 +188,7 @@ int predictive_fep_bridge_disconnect(predictive_fep_bridge_t* bridge) {
 int predictive_fep_sync_beliefs_to_predictions(
     predictive_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_belief_prediction_sync) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -209,7 +209,7 @@ int predictive_fep_sync_beliefs_to_predictions(
 int predictive_fep_apply_precision_gain_control(
     predictive_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_precision_gain_control) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -234,7 +234,7 @@ int predictive_fep_apply_precision_gain_control(
 int predictive_fep_map_fe_to_error(
     predictive_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_fe_error_mapping) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -266,7 +266,7 @@ int predictive_fep_map_fe_to_error(
 int predictive_fep_flow_error_gradients(
     predictive_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_error_gradient_flow) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -290,7 +290,7 @@ int predictive_fep_flow_error_gradients(
 int predictive_fep_provide_generative_predictions(
     predictive_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_prediction_generative_model) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -310,7 +310,7 @@ int predictive_fep_provide_generative_predictions(
 int predictive_fep_compute_kalman_gains(
     predictive_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_precision_kalman_gains) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -336,7 +336,7 @@ int predictive_fep_bridge_update(
     predictive_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* FEP -> Predictive direction */
     predictive_fep_sync_beliefs_to_predictions(bridge);
@@ -401,7 +401,7 @@ int predictive_fep_bridge_get_state(
     const predictive_fep_bridge_t* bridge,
     predictive_fep_state_t* state
 ) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
@@ -414,7 +414,7 @@ int predictive_fep_bridge_get_stats(
     const predictive_fep_bridge_t* bridge,
     predictive_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -430,7 +430,7 @@ int predictive_fep_bridge_get_stats(
 int predictive_fep_bridge_connect_bio_async(
     predictive_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -454,7 +454,7 @@ int predictive_fep_bridge_connect_bio_async(
 int predictive_fep_bridge_disconnect_bio_async(
     predictive_fep_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

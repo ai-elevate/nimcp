@@ -51,7 +51,7 @@ static uint32_t compute_depth(float pe, const omni_rcog_config_t* config) {
  * ============================================================================ */
 
 int omni_rcog_default_config(omni_rcog_config_t* config) {
-    if (!config) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     memset(config, 0, sizeof(omni_rcog_config_t));
 
@@ -122,7 +122,7 @@ void omni_rcog_bridge_destroy(omni_rcog_bridge_t* bridge) {
 
 int omni_rcog_connect_jepa(omni_rcog_bridge_t* bridge,
                             jepa_bidirectional_t* jepa) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->jepa = jepa;
     nimcp_mutex_unlock(bridge->mutex);
@@ -131,7 +131,7 @@ int omni_rcog_connect_jepa(omni_rcog_bridge_t* bridge,
 
 int omni_rcog_connect_pred_hier(omni_rcog_bridge_t* bridge,
                                  predictive_hierarchy_t* pred_hier) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->pred_hier = pred_hier;
     nimcp_mutex_unlock(bridge->mutex);
@@ -140,7 +140,7 @@ int omni_rcog_connect_pred_hier(omni_rcog_bridge_t* bridge,
 
 int omni_rcog_connect_orchestrator(omni_rcog_bridge_t* bridge,
                                     rcog_orchestrator_t* orchestrator) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->orchestrator = orchestrator;
     nimcp_mutex_unlock(bridge->mutex);
@@ -149,7 +149,7 @@ int omni_rcog_connect_orchestrator(omni_rcog_bridge_t* bridge,
 
 int omni_rcog_connect_engine(omni_rcog_bridge_t* bridge,
                               rcog_engine_t* engine) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->engine = engine;
     nimcp_mutex_unlock(bridge->mutex);
@@ -161,7 +161,7 @@ int omni_rcog_connect_engine(omni_rcog_bridge_t* bridge,
  * ============================================================================ */
 
 int omni_rcog_update(omni_rcog_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -218,12 +218,12 @@ int omni_rcog_update(omni_rcog_bridge_t* bridge) {
 }
 
 int omni_rcog_apply_to_rcog(omni_rcog_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     return NIMCP_SUCCESS;
 }
 
 int omni_rcog_apply_to_omni(omni_rcog_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     return NIMCP_SUCCESS;
 }
 
@@ -233,7 +233,7 @@ int omni_rcog_apply_to_omni(omni_rcog_bridge_t* bridge) {
 
 int omni_rcog_get_strategy(const omni_rcog_bridge_t* bridge,
                             omni_decomp_strategy_t* strategy) {
-    if (!bridge || !strategy) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && strategy, NIMCP_ERROR_INVALID_PARAM, "bridge or strategy is NULL");
     nimcp_mutex_lock(((omni_rcog_bridge_t*)bridge)->mutex);
     *strategy = bridge->omni_effects.strategy;
     nimcp_mutex_unlock(((omni_rcog_bridge_t*)bridge)->mutex);
@@ -256,7 +256,7 @@ bool omni_rcog_needs_backward(const omni_rcog_bridge_t* bridge) {
 
 int omni_rcog_get_omni_effects(const omni_rcog_bridge_t* bridge,
                                 omni_to_rcog_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_INVALID_PARAM, "bridge or effects is NULL");
     nimcp_mutex_lock(((omni_rcog_bridge_t*)bridge)->mutex);
     memcpy(effects, &bridge->omni_effects, sizeof(omni_to_rcog_effects_t));
     nimcp_mutex_unlock(((omni_rcog_bridge_t*)bridge)->mutex);
@@ -265,7 +265,7 @@ int omni_rcog_get_omni_effects(const omni_rcog_bridge_t* bridge,
 
 int omni_rcog_get_rcog_effects(const omni_rcog_bridge_t* bridge,
                                 rcog_to_omni_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_INVALID_PARAM, "bridge or effects is NULL");
     nimcp_mutex_lock(((omni_rcog_bridge_t*)bridge)->mutex);
     memcpy(effects, &bridge->rcog_effects, sizeof(rcog_to_omni_effects_t));
     nimcp_mutex_unlock(((omni_rcog_bridge_t*)bridge)->mutex);
@@ -274,7 +274,7 @@ int omni_rcog_get_rcog_effects(const omni_rcog_bridge_t* bridge,
 
 int omni_rcog_get_stats(const omni_rcog_bridge_t* bridge,
                          omni_rcog_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_INVALID_PARAM, "bridge or stats is NULL");
     nimcp_mutex_lock(((omni_rcog_bridge_t*)bridge)->mutex);
     memcpy(stats, &bridge->stats, sizeof(omni_rcog_stats_t));
     nimcp_mutex_unlock(((omni_rcog_bridge_t*)bridge)->mutex);
@@ -282,7 +282,7 @@ int omni_rcog_get_stats(const omni_rcog_bridge_t* bridge,
 }
 
 int omni_rcog_reset_stats(omni_rcog_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     memset(&bridge->stats, 0, sizeof(omni_rcog_stats_t));
     nimcp_mutex_unlock(bridge->mutex);
@@ -300,7 +300,7 @@ static nimcp_error_t handle_rcog_predict_request(
     void* user_data)
 {
     omni_rcog_bridge_t* bridge = (omni_rcog_bridge_t*)user_data;
-    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && msg, NIMCP_ERROR_INVALID_PARAM, "bridge or msg is NULL");
 
     omni_rcog_update(bridge);
 
@@ -316,7 +316,7 @@ static nimcp_error_t handle_rcog_direction_switch(
     void* user_data)
 {
     omni_rcog_bridge_t* bridge = (omni_rcog_bridge_t*)user_data;
-    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && msg, NIMCP_ERROR_INVALID_PARAM, "bridge or msg is NULL");
 
     /* Update decomposition strategy based on direction switch */
     omni_rcog_update(bridge);
@@ -331,7 +331,7 @@ static nimcp_error_t handle_rcog_direction_switch(
  * ============================================================================ */
 
 int omni_rcog_connect_bio_async(omni_rcog_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     if (bridge->bio_async_connected) return NIMCP_SUCCESS;
 
     bio_module_info_t info = {
@@ -358,7 +358,7 @@ int omni_rcog_connect_bio_async(omni_rcog_bridge_t* bridge) {
 }
 
 int omni_rcog_disconnect_bio_async(omni_rcog_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     if (!bridge->bio_async_connected) return NIMCP_SUCCESS;
 
     if (bridge->bio_context) {

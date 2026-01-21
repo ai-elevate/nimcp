@@ -35,20 +35,20 @@ void astro_immune_destroy(astrocyte_immune_base_t* bridge) {
 }
 
 int astro_immune_update(astrocyte_immune_base_t* bridge, uint64_t delta_ms) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->ops || !bridge->ops->update) return NIMCP_ERROR_NOT_IMPLEMENTED;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->ops && bridge->ops->update, NIMCP_ERROR_NOT_IMPLEMENTED, "update function not implemented");
     return bridge->ops->update(bridge, delta_ms);
 }
 
 int astro_immune_apply_cytokines(astrocyte_immune_base_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->ops || !bridge->ops->apply_cytokine_effects) return NIMCP_ERROR_NOT_IMPLEMENTED;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->ops && bridge->ops->apply_cytokine_effects, NIMCP_ERROR_NOT_IMPLEMENTED, "apply_cytokine_effects not implemented");
     return bridge->ops->apply_cytokine_effects(bridge);
 }
 
 int astro_immune_apply_inflammation(astrocyte_immune_base_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!bridge->ops || !bridge->ops->apply_inflammation_effects) return NIMCP_ERROR_NOT_IMPLEMENTED;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(bridge->ops && bridge->ops->apply_inflammation_effects, NIMCP_ERROR_NOT_IMPLEMENTED, "apply_inflammation_effects not implemented");
     return bridge->ops->apply_inflammation_effects(bridge);
 }
 
@@ -94,7 +94,7 @@ int astro_immune_get_cytokine_state(
     const astrocyte_immune_base_t* bridge,
     astro_cytokine_state_t* out_state
 ) {
-    if (!bridge || !out_state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && out_state, NIMCP_ERROR_NULL_POINTER, "bridge or out_state is NULL");
 
     nimcp_platform_mutex_lock(bridge->infra.mutex);
     memcpy(out_state, &bridge->cytokine_state, sizeof(astro_cytokine_state_t));
@@ -107,7 +107,7 @@ int astro_immune_get_inflammation_state(
     const astrocyte_immune_base_t* bridge,
     astro_inflammation_state_t* out_state
 ) {
-    if (!bridge || !out_state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && out_state, NIMCP_ERROR_NULL_POINTER, "bridge or out_state is NULL");
 
     nimcp_platform_mutex_lock(bridge->infra.mutex);
     memcpy(out_state, &bridge->inflammation, sizeof(astro_inflammation_state_t));
@@ -120,7 +120,7 @@ int astro_immune_get_stats(
     const astrocyte_immune_base_t* bridge,
     astro_immune_stats_t* out_stats
 ) {
-    if (!bridge || !out_stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && out_stats, NIMCP_ERROR_NULL_POINTER, "bridge or out_stats is NULL");
 
     nimcp_platform_mutex_lock(bridge->infra.mutex);
     memcpy(out_stats, &bridge->stats, sizeof(astro_immune_stats_t));
@@ -136,7 +136,7 @@ int astro_immune_get_stats(
 #define ASTRO_IMMUNE_MODULE_NAME "astro_immune_bridge"
 
 int astro_immune_connect_bio_async(astrocyte_immune_base_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->infra.bio_async_enabled) return NIMCP_SUCCESS;
 
     bio_module_info_t info = {
@@ -158,7 +158,7 @@ int astro_immune_connect_bio_async(astrocyte_immune_base_t* bridge) {
 }
 
 int astro_immune_disconnect_bio_async(astrocyte_immune_base_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->infra.bio_async_enabled) return NIMCP_SUCCESS;
 
     if (bridge->infra.bio_ctx) {

@@ -12,7 +12,7 @@
 #include <math.h>
 
 int glial_integration_fep_default_config(glial_integration_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->metabolic_gain = GLIAL_INTEGRATION_FEP_DEFAULT_METABOLIC_GAIN;
     config->homeostasis_gain = GLIAL_INTEGRATION_FEP_DEFAULT_HOMEOSTASIS_GAIN;
     config->network_precision_factor = 0.75f;
@@ -66,7 +66,7 @@ void glial_integration_fep_destroy(glial_integration_fep_bridge_t* bridge) {
 }
 
 int glial_integration_fep_update_fep_to_glial(glial_integration_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
 
     float free_energy = fep_get_free_energy(bridge->fep_system);
 
@@ -91,7 +91,7 @@ int glial_integration_fep_update_fep_to_glial(glial_integration_fep_bridge_t* br
 }
 
 int glial_integration_fep_update_glial_to_fep(glial_integration_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->glial_integration) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->glial_integration, NIMCP_ERROR_NULL_POINTER, "bridge or glial_integration is NULL");
 
     glial_integration_stats_t stats;
     glial_integration_get_stats(bridge->glial_integration, &stats);
@@ -117,14 +117,14 @@ int glial_integration_fep_update_glial_to_fep(glial_integration_fep_bridge_t* br
 }
 
 int glial_integration_fep_update(glial_integration_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     int ret = glial_integration_fep_update_fep_to_glial(bridge);
     if (ret != 0) return ret;
     return glial_integration_fep_update_glial_to_fep(bridge);
 }
 
 int glial_integration_fep_apply_modulation(glial_integration_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     bridge->stats.homeostatic_adjustments++;
     return 0;
 }
@@ -140,7 +140,7 @@ float glial_integration_fep_get_precision_support(const glial_integration_fep_br
 int glial_integration_fep_get_stats(const glial_integration_fep_bridge_t* bridge,
                                     glial_integration_fep_stats_t* stats)
 {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     memcpy(stats, &bridge->stats, sizeof(glial_integration_fep_stats_t));
     return 0;
 }

@@ -283,9 +283,7 @@ void hemispheric_fep_destroy(hemispheric_fep_bridge_t* bridge) {
 //=============================================================================
 
 int hemispheric_fep_update(hemispheric_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -350,9 +348,7 @@ int hemispheric_fep_update(hemispheric_fep_bridge_t* bridge) {
 }
 
 int hemispheric_fep_apply_modulation(hemispheric_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized || !bridge->brain) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized && bridge->brain, NIMCP_ERROR_NULL_POINTER, "bridge is NULL, not initialized, or brain is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -392,9 +388,7 @@ int hemispheric_fep_apply_modulation(hemispheric_fep_bridge_t* bridge) {
 }
 
 int hemispheric_fep_minimize_step(hemispheric_fep_bridge_t* bridge, float dt) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -520,13 +514,8 @@ int hemispheric_fep_set_precision(
     hemisphere_id_t hemisphere,
     float precision
 ) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (precision < 0.0f || precision > 1.0f) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
+    NIMCP_CHECK_THROW(precision >= 0.0f && precision <= 1.0f, NIMCP_ERROR_INVALID_PARAM, "precision must be between 0.0 and 1.0");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -546,9 +535,7 @@ int hemispheric_fep_inject_prediction_error(
     hemisphere_id_t hemisphere,
     float error_magnitude
 ) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     if (error_magnitude < 0.0f) {
         error_magnitude = 0.0f;
@@ -569,9 +556,7 @@ int hemispheric_fep_inject_prediction_error(
 }
 
 int hemispheric_fep_trigger_transfer(hemispheric_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -594,9 +579,7 @@ int hemispheric_fep_trigger_transfer(hemispheric_fep_bridge_t* bridge) {
 }
 
 int hemispheric_fep_reset_free_energy(hemispheric_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -644,9 +627,7 @@ void hemispheric_fep_reset_stats(hemispheric_fep_bridge_t* bridge) {
 //=============================================================================
 
 int hemispheric_fep_connect_bio_async(hemispheric_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  // Already connected
@@ -671,9 +652,7 @@ int hemispheric_fep_connect_bio_async(hemispheric_fep_bridge_t* bridge) {
 }
 
 int hemispheric_fep_disconnect_bio_async(hemispheric_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;  // Already disconnected

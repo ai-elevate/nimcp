@@ -1034,9 +1034,7 @@ nimcp_result_t nimcp_rwlock_init(nimcp_rwlock_t* lock)
  */
 nimcp_result_t nimcp_rwlock_destroy(nimcp_rwlock_t* lock)
 {
-    if (!lock) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(lock, NIMCP_ERROR_INVALID_PARAM, "rwlock is NULL");
 
     int result = pthread_rwlock_destroy(lock);
     if (result != 0) {
@@ -1068,9 +1066,7 @@ nimcp_result_t nimcp_rwlock_destroy(nimcp_rwlock_t* lock)
  */
 nimcp_result_t nimcp_rwlock_rdlock(nimcp_rwlock_t* lock)
 {
-    if (!lock) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(lock, NIMCP_ERROR_INVALID_PARAM, "rwlock is NULL");
 
     int result = pthread_rwlock_rdlock(lock);
     if (result != 0) {
@@ -1102,9 +1098,7 @@ nimcp_result_t nimcp_rwlock_rdlock(nimcp_rwlock_t* lock)
  */
 nimcp_result_t nimcp_rwlock_wrlock(nimcp_rwlock_t* lock)
 {
-    if (!lock) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(lock, NIMCP_ERROR_INVALID_PARAM, "rwlock is NULL");
 
     int result = pthread_rwlock_wrlock(lock);
     if (result != 0) {
@@ -1131,9 +1125,7 @@ nimcp_result_t nimcp_rwlock_wrlock(nimcp_rwlock_t* lock)
  */
 nimcp_result_t nimcp_rwlock_unlock(nimcp_rwlock_t* lock)
 {
-    if (!lock) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(lock, NIMCP_ERROR_INVALID_PARAM, "rwlock is NULL");
 
     int result = pthread_rwlock_unlock(lock);
     if (result != 0) {
@@ -1187,9 +1179,7 @@ nimcp_result_t nimcp_rwlock_unlock(nimcp_rwlock_t* lock)
  */
 nimcp_result_t nimcp_rwlock_tryrdlock(nimcp_rwlock_t* lock)
 {
-    if (!lock) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(lock, NIMCP_ERROR_INVALID_PARAM, "rwlock is NULL");
 
     int result = pthread_rwlock_tryrdlock(lock);
 
@@ -1247,9 +1237,7 @@ nimcp_result_t nimcp_rwlock_tryrdlock(nimcp_rwlock_t* lock)
  */
 nimcp_result_t nimcp_rwlock_trywrlock(nimcp_rwlock_t* lock)
 {
-    if (!lock) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(lock, NIMCP_ERROR_INVALID_PARAM, "rwlock is NULL");
 
     int result = pthread_rwlock_trywrlock(lock);
 
@@ -1310,9 +1298,7 @@ nimcp_result_t nimcp_rwlock_trywrlock(nimcp_rwlock_t* lock)
  */
 nimcp_result_t nimcp_rwlock_timedrdlock(nimcp_rwlock_t* lock, uint32_t timeout_ms)
 {
-    if (!lock) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(lock, NIMCP_ERROR_INVALID_PARAM, "rwlock is NULL");
 
     // Calculate absolute timeout (CLOCK_REALTIME)
     struct timespec abstime;
@@ -1393,9 +1379,7 @@ nimcp_result_t nimcp_rwlock_timedrdlock(nimcp_rwlock_t* lock, uint32_t timeout_m
  */
 nimcp_result_t nimcp_rwlock_timedwrlock(nimcp_rwlock_t* lock, uint32_t timeout_ms)
 {
-    if (!lock) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(lock, NIMCP_ERROR_INVALID_PARAM, "rwlock is NULL");
 
     // Calculate absolute timeout (CLOCK_REALTIME)
     struct timespec abstime;
@@ -1503,9 +1487,7 @@ nimcp_cond_t* nimcp_cond_create(void)
  */
 nimcp_result_t nimcp_cond_destroy(nimcp_cond_t* cond)
 {
-    if (!cond) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(cond, NIMCP_ERROR_INVALID_PARAM, "cond is NULL");
 
     int result = nimcp_platform_cond_destroy(cond);
     if (result != 0) {
@@ -1558,9 +1540,7 @@ nimcp_result_t nimcp_cond_destroy(nimcp_cond_t* cond)
  */
 nimcp_result_t nimcp_cond_wait(nimcp_cond_t* cond, nimcp_mutex_t* mutex)
 {
-    if (!cond || !mutex) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(cond && mutex, NIMCP_ERROR_INVALID_PARAM, "cond or mutex is NULL");
 
     int result = nimcp_platform_cond_wait(cond, mutex);
     if (result != 0) {
@@ -1623,9 +1603,7 @@ nimcp_result_t nimcp_cond_wait(nimcp_cond_t* cond, nimcp_mutex_t* mutex)
  */
 nimcp_result_t nimcp_cond_timedwait(nimcp_cond_t* cond, nimcp_mutex_t* mutex, uint32_t timeout_ms)
 {
-    if (!cond || !mutex) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(cond && mutex, NIMCP_ERROR_INVALID_PARAM, "cond or mutex is NULL");
 
     // Use platform abstraction for timed wait
     int result = nimcp_platform_cond_timedwait(cond, mutex, timeout_ms);
@@ -1678,9 +1656,7 @@ nimcp_result_t nimcp_cond_timedwait(nimcp_cond_t* cond, nimcp_mutex_t* mutex, ui
  */
 nimcp_result_t nimcp_cond_signal(nimcp_cond_t* cond)
 {
-    if (!cond) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(cond, NIMCP_ERROR_INVALID_PARAM, "cond is NULL");
 
     int result = nimcp_platform_cond_signal(cond);
     if (result != 0) {
@@ -1729,9 +1705,7 @@ nimcp_result_t nimcp_cond_signal(nimcp_cond_t* cond)
  */
 nimcp_result_t nimcp_cond_broadcast(nimcp_cond_t* cond)
 {
-    if (!cond) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(cond, NIMCP_ERROR_INVALID_PARAM, "cond is NULL");
 
     int result = nimcp_platform_cond_broadcast(cond);
     if (result != 0) {

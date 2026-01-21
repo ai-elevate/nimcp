@@ -156,7 +156,7 @@ static void compute_policy_efe(omni_active_inference_t* ai,
  * ============================================================================ */
 
 int omni_ai_default_config(omni_ai_config_t* config) {
-    if (!config) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     memset(config, 0, sizeof(omni_ai_config_t));
 
@@ -284,7 +284,7 @@ void omni_ai_destroy(omni_active_inference_t* ai) {
 }
 
 int omni_ai_reset(omni_active_inference_t* ai) {
-    if (!ai) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
 
     nimcp_mutex_lock(ai->mutex);
 
@@ -398,7 +398,7 @@ int omni_ai_generate_random_policies(omni_active_inference_t* ai,
 }
 
 int omni_ai_clear_policies(omni_active_inference_t* ai) {
-    if (!ai) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
 
     nimcp_mutex_lock(ai->mutex);
 
@@ -417,8 +417,9 @@ int omni_ai_clear_policies(omni_active_inference_t* ai) {
 int omni_ai_get_policy(const omni_active_inference_t* ai,
                         uint32_t index,
                         omni_ai_policy_t* policy) {
-    if (!ai || !policy) return NIMCP_ERROR_INVALID_PARAM;
-    if (index >= ai->num_policies) return NIMCP_ERROR_OUT_OF_RANGE;
+    NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
+    NIMCP_CHECK_THROW(policy, NIMCP_ERROR_INVALID_PARAM, "policy is NULL");
+    NIMCP_CHECK_THROW(index < ai->num_policies, NIMCP_ERROR_OUT_OF_RANGE, "policy index out of range");
 
     nimcp_mutex_lock(((omni_active_inference_t*)ai)->mutex);
     memcpy(policy, &ai->policies[index], sizeof(omni_ai_policy_t));
@@ -487,7 +488,7 @@ int omni_ai_add_goal(omni_active_inference_t* ai,
 }
 
 int omni_ai_clear_goals(omni_active_inference_t* ai) {
-    if (!ai) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
 
     nimcp_mutex_lock(ai->mutex);
 
@@ -507,8 +508,8 @@ int omni_ai_clear_goals(omni_active_inference_t* ai) {
 int omni_ai_set_goal_active(omni_active_inference_t* ai,
                              uint32_t goal_index,
                              bool active) {
-    if (!ai) return NIMCP_ERROR_INVALID_PARAM;
-    if (goal_index >= ai->num_goals) return NIMCP_ERROR_OUT_OF_RANGE;
+    NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
+    NIMCP_CHECK_THROW(goal_index < ai->num_goals, NIMCP_ERROR_OUT_OF_RANGE, "goal_index out of range");
 
     nimcp_mutex_lock(ai->mutex);
     ai->goals[goal_index].active = active;
@@ -524,7 +525,8 @@ int omni_ai_set_goal_active(omni_active_inference_t* ai,
 int omni_ai_update_observation(omni_active_inference_t* ai,
                                 const float* obs,
                                 uint32_t obs_dim) {
-    if (!ai || !obs) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
+    NIMCP_CHECK_THROW(obs, NIMCP_ERROR_INVALID_PARAM, "obs is NULL");
 
     nimcp_mutex_lock(ai->mutex);
 
@@ -548,7 +550,8 @@ int omni_ai_update_observation(omni_active_inference_t* ai,
 int omni_ai_update_belief(omni_active_inference_t* ai,
                            const float* belief,
                            uint32_t belief_dim) {
-    if (!ai || !belief) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
+    NIMCP_CHECK_THROW(belief, NIMCP_ERROR_INVALID_PARAM, "belief is NULL");
 
     nimcp_mutex_lock(ai->mutex);
 
@@ -573,7 +576,7 @@ int omni_ai_update_belief(omni_active_inference_t* ai,
  * ============================================================================ */
 
 int omni_ai_evaluate_policies(omni_active_inference_t* ai) {
-    if (!ai) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
 
     nimcp_mutex_lock(ai->mutex);
 
@@ -587,8 +590,9 @@ int omni_ai_evaluate_policies(omni_active_inference_t* ai) {
 
 int omni_ai_select_action_forward(omni_active_inference_t* ai,
                                    omni_ai_action_result_t* result) {
-    if (!ai || !result) return NIMCP_ERROR_INVALID_PARAM;
-    if (ai->num_policies == 0) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
+    NIMCP_CHECK_THROW(ai->num_policies > 0, NIMCP_ERROR_INVALID_STATE, "no policies defined");
 
     nimcp_mutex_lock(ai->mutex);
 
@@ -686,8 +690,9 @@ int omni_ai_infer_action_backward(omni_active_inference_t* ai,
                                    const float* outcome,
                                    uint32_t outcome_dim,
                                    omni_ai_action_result_t* result) {
-    if (!ai || !result) return NIMCP_ERROR_INVALID_PARAM;
-    if (ai->num_policies == 0) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
+    NIMCP_CHECK_THROW(ai->num_policies > 0, NIMCP_ERROR_INVALID_STATE, "no policies defined");
 
     nimcp_mutex_lock(ai->mutex);
 
@@ -732,8 +737,9 @@ int omni_ai_infer_action_backward(omni_active_inference_t* ai,
 
 int omni_ai_select_action_omni(omni_active_inference_t* ai,
                                 omni_ai_action_result_t* result) {
-    if (!ai || !result) return NIMCP_ERROR_INVALID_PARAM;
-    if (ai->num_policies == 0) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_INVALID_PARAM, "result is NULL");
+    NIMCP_CHECK_THROW(ai->num_policies > 0, NIMCP_ERROR_INVALID_STATE, "no policies defined");
 
     nimcp_mutex_lock(ai->mutex);
 
@@ -799,7 +805,7 @@ float omni_ai_get_policy_efe(const omni_active_inference_t* ai,
 
 int omni_ai_connect_precision(omni_active_inference_t* ai,
                                omni_precision_ctx_t* precision_ctx) {
-    if (!ai) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
 
     nimcp_mutex_lock(ai->mutex);
     ai->precision_ctx = precision_ctx;
@@ -821,7 +827,7 @@ int omni_ai_connect_precision(omni_active_inference_t* ai,
 }
 
 int omni_ai_connect_fep(omni_active_inference_t* ai, void* fep_system) {
-    if (!ai) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
 
     nimcp_mutex_lock(ai->mutex);
     ai->fep_system = fep_system;
@@ -832,7 +838,7 @@ int omni_ai_connect_fep(omni_active_inference_t* ai, void* fep_system) {
 
 int omni_ai_connect_kg_sync(omni_active_inference_t* ai,
                              omni_kg_sync_t* kg_sync) {
-    if (!ai) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
 
     nimcp_mutex_lock(ai->mutex);
     ai->kg_sync = kg_sync;
@@ -852,7 +858,7 @@ static nimcp_error_t handle_policy_eval_request(
     void* user_data)
 {
     omni_active_inference_t* ai = (omni_active_inference_t*)user_data;
-    if (!ai) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai context is NULL");
 
     omni_ai_evaluate_policies(ai);
 
@@ -869,7 +875,7 @@ static nimcp_error_t handle_action_select_request(
     void* user_data)
 {
     omni_active_inference_t* ai = (omni_active_inference_t*)user_data;
-    if (!ai) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai context is NULL");
 
     omni_ai_action_result_t* result = omni_ai_action_result_create(
         ai->obs_dim > 0 ? ai->obs_dim : 8);
@@ -889,7 +895,7 @@ static nimcp_error_t handle_action_select_request(
  * ============================================================================ */
 
 int omni_ai_connect_bio_async(omni_active_inference_t* ai) {
-    if (!ai) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
     if (ai->bio_async_connected) return NIMCP_SUCCESS;
 
     bio_module_info_t info = {
@@ -916,7 +922,7 @@ int omni_ai_connect_bio_async(omni_active_inference_t* ai) {
 }
 
 int omni_ai_disconnect_bio_async(omni_active_inference_t* ai) {
-    if (!ai) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
     if (!ai->bio_async_connected) return NIMCP_SUCCESS;
 
     if (ai->bio_context) {
@@ -939,7 +945,8 @@ bool omni_ai_is_bio_async_connected(const omni_active_inference_t* ai) {
 
 int omni_ai_get_stats(const omni_active_inference_t* ai,
                        omni_ai_stats_t* stats) {
-    if (!ai || !stats) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_INVALID_PARAM, "stats is NULL");
 
     nimcp_mutex_lock(((omni_active_inference_t*)ai)->mutex);
     memcpy(stats, &ai->stats, sizeof(omni_ai_stats_t));
@@ -949,7 +956,7 @@ int omni_ai_get_stats(const omni_active_inference_t* ai,
 }
 
 int omni_ai_reset_stats(omni_active_inference_t* ai) {
-    if (!ai) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
 
     nimcp_mutex_lock(ai->mutex);
     memset(&ai->stats, 0, sizeof(omni_ai_stats_t));
@@ -978,7 +985,8 @@ int omni_ai_get_best_policy(const omni_active_inference_t* ai) {
 int omni_ai_get_policy_probs(const omni_active_inference_t* ai,
                               float* probs,
                               uint32_t max_policies) {
-    if (!ai || !probs) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ai, NIMCP_ERROR_INVALID_PARAM, "ai is NULL");
+    NIMCP_CHECK_THROW(probs, NIMCP_ERROR_INVALID_PARAM, "probs is NULL");
 
     nimcp_mutex_lock(((omni_active_inference_t*)ai)->mutex);
 
@@ -999,7 +1007,9 @@ int omni_ai_softmax_efe(const float* efe,
                          float* probs,
                          uint32_t n,
                          float precision) {
-    if (!efe || !probs || n == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(efe, NIMCP_ERROR_INVALID_PARAM, "efe array is NULL");
+    NIMCP_CHECK_THROW(probs, NIMCP_ERROR_INVALID_PARAM, "probs array is NULL");
+    NIMCP_CHECK_THROW(n > 0, NIMCP_ERROR_INVALID_PARAM, "n must be greater than 0");
 
     /* Find max for numerical stability */
     float max_val = -FLT_MAX;

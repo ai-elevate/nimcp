@@ -125,7 +125,7 @@ static uint64_t get_current_time_us(void) {
  * @brief Allocate tracked objects array
  */
 static nimcp_error_t allocate_tracked_objects(omni_wm_parietal_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     uint32_t capacity = DEFAULT_TRACKED_OBJECTS_CAPACITY;
 
@@ -154,7 +154,7 @@ static void free_tracked_objects(omni_wm_parietal_bridge_t* bridge) {
  * @brief Allocate constraints array
  */
 static nimcp_error_t allocate_constraints(omni_wm_parietal_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     uint32_t capacity = DEFAULT_CONSTRAINTS_CAPACITY;
 
@@ -183,7 +183,7 @@ static void free_constraints(omni_wm_parietal_bridge_t* bridge) {
  * @brief Allocate attention map
  */
 static nimcp_error_t allocate_attention_map(omni_wm_parietal_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     uint32_t dim = bridge->config.attention_resolution;
     if (dim == 0) dim = WM_PARIETAL_DEFAULT_ATTENTION_RES;
@@ -219,7 +219,7 @@ static void free_attention_map(omni_wm_parietal_bridge_t* bridge) {
  * @brief Allocate trajectory cache
  */
 static nimcp_error_t allocate_trajectory_cache(omni_wm_parietal_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     uint32_t capacity = DEFAULT_TRAJECTORY_CACHE_CAPACITY;
 
@@ -253,7 +253,7 @@ static void free_trajectory_cache(omni_wm_parietal_bridge_t* bridge) {
  * @brief Create internal physics engine
  */
 static nimcp_error_t create_physics_engine(omni_wm_parietal_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     bridge->physics_engine = nimcp_calloc(1, sizeof(wm_physics_engine_t));
     if (!bridge->physics_engine) return NIMCP_ERROR_NO_MEMORY;
@@ -298,7 +298,8 @@ static int find_tracked_object(const omni_wm_parietal_bridge_t* bridge, uint32_t
 static nimcp_error_t apply_physics_constraints(omni_wm_parietal_bridge_t* bridge,
                                                 wm_parietal_spatial_state_t* state,
                                                 float dt) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL");
     if (!bridge->config.enable_physics_constraints) return NIMCP_SUCCESS;
     if (!bridge->physics_engine || !bridge->physics_engine->initialized) return NIMCP_SUCCESS;
 
@@ -386,7 +387,7 @@ static nimcp_error_t apply_physics_constraints(omni_wm_parietal_bridge_t* bridge
  * @brief Update effects flowing from WM to parietal systems
  */
 static nimcp_error_t update_wm_to_parietal_effects(omni_wm_parietal_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     omni_wm_to_parietal_effects_t* effects = &bridge->wm_to_parietal;
 
@@ -455,7 +456,7 @@ static nimcp_error_t update_wm_to_parietal_effects(omni_wm_parietal_bridge_t* br
  * @brief Update effects flowing from parietal systems to WM
  */
 static nimcp_error_t update_parietal_to_wm_effects(omni_wm_parietal_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     parietal_to_omni_wm_effects_t* effects = &bridge->parietal_to_wm;
 
@@ -488,7 +489,7 @@ static nimcp_error_t handle_spatial_pred(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_parietal_bridge_t* bridge = (omni_wm_parietal_bridge_t*)user_data;
 
@@ -508,7 +509,7 @@ static nimcp_error_t handle_trajectory_pred(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_parietal_bridge_t* bridge = (omni_wm_parietal_bridge_t*)user_data;
 
@@ -528,7 +529,7 @@ static nimcp_error_t handle_coord_transform(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_parietal_bridge_t* bridge = (omni_wm_parietal_bridge_t*)user_data;
 
@@ -548,7 +549,7 @@ static nimcp_error_t handle_physics_query(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_parietal_bridge_t* bridge = (omni_wm_parietal_bridge_t*)user_data;
 
@@ -568,7 +569,7 @@ static nimcp_error_t handle_attention_update(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_parietal_bridge_t* bridge = (omni_wm_parietal_bridge_t*)user_data;
 
@@ -586,7 +587,7 @@ static nimcp_error_t handle_attention_update(const void* msg, size_t msg_size,
 nimcp_error_t omni_wm_parietal_bridge_default_config(
     omni_wm_parietal_bridge_config_t* config) {
 
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(omni_wm_parietal_bridge_config_t));
 
@@ -752,7 +753,7 @@ void omni_wm_parietal_bridge_destroy(omni_wm_parietal_bridge_t* bridge) {
 }
 
 nimcp_error_t omni_wm_parietal_bridge_reset(omni_wm_parietal_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -811,8 +812,8 @@ nimcp_error_t omni_wm_parietal_bridge_connect(
     parietal_adapter_t* parietal_adapter,
     spatial_reasoning_t* spatial_reasoning) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!world_model) return NIMCP_ERROR_INVALID_PARAM; /* WM required */
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_INVALID_PARAM, "world_model is required");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -839,7 +840,8 @@ nimcp_error_t omni_wm_parietal_bridge_connect_world_model(
     omni_wm_parietal_bridge_t* bridge,
     omni_world_model_t* world_model) {
 
-    if (!bridge || !world_model) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_NULL_POINTER, "world_model is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->world_model = world_model;
@@ -855,7 +857,8 @@ nimcp_error_t omni_wm_parietal_bridge_connect_parietal_lobe(
     omni_wm_parietal_bridge_t* bridge,
     parietal_lobe_t* parietal_lobe) {
 
-    if (!bridge || !parietal_lobe) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(parietal_lobe, NIMCP_ERROR_NULL_POINTER, "parietal_lobe is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->parietal_lobe = parietal_lobe;
@@ -868,7 +871,8 @@ nimcp_error_t omni_wm_parietal_bridge_connect_parietal_adapter(
     omni_wm_parietal_bridge_t* bridge,
     parietal_adapter_t* parietal_adapter) {
 
-    if (!bridge || !parietal_adapter) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(parietal_adapter, NIMCP_ERROR_NULL_POINTER, "parietal_adapter is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->parietal_adapter = parietal_adapter;
@@ -881,7 +885,8 @@ nimcp_error_t omni_wm_parietal_bridge_connect_spatial_reasoning(
     omni_wm_parietal_bridge_t* bridge,
     spatial_reasoning_t* spatial_reasoning) {
 
-    if (!bridge || !spatial_reasoning) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(spatial_reasoning, NIMCP_ERROR_NULL_POINTER, "spatial_reasoning is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->spatial_reasoning = spatial_reasoning;
@@ -903,7 +908,7 @@ nimcp_error_t omni_wm_parietal_bridge_update(
     omni_wm_parietal_bridge_t* bridge,
     float dt) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_modulation) return NIMCP_SUCCESS;
 
     uint64_t start_time = get_current_time_us();
@@ -967,7 +972,8 @@ nimcp_error_t omni_wm_parietal_bridge_predict_spatial_state(
     wm_parietal_frame_t target_frame,
     wm_parietal_spatial_state_t* predicted_state) {
 
-    if (!bridge || !predicted_state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(predicted_state, NIMCP_ERROR_NULL_POINTER, "predicted_state is NULL");
     if (!bridge->config.enable_spatial_prediction) return NIMCP_SUCCESS;
     if (horizon_steps > bridge->config.max_prediction_horizon) {
         horizon_steps = bridge->config.max_prediction_horizon;
@@ -1016,8 +1022,9 @@ nimcp_error_t omni_wm_parietal_bridge_predict_trajectory(
     wm_parietal_frame_t target_frame,
     wm_parietal_trajectory_t* trajectory) {
 
-    if (!bridge || !trajectory) return NIMCP_ERROR_NULL_POINTER;
-    if (!trajectory->states) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(trajectory, NIMCP_ERROR_NULL_POINTER, "trajectory is NULL");
+    NIMCP_CHECK_THROW(trajectory->states, NIMCP_ERROR_INVALID_PARAM, "trajectory states is NULL");
     if (!bridge->config.enable_spatial_prediction) return NIMCP_SUCCESS;
 
     if (horizon_steps > bridge->config.max_prediction_horizon) {
@@ -1076,7 +1083,9 @@ nimcp_error_t omni_wm_parietal_bridge_predict_joint_trajectories(
     uint32_t horizon_steps,
     wm_parietal_trajectory_t** trajectories) {
 
-    if (!bridge || !object_ids || !trajectories) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(object_ids, NIMCP_ERROR_NULL_POINTER, "object_ids is NULL");
+    NIMCP_CHECK_THROW(trajectories, NIMCP_ERROR_NULL_POINTER, "trajectories is NULL");
     if (num_objects == 0) return NIMCP_SUCCESS;
 
     /* Predict each trajectory individually for now */
@@ -1109,7 +1118,9 @@ nimcp_error_t omni_wm_parietal_bridge_transform_position(
     wm_parietal_frame_t to_frame,
     wm_parietal_vec3_t* result) {
 
-    if (!bridge || !position || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(position, NIMCP_ERROR_NULL_POINTER, "position is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_NULL_POINTER, "result is NULL");
     if (!bridge->config.enable_coordinate_transforms) {
         *result = *position;
         return NIMCP_SUCCESS;
@@ -1166,7 +1177,9 @@ nimcp_error_t omni_wm_parietal_bridge_transform_state(
     wm_parietal_frame_t to_frame,
     wm_parietal_spatial_state_t* result) {
 
-    if (!bridge || !state || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_NULL_POINTER, "result is NULL");
 
     /* Copy base state */
     *result = *state;
@@ -1188,7 +1201,8 @@ nimcp_error_t omni_wm_parietal_bridge_get_transform_matrix(
     wm_parietal_frame_t to_frame,
     float* matrix) {
 
-    if (!bridge || !matrix) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(matrix, NIMCP_ERROR_NULL_POINTER, "matrix is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1218,7 +1232,8 @@ nimcp_error_t omni_wm_parietal_bridge_add_physics_constraint(
     omni_wm_parietal_bridge_t* bridge,
     const wm_parietal_physics_constraint_t* constraint) {
 
-    if (!bridge || !constraint) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(constraint, NIMCP_ERROR_NULL_POINTER, "constraint is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1240,7 +1255,7 @@ nimcp_error_t omni_wm_parietal_bridge_remove_physics_constraint(
     wm_parietal_physics_type_t type,
     uint32_t object_id) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1264,7 +1279,7 @@ nimcp_error_t omni_wm_parietal_bridge_remove_physics_constraint(
 nimcp_error_t omni_wm_parietal_bridge_clear_physics_constraints(
     omni_wm_parietal_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->num_constraints = 0;
@@ -1282,7 +1297,8 @@ nimcp_error_t omni_wm_parietal_bridge_check_collision(
     float* time_to_collision,
     wm_parietal_vec3_t* collision_point) {
 
-    if (!bridge || !will_collide) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(will_collide, NIMCP_ERROR_NULL_POINTER, "will_collide is NULL");
 
     *will_collide = false;
     if (time_to_collision) *time_to_collision = -1.0f;
@@ -1345,7 +1361,7 @@ nimcp_error_t omni_wm_parietal_bridge_physics_step(
     omni_wm_parietal_bridge_t* bridge,
     float dt) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1367,7 +1383,8 @@ nimcp_error_t omni_wm_parietal_bridge_update_attention(
     const float* attention_map,
     uint32_t map_dim) {
 
-    if (!bridge || !attention_map) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(attention_map, NIMCP_ERROR_NULL_POINTER, "attention_map is NULL");
     if (!bridge->config.enable_attention_gating) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1390,7 +1407,8 @@ nimcp_error_t omni_wm_parietal_bridge_set_attention_focus(
     const wm_parietal_vec3_t* focus,
     float spread) {
 
-    if (!bridge || !focus) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(focus, NIMCP_ERROR_NULL_POINTER, "focus is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1485,7 +1503,8 @@ nimcp_error_t omni_wm_parietal_bridge_track_object(
     omni_wm_parietal_bridge_t* bridge,
     const wm_parietal_spatial_state_t* initial_state) {
 
-    if (!bridge || !initial_state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(initial_state, NIMCP_ERROR_NULL_POINTER, "initial_state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1518,7 +1537,8 @@ nimcp_error_t omni_wm_parietal_bridge_update_object(
     uint32_t object_id,
     const wm_parietal_spatial_state_t* new_state) {
 
-    if (!bridge || !new_state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(new_state, NIMCP_ERROR_NULL_POINTER, "new_state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1540,7 +1560,7 @@ nimcp_error_t omni_wm_parietal_bridge_untrack_object(
     omni_wm_parietal_bridge_t* bridge,
     uint32_t object_id) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1566,7 +1586,8 @@ nimcp_error_t omni_wm_parietal_bridge_get_object_state(
     uint32_t object_id,
     wm_parietal_spatial_state_t* state) {
 
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_NULL_POINTER, "state is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1595,8 +1616,11 @@ nimcp_error_t omni_wm_parietal_bridge_math_predict(
     float* predictions,
     float* confidence) {
 
-    if (!bridge || !observation_sequence || !predictions) return NIMCP_ERROR_NULL_POINTER;
-    if (sequence_length == 0 || prediction_steps == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(observation_sequence, NIMCP_ERROR_NULL_POINTER, "observation_sequence is NULL");
+    NIMCP_CHECK_THROW(predictions, NIMCP_ERROR_NULL_POINTER, "predictions is NULL");
+    NIMCP_CHECK_THROW(sequence_length > 0, NIMCP_ERROR_INVALID_PARAM, "sequence_length must be greater than 0");
+    NIMCP_CHECK_THROW(prediction_steps > 0, NIMCP_ERROR_INVALID_PARAM, "prediction_steps must be greater than 0");
     if (!bridge->config.enable_math_reasoning) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1631,8 +1655,10 @@ nimcp_error_t omni_wm_parietal_bridge_estimate_quantity(
     float* estimate,
     float* confidence) {
 
-    if (!bridge || !values || !estimate) return NIMCP_ERROR_NULL_POINTER;
-    if (num_values == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(values, NIMCP_ERROR_NULL_POINTER, "values is NULL");
+    NIMCP_CHECK_THROW(estimate, NIMCP_ERROR_NULL_POINTER, "estimate is NULL");
+    NIMCP_CHECK_THROW(num_values > 0, NIMCP_ERROR_INVALID_PARAM, "num_values must be greater than 0");
     if (!bridge->config.enable_numerical_estimation) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1686,7 +1712,8 @@ nimcp_error_t omni_wm_parietal_bridge_get_stats(
     const omni_wm_parietal_bridge_t* bridge,
     omni_wm_parietal_bridge_stats_t* stats) {
 
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -1698,7 +1725,7 @@ nimcp_error_t omni_wm_parietal_bridge_get_stats(
 nimcp_error_t omni_wm_parietal_bridge_reset_stats(
     omni_wm_parietal_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(omni_wm_parietal_bridge_stats_t));
@@ -1714,7 +1741,7 @@ nimcp_error_t omni_wm_parietal_bridge_reset_stats(
 nimcp_error_t omni_wm_parietal_bridge_connect_bio_async(
     omni_wm_parietal_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_bio_async) return NIMCP_SUCCESS;
     if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
@@ -1764,7 +1791,7 @@ nimcp_error_t omni_wm_parietal_bridge_connect_bio_async(
 nimcp_error_t omni_wm_parietal_bridge_disconnect_bio_async(
     omni_wm_parietal_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     if (bridge->base.bio_ctx) {
@@ -1879,7 +1906,7 @@ const char* omni_wm_parietal_physics_type_to_string(wm_parietal_physics_type_t t
 nimcp_error_t omni_wm_parietal_bridge_validate_config(
     const omni_wm_parietal_bridge_config_t* config) {
 
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Validate sensitivity range */
     if (config->sensitivity < 0.5f || config->sensitivity > 2.0f) {
@@ -2013,7 +2040,8 @@ nimcp_error_t omni_wm_parietal_normalize(
     const wm_parietal_vec3_t* v,
     wm_parietal_vec3_t* result) {
 
-    if (!v || !result) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(v, NIMCP_ERROR_NULL_POINTER, "v is NULL");
+    NIMCP_CHECK_THROW(result, NIMCP_ERROR_NULL_POINTER, "result is NULL");
 
     float len = sqrtf(v->x*v->x + v->y*v->y + v->z*v->z);
 

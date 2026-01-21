@@ -143,9 +143,7 @@ static float apply_modulation(
 static nimcp_error_t attn_handle_drive_state(const void* msg, size_t msg_size,
                                               nimcp_bio_promise_t promise, void* ctx) {
     hypo_attn_bridge_t* bridge = (hypo_attn_bridge_t*)ctx;
-    if (!bridge) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge context is NULL");
 
     /* Drive state changed, update modulation */
     hypo_attn_bridge_update_modulation(bridge);
@@ -559,9 +557,7 @@ uint32_t hypo_attn_bridge_process_bio(
 }
 
 nimcp_error_t hypo_attn_bridge_broadcast_modulation(hypo_attn_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_ctx) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->bio_ctx, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL or bio_ctx is NULL");
 
     if (!bridge->config.broadcast_enabled) {
         return NIMCP_SUCCESS;

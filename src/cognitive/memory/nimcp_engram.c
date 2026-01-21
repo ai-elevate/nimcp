@@ -333,7 +333,7 @@ static nimcp_error_t handle_memory_query(
 {
     (void)msg_size;
     (void)response_promise;
-    if (!msg || !user_data) { return NIMCP_ERROR_NULL_ARG; }
+    NIMCP_CHECK_THROW(msg && user_data, NIMCP_ERROR_NULL_ARG, "msg or user_data is NULL");
     engram_system_t* system = (engram_system_t*)user_data;
     LOG_DEBUG(LOG_MODULE, "Received memory query, active engrams=%u", system->active_count);
     return NIMCP_SUCCESS;

@@ -698,7 +698,7 @@ int tom_substrate_bridge_update(tom_substrate_bridge_t* bridge) {
  * HOW: Sends modulation and capacity update messages if bio-async connected
  */
 int tom_substrate_bridge_apply_effects(tom_substrate_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Only broadcast if bio-async is enabled */
     if (!bridge->base.bio_async_enabled || !bridge->base.bio_ctx) {

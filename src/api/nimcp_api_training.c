@@ -180,38 +180,20 @@ nimcp_status_t nimcp_brain_configure_training(
     nimcp_brain_t brain,
     const nimcp_training_config_t* config)
 {
-    if (!brain) {
-        set_error("Brain handle is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain handle is NULL in configure_training");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!config) {
-        set_error("Training config is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Training config is NULL");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL in configure_training");
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_ARG, "Training config is NULL");
 
     // Get internal brain
     brain_t internal = brain->internal_brain;
-    if (!internal) {
-        set_error("Internal brain is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Internal brain is NULL in configure_training");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(internal, NIMCP_ERROR_NULL_ARG, "Internal brain is NULL in configure_training");
 
     // Get or create training context
     nimcp_brain_training_ctx_t* training_ctx = internal->training_ctx;
-    if (!training_ctx) {
-        set_error("Brain has no training context (training not enabled)");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Brain has no training context");
-        return NIMCP_ERROR_INVALID;
-    }
+    NIMCP_CHECK_THROW(training_ctx, NIMCP_ERROR_INVALID, "Brain has no training context");
 
     // Get training state
     training_pipeline_state_t* state = get_training_state(brain);
     if (!state) {
-        set_error("Failed to allocate training state");
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(training_pipeline_state_t),
             "Failed to allocate training state");
         return NIMCP_ERROR_MEMORY;
@@ -234,7 +216,6 @@ nimcp_status_t nimcp_brain_configure_training(
     nimcp_loss_config_t loss_config = nimcp_loss_default_config(internal_loss);
     nimcp_result_t res = nimcp_brain_training_create_loss(training_ctx, &loss_config, &state->loss_id);
     if (res != NIMCP_SUCCESS || state->loss_id == 0) {
-        set_error("Failed to create loss function");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create loss function");
         return NIMCP_ERROR;
     }
@@ -296,7 +277,6 @@ nimcp_status_t nimcp_brain_configure_training(
 
     res = nimcp_brain_training_create_optimizer(training_ctx, &opt_config, &state->optimizer_id);
     if (res != NIMCP_SUCCESS || state->optimizer_id == 0) {
-        set_error("Failed to create optimizer");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create optimizer");
         return NIMCP_ERROR;
     }
@@ -346,7 +326,6 @@ nimcp_status_t nimcp_brain_configure_training(
 
     res = nimcp_brain_training_create_scheduler(training_ctx, &sched_config, &state->scheduler_id);
     if (res != NIMCP_SUCCESS || state->scheduler_id == 0) {
-        set_error("Failed to create LR scheduler");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create LR scheduler");
         return NIMCP_ERROR;
     }
@@ -362,7 +341,6 @@ nimcp_status_t nimcp_brain_configure_training(
     state->configured = true;
     state->step_count = 0;
 
-    set_error("No error");
     return NIMCP_OK;
 }
 
@@ -378,47 +356,18 @@ nimcp_status_t nimcp_brain_train_step(
     uint32_t num_targets,
     nimcp_training_result_t* result)
 {
-    if (!brain) {
-        set_error("Brain handle is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain handle is NULL in train_step");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!features) {
-        set_error("Features array is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Features array is NULL in train_step");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!targets) {
-        set_error("Targets array is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Targets array is NULL in train_step");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL in train_step");
+    NIMCP_CHECK_THROW(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL in train_step");
+    NIMCP_CHECK_THROW(targets, NIMCP_ERROR_NULL_ARG, "Targets array is NULL in train_step");
 
     brain_t internal = brain->internal_brain;
-    if (!internal) {
-        set_error("Internal brain is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Internal brain is NULL in train_step");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(internal, NIMCP_ERROR_NULL_ARG, "Internal brain is NULL in train_step");
 
     // Validate dimensions
-    if (num_features != internal->config.num_inputs) {
-        set_error("Feature count mismatch: expected %u, got %u",
-                  internal->config.num_inputs, num_features);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Feature count mismatch: expected %u, got %u",
-            internal->config.num_inputs, num_features);
-        return NIMCP_ERROR_INVALID;
-    }
-
-    if (num_targets != internal->config.num_outputs) {
-        set_error("Target count mismatch: expected %u, got %u",
-                  internal->config.num_outputs, num_targets);
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Target count mismatch: expected %u, got %u",
-            internal->config.num_outputs, num_targets);
-        return NIMCP_ERROR_INVALID;
-    }
+    NIMCP_CHECK_THROW(num_features == internal->config.num_inputs, NIMCP_ERROR_INVALID,
+        "Feature count mismatch: expected %u, got %u", internal->config.num_inputs, num_features);
+    NIMCP_CHECK_THROW(num_targets == internal->config.num_outputs, NIMCP_ERROR_INVALID,
+        "Target count mismatch: expected %u, got %u", internal->config.num_outputs, num_targets);
 
     // Get training state
     training_pipeline_state_t* state = get_training_state(brain);
@@ -433,16 +382,11 @@ nimcp_status_t nimcp_brain_train_step(
     }
 
     nimcp_brain_training_ctx_t* training_ctx = internal->training_ctx;
-    if (!training_ctx) {
-        set_error("Training context not available");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Training context not available");
-        return NIMCP_ERROR_INVALID;
-    }
+    NIMCP_CHECK_THROW(training_ctx, NIMCP_ERROR_INVALID, "Training context not available");
 
     // Get the adaptive network
     adaptive_network_t network = internal->network;
     if (!network) {
-        set_error("Brain has no neural network");
         NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "training",
             "Brain has no neural network");
         return NIMCP_ERROR_INVALID;
@@ -451,7 +395,6 @@ nimcp_status_t nimcp_brain_train_step(
     // Get base network for backpropagation
     neural_network_t base_net = adaptive_network_get_base_network(network);
     if (!base_net) {
-        set_error("Failed to get base network");
         NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "training",
             "Failed to get base network");
         return NIMCP_ERROR;
@@ -461,7 +404,6 @@ nimcp_status_t nimcp_brain_train_step(
     if (!state->backprop) {
         state->backprop = backprop_create(base_net);
         if (!state->backprop) {
-            set_error("Failed to create backprop context");
             NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(backprop_ctx_t),
                 "Failed to create backprop context");
             return NIMCP_ERROR_MEMORY;
@@ -471,7 +413,6 @@ nimcp_status_t nimcp_brain_train_step(
     // Step 1: Forward pass with activation recording
     float* predictions = nimcp_malloc(num_targets * sizeof(float));
     if (!predictions) {
-        set_error("Failed to allocate predictions buffer");
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_targets * sizeof(float),
             "Failed to allocate predictions buffer");
         return NIMCP_ERROR_MEMORY;
@@ -488,7 +429,6 @@ nimcp_status_t nimcp_brain_train_step(
     float* output_gradients = nimcp_malloc(num_targets * sizeof(float));
     if (!output_gradients) {
         nimcp_free(predictions);
-        set_error("Failed to allocate output gradients");
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_targets * sizeof(float),
             "Failed to allocate output gradients");
         return NIMCP_ERROR_MEMORY;
@@ -505,7 +445,7 @@ nimcp_status_t nimcp_brain_train_step(
     if (res != NIMCP_SUCCESS) {
         nimcp_free(predictions);
         nimcp_free(output_gradients);
-        set_error("Failed to compute loss");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to compute loss");
         return NIMCP_ERROR;
     }
 
@@ -601,13 +541,11 @@ nimcp_status_t nimcp_brain_train_step(
     }
 
     if (res != NIMCP_SUCCESS && res != NIMCP_TRAINING_ERROR_EARLY_STOP) {
-        set_error("Training step failed");
         NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "training",
             "Training step failed");
         return NIMCP_ERROR;
     }
 
-    set_error("No error");
     return NIMCP_OK;
 }
 
@@ -620,17 +558,10 @@ nimcp_status_t nimcp_brain_train_batch(
     uint32_t num_targets,
     nimcp_training_result_t* result)
 {
-    if (!brain || !features || !targets) {
-        set_error("NULL argument provided");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "NULL argument provided to train_batch");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (batch_size == 0) {
-        set_error("Batch size cannot be zero");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Batch size cannot be zero");
-        return NIMCP_ERROR_INVALID;
-    }
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL in train_batch");
+    NIMCP_CHECK_THROW(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL in train_batch");
+    NIMCP_CHECK_THROW(targets, NIMCP_ERROR_NULL_ARG, "Targets array is NULL in train_batch");
+    NIMCP_CHECK_THROW(batch_size > 0, NIMCP_ERROR_INVALID, "Batch size cannot be zero");
 
     // Train on each example and average results
     float total_loss = 0.0f;
@@ -663,7 +594,6 @@ nimcp_status_t nimcp_brain_train_batch(
         result->gradient_norm = step_result.gradient_norm;
     }
 
-    set_error("No error");
     return NIMCP_OK;
 }
 
@@ -673,23 +603,15 @@ nimcp_status_t nimcp_brain_get_training_stats(
     float* total_loss,
     float* current_lr)
 {
-    if (!brain) {
-        set_error("Brain handle is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain handle is NULL in get_training_stats");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL in get_training_stats");
 
     brain_t internal = brain->internal_brain;
-    if (!internal || !internal->training_ctx) {
-        set_error("Training not enabled");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Training not enabled in get_training_stats");
-        return NIMCP_ERROR_INVALID;
-    }
+    NIMCP_CHECK_THROW(internal, NIMCP_ERROR_NULL_ARG, "Internal brain is NULL in get_training_stats");
+    NIMCP_CHECK_THROW(internal->training_ctx, NIMCP_ERROR_INVALID, "Training not enabled in get_training_stats");
 
     nimcp_training_session_stats_t stats;
     nimcp_result_t res = nimcp_brain_training_get_stats(internal->training_ctx, &stats);
     if (res != NIMCP_SUCCESS) {
-        set_error("Failed to get training stats");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to get training stats");
         return NIMCP_ERROR;
     }
@@ -712,27 +634,23 @@ nimcp_status_t nimcp_brain_get_training_stats(
         }
     }
 
-    set_error("No error");
     return NIMCP_OK;
 }
 
 float nimcp_brain_step_scheduler(nimcp_brain_t brain, float validation_metric) {
     if (!brain) {
-        set_error("Brain handle is NULL");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain handle is NULL in step_scheduler");
         return 0.0f;
     }
 
     brain_t internal = brain->internal_brain;
     if (!internal || !internal->training_ctx) {
-        set_error("Training not enabled");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Training not enabled in step_scheduler");
         return 0.0f;
     }
 
     training_pipeline_state_t* state = get_training_state(brain);
     if (!state || !state->configured) {
-        set_error("Training not configured");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Training not configured in step_scheduler");
         return 0.0f;
     }
@@ -745,7 +663,6 @@ float nimcp_brain_step_scheduler(nimcp_brain_t brain, float validation_metric) {
         validation_metric
     );
 
-    set_error("No error");
     return new_lr;
 }
 
@@ -834,15 +751,10 @@ nimcp_status_t nimcp_brain_enable_callbacks(
     nimcp_brain_t brain,
     const nimcp_callback_config_t* config)
 {
-    if (!brain) {
-        set_error("Brain handle is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain handle is NULL in enable_callbacks");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL in enable_callbacks");
 
     training_pipeline_state_t* state = get_training_state(brain);
     if (!state) {
-        set_error("Failed to get training state");
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(training_pipeline_state_t),
             "Failed to get training state");
         return NIMCP_ERROR_MEMORY;
@@ -873,32 +785,21 @@ nimcp_status_t nimcp_brain_enable_callbacks(
     // Create callback manager
     state->callbacks = tcb_create(&internal_config);
     if (!state->callbacks) {
-        set_error("Failed to create callback manager");
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, 0, "Failed to create callback manager");
         return NIMCP_ERROR_MEMORY;
     }
 
     state->callbacks_enabled = true;
-    set_error("No error");
     return NIMCP_OK;
 }
 
 nimcp_status_t nimcp_brain_disable_callbacks(nimcp_brain_t brain) {
-    if (!brain) {
-        set_error("Brain handle is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain handle is NULL in disable_callbacks");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL in disable_callbacks");
 
     training_pipeline_state_t* state = get_training_state(brain);
-    if (!state) {
-        set_error("No training state");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "No training state in disable_callbacks");
-        return NIMCP_ERROR_INVALID;
-    }
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_INVALID, "No training state in disable_callbacks");
 
     state->callbacks_enabled = false;
-    set_error("No error");
     return NIMCP_OK;
 }
 
@@ -915,20 +816,17 @@ uint32_t nimcp_brain_register_callback(
     const char* name)
 {
     if (!brain) {
-        set_error("Brain handle is NULL");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain handle is NULL in register_callback");
         return 0;
     }
 
     if (!callback) {
-        set_error("Callback function is NULL");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Callback function is NULL in register_callback");
         return 0;
     }
 
     training_pipeline_state_t* state = get_training_state(brain);
     if (!state) {
-        set_error("No training state");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "No training state in register_callback");
         return 0;
     }
@@ -944,7 +842,6 @@ uint32_t nimcp_brain_register_callback(
     // Allocate wrapper
     callback_wrapper_t* wrapper = nimcp_malloc(sizeof(callback_wrapper_t));
     if (!wrapper) {
-        set_error("Failed to allocate callback wrapper");
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(callback_wrapper_t),
             "Failed to allocate callback wrapper");
         return 0;
@@ -988,12 +885,10 @@ uint32_t nimcp_brain_register_callback(
 
     uint32_t cb_id = tcb_register(state->callbacks, &info);
     if (cb_id == 0) {
-        set_error("Failed to register callback");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to register callback");
         return 0;
     }
 
-    set_error("No error");
     return cb_id;
 }
 
@@ -1001,27 +896,18 @@ nimcp_status_t nimcp_brain_unregister_callback(
     nimcp_brain_t brain,
     uint32_t callback_id)
 {
-    if (!brain) {
-        set_error("Brain handle is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain handle is NULL in unregister_callback");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL in unregister_callback");
 
     training_pipeline_state_t* state = get_training_state(brain);
-    if (!state || !state->callbacks) {
-        set_error("Callbacks not enabled");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Callbacks not enabled in unregister_callback");
-        return NIMCP_ERROR_INVALID;
-    }
+    NIMCP_CHECK_THROW(state, NIMCP_ERROR_INVALID, "No training state in unregister_callback");
+    NIMCP_CHECK_THROW(state->callbacks, NIMCP_ERROR_INVALID, "Callbacks not enabled in unregister_callback");
 
     // Unregister from internal manager
     if (!tcb_unregister(state->callbacks, callback_id)) {
-        set_error("Failed to unregister callback");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to unregister callback %u", callback_id);
         return NIMCP_ERROR;
     }
 
-    set_error("No error");
     return NIMCP_OK;
 }
 
@@ -1031,11 +917,7 @@ nimcp_status_t nimcp_brain_get_callback_stats(
     float* avg_time_us,
     uint32_t* early_stops)
 {
-    if (!brain) {
-        set_error("Brain handle is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain handle is NULL in get_callback_stats");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL in get_callback_stats");
 
     training_pipeline_state_t* state = get_training_state(brain);
     if (!state || !state->callbacks) {
@@ -1043,7 +925,6 @@ nimcp_status_t nimcp_brain_get_callback_stats(
         if (total_fired) *total_fired = 0;
         if (avg_time_us) *avg_time_us = 0.0f;
         if (early_stops) *early_stops = 0;
-        set_error("No error");
         return NIMCP_OK;
     }
 
@@ -1055,6 +936,5 @@ nimcp_status_t nimcp_brain_get_callback_stats(
     if (avg_time_us) *avg_time_us = stats.avg_execution_time_us;
     if (early_stops) *early_stops = stats.early_stops_triggered;
 
-    set_error("No error");
     return NIMCP_OK;
 }

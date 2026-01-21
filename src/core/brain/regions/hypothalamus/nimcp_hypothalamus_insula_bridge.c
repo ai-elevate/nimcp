@@ -320,9 +320,7 @@ static nimcp_error_t insula_handle_attention_request(
     (void)msg;
     (void)msg_size;
     hypo_insula_bridge_t* bridge = (hypo_insula_bridge_t*)user_data;
-    if (!bridge) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge context is NULL");
 
     hypo_insula_bridge_compute_attention(bridge);
     hypo_insula_bridge_broadcast_attention(bridge);

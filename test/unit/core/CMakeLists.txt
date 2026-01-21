@@ -1,5 +1,30 @@
 # Core Brain Regions Unit Tests
 
+# ============================================================================
+# Core Exception Macros Unit Tests
+# ============================================================================
+# WHAT: Unit tests for NIMCP exception macro integration in core modules
+# WHY:  Verify NIMCP_CHECK_THROW, NIMCP_THROW work correctly across core subsystem
+# HOW:  Test null pointer handling, invalid parameters, and valid inputs (axon, etc.)
+# ============================================================================
+
+add_executable(unit_core_exception_macros
+    test_core_exception_macros.cpp
+)
+target_link_libraries(unit_core_exception_macros
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+target_compile_features(unit_core_exception_macros PRIVATE cxx_std_17)
+target_include_directories(unit_core_exception_macros
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+gtest_discover_tests(unit_core_exception_macros
+    PROPERTIES LABELS "unit;core;exception;macros"
+    TIMEOUT 120
+)
+
 # Brain Regions subdirectory (PE tests)
 add_subdirectory(brain_regions)
 

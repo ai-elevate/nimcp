@@ -819,16 +819,14 @@ static nimcp_error_t metrics_handle_brain_probe(
 ) {
     (void)response_promise;  // Broadcasts don't need responses
 
-    if (!msg || msg_size < sizeof(bio_msg_brain_probe_data_t)) {
-        return NIMCP_ERROR_INVALID;
-    }
+    NIMCP_CHECK_THROW(msg && msg_size >= sizeof(bio_msg_brain_probe_data_t),
+                      NIMCP_ERROR_INVALID, "invalid message or size");
 
     const bio_msg_brain_probe_data_t* probe_msg = (const bio_msg_brain_probe_data_t*)msg;
 
     // Verify message type
-    if (probe_msg->header.type != BIO_MSG_BRAIN_PROBE_DATA) {
-        return NIMCP_ERROR_INVALID;
-    }
+    NIMCP_CHECK_THROW(probe_msg->header.type == BIO_MSG_BRAIN_PROBE_DATA,
+                      NIMCP_ERROR_INVALID, "wrong message type");
 
     // Get collector from user_data or global
     nimcp_metrics_collector_t collector = (nimcp_metrics_collector_t)user_data;

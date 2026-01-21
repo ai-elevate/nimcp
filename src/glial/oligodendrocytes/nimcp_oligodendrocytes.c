@@ -884,7 +884,7 @@ nimcp_result_t oligodendrocyte_assign_axon_at(oligodendrocyte_t* oligo,
                                                float x, float y, float z,
                                                float axon_diameter,
                                                float axon_length) {
-    if (!oligo) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(oligo, NIMCP_ERROR_INVALID_PARAM, "oligo is NULL");
 
     nimcp_spinlock_lock(&oligo->lock);
 
@@ -979,7 +979,7 @@ float oligodendrocyte_get_myelination_level(oligodendrocyte_t* oligo, uint32_t a
 nimcp_result_t oligodendrocyte_set_myelination_level(oligodendrocyte_t* oligo,
                                                       uint32_t axon_id,
                                                       float level) {
-    if (!oligo) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(oligo, NIMCP_ERROR_INVALID_PARAM, "oligo is NULL");
 
     nimcp_spinlock_lock(&oligo->lock);
 
@@ -1711,7 +1711,7 @@ void oligodendrocyte_add_glucose(oligodendrocyte_t* oligo, float amount) {
 
 nimcp_result_t oligodendrocyte_network_add(oligodendrocyte_network_t* network,
                                             oligodendrocyte_t* oligo) {
-    if (!network || !oligo) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(network && oligo, NIMCP_ERROR_INVALID_PARAM, "network or oligo is NULL");
 
     nimcp_mutex_lock(&network->lock);
 
@@ -2297,7 +2297,7 @@ oligodendrocyte_t* oligodendrocyte_cow_copy(oligodendrocyte_t* oligo) {
 }
 
 nimcp_result_t oligodendrocyte_cow_prepare_write(oligodendrocyte_t* oligo) {
-    if (!oligo) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(oligo, NIMCP_ERROR_INVALID_PARAM, "oligo is NULL");
 
     nimcp_spinlock_lock(&oligo->lock);
 

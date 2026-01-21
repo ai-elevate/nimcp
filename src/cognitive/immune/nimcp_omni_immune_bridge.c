@@ -113,7 +113,7 @@ static omni_immune_source_t find_dominant_source(omni_immune_bridge_t* bridge) {
  * ============================================================================ */
 
 int omni_immune_default_config(omni_immune_config_t* config) {
-    if (!config) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     memset(config, 0, sizeof(omni_immune_config_t));
 
@@ -178,7 +178,7 @@ void omni_immune_bridge_destroy(omni_immune_bridge_t* bridge) {
 
 int omni_immune_connect_jepa(omni_immune_bridge_t* bridge,
                               jepa_bidirectional_t* jepa) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->jepa = jepa;
     nimcp_mutex_unlock(bridge->mutex);
@@ -187,7 +187,7 @@ int omni_immune_connect_jepa(omni_immune_bridge_t* bridge,
 
 int omni_immune_connect_hopfield(omni_immune_bridge_t* bridge,
                                   hopfield_memory_t* hopfield) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->hopfield = hopfield;
     nimcp_mutex_unlock(bridge->mutex);
@@ -196,7 +196,7 @@ int omni_immune_connect_hopfield(omni_immune_bridge_t* bridge,
 
 int omni_immune_connect_pred_hier(omni_immune_bridge_t* bridge,
                                    predictive_hierarchy_t* pred_hier) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->pred_hier = pred_hier;
     nimcp_mutex_unlock(bridge->mutex);
@@ -205,7 +205,7 @@ int omni_immune_connect_pred_hier(omni_immune_bridge_t* bridge,
 
 int omni_immune_connect_replay(omni_immune_bridge_t* bridge,
                                 temporal_replay_t* replay) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->replay = replay;
     nimcp_mutex_unlock(bridge->mutex);
@@ -214,7 +214,7 @@ int omni_immune_connect_replay(omni_immune_bridge_t* bridge,
 
 int omni_immune_connect_immune(omni_immune_bridge_t* bridge,
                                 brain_immune_system_t* immune) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->immune = immune;
     nimcp_mutex_unlock(bridge->mutex);
@@ -226,7 +226,7 @@ int omni_immune_connect_immune(omni_immune_bridge_t* bridge,
  * ============================================================================ */
 
 int omni_immune_update(omni_immune_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->mutex);
 
@@ -294,13 +294,13 @@ int omni_immune_update(omni_immune_bridge_t* bridge) {
 }
 
 int omni_immune_apply_to_immune(omni_immune_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     /* In a full implementation, this would call brain_immune_system APIs */
     return NIMCP_SUCCESS;
 }
 
 int omni_immune_apply_to_omni(omni_immune_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     bridge->stats.precision_feedbacks++;
     nimcp_mutex_unlock(bridge->mutex);
@@ -313,7 +313,7 @@ int omni_immune_apply_to_omni(omni_immune_bridge_t* bridge) {
 
 int omni_immune_get_omni_effects(const omni_immune_bridge_t* bridge,
                                   omni_to_immune_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_INVALID_PARAM, "bridge or effects is NULL");
     nimcp_mutex_lock(((omni_immune_bridge_t*)bridge)->mutex);
     memcpy(effects, &bridge->omni_effects, sizeof(omni_to_immune_effects_t));
     nimcp_mutex_unlock(((omni_immune_bridge_t*)bridge)->mutex);
@@ -322,7 +322,7 @@ int omni_immune_get_omni_effects(const omni_immune_bridge_t* bridge,
 
 int omni_immune_get_immune_effects(const omni_immune_bridge_t* bridge,
                                     immune_to_omni_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && effects, NIMCP_ERROR_INVALID_PARAM, "bridge or effects is NULL");
     nimcp_mutex_lock(((omni_immune_bridge_t*)bridge)->mutex);
     memcpy(effects, &bridge->immune_effects, sizeof(immune_to_omni_effects_t));
     nimcp_mutex_unlock(((omni_immune_bridge_t*)bridge)->mutex);
@@ -331,7 +331,7 @@ int omni_immune_get_immune_effects(const omni_immune_bridge_t* bridge,
 
 int omni_immune_get_stats(const omni_immune_bridge_t* bridge,
                            omni_immune_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_INVALID_PARAM, "bridge or stats is NULL");
     nimcp_mutex_lock(((omni_immune_bridge_t*)bridge)->mutex);
     memcpy(stats, &bridge->stats, sizeof(omni_immune_stats_t));
     nimcp_mutex_unlock(((omni_immune_bridge_t*)bridge)->mutex);
@@ -339,7 +339,7 @@ int omni_immune_get_stats(const omni_immune_bridge_t* bridge,
 }
 
 int omni_immune_reset_stats(omni_immune_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     nimcp_mutex_lock(bridge->mutex);
     memset(&bridge->stats, 0, sizeof(omni_immune_stats_t));
     nimcp_mutex_unlock(bridge->mutex);
@@ -357,7 +357,7 @@ static nimcp_error_t handle_immune_free_energy_report(
     void* user_data)
 {
     omni_immune_bridge_t* bridge = (omni_immune_bridge_t*)user_data;
-    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && msg, NIMCP_ERROR_INVALID_PARAM, "bridge or msg is NULL");
 
     omni_immune_update(bridge);
 
@@ -373,7 +373,7 @@ static nimcp_error_t handle_immune_error_propagate(
     void* user_data)
 {
     omni_immune_bridge_t* bridge = (omni_immune_bridge_t*)user_data;
-    if (!bridge || !msg) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge && msg, NIMCP_ERROR_INVALID_PARAM, "bridge or msg is NULL");
 
     /* Process error propagation for immune response */
     omni_immune_update(bridge);
@@ -388,7 +388,7 @@ static nimcp_error_t handle_immune_error_propagate(
  * ============================================================================ */
 
 int omni_immune_connect_bio_async(omni_immune_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     if (bridge->bio_async_connected) return NIMCP_SUCCESS;
 
     bio_module_info_t info = {
@@ -415,7 +415,7 @@ int omni_immune_connect_bio_async(omni_immune_bridge_t* bridge) {
 }
 
 int omni_immune_disconnect_bio_async(omni_immune_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
     if (!bridge->bio_async_connected) return NIMCP_SUCCESS;
 
     if (bridge->bio_context) {

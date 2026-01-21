@@ -260,7 +260,7 @@ void glial_integration_destroy(glial_integration_t* gi) {
 
 nimcp_result_t glial_integration_set_astrocyte_network(glial_integration_t* gi,
                                                        astrocyte_network_t* astrocyte_network) {
-    if (!gi) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(gi, NIMCP_ERROR_INVALID_PARAM, "gi is NULL");
 
     nimcp_mutex_lock(&gi->lock);
     gi->astrocyte_network = astrocyte_network;
@@ -271,7 +271,7 @@ nimcp_result_t glial_integration_set_astrocyte_network(glial_integration_t* gi,
 
 nimcp_result_t glial_integration_set_oligodendrocyte_network(
     glial_integration_t* gi, oligodendrocyte_network_t* oligo_network) {
-    if (!gi) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(gi, NIMCP_ERROR_INVALID_PARAM, "gi is NULL");
 
     nimcp_mutex_lock(&gi->lock);
     gi->oligodendrocyte_network = oligo_network;
@@ -282,7 +282,7 @@ nimcp_result_t glial_integration_set_oligodendrocyte_network(
 
 nimcp_result_t glial_integration_set_microglia_network(glial_integration_t* gi,
                                                        microglia_network_t* microglia_network) {
-    if (!gi) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(gi, NIMCP_ERROR_INVALID_PARAM, "gi is NULL");
 
     nimcp_mutex_lock(&gi->lock);
     gi->microglia_network = microglia_network;
@@ -293,7 +293,7 @@ nimcp_result_t glial_integration_set_microglia_network(glial_integration_t* gi,
 
 nimcp_result_t glial_integration_set_spatial_neuromod_system(
     glial_integration_t* gi, spatial_neuromod_system_t* spatial_neuromod) {
-    if (!gi) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(gi, NIMCP_ERROR_INVALID_PARAM, "gi is NULL");
 
     nimcp_mutex_lock(&gi->lock);
 
@@ -317,7 +317,7 @@ nimcp_result_t glial_integration_set_spatial_neuromod_system(
 nimcp_result_t glial_integration_assign_astrocyte_to_synapse(glial_integration_t* gi,
                                                              uint32_t astrocyte_id,
                                                              uint32_t synapse_id) {
-    if (!gi) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(gi, NIMCP_ERROR_INVALID_PARAM, "gi is NULL");
 
     nimcp_mutex_lock(&gi->lock);
 
@@ -356,7 +356,7 @@ nimcp_result_t glial_integration_assign_astrocyte_to_synapse(glial_integration_t
 nimcp_result_t glial_integration_assign_oligodendrocyte_to_neuron(glial_integration_t* gi,
                                                                   uint32_t oligo_id,
                                                                   uint32_t neuron_id) {
-    if (!gi) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(gi, NIMCP_ERROR_INVALID_PARAM, "gi is NULL");
 
     nimcp_mutex_lock(&gi->lock);
 
@@ -393,7 +393,7 @@ nimcp_result_t glial_integration_assign_oligodendrocyte_to_neuron(glial_integrat
 nimcp_result_t glial_integration_assign_microglia_to_synapse(glial_integration_t* gi,
                                                              uint32_t microglia_id,
                                                              uint32_t synapse_id) {
-    if (!gi) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(gi, NIMCP_ERROR_INVALID_PARAM, "gi is NULL");
 
     nimcp_mutex_lock(&gi->lock);
 
@@ -909,7 +909,7 @@ void glial_integration_set_microglia_pruning_enabled(glial_integration_t* gi, bo
 
 nimcp_result_t glial_integration_set_myelin_sheath_network(
     glial_integration_t* gi, myelin_sheath_network_t* myelin_network) {
-    if (!gi) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(gi, NIMCP_ERROR_INVALID_PARAM, "gi is NULL");
 
     nimcp_mutex_lock(&gi->lock);
     gi->myelin_sheath_network = myelin_network;

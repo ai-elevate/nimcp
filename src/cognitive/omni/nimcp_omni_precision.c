@@ -109,7 +109,7 @@ static void update_module_aggregate(omni_module_precision_t* module) {
  * ============================================================================ */
 
 int omni_precision_default_config(omni_precision_config_t* config) {
-    if (!config) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_INVALID_PARAM, "config is NULL");
 
     memset(config, 0, sizeof(omni_precision_config_t));
 
@@ -201,7 +201,7 @@ void omni_precision_destroy(omni_precision_ctx_t* ctx) {
 }
 
 int omni_precision_reset(omni_precision_ctx_t* ctx) {
-    if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -234,7 +234,8 @@ int omni_precision_register_module(omni_precision_ctx_t* ctx,
                                     uint16_t module_id,
                                     const char* name,
                                     float initial_precision) {
-    if (!ctx || !name) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
+    NIMCP_CHECK_THROW(name, NIMCP_ERROR_INVALID_PARAM, "name is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -278,8 +279,8 @@ int omni_precision_enable_channel(omni_precision_ctx_t* ctx,
                                    uint16_t module_id,
                                    omni_precision_channel_t channel,
                                    float initial_precision) {
-    if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
-    if (channel >= OMNI_PREC_CHANNEL_COUNT) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
+    NIMCP_CHECK_THROW(channel < OMNI_PREC_CHANNEL_COUNT, NIMCP_ERROR_INVALID_PARAM, "channel out of range");
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -299,7 +300,7 @@ int omni_precision_enable_channel(omni_precision_ctx_t* ctx,
 
 int omni_precision_unregister_module(omni_precision_ctx_t* ctx,
                                       uint16_t module_id) {
-    if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -323,8 +324,8 @@ int omni_precision_update(omni_precision_ctx_t* ctx,
                            uint16_t module_id,
                            omni_precision_channel_t channel,
                            float prediction_error) {
-    if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
-    if (channel >= OMNI_PREC_CHANNEL_COUNT) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
+    NIMCP_CHECK_THROW(channel < OMNI_PREC_CHANNEL_COUNT, NIMCP_ERROR_INVALID_PARAM, "channel out of range");
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -386,7 +387,8 @@ int omni_precision_update_from_fep(omni_precision_ctx_t* ctx,
                                     uint16_t module_id,
                                     const void* fep) {
     const fep_system_t* fep_sys = (const fep_system_t*)fep;
-    if (!ctx || !fep) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
+    NIMCP_CHECK_THROW(fep, NIMCP_ERROR_INVALID_PARAM, "fep is NULL");
 
     /* Get FEP free energy as proxy for prediction error */
     float fe = fep_get_free_energy(fep_sys);
@@ -417,7 +419,7 @@ int omni_precision_update_from_fep(omni_precision_ctx_t* ctx,
 }
 
 int omni_precision_propagate(omni_precision_ctx_t* ctx) {
-    if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
     if (!ctx->config.enable_propagation) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(ctx->mutex);
@@ -458,7 +460,7 @@ int omni_precision_propagate(omni_precision_ctx_t* ctx) {
 }
 
 int omni_precision_decay(omni_precision_ctx_t* ctx) {
-    if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -538,7 +540,8 @@ float omni_precision_get_confidence(const omni_precision_ctx_t* ctx,
 int omni_precision_get_all_channels(const omni_precision_ctx_t* ctx,
                                      uint16_t module_id,
                                      float* precisions) {
-    if (!ctx || !precisions) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
+    NIMCP_CHECK_THROW(precisions, NIMCP_ERROR_INVALID_PARAM, "precisions array is NULL");
 
     nimcp_mutex_lock(((omni_precision_ctx_t*)ctx)->mutex);
 
@@ -559,7 +562,8 @@ int omni_precision_get_all_channels(const omni_precision_ctx_t* ctx,
 
 int omni_precision_get_stats(const omni_precision_ctx_t* ctx,
                               omni_precision_stats_t* stats) {
-    if (!ctx || !stats) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_INVALID_PARAM, "stats is NULL");
 
     nimcp_mutex_lock(((omni_precision_ctx_t*)ctx)->mutex);
     memcpy(stats, &ctx->stats, sizeof(omni_precision_stats_t));
@@ -569,7 +573,7 @@ int omni_precision_get_stats(const omni_precision_ctx_t* ctx,
 }
 
 int omni_precision_reset_stats(omni_precision_ctx_t* ctx) {
-    if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
     memset(&ctx->stats, 0, sizeof(omni_precision_stats_t));
@@ -589,8 +593,8 @@ int omni_precision_add_edge(omni_precision_ctx_t* ctx,
                              uint16_t target_module,
                              omni_precision_channel_t channel,
                              float weight) {
-    if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
-    if (channel >= OMNI_PREC_CHANNEL_COUNT) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
+    NIMCP_CHECK_THROW(channel < OMNI_PREC_CHANNEL_COUNT, NIMCP_ERROR_INVALID_PARAM, "channel out of range");
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -622,7 +626,7 @@ int omni_precision_add_bidirectional_edge(omni_precision_ctx_t* ctx,
                                            uint16_t module_a,
                                            uint16_t module_b,
                                            float weight) {
-    if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
 
     /* Add forward edge */
     int rc = omni_precision_add_edge(ctx, module_a, module_b,
@@ -639,7 +643,7 @@ int omni_precision_remove_edge(omni_precision_ctx_t* ctx,
                                 uint16_t source_module,
                                 uint16_t target_module,
                                 omni_precision_channel_t channel) {
-    if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -666,7 +670,7 @@ int omni_precision_remove_edge(omni_precision_ctx_t* ctx,
 
 int omni_precision_connect_fep(omni_precision_ctx_t* ctx,
                                 void* fep) {
-    if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
     ctx->fep = fep;
@@ -677,7 +681,7 @@ int omni_precision_connect_fep(omni_precision_ctx_t* ctx,
 
 int omni_precision_connect_kg_sync(omni_precision_ctx_t* ctx,
                                     omni_kg_sync_t* kg_sync) {
-    if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
 
     nimcp_mutex_lock(ctx->mutex);
     ctx->kg_sync = kg_sync;
@@ -687,8 +691,8 @@ int omni_precision_connect_kg_sync(omni_precision_ctx_t* ctx,
 }
 
 int omni_precision_sync_to_kg(omni_precision_ctx_t* ctx) {
-    if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
-    if (!ctx->kg_sync) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
+    NIMCP_CHECK_THROW(ctx->kg_sync, NIMCP_ERROR_INVALID_STATE, "kg_sync is not connected");
 
     /* Sync precision weights to KG edge attributes */
     /* This would update MODULATES_PRECISION edges in the KG */
@@ -745,7 +749,7 @@ static nimcp_error_t handle_free_energy_report(
  * ============================================================================ */
 
 int omni_precision_connect_bio_async(omni_precision_ctx_t* ctx) {
-    if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
     if (ctx->bio_async_connected) return NIMCP_SUCCESS;
 
     bio_module_info_t info = {
@@ -772,7 +776,7 @@ int omni_precision_connect_bio_async(omni_precision_ctx_t* ctx) {
 }
 
 int omni_precision_disconnect_bio_async(omni_precision_ctx_t* ctx) {
-    if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
     if (!ctx->bio_async_connected) return NIMCP_SUCCESS;
 
     if (ctx->bio_context) {
@@ -792,8 +796,8 @@ bool omni_precision_is_bio_async_connected(const omni_precision_ctx_t* ctx) {
 int omni_precision_broadcast_update(omni_precision_ctx_t* ctx,
                                      uint16_t module_id,
                                      omni_precision_channel_t channel) {
-    if (!ctx) return NIMCP_ERROR_INVALID_PARAM;
-    if (!ctx->bio_async_connected) return NIMCP_ERROR_INVALID_STATE;
+    NIMCP_CHECK_THROW(ctx, NIMCP_ERROR_INVALID_PARAM, "context is NULL");
+    NIMCP_CHECK_THROW(ctx->bio_async_connected, NIMCP_ERROR_INVALID_STATE, "bio-async is not connected");
 
     nimcp_mutex_lock(ctx->mutex);
 

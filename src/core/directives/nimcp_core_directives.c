@@ -546,9 +546,9 @@ int core_directives_evaluate_command(core_directives_system_t* system,
                                       const proposed_action_t* command,
                                       directive_evaluation_t* evaluation) {
     /* Guard clauses */
-    if (!system) return NIMCP_ERROR_NULL_ARG;
-    if (!command) return NIMCP_ERROR_NULL_ARG;
-    if (!evaluation) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
+    NIMCP_CHECK_THROW(command, NIMCP_ERROR_NULL_ARG, "command is NULL");
+    NIMCP_CHECK_THROW(evaluation, NIMCP_ERROR_NULL_ARG, "evaluation is NULL");
 
     /* Ensure is_command is set */
     proposed_action_t cmd_action = *command;
@@ -573,9 +573,9 @@ bool core_directives_allow_action(core_directives_system_t* system,
 int core_directives_block_action(core_directives_system_t* system,
                                   const proposed_action_t* action,
                                   const char* reason) {
-    if (!system) return NIMCP_ERROR_NULL_ARG;
-    if (!action) return NIMCP_ERROR_NULL_ARG;
-    if (!reason) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
+    NIMCP_CHECK_THROW(action, NIMCP_ERROR_NULL_ARG, "action is NULL");
+    NIMCP_CHECK_THROW(reason, NIMCP_ERROR_NULL_ARG, "reason is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -606,8 +606,8 @@ int core_directives_block_action(core_directives_system_t* system,
 int core_directives_register_escalation_callback(core_directives_system_t* system,
                                                   escalation_callback_t callback,
                                                   void* user_data) {
-    if (!system) return NIMCP_ERROR_NULL_ARG;
-    if (!callback) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
+    NIMCP_CHECK_THROW(callback, NIMCP_ERROR_NULL_ARG, "callback is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -627,8 +627,8 @@ int core_directives_register_escalation_callback(core_directives_system_t* syste
 
 int core_directives_get_stats(core_directives_system_t* system,
                                core_directives_stats_t* stats) {
-    if (!system) return NIMCP_ERROR_NULL_ARG;
-    if (!stats) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_ARG, "stats is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -640,7 +640,7 @@ int core_directives_get_stats(core_directives_system_t* system,
 }
 
 int core_directives_reset_stats(core_directives_system_t* system) {
-    if (!system) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -658,7 +658,7 @@ int core_directives_reset_stats(core_directives_system_t* system) {
  *============================================================================*/
 
 int core_directives_connect_bio_async(core_directives_system_t* system) {
-    if (!system) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
     if (system->bio_async_enabled) return NIMCP_OK;
 
     bio_module_info_t info = {
@@ -680,7 +680,7 @@ int core_directives_connect_bio_async(core_directives_system_t* system) {
 }
 
 int core_directives_disconnect_bio_async(core_directives_system_t* system) {
-    if (!system) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
     if (!system->bio_async_enabled) return NIMCP_OK;
 
     if (system->bio_ctx) {
@@ -734,8 +734,8 @@ const char* command_source_name(command_source_t source) {
 
 int core_directives_connect_immune(core_directives_system_t* system,
                                     brain_immune_system_t* immune) {
-    if (!system) return NIMCP_ERROR_NULL_ARG;
-    if (!immune) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
+    NIMCP_CHECK_THROW(immune, NIMCP_ERROR_NULL_ARG, "immune is NULL");
 
     /* Store reference for integration */
     /* Note: In full implementation, would create directive_immune_bridge */
@@ -746,8 +746,8 @@ int core_directives_connect_immune(core_directives_system_t* system,
 
 int core_directives_connect_fep(core_directives_system_t* system,
                                  fep_orchestrator_t* fep_orch) {
-    if (!system) return NIMCP_ERROR_NULL_ARG;
-    if (!fep_orch) return NIMCP_ERROR_NULL_ARG;
+    NIMCP_CHECK_THROW(system, NIMCP_ERROR_NULL_ARG, "system is NULL");
+    NIMCP_CHECK_THROW(fep_orch, NIMCP_ERROR_NULL_ARG, "fep_orch is NULL");
 
     /* Store reference for integration */
     /* Note: In full implementation, would create directive_fep_bridge */

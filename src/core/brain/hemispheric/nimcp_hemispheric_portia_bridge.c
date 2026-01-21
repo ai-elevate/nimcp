@@ -210,9 +210,7 @@ void hemispheric_portia_destroy(hemispheric_portia_bridge_t* bridge) {
 //=============================================================================
 
 int hemispheric_portia_update(hemispheric_portia_bridge_t* bridge, float dt) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -293,9 +291,7 @@ int hemispheric_portia_update(hemispheric_portia_bridge_t* bridge, float dt) {
 }
 
 int hemispheric_portia_apply_allocation(hemispheric_portia_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized || !bridge->brain) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized && bridge->brain, NIMCP_ERROR_NULL_POINTER, "bridge is NULL, not initialized, or brain is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -332,9 +328,7 @@ int hemispheric_portia_set_strategy(
     hemispheric_portia_bridge_t* bridge,
     allocation_strategy_t strategy
 ) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->current_strategy = strategy;
@@ -349,9 +343,7 @@ int hemispheric_portia_set_task(
     hemispheric_portia_bridge_t* bridge,
     task_type_t task
 ) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->current_task = task;
@@ -364,13 +356,8 @@ int hemispheric_portia_set_fraction(
     hemispheric_portia_bridge_t* bridge,
     float left_fraction
 ) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
-
-    if (left_fraction < 0.0f || left_fraction > 1.0f) {
-        return NIMCP_ERROR_INVALID_PARAM;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
+    NIMCP_CHECK_THROW(left_fraction >= 0.0f && left_fraction <= 1.0f, NIMCP_ERROR_INVALID_PARAM, "left_fraction must be between 0.0 and 1.0");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -395,9 +382,7 @@ int hemispheric_portia_force_tier(
     hemisphere_id_t hemisphere,
     platform_tier_t tier
 ) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -420,9 +405,7 @@ int hemispheric_portia_handle_tier_change(
     hemispheric_portia_bridge_t* bridge,
     platform_tier_t new_tier
 ) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -505,9 +488,7 @@ void hemispheric_portia_reset_stats(hemispheric_portia_bridge_t* bridge) {
 //=============================================================================
 
 int hemispheric_portia_connect_bio_async(hemispheric_portia_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     if (bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;
@@ -532,9 +513,7 @@ int hemispheric_portia_connect_bio_async(hemispheric_portia_bridge_t* bridge) {
 }
 
 int hemispheric_portia_disconnect_bio_async(hemispheric_portia_bridge_t* bridge) {
-    if (!bridge || !bridge->initialized) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge && bridge->initialized, NIMCP_ERROR_NULL_POINTER, "bridge is NULL or not initialized");
 
     if (!bridge->base.bio_async_enabled) {
         return NIMCP_SUCCESS;

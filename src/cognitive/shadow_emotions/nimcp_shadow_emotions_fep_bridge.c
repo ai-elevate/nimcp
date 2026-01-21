@@ -16,7 +16,7 @@
 #define LOG_MODULE "shadow_emotions_fep_bridge"
 
 int shadow_emotions_fep_bridge_default_config(shadow_emotions_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->dysregulation_threshold = SHADOW_FEP_DYSREGULATION_THRESHOLD;
     config->precision_calibration_strength = SHADOW_FEP_PRECISION_CALIBRATION;
     config->intervention_effectiveness = SHADOW_FEP_INTERVENTION_STRENGTH;
@@ -53,7 +53,7 @@ void shadow_emotions_fep_bridge_destroy(shadow_emotions_fep_bridge_t* bridge) {
 }
 
 int shadow_emotions_fep_bridge_connect_fep(shadow_emotions_fep_bridge_t* bridge, fep_system_t* fep) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -61,7 +61,7 @@ int shadow_emotions_fep_bridge_connect_fep(shadow_emotions_fep_bridge_t* bridge,
 }
 
 int shadow_emotions_fep_bridge_connect_shadow(shadow_emotions_fep_bridge_t* bridge, shadow_emotion_system_t* shadow) {
-    if (!bridge || !shadow) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && shadow, NIMCP_ERROR_NULL_POINTER, "bridge or shadow is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->shadow_system = shadow;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -69,7 +69,7 @@ int shadow_emotions_fep_bridge_connect_shadow(shadow_emotions_fep_bridge_t* brid
 }
 
 int shadow_emotions_fep_bridge_disconnect(shadow_emotions_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->shadow_system = NULL;
@@ -78,7 +78,7 @@ int shadow_emotions_fep_bridge_disconnect(shadow_emotions_fep_bridge_t* bridge) 
 }
 
 int shadow_emotions_fep_detect_dysregulation(shadow_emotions_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->shadow_effects.shadow_pattern_detected = true;
     bridge->stats.pattern_detections++;
@@ -87,7 +87,7 @@ int shadow_emotions_fep_detect_dysregulation(shadow_emotions_fep_bridge_t* bridg
 }
 
 int shadow_emotions_fep_trigger_intervention(shadow_emotions_fep_bridge_t* bridge, shadow_emotion_type_t emotion) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_precision_interventions) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_effects.intervention_triggered = true;
@@ -100,7 +100,7 @@ int shadow_emotions_fep_trigger_intervention(shadow_emotions_fep_bridge_t* bridg
 }
 
 int shadow_emotions_fep_recalibrate_precision(shadow_emotions_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_pe_calibration) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_effects.recalibration_active = true;
@@ -110,7 +110,7 @@ int shadow_emotions_fep_recalibrate_precision(shadow_emotions_fep_bridge_t* brid
 }
 
 int shadow_emotions_fep_apply_shadow_diagnostic(shadow_emotions_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_diagnostic_mode) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->shadow_effects.fep_diagnostic_active = true;
@@ -119,7 +119,7 @@ int shadow_emotions_fep_apply_shadow_diagnostic(shadow_emotions_fep_bridge_t* br
 }
 
 int shadow_emotions_fep_update_beliefs_from_correction(shadow_emotions_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_self_correction) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.successful_corrections++;
@@ -128,7 +128,7 @@ int shadow_emotions_fep_update_beliefs_from_correction(shadow_emotions_fep_bridg
 }
 
 int shadow_emotions_fep_bridge_update(shadow_emotions_fep_bridge_t* bridge, uint64_t delta_ms) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     shadow_emotions_fep_detect_dysregulation(bridge);
     shadow_emotions_fep_recalibrate_precision(bridge);
     shadow_emotions_fep_apply_shadow_diagnostic(bridge);
@@ -136,7 +136,7 @@ int shadow_emotions_fep_bridge_update(shadow_emotions_fep_bridge_t* bridge, uint
 }
 
 int shadow_emotions_fep_bridge_get_state(const shadow_emotions_fep_bridge_t* bridge, shadow_emotions_fep_state_t* state) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -144,7 +144,7 @@ int shadow_emotions_fep_bridge_get_state(const shadow_emotions_fep_bridge_t* bri
 }
 
 int shadow_emotions_fep_bridge_get_stats(const shadow_emotions_fep_bridge_t* bridge, shadow_emotions_fep_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -152,7 +152,7 @@ int shadow_emotions_fep_bridge_get_stats(const shadow_emotions_fep_bridge_t* bri
 }
 
 int shadow_emotions_fep_bridge_connect_bio_async(shadow_emotions_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_SHADOW_BRIDGE,

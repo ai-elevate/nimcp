@@ -17,7 +17,7 @@
 #define LOG_MODULE "reasoning_fep_bridge"
 
 int reasoning_fep_bridge_default_config(reasoning_fep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
     config->pe_abduction_threshold = REASONING_FEP_PE_ABDUCTION_THRESHOLD;
     config->hypothesis_selection_temperature = 1.0f;
     config->inference_precision_threshold = REASONING_FEP_PRECISION_THRESHOLD;
@@ -56,7 +56,7 @@ void reasoning_fep_bridge_destroy(reasoning_fep_bridge_t* bridge) {
 }
 
 int reasoning_fep_bridge_connect_fep(reasoning_fep_bridge_t* bridge, fep_system_t* fep) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && fep, NIMCP_ERROR_NULL_POINTER, "bridge or fep is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -64,7 +64,7 @@ int reasoning_fep_bridge_connect_fep(reasoning_fep_bridge_t* bridge, fep_system_
 }
 
 int reasoning_fep_bridge_connect_reasoning(reasoning_fep_bridge_t* bridge, reasoning_integration_t* reasoning) {
-    if (!bridge || !reasoning) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && reasoning, NIMCP_ERROR_NULL_POINTER, "bridge or reasoning is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->reasoning_system = reasoning;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -72,7 +72,7 @@ int reasoning_fep_bridge_connect_reasoning(reasoning_fep_bridge_t* bridge, reaso
 }
 
 int reasoning_fep_bridge_disconnect(reasoning_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->reasoning_system = NULL;
@@ -81,7 +81,7 @@ int reasoning_fep_bridge_disconnect(reasoning_fep_bridge_t* bridge) {
 }
 
 int reasoning_fep_trigger_abduction(reasoning_fep_bridge_t* bridge, float pe_magnitude) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_pe_abduction) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     if (pe_magnitude > bridge->config.pe_abduction_threshold) {
@@ -95,7 +95,7 @@ int reasoning_fep_trigger_abduction(reasoning_fep_bridge_t* bridge, float pe_mag
 }
 
 int reasoning_fep_select_hypothesis_by_fe(reasoning_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_fe_hypothesis_selection) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->fep_effects.selected_hypothesis = 0;
@@ -105,7 +105,7 @@ int reasoning_fep_select_hypothesis_by_fe(reasoning_fep_bridge_t* bridge) {
 }
 
 int reasoning_fep_modulate_inference_confidence(reasoning_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_precision_inference) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     float precision = bridge->state.current_precision;
@@ -115,7 +115,7 @@ int reasoning_fep_modulate_inference_confidence(reasoning_fep_bridge_t* bridge) 
 }
 
 int reasoning_fep_apply_rule_priors(reasoning_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_rule_priors) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->reasoning_effects.rule_prior_bias = bridge->config.rule_prior_strength;
@@ -126,7 +126,7 @@ int reasoning_fep_apply_rule_priors(reasoning_fep_bridge_t* bridge) {
 }
 
 int reasoning_fep_apply_conclusion_constraints(reasoning_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_conclusion_constraints) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->reasoning_effects.conclusion_constraint_strength = bridge->config.conclusion_belief_strength;
@@ -137,7 +137,7 @@ int reasoning_fep_apply_conclusion_constraints(reasoning_fep_bridge_t* bridge) {
 }
 
 int reasoning_fep_apply_explanation_reduction(reasoning_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->fep_system) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && bridge->fep_system, NIMCP_ERROR_NULL_POINTER, "bridge or fep_system is NULL");
     if (!bridge->config.enable_explanation_reduction) return 0;
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->reasoning_effects.fe_reduction = bridge->config.explanation_fe_reduction;
@@ -147,7 +147,7 @@ int reasoning_fep_apply_explanation_reduction(reasoning_fep_bridge_t* bridge) {
 }
 
 int reasoning_fep_bridge_update(reasoning_fep_bridge_t* bridge, uint64_t delta_ms) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     reasoning_fep_select_hypothesis_by_fe(bridge);
     reasoning_fep_modulate_inference_confidence(bridge);
     reasoning_fep_apply_rule_priors(bridge);
@@ -157,7 +157,7 @@ int reasoning_fep_bridge_update(reasoning_fep_bridge_t* bridge, uint64_t delta_m
 }
 
 int reasoning_fep_bridge_get_state(const reasoning_fep_bridge_t* bridge, reasoning_fep_state_t* state) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && state, NIMCP_ERROR_NULL_POINTER, "bridge or state is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->state;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -165,7 +165,7 @@ int reasoning_fep_bridge_get_state(const reasoning_fep_bridge_t* bridge, reasoni
 }
 
 int reasoning_fep_bridge_get_stats(const reasoning_fep_bridge_t* bridge, reasoning_fep_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge && stats, NIMCP_ERROR_NULL_POINTER, "bridge or stats is NULL");
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -173,7 +173,7 @@ int reasoning_fep_bridge_get_stats(const reasoning_fep_bridge_t* bridge, reasoni
 }
 
 int reasoning_fep_bridge_connect_bio_async(reasoning_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_REASONING_BRIDGE,

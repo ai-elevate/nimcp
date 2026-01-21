@@ -197,7 +197,8 @@ static nimcp_error_t compute_entity_prediction(omni_wm_kg_bridge_t* bridge,
                                                 uint32_t entity_id,
                                                 uint32_t horizon_steps,
                                                 wm_to_kg_entity_prediction_t* out) {
-    if (!bridge || !out) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(out, NIMCP_ERROR_NULL_POINTER, "out is NULL");
 
     /* Initialize prediction output */
     memset(out, 0, sizeof(wm_to_kg_entity_prediction_t));
@@ -231,7 +232,8 @@ static nimcp_error_t compute_entity_prediction(omni_wm_kg_bridge_t* bridge,
 static nimcp_error_t compute_module_failure_prediction(omni_wm_kg_bridge_t* bridge,
                                                         uint32_t module_id,
                                                         wm_to_kg_failure_prediction_t* out) {
-    if (!bridge || !out) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(out, NIMCP_ERROR_NULL_POINTER, "out is NULL");
 
     /* Initialize prediction output */
     memset(out, 0, sizeof(wm_to_kg_failure_prediction_t));
@@ -359,7 +361,7 @@ static float compute_anomaly_score(const float* predicted, const float* observed
  * @brief Update effects flowing from WM to KG system
  */
 static nimcp_error_t update_wm_to_kg_effects(omni_wm_kg_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     omni_wm_to_kg_effects_t* effects = &bridge->wm_to_kg;
 
@@ -417,7 +419,7 @@ static nimcp_error_t update_wm_to_kg_effects(omni_wm_kg_bridge_t* bridge) {
  * @brief Update effects flowing from KG system to WM
  */
 static nimcp_error_t update_kg_to_wm_effects(omni_wm_kg_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     kg_to_omni_wm_effects_t* effects = &bridge->kg_to_wm;
 
@@ -450,7 +452,7 @@ static nimcp_error_t handle_entity_prediction_request(const void* msg, size_t ms
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_kg_bridge_t* bridge = (omni_wm_kg_bridge_t*)user_data;
 
@@ -470,7 +472,7 @@ static nimcp_error_t handle_module_prediction_request(const void* msg, size_t ms
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_kg_bridge_t* bridge = (omni_wm_kg_bridge_t*)user_data;
 
@@ -490,7 +492,7 @@ static nimcp_error_t handle_exception_notify(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_kg_bridge_t* bridge = (omni_wm_kg_bridge_t*)user_data;
 
@@ -511,7 +513,7 @@ static nimcp_error_t handle_wiring_change(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_kg_bridge_t* bridge = (omni_wm_kg_bridge_t*)user_data;
 
@@ -532,7 +534,7 @@ static nimcp_error_t handle_training_event(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_kg_bridge_t* bridge = (omni_wm_kg_bridge_t*)user_data;
 
@@ -553,7 +555,7 @@ static nimcp_error_t handle_registry_sync(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_kg_bridge_t* bridge = (omni_wm_kg_bridge_t*)user_data;
 
@@ -571,7 +573,7 @@ static nimcp_error_t handle_registry_sync(const void* msg, size_t msg_size,
 nimcp_error_t omni_wm_kg_bridge_default_config(
     omni_wm_kg_bridge_config_t* config) {
 
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(omni_wm_kg_bridge_config_t));
 
@@ -681,7 +683,7 @@ void omni_wm_kg_bridge_destroy(omni_wm_kg_bridge_t* bridge) {
 }
 
 nimcp_error_t omni_wm_kg_bridge_reset(omni_wm_kg_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -734,8 +736,8 @@ nimcp_error_t omni_wm_kg_bridge_connect(
     kg_wiring_manager_t* kg_wiring,
     kg_module_registry_t* registry) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!world_model) return NIMCP_ERROR_INVALID_PARAM; /* WM required */
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_INVALID_PARAM, "world_model is required");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -762,7 +764,8 @@ nimcp_error_t omni_wm_kg_bridge_connect_world_model(
     omni_wm_kg_bridge_t* bridge,
     omni_world_model_t* world_model) {
 
-    if (!bridge || !world_model) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_NULL_POINTER, "world_model is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->world_model = world_model;
@@ -778,7 +781,8 @@ nimcp_error_t omni_wm_kg_bridge_connect_kg_wiring(
     omni_wm_kg_bridge_t* bridge,
     kg_wiring_manager_t* kg_wiring) {
 
-    if (!bridge || !kg_wiring) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(kg_wiring, NIMCP_ERROR_NULL_POINTER, "kg_wiring is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->kg_wiring = kg_wiring;
@@ -793,7 +797,8 @@ nimcp_error_t omni_wm_kg_bridge_connect_registry(
     omni_wm_kg_bridge_t* bridge,
     kg_module_registry_t* registry) {
 
-    if (!bridge || !registry) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(registry, NIMCP_ERROR_NULL_POINTER, "registry is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->registry = registry;
@@ -815,7 +820,7 @@ nimcp_error_t omni_wm_kg_bridge_update(
     omni_wm_kg_bridge_t* bridge,
     float dt) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_modulation) return NIMCP_SUCCESS;
 
     uint64_t start_time = get_current_time_us();
@@ -871,7 +876,8 @@ nimcp_error_t omni_wm_kg_bridge_predict_entity(
     uint32_t horizon_steps,
     wm_to_kg_entity_prediction_t* out_prediction) {
 
-    if (!bridge || !out_prediction) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(out_prediction, NIMCP_ERROR_NULL_POINTER, "out_prediction is NULL");
     if (!bridge->config.enable_entity_prediction) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -900,7 +906,9 @@ nimcp_error_t omni_wm_kg_bridge_predict_entities_batch(
     uint32_t horizon_steps,
     wm_to_kg_entity_prediction_t* out_predictions) {
 
-    if (!bridge || !entity_ids || !out_predictions) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(entity_ids, NIMCP_ERROR_NULL_POINTER, "entity_ids is NULL");
+    NIMCP_CHECK_THROW(out_predictions, NIMCP_ERROR_NULL_POINTER, "out_predictions is NULL");
     if (entity_count == 0) return NIMCP_SUCCESS;
     if (!bridge->config.enable_entity_prediction) return NIMCP_SUCCESS;
 
@@ -933,7 +941,8 @@ nimcp_error_t omni_wm_kg_bridge_predict_relationships(
     uint32_t entity_id,
     float* out_change_probability) {
 
-    if (!bridge || !out_change_probability) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(out_change_probability, NIMCP_ERROR_NULL_POINTER, "out_change_probability is NULL");
     if (!bridge->config.enable_relationship_prediction) {
         *out_change_probability = 0.0f;
         return NIMCP_SUCCESS;
@@ -968,9 +977,9 @@ nimcp_error_t omni_wm_kg_bridge_predict_relationship_strength(
     float* out_predicted_strength,
     float* out_confidence) {
 
-    if (!bridge || !out_predicted_strength || !out_confidence) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(out_predicted_strength, NIMCP_ERROR_NULL_POINTER, "out_predicted_strength is NULL");
+    NIMCP_CHECK_THROW(out_confidence, NIMCP_ERROR_NULL_POINTER, "out_confidence is NULL");
     if (!bridge->config.enable_relationship_prediction) {
         *out_predicted_strength = 0.5f;
         *out_confidence = 0.0f;
@@ -1022,9 +1031,9 @@ nimcp_error_t omni_wm_kg_bridge_predict_module_failure(
     float* out_failure_probability,
     float* out_time_to_failure) {
 
-    if (!bridge || !out_failure_probability || !out_time_to_failure) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(out_failure_probability, NIMCP_ERROR_NULL_POINTER, "out_failure_probability is NULL");
+    NIMCP_CHECK_THROW(out_time_to_failure, NIMCP_ERROR_NULL_POINTER, "out_time_to_failure is NULL");
     if (!bridge->config.enable_module_prediction) {
         *out_failure_probability = 0.0f;
         *out_time_to_failure = INFINITY;
@@ -1061,7 +1070,8 @@ nimcp_error_t omni_wm_kg_bridge_get_module_prediction(
     uint32_t module_id,
     wm_to_kg_failure_prediction_t* out_prediction) {
 
-    if (!bridge || !out_prediction) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(out_prediction, NIMCP_ERROR_NULL_POINTER, "out_prediction is NULL");
     if (!bridge->config.enable_module_prediction) {
         memset(out_prediction, 0, sizeof(wm_to_kg_failure_prediction_t));
         return NIMCP_SUCCESS;
@@ -1087,9 +1097,9 @@ nimcp_error_t omni_wm_kg_bridge_predict_system_stability(
     float* out_stability_score,
     uint32_t* out_predicted_exceptions) {
 
-    if (!bridge || !out_stability_score || !out_predicted_exceptions) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(out_stability_score, NIMCP_ERROR_NULL_POINTER, "out_stability_score is NULL");
+    NIMCP_CHECK_THROW(out_predicted_exceptions, NIMCP_ERROR_NULL_POINTER, "out_predicted_exceptions is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1109,8 +1119,8 @@ nimcp_error_t omni_wm_kg_bridge_on_exception(
     omni_wm_kg_bridge_t* bridge,
     const nimcp_kg_wiring_exception_t* exception) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!exception) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(exception, NIMCP_ERROR_NULL_POINTER, "exception is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1147,9 +1157,9 @@ nimcp_error_t omni_wm_kg_bridge_check_anomaly(
     bool* out_is_anomalous,
     float* out_anomaly_score) {
 
-    if (!bridge || !out_is_anomalous || !out_anomaly_score) {
-        return NIMCP_ERROR_NULL_POINTER;
-    }
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(out_is_anomalous, NIMCP_ERROR_NULL_POINTER, "out_is_anomalous is NULL");
+    NIMCP_CHECK_THROW(out_anomaly_score, NIMCP_ERROR_NULL_POINTER, "out_anomaly_score is NULL");
     if (!bridge->config.enable_anomaly_detection) {
         *out_is_anomalous = false;
         *out_anomaly_score = 0.0f;
@@ -1191,8 +1201,8 @@ nimcp_error_t omni_wm_kg_bridge_train_from_kg_event(
     omni_wm_kg_bridge_t* bridge,
     const kg_event_t* event) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!event) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(event, NIMCP_ERROR_NULL_POINTER, "event is NULL");
     if (!bridge->config.enable_training_from_kg) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1222,8 +1232,9 @@ nimcp_error_t omni_wm_kg_bridge_train_from_observation(
     uint32_t state_dim,
     uint64_t timestamp_us) {
 
-    if (!bridge || !observed_state) return NIMCP_ERROR_NULL_POINTER;
-    if (state_dim == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(observed_state, NIMCP_ERROR_NULL_POINTER, "observed_state is NULL");
+    NIMCP_CHECK_THROW(state_dim > 0, NIMCP_ERROR_INVALID_PARAM, "state_dim must be greater than 0");
     if (!bridge->config.enable_training_from_kg) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1264,7 +1275,7 @@ nimcp_error_t omni_wm_kg_bridge_train_from_observation(
 nimcp_error_t omni_wm_kg_bridge_flush_training(
     omni_wm_kg_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_training_from_kg) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1295,7 +1306,7 @@ nimcp_error_t omni_wm_kg_bridge_flush_training(
 nimcp_error_t omni_wm_kg_bridge_sync_registry(
     omni_wm_kg_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_registry_sync) return NIMCP_SUCCESS;
     if (!bridge->registry) return NIMCP_SUCCESS;
 
@@ -1323,8 +1334,9 @@ nimcp_error_t omni_wm_kg_bridge_update_module_health(
     kg_module_health_t health_state,
     float health_score) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (health_score < 0.0f || health_score > 1.0f) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(health_score >= 0.0f && health_score <= 1.0f, NIMCP_ERROR_INVALID_PARAM,
+                      "health_score must be between 0.0 and 1.0");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1392,7 +1404,8 @@ nimcp_error_t omni_wm_kg_bridge_get_stats(
     const omni_wm_kg_bridge_t* bridge,
     omni_wm_kg_bridge_stats_t* stats) {
 
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -1404,7 +1417,7 @@ nimcp_error_t omni_wm_kg_bridge_get_stats(
 nimcp_error_t omni_wm_kg_bridge_reset_stats(
     omni_wm_kg_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(omni_wm_kg_bridge_stats_t));
@@ -1420,7 +1433,7 @@ nimcp_error_t omni_wm_kg_bridge_reset_stats(
 nimcp_error_t omni_wm_kg_bridge_connect_bio_async(
     omni_wm_kg_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_bio_async) return NIMCP_SUCCESS;
     if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS; /* Already connected */
 
@@ -1473,7 +1486,7 @@ nimcp_error_t omni_wm_kg_bridge_connect_bio_async(
 nimcp_error_t omni_wm_kg_bridge_disconnect_bio_async(
     omni_wm_kg_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     if (bridge->base.bio_ctx) {
@@ -1588,7 +1601,7 @@ const char* omni_wm_kg_module_health_to_string(kg_module_health_t health) {
 nimcp_error_t omni_wm_kg_bridge_validate_config(
     const omni_wm_kg_bridge_config_t* config) {
 
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Validate sensitivity range */
     if (config->sensitivity < 0.5f || config->sensitivity > 2.0f) {

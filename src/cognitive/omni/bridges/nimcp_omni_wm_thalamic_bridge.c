@@ -101,12 +101,12 @@ static uint64_t get_current_time_us(void) {
  * @brief Allocate internal buffers
  */
 static nimcp_error_t allocate_buffers(omni_wm_thalamic_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Allocate input buffer */
     bridge->input_buffer_size = DEFAULT_INPUT_BUFFER_SIZE;
     bridge->input_buffer = nimcp_calloc(bridge->input_buffer_size, sizeof(float));
-    if (!bridge->input_buffer) return NIMCP_ERROR_NO_MEMORY;
+    NIMCP_CHECK_THROW(bridge->input_buffer, NIMCP_ERROR_NO_MEMORY, "failed to allocate input_buffer");
 
     /* Allocate attention buffer */
     bridge->attention_buffer_size = DEFAULT_ATTENTION_BUFFER_SIZE;
@@ -154,7 +154,7 @@ static void free_buffers(omni_wm_thalamic_bridge_t* bridge) {
  * @brief Allocate dynamic arrays in effects structures
  */
 static nimcp_error_t allocate_effects_arrays(omni_wm_thalamic_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     thalamus_to_omni_wm_effects_t* thal_eff = &bridge->thal_to_wm;
     omni_wm_to_thalamus_effects_t* wm_eff = &bridge->wm_to_thal;
@@ -162,6 +162,7 @@ static nimcp_error_t allocate_effects_arrays(omni_wm_thalamic_bridge_t* bridge) 
     /* Allocate thalamus -> WM effect arrays */
     uint32_t attn_dim = WM_THALAMIC_MAX_ATTENTION_WEIGHTS;
     thal_eff->attention_weights = nimcp_calloc(attn_dim, sizeof(float));
+    /* Note: subsequent allocations use goto cleanup, first allocation returns directly */
     if (!thal_eff->attention_weights) return NIMCP_ERROR_NO_MEMORY;
     thal_eff->attention_dim = attn_dim;
 
@@ -315,7 +316,9 @@ static nimcp_error_t apply_gating(omni_wm_thalamic_bridge_t* bridge,
                                    const float* input, uint32_t input_dim,
                                    float* output, uint32_t output_dim,
                                    float attention, float inhibition) {
-    if (!bridge || !input || !output) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(input, NIMCP_ERROR_NULL_POINTER, "input is NULL");
+    NIMCP_CHECK_THROW(output, NIMCP_ERROR_NULL_POINTER, "output is NULL");
 
     /* Compute effective gate strength */
     float gate = attention * (1.0f - inhibition);
@@ -341,7 +344,7 @@ static nimcp_error_t apply_gating(omni_wm_thalamic_bridge_t* bridge,
  * @brief Update effects from thalamus to WM
  */
 static nimcp_error_t update_thalamus_to_wm_effects(omni_wm_thalamic_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     thalamus_to_omni_wm_effects_t* effects = &bridge->thal_to_wm;
 
@@ -376,7 +379,7 @@ static nimcp_error_t update_thalamus_to_wm_effects(omni_wm_thalamic_bridge_t* br
  * @brief Update effects from WM to thalamus
  */
 static nimcp_error_t update_wm_to_thalamus_effects(omni_wm_thalamic_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     omni_wm_to_thalamus_effects_t* effects = &bridge->wm_to_thal;
 
@@ -407,7 +410,8 @@ static nimcp_error_t handle_gate_input(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!msg || !user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(msg, NIMCP_ERROR_NULL_POINTER, "msg is NULL");
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_thalamic_bridge_t* bridge = (omni_wm_thalamic_bridge_t*)user_data;
 
@@ -427,7 +431,7 @@ static nimcp_error_t handle_attention_bias(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_thalamic_bridge_t* bridge = (omni_wm_thalamic_bridge_t*)user_data;
 
@@ -447,7 +451,7 @@ static nimcp_error_t handle_trn_inhibit(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     omni_wm_thalamic_bridge_t* bridge = (omni_wm_thalamic_bridge_t*)user_data;
 
@@ -467,7 +471,7 @@ static nimcp_error_t handle_prediction_error(const void* msg, size_t msg_size,
     (void)msg_size;
     (void)promise;
 
-    if (!user_data) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(user_data, NIMCP_ERROR_NULL_POINTER, "user_data is NULL");
 
     /* Placeholder: would process PE and update attention */
     return NIMCP_SUCCESS;
@@ -480,7 +484,7 @@ static nimcp_error_t handle_prediction_error(const void* msg, size_t msg_size,
 nimcp_error_t omni_wm_thalamic_bridge_default_config(
     omni_wm_thalamic_bridge_config_t* config) {
 
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     memset(config, 0, sizeof(omni_wm_thalamic_bridge_config_t));
 
@@ -605,7 +609,7 @@ void omni_wm_thalamic_bridge_destroy(omni_wm_thalamic_bridge_t* bridge) {
 }
 
 nimcp_error_t omni_wm_thalamic_bridge_reset(omni_wm_thalamic_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -668,8 +672,8 @@ nimcp_error_t omni_wm_thalamic_bridge_connect(
     thalamus_t* thalamus,
     thalamic_router_t* router) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!world_model) return NIMCP_ERROR_INVALID_PARAM; /* WM required */
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_INVALID_PARAM, "world_model is required");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -696,7 +700,8 @@ nimcp_error_t omni_wm_thalamic_bridge_connect_world_model(
     omni_wm_thalamic_bridge_t* bridge,
     omni_world_model_t* world_model) {
 
-    if (!bridge || !world_model) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_NULL_POINTER, "world_model is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->world_model = world_model;
@@ -712,7 +717,8 @@ nimcp_error_t omni_wm_thalamic_bridge_connect_thalamus(
     omni_wm_thalamic_bridge_t* bridge,
     thalamus_t* thalamus) {
 
-    if (!bridge || !thalamus) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(thalamus, NIMCP_ERROR_NULL_POINTER, "thalamus is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->thalamus = thalamus;
@@ -727,7 +733,8 @@ nimcp_error_t omni_wm_thalamic_bridge_connect_router(
     omni_wm_thalamic_bridge_t* bridge,
     thalamic_router_t* router) {
 
-    if (!bridge || !router) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(router, NIMCP_ERROR_NULL_POINTER, "router is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->router = router;
@@ -749,7 +756,7 @@ nimcp_error_t omni_wm_thalamic_bridge_update(
     omni_wm_thalamic_bridge_t* bridge,
     float dt) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_modulation) return NIMCP_SUCCESS;
 
     uint64_t start_time = get_current_time_us();
@@ -792,7 +799,7 @@ nimcp_error_t omni_wm_thalamic_bridge_set_arousal(
     omni_wm_thalamic_bridge_t* bridge,
     float arousal) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     /* Clamp to valid range */
     if (arousal < 0.0f) arousal = 0.0f;
@@ -831,10 +838,12 @@ nimcp_error_t omni_wm_thalamic_bridge_gate_input(
     uint32_t output_dim,
     float* attention_applied) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!input || !gated_output) return NIMCP_ERROR_NULL_POINTER;
-    if (input_dim == 0 || output_dim == 0) return NIMCP_ERROR_INVALID_PARAM;
-    if (nucleus >= WM_THAL_NUCLEUS_COUNT) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(input, NIMCP_ERROR_NULL_POINTER, "input is NULL");
+    NIMCP_CHECK_THROW(gated_output, NIMCP_ERROR_NULL_POINTER, "gated_output is NULL");
+    NIMCP_CHECK_THROW(input_dim > 0, NIMCP_ERROR_INVALID_PARAM, "input_dim must be greater than 0");
+    NIMCP_CHECK_THROW(output_dim > 0, NIMCP_ERROR_INVALID_PARAM, "output_dim must be greater than 0");
+    NIMCP_CHECK_THROW(nucleus < WM_THAL_NUCLEUS_COUNT, NIMCP_ERROR_INVALID_PARAM, "nucleus out of range");
     if (!bridge->config.enable_sensory_gating) {
         /* Pass through without gating */
         uint32_t copy_dim = input_dim < output_dim ? input_dim : output_dim;
@@ -975,8 +984,9 @@ nimcp_error_t omni_wm_thalamic_bridge_set_attention_bias(
     uint32_t bias_dim,
     float confidence) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!attention_bias || bias_dim == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(attention_bias, NIMCP_ERROR_INVALID_PARAM, "attention_bias is NULL");
+    NIMCP_CHECK_THROW(bias_dim > 0, NIMCP_ERROR_INVALID_PARAM, "bias_dim must be greater than 0");
     if (!bridge->config.enable_prediction_biasing) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1005,8 +1015,8 @@ nimcp_error_t omni_wm_thalamic_bridge_set_nucleus_attention(
     wm_thal_nucleus_type_t nucleus,
     float attention) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (nucleus >= WM_THAL_NUCLEUS_COUNT) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(nucleus < WM_THAL_NUCLEUS_COUNT, NIMCP_ERROR_INVALID_PARAM, "nucleus out of range");
 
     /* Clamp to valid range */
     if (attention < 0.0f) attention = 0.0f;
@@ -1034,8 +1044,9 @@ nimcp_error_t omni_wm_thalamic_bridge_set_pulvinar_attention(
     const float* attention_weights,
     uint32_t weights_dim) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!attention_weights || weights_dim == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(attention_weights, NIMCP_ERROR_INVALID_PARAM, "attention_weights is NULL");
+    NIMCP_CHECK_THROW(weights_dim > 0, NIMCP_ERROR_INVALID_PARAM, "weights_dim must be greater than 0");
     if (!bridge->config.enable_pulvinar_coordination) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1068,8 +1079,9 @@ nimcp_error_t omni_wm_thalamic_bridge_predict_salience(
     float* salience_out,
     uint32_t salience_dim) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!salience_out || salience_dim == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(salience_out, NIMCP_ERROR_INVALID_PARAM, "salience_out is NULL");
+    NIMCP_CHECK_THROW(salience_dim > 0, NIMCP_ERROR_INVALID_PARAM, "salience_dim must be greater than 0");
     if (!bridge->config.enable_salience_prediction) return NIMCP_SUCCESS;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1115,8 +1127,8 @@ nimcp_error_t omni_wm_thalamic_bridge_apply_trn_inhibition(
     wm_thal_nucleus_type_t nucleus,
     float inhibition_strength) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (nucleus >= WM_THAL_NUCLEUS_COUNT) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(nucleus < WM_THAL_NUCLEUS_COUNT, NIMCP_ERROR_INVALID_PARAM, "nucleus out of range");
     if (!bridge->config.enable_trn_inhibition) return NIMCP_SUCCESS;
 
     /* Clamp to valid range */
@@ -1150,8 +1162,9 @@ nimcp_error_t omni_wm_thalamic_bridge_apply_selective_inhibition(
     const float* inhibition_map,
     uint32_t map_dim) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!inhibition_map || map_dim == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(inhibition_map, NIMCP_ERROR_INVALID_PARAM, "inhibition_map is NULL");
+    NIMCP_CHECK_THROW(map_dim > 0, NIMCP_ERROR_INVALID_PARAM, "map_dim must be greater than 0");
     if (!bridge->config.enable_trn_inhibition || !bridge->config.selective_inhibition) {
         return NIMCP_SUCCESS;
     }
@@ -1186,8 +1199,8 @@ nimcp_error_t omni_wm_thalamic_bridge_release_trn_inhibition(
     omni_wm_thalamic_bridge_t* bridge,
     wm_thal_nucleus_type_t nucleus) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (nucleus >= WM_THAL_NUCLEUS_COUNT) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(nucleus < WM_THAL_NUCLEUS_COUNT, NIMCP_ERROR_INVALID_PARAM, "nucleus out of range");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1211,7 +1224,7 @@ nimcp_error_t omni_wm_thalamic_bridge_modulate_trn_from_confidence(
     omni_wm_thalamic_bridge_t* bridge,
     float prediction_confidence) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_trn_inhibition) return NIMCP_SUCCESS;
 
     /* Clamp confidence */
@@ -1246,8 +1259,9 @@ nimcp_error_t omni_wm_thalamic_bridge_prediction_error_feedback(
     uint32_t pe_dim,
     float mean_pe) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!prediction_errors || pe_dim == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(prediction_errors, NIMCP_ERROR_INVALID_PARAM, "prediction_errors is NULL");
+    NIMCP_CHECK_THROW(pe_dim > 0, NIMCP_ERROR_INVALID_PARAM, "pe_dim must be greater than 0");
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1286,8 +1300,9 @@ nimcp_error_t omni_wm_thalamic_bridge_update_from_gated_input(
     const float* gated_input,
     uint32_t input_dim) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
-    if (!gated_input || input_dim == 0) return NIMCP_ERROR_INVALID_PARAM;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(gated_input, NIMCP_ERROR_INVALID_PARAM, "gated_input is NULL");
+    NIMCP_CHECK_THROW(input_dim > 0, NIMCP_ERROR_INVALID_PARAM, "input_dim must be greater than 0");
     if (!bridge->world_model) return NIMCP_SUCCESS; /* No WM connected */
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1327,7 +1342,8 @@ nimcp_error_t omni_wm_thalamic_bridge_get_stats(
     const omni_wm_thalamic_bridge_t* bridge,
     omni_wm_thalamic_bridge_stats_t* stats) {
 
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    NIMCP_CHECK_THROW(stats, NIMCP_ERROR_NULL_POINTER, "stats is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -1339,7 +1355,7 @@ nimcp_error_t omni_wm_thalamic_bridge_get_stats(
 nimcp_error_t omni_wm_thalamic_bridge_reset_stats(
     omni_wm_thalamic_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(omni_wm_thalamic_bridge_stats_t));
@@ -1355,7 +1371,7 @@ nimcp_error_t omni_wm_thalamic_bridge_reset_stats(
 nimcp_error_t omni_wm_thalamic_bridge_connect_bio_async(
     omni_wm_thalamic_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->config.enable_bio_async) return NIMCP_SUCCESS;
     if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS; /* Already connected */
 
@@ -1402,7 +1418,7 @@ nimcp_error_t omni_wm_thalamic_bridge_connect_bio_async(
 nimcp_error_t omni_wm_thalamic_bridge_disconnect_bio_async(
     omni_wm_thalamic_bridge_t* bridge) {
 
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     if (bridge->base.bio_ctx) {
@@ -1472,7 +1488,7 @@ const char* omni_wm_thalamic_msg_type_to_string(omni_wm_thalamic_msg_type_t msg_
 nimcp_error_t omni_wm_thalamic_bridge_validate_config(
     const omni_wm_thalamic_bridge_config_t* config) {
 
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    NIMCP_CHECK_THROW(config, NIMCP_ERROR_NULL_POINTER, "config is NULL");
 
     /* Validate sensitivity range */
     if (config->sensitivity < 0.5f || config->sensitivity > 2.0f) {

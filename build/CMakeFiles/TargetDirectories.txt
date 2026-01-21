@@ -4779,6 +4779,9 @@
 /home/bbrelin/nimcp/build/test/integration/exception/CMakeFiles/integration_exception_test_handler_chain_integration.dir
 /home/bbrelin/nimcp/build/test/integration/exception/CMakeFiles/integration_exception_test_exception_propagation_integration.dir
 /home/bbrelin/nimcp/build/test/integration/exception/CMakeFiles/integration_exception_test_exception_immune_integration.dir
+/home/bbrelin/nimcp/build/test/integration/exception/CMakeFiles/integration_exception_test_exception_module_integration.dir
+/home/bbrelin/nimcp/build/test/integration/exception/CMakeFiles/integration_exception_test_exception_async_integration.dir
+/home/bbrelin/nimcp/build/test/integration/exception/CMakeFiles/integration_exception_test_exception_cognitive_integration.dir
 /home/bbrelin/nimcp/build/test/integration/exception/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/exception/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/exception/CMakeFiles/rebuild_cache.dir
@@ -5444,6 +5447,12 @@
 /home/bbrelin/nimcp/build/test/regression/exception/CMakeFiles/regression_exception_test_exception_api_regression.dir
 /home/bbrelin/nimcp/build/test/regression/exception/CMakeFiles/regression_exception_test_exception_contracts_regression.dir
 /home/bbrelin/nimcp/build/test/regression/exception/CMakeFiles/regression_exception_test_exception_immune_regression.dir
+/home/bbrelin/nimcp/build/test/regression/exception/CMakeFiles/regression_exception_api_stability.dir
+/home/bbrelin/nimcp/build/test/regression/exception/CMakeFiles/regression_exception_error_codes.dir
+/home/bbrelin/nimcp/build/test/regression/exception/CMakeFiles/regression_exception_performance.dir
+/home/bbrelin/nimcp/build/test/regression/exception/CMakeFiles/test_exception_regression.dir
+/home/bbrelin/nimcp/build/test/regression/exception/CMakeFiles/test_exception_stability.dir
+/home/bbrelin/nimcp/build/test/regression/exception/CMakeFiles/test_exception_performance_only.dir
 /home/bbrelin/nimcp/build/test/regression/exception/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/exception/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/exception/CMakeFiles/rebuild_cache.dir

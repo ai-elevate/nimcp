@@ -56,26 +56,9 @@ nimcp_status_t nimcp_brain_learn_example(
     LOG_DEBUG("Learning example: label='%s', num_features=%u, confidence=%.3f",
               label ? label : "NULL", num_features, confidence);
 
-    if (!brain) {
-        LOG_ERROR("Brain handle is NULL");
-        set_error("Brain handle is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain handle is NULL in learn_example");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!features) {
-        LOG_ERROR("Features array is NULL");
-        set_error("Features array is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Features array is NULL in learn_example");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!label) {
-        LOG_ERROR("Label is NULL");
-        set_error("Label is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Label is NULL in learn_example");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL in learn_example");
+    NIMCP_CHECK_THROW(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL in learn_example");
+    NIMCP_CHECK_THROW(label, NIMCP_ERROR_NULL_ARG, "Label is NULL in learn_example");
 
     // === PHASE IS-1: BBB INPUT VALIDATION ===
     // Validate external input data through Blood-Brain Barrier before processing
@@ -108,13 +91,11 @@ nimcp_status_t nimcp_brain_learn_example(
     // brain_learn_example returns -1.0f on error, >= 0.0f on success (where value is the loss)
     if (loss < 0.0f) {
         LOG_ERROR("Brain learning failed for label '%s'", label);
-        set_error("Brain learning failed");
         NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "learning",
             "Brain learning failed for label '%s'", label);
         return NIMCP_ERROR;
     }
 
-    set_error("No error");
     LOG_DEBUG("Learning example completed successfully");
     return NIMCP_OK;
 }
@@ -126,29 +107,10 @@ nimcp_status_t nimcp_brain_predict(
     char* out_label,
     float* out_confidence)
 {
-    if (!brain) {
-        set_error("Brain handle is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain handle is NULL in brain_predict");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!features) {
-        set_error("Features array is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Features array is NULL in brain_predict");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!out_label) {
-        set_error("Output label buffer is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Output label buffer is NULL in brain_predict");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!out_confidence) {
-        set_error("Output confidence pointer is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Output confidence pointer is NULL in brain_predict");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL in brain_predict");
+    NIMCP_CHECK_THROW(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL in brain_predict");
+    NIMCP_CHECK_THROW(out_label, NIMCP_ERROR_NULL_ARG, "Output label buffer is NULL in brain_predict");
+    NIMCP_CHECK_THROW(out_confidence, NIMCP_ERROR_NULL_ARG, "Output confidence pointer is NULL in brain_predict");
 
     // === PHASE IS-1: BBB INPUT VALIDATION ===
     // Validate external input data through Blood-Brain Barrier before processing
@@ -169,7 +131,6 @@ nimcp_status_t nimcp_brain_predict(
     brain_decision_t* decision = brain_decide(brain->internal_brain, features, num_features);
 
     if (!decision) {
-        set_error("Brain prediction failed");
         NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "prediction",
             "Brain prediction failed");
         return NIMCP_ERROR;
@@ -183,7 +144,6 @@ nimcp_status_t nimcp_brain_predict(
     // Free decision
     nimcp_free(decision);
 
-    set_error("No error");
     return NIMCP_OK;
 }
 
@@ -194,29 +154,14 @@ nimcp_status_t nimcp_brain_infer(
     float* outputs,
     uint32_t num_outputs)
 {
-    if (!brain) {
-        set_error("Brain handle is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Brain handle is NULL in brain_infer");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!features) {
-        set_error("Features array is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Features array is NULL in brain_infer");
-        return NIMCP_ERROR_NULL_ARG;
-    }
-
-    if (!outputs) {
-        set_error("Outputs array is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "Outputs array is NULL in brain_infer");
-        return NIMCP_ERROR_NULL_ARG;
-    }
+    NIMCP_CHECK_THROW(brain, NIMCP_ERROR_NULL_ARG, "Brain handle is NULL in brain_infer");
+    NIMCP_CHECK_THROW(features, NIMCP_ERROR_NULL_ARG, "Features array is NULL in brain_infer");
+    NIMCP_CHECK_THROW(outputs, NIMCP_ERROR_NULL_ARG, "Outputs array is NULL in brain_infer");
 
     // Call internal brain API to get decision (which includes output vector)
     brain_decision_t* decision = brain_decide(brain->internal_brain, features, num_features);
 
     if (!decision) {
-        set_error("Brain inference failed");
         NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "inference",
             "Brain inference failed");
         return NIMCP_ERROR;
@@ -236,6 +181,5 @@ nimcp_status_t nimcp_brain_infer(
     // Free decision
     nimcp_free(decision);
 
-    set_error("No error");
     return NIMCP_OK;
 }

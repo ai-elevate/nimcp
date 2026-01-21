@@ -266,7 +266,7 @@ static nimcp_error_t handle_consolidation_trigger(
 {
     (void)msg_size;
     (void)response_promise;
-    if (!msg || !user_data) { return NIMCP_ERROR_NULL_ARG; }
+    NIMCP_CHECK_THROW(msg && user_data, NIMCP_ERROR_NULL_ARG, "msg or user_data is NULL");
     const bio_msg_salience_response_t* trigger = (const bio_msg_salience_response_t*)msg;
     systems_consolidation_system_t* system = (systems_consolidation_system_t*)user_data;
     LOG_DEBUG(LOG_MODULE, "Received consolidation trigger: stimulus_id=%u, strength=%.2f, node_count=%u",
