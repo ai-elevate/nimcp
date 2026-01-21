@@ -25,6 +25,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/validation/nimcp_common.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "security_continuous_monitor"
 

@@ -9,6 +9,7 @@
 #include "core/brain/regions/ofc/bridges/nimcp_ofc_brain_init.h"
 #include "core/brain/regions/ofc/bridges/nimcp_ofc_security.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdlib.h>
 

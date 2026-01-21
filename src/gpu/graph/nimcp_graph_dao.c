@@ -13,6 +13,7 @@
 
 #include "gpu/graph/nimcp_graph_dao.h"
 #include "gpu/graph/nimcp_graph_gpu.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>

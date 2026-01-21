@@ -46,6 +46,7 @@
 // SNN and Plasticity bridges
 #include "cognitive/salience/nimcp_salience_snn_bridge.h"
 #include "cognitive/salience/nimcp_salience_plasticity_bridge.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 // SIMD intrinsics for vectorized novelty computation
 #if defined(__AVX2__)

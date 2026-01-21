@@ -12,6 +12,7 @@
 #include "security/lgss/learning/nimcp_lgss_meta_learning_guard.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>

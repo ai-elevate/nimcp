@@ -12,6 +12,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/encoding/nimcp_positional_encoding.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "middleware_circular_buffer"
 

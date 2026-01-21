@@ -14,6 +14,7 @@
 #include "utils/exception/nimcp_exception_handlers.h"
 #include "core/brain/nimcp_brain_kg_helpers.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>

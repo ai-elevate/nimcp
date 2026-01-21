@@ -45,6 +45,7 @@ typedef signal_crash_context_t crash_context_t;
 
 /* Signal exception queue for bridging to exception hierarchy */
 #include "utils/signal/nimcp_signal_exception_queue.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Signal-Safe Globals (accessed from signal handlers)

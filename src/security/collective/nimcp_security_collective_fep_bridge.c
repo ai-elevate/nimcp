@@ -11,6 +11,7 @@
 
 #include "security/collective/nimcp_security_collective_fep_bridge.h"
 #include "utils/platform/nimcp_platform.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>

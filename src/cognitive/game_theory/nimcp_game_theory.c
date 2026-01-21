@@ -11,6 +11,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/algorithms/nimcp_monte_carlo.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 

@@ -10,6 +10,7 @@
 #include "core/brain/regions/retrosplenial/bridges/nimcp_rsc_security.h"
 #include "core/brain/regions/retrosplenial/bridges/nimcp_rsc_kg_wiring.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 /* Forward declarations for RSC functions we need */

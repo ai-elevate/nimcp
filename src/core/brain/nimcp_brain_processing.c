@@ -21,6 +21,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "plasticity/adaptive/nimcp_adaptive.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "BRAIN_PROC"
 

@@ -28,6 +28,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_wiring_helpers.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include "utils/logging/nimcp_logging.h"
 #include "cognitive/memory/nimcp_engram.h"
 #include "utils/platform/nimcp_platform_time.h"

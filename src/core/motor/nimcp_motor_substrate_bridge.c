@@ -5,6 +5,7 @@
 
 #include "core/motor/nimcp_motor_substrate_bridge.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 struct motor_substrate_bridge {

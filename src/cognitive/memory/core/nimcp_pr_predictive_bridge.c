@@ -16,6 +16,7 @@
  */
 
 #include "cognitive/memory/core/nimcp_pr_predictive_bridge.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <math.h>

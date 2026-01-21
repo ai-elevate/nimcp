@@ -12,6 +12,7 @@
 
 #include "core/parietal/nimcp_parietal_thalamic_bridge.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 /**

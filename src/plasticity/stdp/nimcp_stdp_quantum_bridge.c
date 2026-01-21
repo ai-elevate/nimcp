@@ -17,5 +17,6 @@
 
 /* Include the header with implementation */
 #include "plasticity/stdp/nimcp_stdp_quantum_bridge.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* No additional code needed - all implementation is in the header */

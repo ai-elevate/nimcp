@@ -28,6 +28,7 @@ static __thread uint32_t g_jepa_pred_mc_seed = 0;
 #ifdef NIMCP_ENABLE_CUDA
 #include "gpu/quantum/nimcp_qmc_gpu.h"
 #include "gpu/context/nimcp_gpu_context.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 static nimcp_gpu_context_t* g_jepa_gpu_ctx = NULL;
 static qmc_gpu_rng_t g_jepa_gpu_rng = NULL;

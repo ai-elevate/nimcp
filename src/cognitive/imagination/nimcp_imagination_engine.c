@@ -21,6 +21,7 @@
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/containers/nimcp_darray.h"
 #include "utils/algorithms/nimcp_monte_carlo.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>

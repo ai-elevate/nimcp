@@ -19,6 +19,7 @@
 /* Module headers for built-in recovery functions */
 #include "plasticity/stdp/nimcp_stdp.h"
 #include "glial/astrocytes/nimcp_astrocytes.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* Forward declare state reset functions (defined in respective .c files) */
 extern int astrocyte_network_state_reset(void* module_state);

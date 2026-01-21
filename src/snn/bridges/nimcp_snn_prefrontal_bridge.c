@@ -9,6 +9,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "async/nimcp_bio_async.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>

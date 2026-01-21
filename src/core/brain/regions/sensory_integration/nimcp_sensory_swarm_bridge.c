@@ -8,6 +8,7 @@
  */
 
 #include "core/brain/regions/sensory_integration/nimcp_sensory_swarm_bridge.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>

@@ -14,6 +14,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "API.OSCILLATION"
 

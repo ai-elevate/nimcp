@@ -43,6 +43,7 @@
 #include <float.h>
 #include <stdio.h>
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "spatial_neuromod"
 

@@ -15,6 +15,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/rng/nimcp_rand.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>

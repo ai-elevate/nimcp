@@ -30,6 +30,7 @@
 #include "async/nimcp_future.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
 #include <stdio.h>

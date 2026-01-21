@@ -26,6 +26,7 @@
 #include <string.h>
 #include <math.h>
 #include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "REMORSE"
 #define BIO_MODULE_REMORSE 0x0325

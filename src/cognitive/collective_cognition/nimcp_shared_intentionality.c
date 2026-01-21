@@ -10,6 +10,7 @@
 #include "cognitive/collective_cognition/nimcp_shared_intentionality.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdio.h>
 #include <math.h>

@@ -43,6 +43,7 @@
 #include "core/brain/regions/wernicke/nimcp_wernicke_gpu_bio_bridge.h"
 #include "core/brain/regions/wernicke/nimcp_wernicke_immune.h"
 #include "core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <math.h>

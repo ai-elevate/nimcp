@@ -44,6 +44,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
 #include "async/nimcp_future.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "core_brain_learning"
 

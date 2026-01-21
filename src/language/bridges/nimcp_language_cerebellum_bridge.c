@@ -5,6 +5,7 @@
 #include "language/bridges/nimcp_language_cerebellum_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 

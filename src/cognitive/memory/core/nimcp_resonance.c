@@ -16,6 +16,7 @@
  */
 
 #include "cognitive/memory/core/nimcp_resonance.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdio.h>
 #include <string.h>

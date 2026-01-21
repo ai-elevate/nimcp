@@ -43,6 +43,7 @@
 #include "cognitive/omni/bridges/nimcp_omni_wm_kg_bridge.h"
 #include "cognitive/omni/bridges/nimcp_omni_wm_tom_bridge.h"
 #include "cognitive/omni/bridges/nimcp_omni_wm_plasticity_bridge.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* Forward declarations to avoid conflicting type definitions in imagination header */
 struct imagination_engine;

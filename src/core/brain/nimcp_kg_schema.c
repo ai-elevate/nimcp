@@ -10,6 +10,7 @@
 
 #include "core/brain/nimcp_kg_schema.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>

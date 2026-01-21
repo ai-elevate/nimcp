@@ -21,6 +21,7 @@
 #include "core/brain/nimcp_brain_internal.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <cjson/cJSON.h>
 #include <dirent.h>
 #include <sys/stat.h>

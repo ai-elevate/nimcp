@@ -27,6 +27,7 @@
 #include "core/brain/nimcp_brain_internal.h"
 #include "gpu/substrate/nimcp_substrate_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "BRAIN_INIT_SUBSTRATE_GPU"
 

@@ -23,6 +23,7 @@
 #include "plasticity/noise/nimcp_pink_noise.h"
 #include "common/nimcp_module.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // PinkNoiseGenerator Type

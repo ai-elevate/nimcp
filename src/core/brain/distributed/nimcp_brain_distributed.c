@@ -48,6 +48,7 @@
 #include "core/brain/distributed/nimcp_brain_distributed.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

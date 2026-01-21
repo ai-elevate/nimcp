@@ -23,6 +23,7 @@
 #include "utils/time/nimcp_time.h"
 #include "core/events/nimcp_event_bus.h"
 #include "cognitive/nimcp_working_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include "cognitive/nimcp_executive.h"
 
 // Bio-async integration

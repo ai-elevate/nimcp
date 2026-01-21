@@ -5,6 +5,7 @@
 
 #include "core/brainstem/nimcp_brainstem_substrate_bridge.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 struct brainstem_substrate_bridge {

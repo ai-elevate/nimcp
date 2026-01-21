@@ -44,6 +44,7 @@
 #include "core/brain/cognitive/nimcp_brain_cognitive.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 

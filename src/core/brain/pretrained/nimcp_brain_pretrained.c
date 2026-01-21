@@ -43,6 +43,7 @@
 
 #include "core/brain/pretrained/nimcp_brain_pretrained.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

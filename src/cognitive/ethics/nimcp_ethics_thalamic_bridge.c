@@ -6,6 +6,7 @@
 #include "cognitive/ethics/nimcp_ethics_thalamic_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 struct ethics_thalamic_bridge {

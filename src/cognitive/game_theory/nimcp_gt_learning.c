@@ -13,6 +13,7 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>

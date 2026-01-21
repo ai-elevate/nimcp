@@ -8,6 +8,7 @@
 #include "integration/core/nimcp_inter_layer_router.h"
 #include "utils/memory/nimcp_memory.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdlib.h>
 

@@ -11,6 +11,7 @@
 #define _POSIX_C_SOURCE 199309L
 
 #include "cognitive/health/nimcp_health_cognitive_bridge.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

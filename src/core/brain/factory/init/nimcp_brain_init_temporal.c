@@ -38,6 +38,7 @@
 #include "core/brain/regions/temporal/nimcp_temporal_substrate_bridge.h"
 #include "core/brain/regions/temporal/nimcp_temporal_thalamic_bridge.h"
 #include "core/brain/regions/temporal/nimcp_temporal_quantum_bridge.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 

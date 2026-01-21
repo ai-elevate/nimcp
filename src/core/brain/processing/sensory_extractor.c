@@ -35,6 +35,7 @@
 #include "perception/nimcp_visual_cortex.h"
 #include "perception/nimcp_audio_cortex.h"
 #include "perception/nimcp_speech_cortex.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdio.h>
 

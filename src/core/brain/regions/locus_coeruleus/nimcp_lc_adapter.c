@@ -6,6 +6,7 @@
  */
 
 #include "core/brain/regions/locus_coeruleus/nimcp_lc_adapter.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdlib.h>
 

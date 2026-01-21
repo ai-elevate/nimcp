@@ -9,6 +9,7 @@
 #include "cognitive/parietal/nimcp_chemistry.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

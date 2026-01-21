@@ -401,6 +401,27 @@ int nimcp_recovery_reduce_load(nimcp_exception_t* ex, nimcp_exception_recovery_a
 int nimcp_recovery_clear_cache(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data);
 
 /**
+ * @brief Default memory compaction recovery callback
+ *
+ * Performs memory compaction to reduce fragmentation.
+ */
+int nimcp_recovery_compact(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data);
+
+/**
+ * @brief Default component restart recovery callback
+ *
+ * Restarts the affected component/subsystem.
+ */
+int nimcp_recovery_restart_component(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data);
+
+/**
+ * @brief Default graceful shutdown recovery callback
+ *
+ * Initiates graceful system shutdown when unrecoverable.
+ */
+int nimcp_recovery_graceful_shutdown(nimcp_exception_t* ex, nimcp_exception_recovery_action_t action, void* user_data);
+
+/**
  * @brief Install default recovery callbacks
  *
  * @return 0 on success

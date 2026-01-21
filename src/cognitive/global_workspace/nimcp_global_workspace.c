@@ -52,6 +52,7 @@
 // SNN and Plasticity bridge integration
 #include "cognitive/global_workspace/nimcp_gw_snn_bridge.h"
 #include "cognitive/global_workspace/nimcp_gw_plasticity_bridge.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "global_workspace"
 

@@ -8,6 +8,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 struct self_awareness_ext_thalamic_bridge {

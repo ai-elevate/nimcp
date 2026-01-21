@@ -22,6 +22,7 @@
 #include "core/brain/nimcp_brain.h"
 #include "cognitive/nimcp_sleep_wake.h"  // Sleep state integration
 #include "cognitive/attention/nimcp_attention_sleep_bridge.h"  // Sleep bridge for modulation
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

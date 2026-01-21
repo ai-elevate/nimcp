@@ -46,6 +46,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 // Phase 10.3: Emotional working memory integration
 #include "cognitive/nimcp_working_memory.h"

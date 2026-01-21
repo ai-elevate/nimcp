@@ -35,6 +35,7 @@
 #include "utils/algorithms/nimcp_graph_metrics.h"
 #include "utils/containers/nimcp_graph.h"
 #include "cognitive/analysis/nimcp_network_analysis.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "BRAIN_TOPOLOGY"
 

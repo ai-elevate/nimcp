@@ -20,6 +20,7 @@
 
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

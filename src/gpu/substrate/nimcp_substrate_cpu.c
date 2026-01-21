@@ -13,6 +13,7 @@
 
 #include "gpu/backend/nimcp_kernel_backend.h"
 #include "gpu/tensor/nimcp_tensor_gpu.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
 

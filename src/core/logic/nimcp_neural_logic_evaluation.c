@@ -37,6 +37,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "neural_logic_evaluation"
 #define BIO_MODULE_ID 0x0138

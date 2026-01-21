@@ -11,6 +11,7 @@
 
 #include "perception/nimcp_visual_jepa_bridge.h"
 #include "utils/rng/nimcp_rand.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>

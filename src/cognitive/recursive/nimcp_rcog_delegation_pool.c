@@ -13,6 +13,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <stdio.h>

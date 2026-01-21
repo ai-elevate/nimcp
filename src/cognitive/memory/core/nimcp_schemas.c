@@ -17,6 +17,7 @@
  */
 
 #include "cognitive/memory/core/nimcp_schemas.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdio.h>
 #include <stdlib.h>

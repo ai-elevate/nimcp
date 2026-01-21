@@ -342,6 +342,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 #include <string.h>
 #include "utils/memory/nimcp_memory.h"

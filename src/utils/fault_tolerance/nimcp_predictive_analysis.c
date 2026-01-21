@@ -25,6 +25,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_bbb_helpers.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>

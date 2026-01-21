@@ -49,6 +49,7 @@
 #include "security/nimcp_bbb_helpers.h"
 #include "api/nimcp_api_exception.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>

@@ -31,6 +31,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "security/nimcp_security.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
 

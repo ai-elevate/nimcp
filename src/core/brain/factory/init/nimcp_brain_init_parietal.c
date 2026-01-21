@@ -35,6 +35,7 @@
 #include "core/brain/nimcp_brain_internal.h"
 #include "cognitive/parietal/nimcp_parietal.h"
 #include "cognitive/parietal/nimcp_intuition_integrations.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>

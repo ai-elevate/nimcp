@@ -9,6 +9,7 @@
 
 #include "security/lgss/gates/nimcp_lgss_motor_gate.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>

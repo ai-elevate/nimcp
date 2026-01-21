@@ -39,6 +39,7 @@
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "plasticity/attention/nimcp_attention.h"
 #include "core/neuron_types/nimcp_neural_logic.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

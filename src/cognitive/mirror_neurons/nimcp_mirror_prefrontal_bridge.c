@@ -14,6 +14,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
 #include "async/nimcp_bio_router.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>

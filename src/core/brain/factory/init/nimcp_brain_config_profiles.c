@@ -16,6 +16,7 @@
 
 #include "core/brain/nimcp_brain.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdio.h>
 

@@ -11,6 +11,7 @@
 
 #include "cognitive/jepa/nimcp_jepa_latent.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
 #include <float.h>

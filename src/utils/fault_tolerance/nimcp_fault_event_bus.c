@@ -30,6 +30,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "utils_fault_event_bus"
 

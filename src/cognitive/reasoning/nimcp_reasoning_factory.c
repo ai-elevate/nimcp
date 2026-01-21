@@ -21,6 +21,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_router.h"
 #include "nimcp.h"  // For error codes
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <stdio.h>

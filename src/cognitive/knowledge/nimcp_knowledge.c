@@ -29,6 +29,7 @@
 #include "async/nimcp_wiring_helpers.h"
 #include "utils/logging/nimcp_logging.h"
 #include "nimcp.h"  // For error codes
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "knowledge"
 

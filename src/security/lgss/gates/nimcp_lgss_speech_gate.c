@@ -8,6 +8,7 @@
  */
 
 #include "security/lgss/gates/nimcp_lgss_speech_gate.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>

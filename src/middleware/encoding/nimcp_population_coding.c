@@ -26,6 +26,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* Version 1.2.0 - Added positional encoding integration for position-aware population coding */
 

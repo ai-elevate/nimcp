@@ -14,6 +14,7 @@
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "common/nimcp_module.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* ============================================================================
  * BrainAntigen Type (read-only container)

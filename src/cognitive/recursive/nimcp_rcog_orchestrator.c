@@ -16,6 +16,7 @@
 #include "utils/algorithms/nimcp_sort.h"
 #include "utils/algorithms/nimcp_monte_carlo.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <stdio.h>

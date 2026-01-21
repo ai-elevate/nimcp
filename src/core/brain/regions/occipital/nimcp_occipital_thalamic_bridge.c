@@ -13,6 +13,7 @@
 #include "core/brain/regions/occipital/nimcp_occipital_thalamic_bridge.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 

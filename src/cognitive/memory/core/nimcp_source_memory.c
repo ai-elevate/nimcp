@@ -13,6 +13,7 @@
 #define _POSIX_C_SOURCE 200809L
 
 #include "cognitive/memory/core/nimcp_source_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>

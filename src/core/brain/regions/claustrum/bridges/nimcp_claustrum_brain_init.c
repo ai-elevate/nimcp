@@ -12,6 +12,7 @@
 #include "core/brain/regions/claustrum/bridges/nimcp_claustrum_security.h"
 #include "core/brain/nimcp_brain.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 //=============================================================================

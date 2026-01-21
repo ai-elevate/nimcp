@@ -72,8 +72,7 @@ extern "C" {
 
 typedef struct occipital_adapter occipital_adapter_t;
 typedef struct neural_logic_network neural_logic_network_t;
-typedef struct brain brain_t_internal;
-typedef brain_t_internal* brain_t;
+typedef struct brain_struct* brain_t;
 
 /* Forward declare bio_router_struct for bio-async (defined in nimcp_bio_router.h) */
 struct bio_router_struct;

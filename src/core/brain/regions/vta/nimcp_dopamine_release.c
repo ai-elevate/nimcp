@@ -5,6 +5,7 @@
  */
 
 #include "core/brain/regions/vta/nimcp_dopamine_release.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 

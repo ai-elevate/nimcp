@@ -19,6 +19,7 @@
 #include "middleware/training/nimcp_cognitive_training_bridge.h"
 #include "middleware/training/nimcp_training_logic_bridge.h"
 #include "middleware/immune/nimcp_training_immune.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

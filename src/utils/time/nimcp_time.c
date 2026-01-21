@@ -20,6 +20,7 @@
 #include <time.h>
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Platform Detection

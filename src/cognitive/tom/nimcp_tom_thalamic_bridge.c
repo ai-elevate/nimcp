@@ -7,6 +7,7 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 struct tom_thalamic_bridge {

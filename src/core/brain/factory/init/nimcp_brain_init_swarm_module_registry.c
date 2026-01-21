@@ -40,6 +40,7 @@
 #include "core/brain/nimcp_brain_internal.h"
 #include "swarm/nimcp_swarm_module_registry.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "BRAIN_INIT_SWARM_REGISTRY"
 

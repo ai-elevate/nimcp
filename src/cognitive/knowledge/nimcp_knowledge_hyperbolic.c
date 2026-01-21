@@ -37,6 +37,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/geometry/nimcp_hyperbolic.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include "utils/memory/nimcp_memory.h"
 #include <stdio.h>
 #include <stdlib.h>

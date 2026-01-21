@@ -52,6 +52,7 @@
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "plasticity/neuromodulators/nimcp_spatial_neuromod.h"
 #include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "BRAIN_BIOLOGICAL"
 

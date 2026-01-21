@@ -9,6 +9,7 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include "utils/validation/nimcp_common.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

@@ -34,6 +34,7 @@
 #include "utils/platform/nimcp_platform_time.h"
 #include "utils/platform/nimcp_platform_once.h"
 #include "utils/thread/nimcp_atomic.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <errno.h>
 #include <libgen.h>

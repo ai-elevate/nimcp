@@ -26,6 +26,7 @@
 #include "cognitive/nimcp_sleep_wake.h"
 #include "cognitive/nimcp_theory_of_mind.h"
 #include "cognitive/nimcp_explanations.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "BRAIN_STATE"
 

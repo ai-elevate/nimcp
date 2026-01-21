@@ -36,6 +36,7 @@
 #include "utils/validation/nimcp_validate.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread_pool.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>

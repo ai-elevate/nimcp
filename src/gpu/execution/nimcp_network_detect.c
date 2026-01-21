@@ -26,6 +26,7 @@
 
 #include "gpu/execution/nimcp_network_detect.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>

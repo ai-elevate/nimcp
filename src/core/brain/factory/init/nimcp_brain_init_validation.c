@@ -24,6 +24,7 @@
 #include "security/nimcp_blood_brain_barrier.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdint.h>
 #include <stdbool.h>
 

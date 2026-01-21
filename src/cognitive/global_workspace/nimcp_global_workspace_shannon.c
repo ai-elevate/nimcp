@@ -36,6 +36,7 @@
 #include "utils/memory/nimcp_unified_memory.h"
 #include "cognitive/global_workspace/nimcp_global_workspace.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <math.h>
 #include <string.h>

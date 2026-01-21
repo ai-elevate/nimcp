@@ -14,6 +14,7 @@
 #include "cognitive/wellbeing/nimcp_wellbeing_mental_health_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
 

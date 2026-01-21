@@ -8,6 +8,7 @@
 
 #include "core/brain/regions/red_nucleus/bridges/nimcp_red_nucleus_kg_wiring.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdio.h>
 

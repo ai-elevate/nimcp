@@ -11,6 +11,7 @@
  */
 
 #include "core/brain/regions/wernicke/nimcp_wernicke_adapter.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

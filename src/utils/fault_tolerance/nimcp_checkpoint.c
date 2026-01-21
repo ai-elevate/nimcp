@@ -30,6 +30,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/logging/nimcp_logging.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "utils_checkpoint"
 #include "plasticity/adaptive/nimcp_adaptive.h"

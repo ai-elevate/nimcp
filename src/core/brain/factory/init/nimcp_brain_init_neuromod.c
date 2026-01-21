@@ -484,6 +484,7 @@ bool nimcp_brain_factory_init_brain_regions_subsystem(brain_t brain)
 #include "core/brain/regions/vta/nimcp_vta_adapter.h"
 #include "core/brain/regions/raphe/nimcp_raphe_adapter.h"
 #include "core/brain/regions/habenula/nimcp_habenula_adapter.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* Forward declarations for intra-coordinator to avoid type conflicts */
 typedef struct nimcp_neuromod_intra_struct* nimcp_neuromod_intra_t;

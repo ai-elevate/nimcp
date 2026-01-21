@@ -19,6 +19,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdio.h>
 #include <string.h>

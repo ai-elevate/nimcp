@@ -11,6 +11,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
 

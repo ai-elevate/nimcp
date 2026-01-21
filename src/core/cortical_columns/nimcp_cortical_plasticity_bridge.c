@@ -7,6 +7,7 @@
 
 #include "core/cortical_columns/nimcp_cortical_plasticity_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 

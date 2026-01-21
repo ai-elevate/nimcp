@@ -11,6 +11,7 @@
 /* Memory pool API not available - using simple allocation */
 #include "utils/numerical/nimcp_integration.h"
 #include "utils/math/nimcp_complex_math.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* Simple pool structure for synapse allocation */
 typedef struct {

@@ -38,6 +38,7 @@
 #include "core/brain/persistence/nimcp_brain_persistence.h"
 #include "core/brain/persistence/nimcp_brain_kg_snapshot.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>

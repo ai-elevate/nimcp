@@ -13,6 +13,7 @@
  */
 
 #include "core/brain/regions/wernicke/nimcp_syntactic_comprehension.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

@@ -11,6 +11,7 @@
  */
 
 #include "gpu/context/nimcp_gpu_context.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdio.h>
 

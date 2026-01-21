@@ -58,6 +58,7 @@
 #include "api/nimcp_api_exception.h"
 #include "security/nimcp_security.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include "async/nimcp_bio_async.h"
 #include "utils/error/nimcp_error_codes.h"

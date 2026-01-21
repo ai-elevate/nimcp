@@ -8726,6 +8726,19 @@ e2e_fault_tolerance_test_plasticity_health_e2e/fast:
 .PHONY : e2e_fault_tolerance_test_plasticity_health_e2e/fast
 
 #=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_exception_recovery_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_exception_recovery_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_exception_recovery_e2e
+.PHONY : e2e_fault_tolerance_test_exception_recovery_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_exception_recovery_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_recovery_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_recovery_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_exception_recovery_e2e/fast
+
+#=============================================================================
 # Target rules for targets named unit_middleware_integration
 
 # Build rule for target.
@@ -19087,6 +19100,32 @@ unit_utils_exception_test_exception/fast:
 .PHONY : unit_utils_exception_test_exception/fast
 
 #=============================================================================
+# Target rules for targets named unit_utils_exception_test_recovery_callbacks
+
+# Build rule for target.
+unit_utils_exception_test_recovery_callbacks: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_exception_test_recovery_callbacks
+.PHONY : unit_utils_exception_test_recovery_callbacks
+
+# fast build rule for target.
+unit_utils_exception_test_recovery_callbacks/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/exception/CMakeFiles/unit_utils_exception_test_recovery_callbacks.dir/build.make test/unit/utils/exception/CMakeFiles/unit_utils_exception_test_recovery_callbacks.dir/build
+.PHONY : unit_utils_exception_test_recovery_callbacks/fast
+
+#=============================================================================
+# Target rules for targets named integration_utils_exception_test_exception_immune_integration
+
+# Build rule for target.
+integration_utils_exception_test_exception_immune_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_exception_test_exception_immune_integration
+.PHONY : integration_utils_exception_test_exception_immune_integration
+
+# fast build rule for target.
+integration_utils_exception_test_exception_immune_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/utils/exception/CMakeFiles/integration_utils_exception_test_exception_immune_integration.dir/build.make test/integration/utils/exception/CMakeFiles/integration_utils_exception_test_exception_immune_integration.dir/build
+.PHONY : integration_utils_exception_test_exception_immune_integration/fast
+
+#=============================================================================
 # Target rules for targets named unit_utils_memory_test_memory_pool
 
 # Build rule for target.
@@ -19501,6 +19540,19 @@ regression_utils_rng_test_rand_thread_safety: cmake_check_build_system
 regression_utils_rng_test_rand_thread_safety/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/utils/rng/CMakeFiles/regression_utils_rng_test_rand_thread_safety.dir/build.make test/regression/utils/rng/CMakeFiles/regression_utils_rng_test_rand_thread_safety.dir/build
 .PHONY : regression_utils_rng_test_rand_thread_safety/fast
+
+#=============================================================================
+# Target rules for targets named regression_utils_exception_test_exception_regression
+
+# Build rule for target.
+regression_utils_exception_test_exception_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_exception_test_exception_regression
+.PHONY : regression_utils_exception_test_exception_regression
+
+# fast build rule for target.
+regression_utils_exception_test_exception_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/utils/exception/CMakeFiles/regression_utils_exception_test_exception_regression.dir/build.make test/regression/utils/exception/CMakeFiles/regression_utils_exception_test_exception_regression.dir/build
+.PHONY : regression_utils_exception_test_exception_regression/fast
 
 #=============================================================================
 # Target rules for targets named unit_utils_gabor_test_gabor_filters
@@ -30817,6 +30869,7 @@ help:
 	@echo "... e2e_fault_tolerance_test_crash_recovery"
 	@echo "... e2e_fault_tolerance_test_exception_brain_integration_e2e"
 	@echo "... e2e_fault_tolerance_test_exception_flow_e2e"
+	@echo "... e2e_fault_tolerance_test_exception_recovery_e2e"
 	@echo "... e2e_fault_tolerance_test_exception_resilience_e2e"
 	@echo "... e2e_fault_tolerance_test_health_agent_active_cognitive_e2e"
 	@echo "... e2e_fault_tolerance_test_health_agent_behavioral_e2e"
@@ -31414,6 +31467,7 @@ help:
 	@echo "... integration_training_test_cnn_cortex_integration"
 	@echo "... integration_utils_containers_test_queue_integration"
 	@echo "... integration_utils_encoding_test_pe_attention_integration"
+	@echo "... integration_utils_exception_test_exception_immune_integration"
 	@echo "... integration_utils_fault_tolerance_test_async_checkpoint_integration"
 	@echo "... integration_utils_fault_tolerance_test_brain_probe_health_integration"
 	@echo "... integration_utils_fault_tolerance_test_brain_recovery_integration"
@@ -31794,6 +31848,7 @@ help:
 	@echo "... regression_training_test_cnn_cortex_bridge_regression"
 	@echo "... regression_utils_containers_test_queue_regression"
 	@echo "... regression_utils_encoding_pe_stability"
+	@echo "... regression_utils_exception_test_exception_regression"
 	@echo "... regression_utils_fault_tolerance_test_brain_probe_health_regression"
 	@echo "... regression_utils_fault_tolerance_test_capacity_manager_regression"
 	@echo "... regression_utils_fault_tolerance_test_checkpoint_format"
@@ -33011,6 +33066,7 @@ help:
 	@echo "... unit_utils_containers_test_ring_buffer"
 	@echo "... unit_utils_encoding_test_positional_encoding"
 	@echo "... unit_utils_exception_test_exception"
+	@echo "... unit_utils_exception_test_recovery_callbacks"
 	@echo "... unit_utils_fault_tolerance_test_async_checkpoint"
 	@echo "... unit_utils_fault_tolerance_test_brain_probe_health_functions"
 	@echo "... unit_utils_fault_tolerance_test_byzantine_fault_tolerance"

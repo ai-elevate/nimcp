@@ -29,6 +29,7 @@
 
 #define LOG_MODULE "middleware_quantum_propagator"
 
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>

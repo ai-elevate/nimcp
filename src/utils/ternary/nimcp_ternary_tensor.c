@@ -14,6 +14,7 @@
  */
 
 #include "utils/ternary/nimcp_ternary_tensor.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <stdlib.h>
 #include <string.h>

@@ -11,6 +11,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 

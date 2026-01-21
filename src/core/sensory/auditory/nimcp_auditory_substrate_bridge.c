@@ -5,6 +5,7 @@
 
 #include "core/sensory/auditory/nimcp_auditory_substrate_bridge.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 struct auditory_substrate_bridge {

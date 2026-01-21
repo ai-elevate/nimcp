@@ -32,6 +32,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/numerical/nimcp_integration.h"
 #include "utils/platform/nimcp_platform_once.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <float.h>

@@ -24,6 +24,7 @@
 #include "security/perception/nimcp_security_perception_input_bridge.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <float.h>

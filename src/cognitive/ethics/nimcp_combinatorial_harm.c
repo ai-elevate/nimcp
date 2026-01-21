@@ -44,6 +44,7 @@
 #include "plasticity/noise/nimcp_pink_noise_monitor.h"
 #include "plasticity/noise/nimcp_pink_noise_criticality.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "utils/exception/nimcp_exception_macros.h"
 // #include "optimization/quantum_annealing/nimcp_quantum_annealing.h"
 
 //=============================================================================

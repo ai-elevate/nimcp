@@ -13,6 +13,7 @@
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_alignment.h"
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_drives.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

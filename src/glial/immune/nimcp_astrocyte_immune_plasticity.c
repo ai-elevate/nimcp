@@ -16,6 +16,7 @@
 #include "utils/validation/nimcp_common.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 

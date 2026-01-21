@@ -13,6 +13,7 @@
 #include "dragonfly/nimcp_dragonfly_energy.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
 #include <time.h>

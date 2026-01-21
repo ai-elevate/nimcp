@@ -23,6 +23,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>

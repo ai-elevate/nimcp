@@ -66,6 +66,7 @@
 // Phase 10.3: Emotional working memory integration
 #include "cognitive/nimcp_working_memory.h"
 #include "cognitive/nimcp_emotional_tagging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* ========================================================================
  * INTERNAL STRUCTURES

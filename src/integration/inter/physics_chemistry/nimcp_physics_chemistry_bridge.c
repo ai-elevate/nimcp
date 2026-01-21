@@ -7,6 +7,7 @@
 
 #include "integration/inter/physics_chemistry/nimcp_physics_chemistry_bridge.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdlib.h>
 

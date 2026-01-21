@@ -18,6 +18,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 
 

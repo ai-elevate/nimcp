@@ -21,6 +21,7 @@
 #include "utils/tensor/nimcp_tensor.h"
 #include "utils/validation/nimcp_common.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>

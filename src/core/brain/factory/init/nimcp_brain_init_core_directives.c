@@ -23,6 +23,7 @@
 #include "core/brain/nimcp_brain_internal.h"
 // core/directives/nimcp_core_directives.h is included via nimcp_brain_internal.h
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "BRAIN_INIT_CORE_DIRECTIVES"
 

@@ -36,6 +36,7 @@
 #include "glial/astrocytes/nimcp_astrocytes.h"
 #include "cognitive/nimcp_mirror_neurons.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <stddef.h>
 

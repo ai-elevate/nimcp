@@ -8,6 +8,7 @@
 #include "dragonfly/nimcp_dragonfly_tsdn.h"
 #include "dragonfly/nimcp_dragonfly_tracking.h"
 #include "core/brain/subcortical/nimcp_thalamus.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

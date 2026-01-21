@@ -22,6 +22,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 // Forward declaration for spike_train_clear
 extern void spike_train_clear(spike_train_t* train);

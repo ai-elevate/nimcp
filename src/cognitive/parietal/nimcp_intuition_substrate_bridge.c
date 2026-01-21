@@ -10,6 +10,7 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 struct intuition_substrate_bridge {

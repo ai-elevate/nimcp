@@ -16,6 +16,7 @@
  */
 
 #include "core/brain/regions/somatosensory/bridges/nimcp_soma_quantum_bridge.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>

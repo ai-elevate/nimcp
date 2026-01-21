@@ -15,6 +15,7 @@
 #include "utils/tensor/nimcp_tensor_simd.h"
 #include "utils/thread/nimcp_thread.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <math.h>
 #include <string.h>

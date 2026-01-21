@@ -6,6 +6,7 @@
 #include "cognitive/global_workspace/nimcp_gw_thalamic_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 struct gw_thalamic_bridge {

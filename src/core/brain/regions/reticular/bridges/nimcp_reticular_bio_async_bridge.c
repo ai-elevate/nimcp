@@ -6,6 +6,7 @@
  */
 
 #include "core/brain/regions/reticular/bridges/nimcp_reticular_bio_async_bridge.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

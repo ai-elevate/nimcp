@@ -796,6 +796,7 @@
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_self_repair_bio_async_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_health_self_repair_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_plasticity_health_e2e.dir
+/home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_recovery_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/rebuild_cache.dir
@@ -2839,6 +2840,7 @@
 /home/bbrelin/nimcp/build/test/unit/utils/vcs/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/unit/utils/vcs/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/unit/utils/exception/CMakeFiles/unit_utils_exception_test_exception.dir
+/home/bbrelin/nimcp/build/test/unit/utils/exception/CMakeFiles/unit_utils_exception_test_recovery_callbacks.dir
 /home/bbrelin/nimcp/build/test/unit/utils/exception/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/utils/exception/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/utils/exception/CMakeFiles/rebuild_cache.dir
@@ -2846,6 +2848,14 @@
 /home/bbrelin/nimcp/build/test/unit/utils/exception/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/unit/utils/exception/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/unit/utils/exception/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/integration/utils/exception/CMakeFiles/integration_utils_exception_test_exception_immune_integration.dir
+/home/bbrelin/nimcp/build/test/integration/utils/exception/CMakeFiles/test.dir
+/home/bbrelin/nimcp/build/test/integration/utils/exception/CMakeFiles/edit_cache.dir
+/home/bbrelin/nimcp/build/test/integration/utils/exception/CMakeFiles/rebuild_cache.dir
+/home/bbrelin/nimcp/build/test/integration/utils/exception/CMakeFiles/list_install_components.dir
+/home/bbrelin/nimcp/build/test/integration/utils/exception/CMakeFiles/install.dir
+/home/bbrelin/nimcp/build/test/integration/utils/exception/CMakeFiles/install/local.dir
+/home/bbrelin/nimcp/build/test/integration/utils/exception/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/unit/utils/memory/CMakeFiles/unit_utils_memory_test_memory_pool.dir
 /home/bbrelin/nimcp/build/test/unit/utils/memory/CMakeFiles/unit_utils_memory_test_cow_manager.dir
 /home/bbrelin/nimcp/build/test/unit/utils/memory/CMakeFiles/unit_utils_memory_test_buffer_pool.dir
@@ -2976,6 +2986,14 @@
 /home/bbrelin/nimcp/build/test/regression/utils/rng/CMakeFiles/install.dir
 /home/bbrelin/nimcp/build/test/regression/utils/rng/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/regression/utils/rng/CMakeFiles/install/strip.dir
+/home/bbrelin/nimcp/build/test/regression/utils/exception/CMakeFiles/regression_utils_exception_test_exception_regression.dir
+/home/bbrelin/nimcp/build/test/regression/utils/exception/CMakeFiles/test.dir
+/home/bbrelin/nimcp/build/test/regression/utils/exception/CMakeFiles/edit_cache.dir
+/home/bbrelin/nimcp/build/test/regression/utils/exception/CMakeFiles/rebuild_cache.dir
+/home/bbrelin/nimcp/build/test/regression/utils/exception/CMakeFiles/list_install_components.dir
+/home/bbrelin/nimcp/build/test/regression/utils/exception/CMakeFiles/install.dir
+/home/bbrelin/nimcp/build/test/regression/utils/exception/CMakeFiles/install/local.dir
+/home/bbrelin/nimcp/build/test/regression/utils/exception/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/unit/utils/gabor/CMakeFiles/unit_utils_gabor_test_gabor_filters.dir
 /home/bbrelin/nimcp/build/test/unit/utils/gabor/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/utils/gabor/CMakeFiles/edit_cache.dir

@@ -7,6 +7,7 @@
 
 #include "integration/inter/executive_integration/nimcp_executive_integration_bridge.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdlib.h>
 

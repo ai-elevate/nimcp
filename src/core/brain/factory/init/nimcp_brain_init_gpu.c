@@ -21,6 +21,7 @@
 #include "gpu/context/nimcp_gpu_context.h"
 #include "gpu/execution/nimcp_gpu_detect.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 

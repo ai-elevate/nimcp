@@ -14,6 +14,7 @@
 #include "security/distributed/nimcp_security_distributed_training_bridge.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <math.h>
 #include <string.h>

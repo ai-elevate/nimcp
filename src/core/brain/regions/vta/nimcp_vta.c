@@ -8,6 +8,7 @@
 #include "core/brain/regions/vta/nimcp_dopamine_release.h"
 #include "core/brain/regions/vta/nimcp_reward_prediction_error.h"
 #include "core/brain/regions/vta/nimcp_incentive_salience.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>

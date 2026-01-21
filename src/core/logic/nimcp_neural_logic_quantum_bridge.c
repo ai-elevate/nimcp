@@ -12,6 +12,7 @@
 
 #define NIMCP_NEURAL_LOGIC_QUANTUM_BRIDGE_IMPLEMENTATION
 #include "core/logic/nimcp_neural_logic_quantum_bridge.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /**
  * WHAT: Export default config function for C linkage

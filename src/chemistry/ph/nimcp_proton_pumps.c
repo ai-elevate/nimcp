@@ -7,6 +7,7 @@
 
 #include "chemistry/ph/nimcp_proton_pumps.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <math.h>

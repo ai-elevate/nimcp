@@ -22,6 +22,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "core/events/nimcp_event_bus.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <stdio.h>

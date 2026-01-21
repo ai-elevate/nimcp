@@ -34,6 +34,7 @@
 #include <ctype.h>
 #include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "cognitive.bias_detection"
 #define BIO_MODULE_BIAS_DETECTION 0x0340

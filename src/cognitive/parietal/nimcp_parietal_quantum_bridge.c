@@ -11,6 +11,7 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 

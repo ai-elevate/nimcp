@@ -21,6 +21,7 @@
 #include "core/brain/nimcp_brain_internal.h"  // Internal header for brain_struct access
 #include "common/nimcp_module.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 // ============================================================================
 // Quantum Walk Configuration Methods

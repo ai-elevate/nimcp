@@ -14,6 +14,7 @@
 #include "utils/memory/nimcp_unified_memory.h"
 #include "core/topology/nimcp_fractal_topology.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

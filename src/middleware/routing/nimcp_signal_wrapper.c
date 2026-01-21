@@ -24,6 +24,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "security/nimcp_blood_brain_barrier.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 
 //=============================================================================

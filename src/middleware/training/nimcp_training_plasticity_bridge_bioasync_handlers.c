@@ -32,6 +32,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "middleware/training/nimcp_training_plasticity_bridge.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* Internal context type from training_plasticity_bridge - forward declare */
 typedef struct tpb_context tpb_context_t;

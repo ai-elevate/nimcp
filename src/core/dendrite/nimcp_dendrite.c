@@ -38,6 +38,7 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "dendrite"
 #define BIO_MODULE_ID 0x0130

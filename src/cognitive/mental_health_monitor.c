@@ -24,6 +24,7 @@
 #include "utils/time/nimcp_time.h"
 #include "core/nimcp_error.h"
 #include "utils/validation/nimcp_common.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

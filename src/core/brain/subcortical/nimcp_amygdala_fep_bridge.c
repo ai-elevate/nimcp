@@ -6,6 +6,7 @@
  */
 
 #include "core/brain/subcortical/nimcp_amygdala_fep_bridge.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

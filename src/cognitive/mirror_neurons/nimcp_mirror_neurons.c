@@ -41,6 +41,7 @@
 // SNN and Plasticity bridge integration
 #include "cognitive/mirror_neurons/nimcp_mirror_snn_bridge.h"
 #include "cognitive/mirror_neurons/nimcp_mirror_plasticity_bridge.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "mirror_neurons"
 

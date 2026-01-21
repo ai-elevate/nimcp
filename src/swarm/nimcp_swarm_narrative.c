@@ -21,6 +21,7 @@
 #include "utils/platform/nimcp_platform.h"
 #include "utils/containers/nimcp_hash_table.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "swarm_narrative"
 

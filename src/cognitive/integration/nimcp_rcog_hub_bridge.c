@@ -22,6 +22,7 @@
 #include "cognitive/recursive/nimcp_rcog_engine.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <time.h>
 

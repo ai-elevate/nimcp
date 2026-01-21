@@ -6,6 +6,7 @@
 #include "async/nimcp_bio_router.h"
 
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 // Forward declarations for sub-modules
 extern int init_metrics_module(PyObject* module);

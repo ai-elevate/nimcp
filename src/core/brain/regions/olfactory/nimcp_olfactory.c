@@ -6,6 +6,7 @@
  */
 
 #include "core/brain/regions/olfactory/nimcp_olfactory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

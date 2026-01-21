@@ -19,6 +19,7 @@
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "api/nimcp_api_internal.h"  /* For internal brain access */
 #include "nimcp.h"  /* For training API */
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* Forward declaration from nimcp_training_py.c */
 extern PyObject* TrainingResult_FromC(const nimcp_training_result_t* result);

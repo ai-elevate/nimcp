@@ -36,6 +36,7 @@
 // Hippocampus includes
 #include "core/brain/regions/hippocampus/nimcp_hippocampus_adapter.h"
 #include "core/brain/regions/hippocampus/nimcp_hippocampus_quantum_bridge.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 

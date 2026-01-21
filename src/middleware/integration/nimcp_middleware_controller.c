@@ -30,6 +30,7 @@
 
 #define LOG_MODULE "middleware_controller"
 
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 

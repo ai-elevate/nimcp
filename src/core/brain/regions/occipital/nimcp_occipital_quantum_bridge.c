@@ -9,6 +9,7 @@
 
 #include "core/brain/regions/occipital/nimcp_occipital_quantum_bridge.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 

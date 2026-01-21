@@ -30,6 +30,7 @@
 /* Conditional logging support */
 #ifdef NIMCP_LOGGING_ENABLED
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #define WIRING_LOG_DEBUG(fmt, ...) LOG_DEBUG("[KG_WIRING] " fmt, ##__VA_ARGS__)
 #define WIRING_LOG_INFO(fmt, ...)  LOG_INFO("[KG_WIRING] " fmt, ##__VA_ARGS__)
 #define WIRING_LOG_WARN(fmt, ...)  LOG_WARN("[KG_WIRING] " fmt, ##__VA_ARGS__)

@@ -8,6 +8,7 @@
 
 #include "core/brain/regions/pag/bridges/nimcp_pag_security.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 //=============================================================================

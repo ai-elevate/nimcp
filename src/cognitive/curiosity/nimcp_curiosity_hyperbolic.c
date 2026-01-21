@@ -38,6 +38,7 @@
 #include "cognitive/knowledge/nimcp_knowledge.h"
 #include "utils/geometry/nimcp_hyperbolic.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 #include <math.h>
 

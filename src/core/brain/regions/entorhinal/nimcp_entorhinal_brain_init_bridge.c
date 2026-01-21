@@ -7,6 +7,7 @@
 
 #include "core/brain/regions/entorhinal/nimcp_entorhinal_brain_init_bridge.h"
 #include "core/brain/regions/entorhinal/nimcp_entorhinal.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

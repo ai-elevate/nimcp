@@ -6,6 +6,7 @@
 #include "core/neuralnet/nimcp_neuralnet.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <stdlib.h>
 

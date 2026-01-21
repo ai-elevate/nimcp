@@ -35,6 +35,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "cognitive.sleep_wake"
 #define BIO_MODULE_COGNITIVE_SLEEP_WAKE 0x0354

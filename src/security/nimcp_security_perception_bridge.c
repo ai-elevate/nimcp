@@ -7,6 +7,7 @@
 
 #include "security/nimcp_security_perception_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 #include <string.h>
 #include <math.h>

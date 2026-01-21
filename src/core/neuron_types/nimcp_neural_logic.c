@@ -33,6 +33,7 @@
 #include "utils/validation/nimcp_validate.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Neuromodulator integration
 #include "core/brain/nimcp_brain.h"  // Brain reference
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

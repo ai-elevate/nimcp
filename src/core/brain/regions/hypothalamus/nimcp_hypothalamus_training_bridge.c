@@ -9,6 +9,7 @@
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_orchestrator.h"
 #include "training/integration/nimcp_training_integration_hub.h"
 #include "training/integration/nimcp_training_event_types.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

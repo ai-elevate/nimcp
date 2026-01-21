@@ -32,6 +32,7 @@
 /* Cingulate cortex includes */
 #include "core/brain/regions/cingulate/nimcp_cingulate_adapter.h"
 #include "core/brain/regions/cingulate/nimcp_cingulate_quantum_bridge.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 

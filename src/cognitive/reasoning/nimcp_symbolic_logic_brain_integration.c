@@ -23,6 +23,7 @@
 #include "api/nimcp_api_exception.h"
 #include "cognitive/nimcp_working_memory.h"
 #include "cognitive/nimcp_executive.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <stdio.h>

@@ -45,6 +45,7 @@ static void api_set_error(const char* fmt, ...);
 #include "plasticity/adaptive/nimcp_adaptive.h"                    // Adaptive network
 #include "utils/platform/nimcp_platform_once.h"                    // Thread-safe init
 #include "utils/thread/nimcp_atomic.h"                             // Atomic operations
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>

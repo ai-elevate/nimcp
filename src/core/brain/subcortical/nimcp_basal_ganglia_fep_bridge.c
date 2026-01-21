@@ -9,6 +9,7 @@
 #include "core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.h"
 #include "core/brain/subcortical/nimcp_basal_ganglia.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <float.h>

@@ -23,6 +23,7 @@
 #include "utils/tensor/nimcp_tensor_simd.h"
 #include "gpu/execution/nimcp_simd_detect.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <math.h>

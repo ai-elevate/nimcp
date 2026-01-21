@@ -10,6 +10,8 @@
  * @date 2026-01-06
  */
 
+#include "gpu/cognitive/nimcp_wernicke_gpu.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -20,8 +22,6 @@
 /*=============================================================================
  * Wernicke GPU Stubs (gpu/cognitive/nimcp_wernicke_gpu.h)
  *=============================================================================*/
-
-#include "gpu/cognitive/nimcp_wernicke_gpu.h"
 
 /* Internal CPU-based wernicke context for fallback */
 struct wernicke_gpu_context {

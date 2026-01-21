@@ -18,6 +18,7 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/algorithms/nimcp_sort.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <cjson/cJSON.h>
 #include <string.h>
 #include <stdio.h>

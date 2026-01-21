@@ -37,6 +37,7 @@
 #include "core/brain/nimcp_brain_internal.h"
 #include "cognitive/immune/nimcp_immune_bridge_coordinator.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "BRAIN_INIT_IMMUNE_BRIDGE_COORD"
 

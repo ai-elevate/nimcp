@@ -11,6 +11,7 @@
 
 #include "cognitive/jepa/nimcp_jepa_weights.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>

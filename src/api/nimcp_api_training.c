@@ -25,6 +25,11 @@
 
 #define LOG_MODULE "API_TRAINING"
 
+/* API Exception Integration (Phase 7) */
+extern void set_error(const char* fmt, ...);
+#define NIMCP_API_SET_ERROR(fmt, ...) set_error(fmt, ##__VA_ARGS__)
+#include "api/nimcp_api_exception.h"
+
 #include "nimcp.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"

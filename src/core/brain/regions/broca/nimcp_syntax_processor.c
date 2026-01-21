@@ -34,6 +34,7 @@
 #include "core/brain/regions/broca/nimcp_syntax_processor.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_pool.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdio.h>
 #include <stdlib.h>

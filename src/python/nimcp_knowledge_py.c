@@ -14,6 +14,7 @@
 #include "cognitive/knowledge/nimcp_knowledge.h"
 #include "common/nimcp_module.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* ============================================================================
  * KnowledgeItem Type (read-only container for retrieved knowledge)

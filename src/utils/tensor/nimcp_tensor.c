@@ -22,6 +22,7 @@
 #include "utils/platform/nimcp_platform_once.h"
 #include "utils/thread/nimcp_atomic.h"
 #include "utils/rng/nimcp_rand.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <math.h>
 #include <string.h>

@@ -20,6 +20,7 @@
 #include "cognitive/game_theory/nimcp_credit_assignment.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 

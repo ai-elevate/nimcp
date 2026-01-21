@@ -27,6 +27,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define NIMCP_SYMBOLIC_QUANTUM_BRIDGE_IMPLEMENTATION
 #include "cognitive/reasoning/nimcp_symbolic_logic_quantum_bridge.h"

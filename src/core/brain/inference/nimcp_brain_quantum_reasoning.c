@@ -9,6 +9,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/algorithms/nimcp_monte_carlo.h"
 #include "utils/quantum/nimcp_quantum_monte_carlo.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 //=============================================================================

@@ -39,6 +39,7 @@
 #include "cognitive/salience/nimcp_salience.h"
 #include "cognitive/curiosity/nimcp_curiosity.h"
 #include "core/neuron_types/nimcp_neural_logic.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdio.h>
 #include <math.h>

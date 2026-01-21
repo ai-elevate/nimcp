@@ -56,6 +56,7 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/logging/nimcp_logging.h"
 #include "security/nimcp_security.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "BRAIN_VALID"
 

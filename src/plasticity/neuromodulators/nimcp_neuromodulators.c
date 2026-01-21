@@ -67,6 +67,7 @@
 #include "async/nimcp_wiring_helpers.h"
 #include "security/nimcp_security.h"
 #include "utils/tensor/nimcp_tensor.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
 #include <stdatomic.h>

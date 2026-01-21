@@ -40,6 +40,7 @@
 // NOTE: Avoid including thalamic_bridge.h directly due to type conflicts
 // We use forward declarations instead
 #include "core/brain/regions/broca/nimcp_broca_quantum_bridge.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 

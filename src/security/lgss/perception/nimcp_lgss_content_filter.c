@@ -14,6 +14,7 @@
 #include "security/lgss/perception/nimcp_lgss_content_filter.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>

@@ -25,6 +25,7 @@
 #include "utils/memory/nimcp_unified_memory.h"
 #include "plasticity/nimcp_second_messengers.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define NIMCP_THALAMIC_QUANTUM_BRIDGE_IMPLEMENTATION
 #include "middleware/routing/nimcp_thalamic_quantum_bridge.h"

@@ -18,6 +18,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/platform/nimcp_platform.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdio.h>
 #include <string.h>

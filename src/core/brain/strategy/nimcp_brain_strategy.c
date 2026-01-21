@@ -37,6 +37,7 @@
 #include "core/brain/strategy/nimcp_brain_strategy.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>

@@ -14,6 +14,7 @@
  */
 
 #include "core/brain/regions/raphe/nimcp_temporal_discounting.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 

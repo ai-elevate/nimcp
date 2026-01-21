@@ -11,6 +11,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/algorithms/nimcp_sort.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* Convenience macro for time in milliseconds */
 #define nimcp_time_ms() nimcp_time_get_ms()

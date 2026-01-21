@@ -11,10 +11,11 @@
 
 #include "perception/immune/nimcp_speech_immune_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
-#include <stdio.h>
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include <stdio.h>
 #include <string.h>
 #include <math.h>
 #include <pthread.h>

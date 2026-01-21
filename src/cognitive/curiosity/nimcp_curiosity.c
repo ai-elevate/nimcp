@@ -12,6 +12,7 @@
 #include "utils/algorithms/nimcp_monte_carlo.h"
 
 #include "utils/memory/nimcp_unified_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <ctype.h>
 #include <math.h>
 #include <stdio.h>

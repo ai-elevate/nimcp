@@ -25,6 +25,7 @@
 #include "cognitive/wellbeing/nimcp_wellbeing_plasticity_bridge.h"
 #include "cognitive/wellbeing/nimcp_wellbeing_fep_bridge.h"
 #include "cognitive/wellbeing/nimcp_wellbeing_thalamic_bridge.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* ============================================================================
  * Constants

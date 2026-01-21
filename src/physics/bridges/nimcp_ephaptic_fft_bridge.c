@@ -17,6 +17,7 @@
 #include "physics/bridges/nimcp_ephaptic_fft_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
 

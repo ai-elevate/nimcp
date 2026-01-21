@@ -20,6 +20,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_wiring_helpers.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <stdlib.h>

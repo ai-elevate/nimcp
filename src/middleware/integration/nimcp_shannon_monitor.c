@@ -33,6 +33,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "security/nimcp_security.h"
 #include "async/nimcp_bio_router.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 

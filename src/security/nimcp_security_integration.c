@@ -25,6 +25,7 @@
 #include "utils/memory/nimcp_cow_manager.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/validation/nimcp_common.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "security_integration"
 

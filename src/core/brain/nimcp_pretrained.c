@@ -47,6 +47,7 @@
 #include <cjson/cJSON.h>
 #include "io/serialization/nimcp_serialization.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Constants and Configuration

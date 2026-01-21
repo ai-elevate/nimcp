@@ -26,6 +26,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/validation/nimcp_validate.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "core_reasoning_learning"
 

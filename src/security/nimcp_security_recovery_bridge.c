@@ -18,6 +18,7 @@
 #include "utils/fault_tolerance/nimcp_fast_recovery.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "security_recovery_bridge"
 

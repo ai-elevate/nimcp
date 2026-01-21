@@ -7,6 +7,7 @@
 
 #include "core/brain/regions/vta/nimcp_vta_snn_bridge.h"
 #include "core/brain/regions/vta/nimcp_vta_adapter.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

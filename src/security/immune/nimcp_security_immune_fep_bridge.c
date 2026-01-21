@@ -12,6 +12,7 @@
 
 #include "security/immune/nimcp_security_immune_fep_bridge.h"
 #include "utils/platform/nimcp_platform.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>

@@ -21,6 +21,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <errno.h>
 #include <stdlib.h>
 #include "api/nimcp_api_exception.h"

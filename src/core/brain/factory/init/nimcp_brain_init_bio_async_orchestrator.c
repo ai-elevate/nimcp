@@ -32,6 +32,7 @@
 #include "core/brain/nimcp_brain_internal.h"
 #include "async/nimcp_bio_async_orchestrator.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "BRAIN_INIT_BIO_ASYNC_ORCH"
 

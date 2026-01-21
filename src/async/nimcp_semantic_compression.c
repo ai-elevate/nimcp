@@ -19,6 +19,7 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <math.h>
 #include <string.h>

@@ -11,6 +11,7 @@
 
 #include "core/brain_regions/nimcp_brain_regions_immune_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 

@@ -27,6 +27,9 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
+
+#define LOG_MODULE "BRAIN_MULTIMODAL"
 #include "utils/time/nimcp_time.h"
 #include "core/integration/nimcp_multimodal_integration.h"
 #include "perception/nimcp_visual_cortex.h"

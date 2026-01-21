@@ -17,6 +17,7 @@
 #include "security/nimcp_security.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/fault_tolerance/nimcp_state_manager.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>

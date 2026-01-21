@@ -462,6 +462,7 @@
 
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <ctype.h>
 #include <math.h>
 #include <stdarg.h>

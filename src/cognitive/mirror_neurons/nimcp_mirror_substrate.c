@@ -37,6 +37,7 @@
 #include "core/dendrite/nimcp_dendrite.h"
 #include "glial/myelin_sheath/nimcp_myelin_sheath.h"
 #include "glial/integration/nimcp_glial_integration.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 

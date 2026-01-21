@@ -53,6 +53,7 @@
 
 // Phase 11: Symbolic logic integration
 #include "cognitive/nimcp_symbolic_logic.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Forward Declarations for BIO-ASYNC

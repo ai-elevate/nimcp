@@ -21,6 +21,7 @@
  */
 
 #include "cognitive/memory/core/nimcp_z_ladder.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

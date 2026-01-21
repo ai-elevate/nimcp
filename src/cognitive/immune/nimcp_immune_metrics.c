@@ -18,6 +18,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "cognitive/immune/nimcp_heal_patterns.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <stdio.h>

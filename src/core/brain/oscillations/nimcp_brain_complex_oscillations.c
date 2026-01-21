@@ -17,6 +17,7 @@
 #include "core/brain/oscillations/nimcp_brain_complex_oscillations.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

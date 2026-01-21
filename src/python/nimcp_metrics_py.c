@@ -17,6 +17,7 @@
 
 #include "utils/metrics/nimcp_metrics.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // MetricsCollector Type

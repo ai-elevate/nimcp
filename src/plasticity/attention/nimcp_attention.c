@@ -30,6 +30,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "security/nimcp_security.h"
 #include "core/brain/nimcp_brain_kg_helpers.h"  // KG self-awareness integration
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // Monte Carlo Integration - GPU acceleration with CPU fallback

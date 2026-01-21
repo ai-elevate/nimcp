@@ -39,6 +39,7 @@
 
 // Knowledge graph self-awareness
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "wellbeing"
 #include <string.h>

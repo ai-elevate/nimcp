@@ -10,6 +10,7 @@
  */
 
 #include "perception/nimcp_visual_jepa_fep_bridge.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
 #include <float.h>

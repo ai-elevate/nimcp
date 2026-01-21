@@ -28,6 +28,7 @@
 #define BIO_MODULE_EMOTIONAL_TAGGING 0x0326
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"  // Neuromodulator integration
 #include "core/brain/nimcp_brain.h"  // Brain reference
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
 

@@ -28,6 +28,9 @@
 #include "core/brain/nimcp_brain_multimodal.h"  // Extracted multimodal processing
 #include "utils/memory/nimcp_unified_memory.h"
 #include "core/brain/nimcp_brain_internal.h"
+#include "utils/exception/nimcp_exception_macros.h"
+
+#define LOG_MODULE "BRAIN"
 #include <math.h>
 #include <stdarg.h>
 #include <stdio.h>

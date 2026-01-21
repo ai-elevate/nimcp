@@ -38,6 +38,7 @@
 #include "core/brain/nimcp_brain_internal.h"
 #include "security/nimcp_security_perception_bridge.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "BRAIN_INIT_SEC_PERCEPT"
 

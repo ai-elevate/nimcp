@@ -15,6 +15,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "utils_fast_recovery"
 

@@ -24,6 +24,7 @@
 // SNN and Plasticity bridges
 #include "cognitive/epistemic/nimcp_epistemic_snn_bridge.h"
 #include "cognitive/epistemic/nimcp_epistemic_plasticity_bridge.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "epistemic"
 

@@ -16,6 +16,7 @@
 
 #include "integration/knowledge/nimcp_sensory_kg_wiring.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>

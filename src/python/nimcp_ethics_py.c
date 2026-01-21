@@ -12,6 +12,7 @@
 #include "nimcp.h"
 #include "common/nimcp_module.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* ============================================================================
  * Ethics Type

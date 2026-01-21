@@ -36,6 +36,7 @@
 
 #include "core/brain/regions/broca/nimcp_speech_motor.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>

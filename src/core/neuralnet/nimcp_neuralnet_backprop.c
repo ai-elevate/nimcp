@@ -28,6 +28,7 @@
 #include "core/neuralnet/nimcp_neuralnet_backprop.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>

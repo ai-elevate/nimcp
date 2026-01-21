@@ -12,6 +12,7 @@
 /* Note: nimcp_reticular_kg_wiring.h not included to avoid type conflicts
  * The KG wiring types are already defined in nimcp_reticular.h */
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdlib.h>
 

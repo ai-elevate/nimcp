@@ -23,6 +23,7 @@
 #include "utils/containers/nimcp_min_heap.h"
 #include "api/nimcp_api_exception.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "swarm_memory"
 

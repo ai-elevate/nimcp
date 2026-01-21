@@ -9,6 +9,7 @@
  */
 
 #include "cognitive/memory/core/nimcp_metamemory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>

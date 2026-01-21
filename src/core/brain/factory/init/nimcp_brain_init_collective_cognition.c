@@ -32,6 +32,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_wiring_helpers.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "BRAIN_INIT_COLLECTIVE_COGNITION"
 

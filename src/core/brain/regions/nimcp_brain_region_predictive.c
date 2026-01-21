@@ -33,6 +33,7 @@
 #include "utils/error/nimcp_error_codes.h"
 #include "security/nimcp_security.h"
 #include "utils/encoding/nimcp_positional_encoding.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
 

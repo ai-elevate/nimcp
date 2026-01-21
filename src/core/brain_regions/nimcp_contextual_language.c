@@ -12,6 +12,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_wiring_helpers.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

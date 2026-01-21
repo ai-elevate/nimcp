@@ -16,6 +16,7 @@
 #include "core/brain/regions/brainstem/nimcp_brainstem_quantum_bridge.h"
 #include "core/medulla/nimcp_medulla.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /*=============================================================================
  * LOGGING MODULE IDENTIFIER

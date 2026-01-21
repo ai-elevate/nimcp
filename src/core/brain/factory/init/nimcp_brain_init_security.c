@@ -32,6 +32,7 @@
 #include "security/nimcp_blood_brain_barrier.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* LGSS types are forward-declared in brain_internal.h */
 

@@ -25,6 +25,7 @@
 #include "cognitive/nimcp_theory_of_mind.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdarg.h>

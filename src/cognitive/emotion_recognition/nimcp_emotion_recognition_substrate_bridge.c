@@ -8,6 +8,7 @@
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 struct emotion_recognition_substrate_bridge {

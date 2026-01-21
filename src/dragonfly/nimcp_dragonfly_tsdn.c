@@ -19,6 +19,7 @@
 #include "utils/platform/nimcp_platform.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/rng/nimcp_rand.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>

@@ -23,6 +23,7 @@
 #include "core/brain/nimcp_brain_internal.h"
 #include "core/brain/internal/nimcp_brain_pr_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "BRAIN_INIT_PR_MEMORY"
 

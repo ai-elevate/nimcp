@@ -39,6 +39,7 @@
 #include "plasticity/eligibility/nimcp_eligibility_pr_bridge.h"
 #include "plasticity/stdp/nimcp_stdp_quantum_bridge.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "BRAIN_INIT_PLASTICITY_BRIDGES"
 

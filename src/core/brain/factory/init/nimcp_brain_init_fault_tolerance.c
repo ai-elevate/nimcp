@@ -31,6 +31,7 @@
 #include "cognitive/fault_tolerance/nimcp_recovery_executive.h"
 #include "cognitive/fault_tolerance/nimcp_recovery_parietal_bridge.h"
 #include "cognitive/parietal/nimcp_parietal.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>

@@ -34,6 +34,7 @@
 #include "utils/dispatch/nimcp_fn_dispatch.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <stdlib.h>

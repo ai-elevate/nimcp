@@ -1041,6 +1041,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/utils/exception")
     add_subdirectory(unit/utils/exception)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/integration/utils/exception")
+    message(STATUS "Adding utils exception handling integration tests...")
+    add_subdirectory(integration/utils/exception)
+endif()
+
 # Utils Memory Tests
 # ============================================================================
 
@@ -1128,6 +1133,19 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/utils/rng")
     message(STATUS "Adding utils RNG regression tests (thread safety)...")
     add_subdirectory(regression/utils/rng)
+endif()
+
+# ============================================================================
+# Utils Exception Regression Tests
+# ============================================================================
+# WHAT: Regression tests for exception handling stability
+# WHY:  Ensure exception handling doesn't regress in memory safety, thread safety,
+#       callback registration, metrics accuracy, circuit breaker, and epitope generation
+# HOW:  Tests create/destroy cycles, null safety, concurrent operations, callbacks
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/utils/exception")
+    message(STATUS "Adding utils exception regression tests (stability)...")
+    add_subdirectory(regression/utils/exception)
 endif()
 
 # ============================================================================

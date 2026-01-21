@@ -26,6 +26,7 @@
 #include "async/nimcp_bio_messages.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/validation/nimcp_validate.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <float.h>
 #include <math.h>
 #include <string.h>

@@ -6,6 +6,7 @@
 #include "cognitive/theory_of_mind/nimcp_theory_of_mind_thalamic_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 struct tom_thalamic_bridge {

@@ -20,6 +20,7 @@
 #include "api/nimcp_api_exception.h"
 #include "utils/logging/nimcp_logging.h"
 #include "cognitive/nimcp_working_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 
 #define LOG_MODULE "BRAIN_MEM"

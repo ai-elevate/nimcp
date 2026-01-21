@@ -13,6 +13,7 @@
 
 #include "perception/cortical/nimcp_audio_cortical_bridge.h"
 #include "utils/bridge/nimcp_bridge_base.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>

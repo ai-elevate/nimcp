@@ -29,6 +29,9 @@
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
+
+#define LOG_MODULE "BRAIN_LIFECYCLE"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/memory/nimcp_memory_guards.h"
 #include "utils/platform/nimcp_platform_mutex.h"

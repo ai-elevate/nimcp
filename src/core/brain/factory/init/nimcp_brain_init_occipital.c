@@ -72,6 +72,7 @@
 
 // Audio cortex includes
 #include "perception/nimcp_audio_cortex.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 

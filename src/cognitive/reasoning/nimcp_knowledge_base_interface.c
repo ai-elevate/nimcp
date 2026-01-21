@@ -21,6 +21,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "core/events/nimcp_event_bus.h"
 #include "cognitive/nimcp_working_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 // Bio-async integration
 #include "async/nimcp_bio_async.h"

@@ -10,6 +10,7 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/platform/nimcp_platform_rwlock.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define MAX_LOCK_RETRIES 3
 #define LOCK_TIMEOUT_MS 1000

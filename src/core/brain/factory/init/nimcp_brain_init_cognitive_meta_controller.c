@@ -36,6 +36,7 @@
 #include "core/brain/nimcp_brain_internal.h"
 #include "cognitive/nimcp_cognitive_meta_controller.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "BRAIN_INIT_COGNITIVE_META"
 

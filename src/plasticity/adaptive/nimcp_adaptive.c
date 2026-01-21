@@ -43,6 +43,7 @@
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_messages.h"
 #include "security/nimcp_security.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "plasticity_adaptive"
 #include "utils/memory/nimcp_memory_pool.h"  // Phase MP: Memory pool for hot paths

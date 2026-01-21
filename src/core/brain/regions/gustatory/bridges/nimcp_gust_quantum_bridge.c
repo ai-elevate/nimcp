@@ -8,6 +8,7 @@
  */
 
 #include "core/brain/regions/gustatory/bridges/nimcp_gust_quantum_bridge.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>

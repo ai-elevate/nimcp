@@ -8,6 +8,7 @@
 #include "core/brain/regions/entorhinal/nimcp_entorhinal.h"
 #include "utils/memory/nimcp_memory_pool.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

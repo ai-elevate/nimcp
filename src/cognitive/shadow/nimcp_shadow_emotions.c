@@ -22,6 +22,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "nimcp.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "cognitive.shadow"
 #define BIO_MODULE_COGNITIVE_SHADOW 0x0353

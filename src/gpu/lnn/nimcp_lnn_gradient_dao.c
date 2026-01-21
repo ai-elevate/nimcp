@@ -21,6 +21,7 @@
 #include "gpu/context/nimcp_gpu_context.h"
 #include "gpu/tensor/nimcp_tensor_gpu.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

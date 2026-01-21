@@ -48,6 +48,7 @@
  */
 
 #include "cognitive/memory/core/nimcp_pr_optimizer_bridge.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>

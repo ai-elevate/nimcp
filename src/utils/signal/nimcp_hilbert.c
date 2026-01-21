@@ -17,6 +17,7 @@
 #include <immintrin.h>
 #include "utils/memory/nimcp_unified_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #define NIMCP_HAS_AVX2 1
 #else
 #define NIMCP_HAS_AVX2 0

@@ -23,6 +23,7 @@
 #include "utils/spatial/nimcp_kdtree.h"
 #include "utils/thread/nimcp_atomic.h"
 #include "utils/platform/nimcp_platform_once.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

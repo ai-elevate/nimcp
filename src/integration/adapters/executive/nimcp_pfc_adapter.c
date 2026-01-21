@@ -7,6 +7,7 @@
 
 #include "integration/adapters/executive/nimcp_pfc_adapter.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

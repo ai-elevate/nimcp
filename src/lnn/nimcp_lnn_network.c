@@ -17,6 +17,7 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_atomic.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdio.h>
 #include <math.h>

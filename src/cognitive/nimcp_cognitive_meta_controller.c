@@ -17,6 +17,7 @@
 #include "utils/platform/nimcp_platform.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/validation/nimcp_common.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* ============================================================================
  * Internal Helper Functions

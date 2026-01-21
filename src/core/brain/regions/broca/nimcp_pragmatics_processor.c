@@ -12,6 +12,7 @@
 
 #include "core/brain/regions/broca/nimcp_pragmatics_processor.h"
 #include "utils/memory/nimcp_unified_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>

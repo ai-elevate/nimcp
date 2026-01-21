@@ -30,6 +30,7 @@
 #include "security/nimcp_security.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_wiring_helpers.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <math.h>
 #include <string.h>

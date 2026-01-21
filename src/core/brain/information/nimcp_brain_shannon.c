@@ -47,6 +47,7 @@
 #include "information/nimcp_shannon.h"
 #include "utils/quantum/nimcp_quantum_shannon.h"
 #include "information/nimcp_cross_modal.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "BRAIN_INFO"
 

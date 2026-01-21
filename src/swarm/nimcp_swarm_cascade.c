@@ -16,6 +16,7 @@
 #include "api/nimcp_api_exception.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "swarm_cascade"
 #include <string.h>

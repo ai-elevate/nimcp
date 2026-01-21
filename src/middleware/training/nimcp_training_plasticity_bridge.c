@@ -28,6 +28,7 @@
 #include "utils/validation/nimcp_validate.h"
 #include "utils/platform/nimcp_platform_rwlock.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <stdio.h>
 #include <string.h>

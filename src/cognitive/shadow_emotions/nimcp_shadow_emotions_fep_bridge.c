@@ -10,6 +10,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/validation/nimcp_common.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 #define LOG_MODULE "shadow_emotions_fep_bridge"

@@ -42,6 +42,7 @@
 #include "middleware/training/nimcp_lr_scheduler.h"
 #include "middleware/training/nimcp_training_callbacks.h"
 #include "plasticity/adaptive/nimcp_adaptive.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 #include <string.h>
 #include <stdarg.h>

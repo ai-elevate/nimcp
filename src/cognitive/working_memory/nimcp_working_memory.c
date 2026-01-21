@@ -58,6 +58,7 @@
 #include <math.h>
 #include <stdio.h>
 #include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
+#include "utils/exception/nimcp_exception_macros.h"
 
 //=============================================================================
 // BIO-ASYNC MODULE REGISTRATION

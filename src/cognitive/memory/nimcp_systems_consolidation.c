@@ -24,6 +24,7 @@
 
 #include "cognitive/memory/nimcp_engram.h"
 #include "nimcp.h"  // For NIMCP_ERROR_* codes
+#include "utils/exception/nimcp_exception_macros.h"  // Phase 7: Exception integration
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"

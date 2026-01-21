@@ -175,6 +175,8 @@ extern int rcog_engine_exit_degraded_mode(rcog_engine_t* engine);
 typedef hypo_unified_drive_state_t health_agent_drive_state_t;
 typedef hypo_orch_stats_t health_agent_hypo_stats_t;
 
+#include "utils/exception/nimcp_exception_macros.h"
+
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

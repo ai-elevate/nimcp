@@ -5,6 +5,7 @@
 
 #include "dragonfly/nimcp_dragonfly_snn_bridge.h"
 #include "utils/rng/nimcp_rand.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>

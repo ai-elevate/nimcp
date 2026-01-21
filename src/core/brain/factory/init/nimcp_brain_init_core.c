@@ -30,6 +30,7 @@
 #include "utils/validation/nimcp_validate.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "BRAIN_INIT_CORE"
 

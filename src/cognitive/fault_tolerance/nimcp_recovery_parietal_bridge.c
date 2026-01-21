@@ -17,6 +17,7 @@
 #include "cognitive/parietal/nimcp_scientific_reasoning.h"
 #include "cognitive/parietal/nimcp_spatial_reasoning.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

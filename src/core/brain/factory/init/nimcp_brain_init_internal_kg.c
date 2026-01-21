@@ -36,6 +36,7 @@
 #include "core/brain/factory/init/nimcp_brain_init_subsystems.h"
 #include "core/brain/nimcp_brain_internal.h"
 #include "core/brain/nimcp_brain_kg.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>

@@ -5,6 +5,7 @@
  */
 
 #include "core/brain/regions/vta/nimcp_reward_prediction_error.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 

@@ -14,6 +14,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/tensor/nimcp_tensor_simd.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 #include <stdio.h>

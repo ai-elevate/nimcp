@@ -25,6 +25,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include "utils/validation/nimcp_validate.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdio.h>
 #include <stdlib.h>

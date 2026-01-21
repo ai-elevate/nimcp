@@ -7,6 +7,7 @@
 
 #include "integration/intra/memory/nimcp_memory_intra_coordinator.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdlib.h>
 #include <math.h>

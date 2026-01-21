@@ -22,6 +22,7 @@
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/logging/nimcp_logging.h"
 #include "core/brain/nimcp_brain_kg_helpers.h"  // KG self-awareness integration
+#include "utils/exception/nimcp_exception_macros.h"
 
 // Bio-async integration
 #include "async/nimcp_bio_async.h"

@@ -21,6 +21,7 @@
 #include "physics/thermodynamics/nimcp_thermodynamics.h"
 #include "utils/memory/nimcp_memory_guards.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>

@@ -27,6 +27,7 @@
 /* Language Layer includes */
 #include "language/nimcp_language_orchestrator.h"
 #include "language/nimcp_language_config.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <stdlib.h>

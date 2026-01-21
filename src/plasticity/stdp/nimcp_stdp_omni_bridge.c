@@ -8,6 +8,7 @@
 #include "plasticity/stdp/nimcp_stdp_omni_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdio.h>
 #include <math.h>

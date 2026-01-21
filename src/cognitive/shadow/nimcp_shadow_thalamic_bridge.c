@@ -12,6 +12,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 /* Source ID for shadow signals in thalamic routing */

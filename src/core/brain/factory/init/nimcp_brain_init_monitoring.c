@@ -90,6 +90,7 @@
 #include "plasticity/dendritic/nimcp_dendritic.h"
 #include "plasticity/predictive/nimcp_predictive_coding.h"
 #include "core/cortical_columns/nimcp_cortical_column.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <stdio.h>

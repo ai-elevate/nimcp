@@ -17,6 +17,7 @@
 #include "utils/memory/nimcp_memory_guards.h"
 #include "utils/platform/nimcp_platform_mutex.h"
 #include "utils/thread/nimcp_atomic.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 //=============================================================================

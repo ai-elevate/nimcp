@@ -13,6 +13,7 @@
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <math.h>

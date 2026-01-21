@@ -116,6 +116,7 @@
 #include "core/brain/factory/init/nimcp_brain_init_pr_memory.h"
 #include "core/brain/factory/init/nimcp_brain_init_world_model.h"
 #include "core/brain/factory/validation/nimcp_brain_validation.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define LOG_MODULE "BRAIN_FACTORY"
 

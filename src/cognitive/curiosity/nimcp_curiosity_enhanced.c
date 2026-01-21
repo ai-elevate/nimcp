@@ -29,6 +29,7 @@
 #define NIMCP_CURIOSITY_QUANTUM_BRIDGE_IMPLEMENTATION
 #include "cognitive/curiosity/nimcp_curiosity_quantum_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <math.h>

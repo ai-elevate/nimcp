@@ -11,6 +11,7 @@
 
 #include "security/language/nimcp_security_language_bridge.h"
 #include "utils/error/nimcp_error_codes.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

@@ -22,6 +22,7 @@
 #include "lnn/nimcp_lnn_network.h"
 #include "lnn/nimcp_lnn_training.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <stdio.h>

@@ -36,6 +36,7 @@
 /* NOTE: nimcp_parietal_quantum_bridge.h must be included BEFORE nimcp_brain_internal.h
  * to get the full struct definition instead of just the forward declaration */
 #include "core/brain/regions/parietal/nimcp_parietal_adapter.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 

@@ -42,6 +42,7 @@
 #include <string.h>
 #include <math.h>
 #include "utils/memory/nimcp_memory_guards.h"  // For nimcp_calloc/nimcp_free
+#include "utils/exception/nimcp_exception_macros.h"
 
 #define NIMCP_EMOTION_QUANTUM_BRIDGE_IMPLEMENTATION
 #include "cognitive/emotion/nimcp_emotion_quantum_bridge.h"

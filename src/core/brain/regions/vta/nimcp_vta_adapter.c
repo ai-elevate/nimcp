@@ -6,6 +6,7 @@
 
 #include "core/brain/regions/vta/nimcp_vta_adapter.h"
 #include "core/brain/regions/vta/nimcp_vta.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>

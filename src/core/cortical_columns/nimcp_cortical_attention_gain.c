@@ -8,6 +8,7 @@
 #include "core/cortical_columns/nimcp_cortical_attention_gain.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/platform/nimcp_platform_mutex.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
 

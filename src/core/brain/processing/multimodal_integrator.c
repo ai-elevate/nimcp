@@ -28,6 +28,7 @@
 #include "core/brain/processing/multimodal_integrator.h"
 #include "core/brain/nimcp_brain.h"
 #include "core/integration/nimcp_multimodal_integration.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdio.h>
 

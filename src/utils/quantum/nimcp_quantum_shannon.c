@@ -13,6 +13,7 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "cognitive/analysis/nimcp_network_analysis.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>

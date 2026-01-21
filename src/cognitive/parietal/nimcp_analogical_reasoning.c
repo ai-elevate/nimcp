@@ -15,6 +15,7 @@
 #include "cognitive/parietal/nimcp_analogical_reasoning.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>

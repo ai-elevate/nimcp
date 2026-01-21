@@ -18,6 +18,7 @@
 #include "swarm/nimcp_swarm_brain.h"
 #include "common/nimcp_module.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* ============================================================================
  * SwarmStats Type

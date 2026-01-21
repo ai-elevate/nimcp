@@ -83,10 +83,13 @@ static inline bool exec_has_gpu_mc(void) { return false; }
 #include <stdio.h>
 #include <stdarg.h>
 #include "nimcp.h"  // For error codes
+#include "utils/exception/nimcp_exception_macros.h"  // Phase 7: Exception integration
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "async/nimcp_wiring_helpers.h"
+
+#define LOG_MODULE "EXECUTIVE"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_unified_memory.h"
 #include "portia/nimcp_portia.h"

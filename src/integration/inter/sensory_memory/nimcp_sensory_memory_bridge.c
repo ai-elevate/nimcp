@@ -7,6 +7,7 @@
 
 #include "integration/inter/sensory_memory/nimcp_sensory_memory_bridge.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdlib.h>
 

@@ -7,6 +7,7 @@
  */
 
 #include "core/brain/regions/broca/nimcp_multimodal_language.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>

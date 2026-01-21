@@ -10,6 +10,7 @@
 #include "utils/validation/nimcp_common.h"
 #include "security/nimcp_blood_brain_barrier.h"
 #include "security/nimcp_bbb_helpers.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
 #include <string.h>

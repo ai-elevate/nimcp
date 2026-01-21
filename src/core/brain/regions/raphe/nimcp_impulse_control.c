@@ -5,6 +5,7 @@
  */
 
 #include "core/brain/regions/raphe/nimcp_impulse_control.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <math.h>
 

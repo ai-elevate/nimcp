@@ -16,6 +16,7 @@
 #include "core/brain/regions/wernicke/nimcp_wernicke_adapter.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
+#include "utils/exception/nimcp_exception_macros.h"
 
 #include <string.h>
 #include <stdlib.h>
