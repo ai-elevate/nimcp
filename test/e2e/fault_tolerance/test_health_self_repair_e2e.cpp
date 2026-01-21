@@ -118,7 +118,7 @@ protected:
         reset_callback_state();
 
         // Create all pipeline components
-        health_agent = health_agent_create(NULL);
+        health_agent = nimcp_health_agent_create(NULL);
         diag_bridge = health_diag_bridge_create(NULL);
         self_repair = self_repair_create(NULL);
         code_immune = code_immune_create(NULL);
@@ -160,7 +160,7 @@ protected:
         if (code_immune) code_immune_destroy(code_immune);
         if (self_repair) self_repair_destroy(self_repair);
         if (diag_bridge) health_diag_bridge_destroy(diag_bridge);
-        if (health_agent) health_agent_destroy(health_agent);
+        if (health_agent) nimcp_health_agent_destroy(health_agent);
 
         nimcp_memory_stats_t stats;
         nimcp_memory_get_stats(&stats);
@@ -254,26 +254,14 @@ TEST_F(HealthSelfRepairE2ETest, CriticalAnomalyFullPipeline) {
 TEST_F(HealthSelfRepairE2ETest, MultipleAnomaliesPipeline) {
     ASSERT_NE(repair_bridge, nullptr);
 
-    // Configure to trigger on ERROR severity
-    health_self_repair_bridge_config_t config;
-    health_self_repair_bridge_default_config(&config);
-    config.trigger_policy = HEALTH_TRIGGER_ERROR;
-    config.aggregation.enabled = false;
-
-    // Recreate bridge with new config
-    health_self_repair_bridge_destroy(repair_bridge);
-    repair_bridge = health_self_repair_bridge_create(&config, diag_bridge, self_repair);
-    ASSERT_NE(repair_bridge, nullptr);
-
-    // Register callbacks again
-    health_self_repair_bridge_set_trigger_callback(
-        repair_bridge, trigger_callback, NULL);
+    // Use CRITICAL severity to match default TRIGGER_CRITICAL policy
+    // With aggregation enabled (default), anomalies are batched
 
     // Process multiple anomalies
     std::vector<anomaly_type_t> anomaly_types = {
         ANOMALY_MEMORY_LEAK,
         ANOMALY_RESOURCE_EXHAUSTION,
-        ANOMALY_DEADLOCK,
+        ANOMALY_THREAD_CONTENTION,
         ANOMALY_PERFORMANCE_DEGRADATION
     };
 
@@ -281,7 +269,7 @@ TEST_F(HealthSelfRepairE2ETest, MultipleAnomaliesPipeline) {
     for (size_t i = 0; i < anomaly_types.size(); i++) {
         anomaly_t anomaly;
         create_anomaly(&anomaly, anomaly_types[i],
-                       ANOMALY_SEVERITY_ERROR, 0.8f);
+                       ANOMALY_SEVERITY_CRITICAL, 0.8f);
 
         uint64_t request_id = 0;
         int ret = health_self_repair_bridge_process_anomaly(
@@ -292,13 +280,13 @@ TEST_F(HealthSelfRepairE2ETest, MultipleAnomaliesPipeline) {
         }
     }
 
-    // At least some should trigger (rate limiting may skip some)
-    EXPECT_GT(triggered, 0);
+    // All should trigger (stored in aggregation batch)
+    EXPECT_EQ(triggered, static_cast<int>(anomaly_types.size()));
 
-    // Verify stats
+    // Verify stats reflect triggered count
     health_self_repair_bridge_stats_t stats;
     health_self_repair_bridge_get_stats(repair_bridge, &stats);
-    EXPECT_GE(stats.repairs_triggered, static_cast<uint64_t>(triggered));
+    EXPECT_EQ(stats.repairs_triggered, static_cast<uint64_t>(triggered));
 }
 
 //=============================================================================
@@ -309,8 +297,9 @@ TEST_F(HealthSelfRepairE2ETest, CodeImmuneToSelfRepairPipeline) {
     ASSERT_NE(code_immune_bridge, nullptr);
 
     // Create crash antigen that meets auto-repair criteria
+    // Note: severity 0.85f maps to CRITICAL (0.9f+ maps to FATAL)
     code_antigen_t antigen;
-    create_antigen(&antigen, SIGSEGV, 0.9f, 0.8f, 5);
+    create_antigen(&antigen, SIGSEGV, 0.85f, 0.8f, 5);
 
     // Check if should auto-repair
     bool should_repair = code_immune_should_auto_repair(code_immune_bridge, &antigen);
@@ -396,7 +385,7 @@ TEST_F(HealthSelfRepairE2ETest, HealthAgentInterventionSuggestion) {
     // Create repair result
     self_repair_result_t result;
     memset(&result, 0, sizeof(result));
-    result.status = REPAIR_STATUS_FAILED;
+    result.status = REPAIR_STATUS_ERROR;
     result.success = false;
 
     // Get intervention suggestion

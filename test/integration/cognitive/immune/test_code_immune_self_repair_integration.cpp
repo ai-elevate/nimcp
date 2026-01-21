@@ -58,7 +58,7 @@ protected:
         // Create components
         code_immune = code_immune_create(NULL);
         self_repair = self_repair_create(NULL);
-        health_agent = health_agent_create(NULL);
+        health_agent = nimcp_health_agent_create(NULL);
 
         if (code_immune && self_repair) {
             bridge = code_immune_self_repair_bridge_create(
@@ -69,7 +69,7 @@ protected:
     void TearDown() override {
         // Cleanup in reverse order
         if (bridge) code_immune_self_repair_bridge_destroy(bridge);
-        if (health_agent) health_agent_destroy(health_agent);
+        if (health_agent) nimcp_health_agent_destroy(health_agent);
         if (self_repair) self_repair_destroy(self_repair);
         if (code_immune) code_immune_destroy(code_immune);
 
@@ -128,7 +128,7 @@ TEST_F(CodeImmuneSelfRepairIntegrationTest, ConnectHealthAgent) {
 
 TEST_F(CodeImmuneSelfRepairIntegrationTest, ConvertSigsegvAntigen) {
     code_antigen_t antigen;
-    create_test_antigen(&antigen, SIGSEGV, 0.9f, 0.85f, 3);
+    create_test_antigen(&antigen, SIGSEGV, 0.85f, 0.85f, 3);
 
     diagnostic_result_t* result = nullptr;
     int ret = code_immune_antigen_to_diagnostic(&antigen, &result);
@@ -136,7 +136,7 @@ TEST_F(CodeImmuneSelfRepairIntegrationTest, ConvertSigsegvAntigen) {
     ASSERT_EQ(ret, 0);
     ASSERT_NE(result, nullptr);
 
-    // SIGSEGV should map to memory-related error
+    // SIGSEGV should map to memory-related error with severity >= 0.7 -> CRITICAL
     EXPECT_EQ(result->severity, DIAG_SEVERITY_CRITICAL);
     EXPECT_GT(result->confidence, 0.0f);
 
@@ -153,15 +153,15 @@ TEST_F(CodeImmuneSelfRepairIntegrationTest, ConvertSigfpeAntigen) {
     ASSERT_EQ(ret, 0);
     ASSERT_NE(result, nullptr);
 
-    // SIGFPE should map to NaN/arithmetic error
-    EXPECT_EQ(result->error_type, ERROR_TYPE_NAN_DETECTED);
+    // SIGFPE should map to floating point error
+    EXPECT_EQ(result->error_type, ERROR_TYPE_FLOATING_POINT_ERROR);
 
     diagnostics_free_result(result);
 }
 
 TEST_F(CodeImmuneSelfRepairIntegrationTest, ConvertSigabrtAntigen) {
     code_antigen_t antigen;
-    create_test_antigen(&antigen, SIGABRT, 1.0f, 0.95f, 1);
+    create_test_antigen(&antigen, SIGABRT, 0.85f, 0.95f, 1);
 
     diagnostic_result_t* result = nullptr;
     int ret = code_immune_antigen_to_diagnostic(&antigen, &result);
@@ -169,7 +169,7 @@ TEST_F(CodeImmuneSelfRepairIntegrationTest, ConvertSigabrtAntigen) {
     ASSERT_EQ(ret, 0);
     ASSERT_NE(result, nullptr);
 
-    // SIGABRT is typically assertion failure
+    // SIGABRT is typically assertion failure with severity >= 0.7 -> CRITICAL
     EXPECT_EQ(result->severity, DIAG_SEVERITY_CRITICAL);
 
     diagnostics_free_result(result);

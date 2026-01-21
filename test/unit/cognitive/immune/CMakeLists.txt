@@ -464,3 +464,51 @@ target_include_directories(unit_cognitive_immune_heal_bridge
 add_test(NAME unit_cognitive_immune_heal_bridge
          COMMAND unit_cognitive_immune_heal_bridge)
 set_tests_properties(unit_cognitive_immune_heal_bridge PROPERTIES LABELS "unit")
+
+# Code Immune Integrated Self-Repair Unit Tests
+add_executable(unit_cognitive_immune_integrated_self_repair
+    test_code_immune_integrated_self_repair.cpp
+)
+target_link_libraries(unit_cognitive_immune_integrated_self_repair
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_cognitive_immune_integrated_self_repair
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/utils/fault_tolerance
+        ${CMAKE_SOURCE_DIR}/src/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/src/cognitive/fault_tolerance
+)
+add_test(NAME unit_cognitive_immune_integrated_self_repair
+         COMMAND unit_cognitive_immune_integrated_self_repair)
+set_tests_properties(unit_cognitive_immune_integrated_self_repair PROPERTIES LABELS "unit")
+
+# Code Immune Self-Repair Bridge Unit Tests
+add_executable(unit_cognitive_immune_self_repair_bridge
+    test_code_immune_self_repair.cpp
+)
+target_link_libraries(unit_cognitive_immune_self_repair_bridge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_cognitive_immune_self_repair_bridge
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/src/utils/memory
+        ${CMAKE_SOURCE_DIR}/src/utils/logging
+        ${CMAKE_SOURCE_DIR}/src/utils/fault_tolerance
+        ${CMAKE_SOURCE_DIR}/src/cognitive/immune
+        ${CMAKE_SOURCE_DIR}/src/cognitive/fault_tolerance
+)
+add_test(NAME unit_cognitive_immune_self_repair_bridge
+         COMMAND unit_cognitive_immune_self_repair_bridge)
+set_tests_properties(unit_cognitive_immune_self_repair_bridge PROPERTIES LABELS "unit")

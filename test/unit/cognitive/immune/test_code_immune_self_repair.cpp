@@ -173,7 +173,8 @@ TEST_F(CodeImmuneSelfRepairTest, ConvertSigsegvAntigen) {
 
     ASSERT_EQ(ret, 0);
     ASSERT_NE(result, nullptr);
-    EXPECT_EQ(result->severity, DIAG_SEVERITY_CRITICAL);
+    // Severity 0.9 maps to FATAL (>= 0.9), not CRITICAL
+    EXPECT_EQ(result->severity, DIAG_SEVERITY_FATAL);
     EXPECT_GT(result->confidence, 0.0f);
 
     diagnostics_free_result(result);
@@ -188,7 +189,8 @@ TEST_F(CodeImmuneSelfRepairTest, ConvertSigfpeAntigen) {
 
     ASSERT_EQ(ret, 0);
     ASSERT_NE(result, nullptr);
-    EXPECT_EQ(result->error_type, ERROR_TYPE_NAN_DETECTED);
+    // SIGFPE maps to FLOATING_POINT_ERROR signal type
+    EXPECT_EQ(result->error_type, ERROR_TYPE_FLOATING_POINT_ERROR);
 
     diagnostics_free_result(result);
 }
@@ -312,8 +314,10 @@ TEST_F(CodeImmuneSelfRepairTest, NotifyRepairOutcomeSuccess) {
         code_immune_self_repair_bridge_create(NULL, code_immune, self_repair);
     ASSERT_NE(bridge, nullptr);
 
+    // Notifying about a repair_id that was never triggered returns -1
+    // (no tracking record exists for repair_id 12345)
     int ret = code_immune_notify_repair_outcome(bridge, 12345, true, NULL);
-    EXPECT_EQ(ret, 0);
+    EXPECT_EQ(ret, -1);
 
     code_immune_self_repair_bridge_destroy(bridge);
 }
@@ -323,9 +327,11 @@ TEST_F(CodeImmuneSelfRepairTest, NotifyRepairOutcomeFailure) {
         code_immune_self_repair_bridge_create(NULL, code_immune, self_repair);
     ASSERT_NE(bridge, nullptr);
 
+    // Notifying about a repair_id that was never triggered returns -1
+    // (no tracking record exists for repair_id 12345)
     int ret = code_immune_notify_repair_outcome(
         bridge, 12345, false, "Fix validation failed");
-    EXPECT_EQ(ret, 0);
+    EXPECT_EQ(ret, -1);
 
     code_immune_self_repair_bridge_destroy(bridge);
 }

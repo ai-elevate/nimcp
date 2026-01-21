@@ -105,6 +105,8 @@ extern "C" {
  * ============================================================================ */
 
 typedef struct code_immune_system code_immune_system_t;
+typedef struct self_repair_coordinator self_repair_coordinator_t;
+typedef struct diagnostic_result diagnostic_result_t;
 
 /* ============================================================================
  * Enumerations
@@ -269,6 +271,49 @@ typedef struct {
 } code_antibody_t;
 
 /* ============================================================================
+ * Auto-Repair Integration Configuration
+ * ============================================================================ */
+
+/**
+ * @brief Configuration for automatic self-repair triggering
+ *
+ * WHAT: Controls when and how code immune triggers the self-repair pipeline
+ * WHY:  Enable autonomous crash recovery without manual intervention
+ * HOW:  Configure thresholds for severity, confidence, crash count, and cooldown
+ *
+ * When code_immune detects recurring crash patterns with sufficient severity
+ * and confidence, it can automatically trigger the self-repair coordinator
+ * to generate and deploy fixes.
+ */
+typedef struct {
+    bool enabled;                         /**< Auto-repair enabled (default: true) */
+    uint32_t min_crash_count;             /**< Min crash occurrences before repair (default: 3) */
+    float min_severity;                   /**< Min crash severity to trigger (default: 0.8) */
+    float min_confidence;                 /**< Min pattern confidence to trigger (default: 0.6) */
+    uint32_t cooldown_ms;                 /**< Cooldown between repair attempts (default: 5000) */
+    bool notify_health_agent_on_failure;  /**< Notify health agent on repair failure */
+    bool async_repair;                    /**< Trigger repair asynchronously (default: true) */
+    float min_fix_confidence;             /**< Min fix confidence to accept (default: 0.7) */
+    float max_fix_risk;                   /**< Max acceptable fix risk (default: 0.3) */
+    bool learn_from_outcomes;             /**< Update B cell stats from repair outcomes */
+    bool enable_bio_async;                /**< Enable bio-async messaging */
+} code_immune_auto_repair_config_t;
+
+/**
+ * @brief Repair outcome notification for learning
+ */
+typedef struct {
+    uint64_t antigen_id;                  /**< Antigen that was repaired */
+    uint64_t repair_id;                   /**< Self-repair repair ID */
+    bool success;                         /**< Was repair successful? */
+    bool hot_patched;                     /**< Was hot-patch applied? */
+    bool source_committed;                /**< Was source committed? */
+    float fix_confidence;                 /**< Confidence of the fix */
+    float fix_effectiveness;              /**< Measured effectiveness (post-deployment) */
+    char error_message[256];              /**< Error message if failed */
+} code_immune_repair_outcome_t;
+
+/* ============================================================================
  * Configuration
  * ============================================================================ */
 
@@ -300,6 +345,9 @@ typedef struct {
     /* Integration */
     bool enable_logging;                      /**< Enable security logging */
     bool sync_with_brain_immune;              /**< Sync with parent immune */
+
+    /* Self-repair integration */
+    code_immune_auto_repair_config_t auto_repair; /**< Auto-repair configuration */
 } code_immune_config_t;
 
 /**
@@ -417,6 +465,14 @@ struct code_immune_system {
     bool auto_load_enabled;                   /**< Auto-load on startup */
     char auto_save_path[CODE_IMMUNE_PERSIST_MAX_PATH]; /**< Auto-save filepath */
     char auto_load_path[CODE_IMMUNE_PERSIST_MAX_PATH]; /**< Auto-load filepath */
+
+    /* Self-repair integration */
+    self_repair_coordinator_t* self_repair;   /**< Connected self-repair coordinator */
+    uint64_t last_repair_trigger_ms;          /**< Last repair trigger timestamp */
+    uint32_t pending_repairs;                 /**< Number of repairs in progress */
+    uint64_t total_repairs_triggered;         /**< Total repairs triggered */
+    uint64_t total_repairs_successful;        /**< Total successful repairs */
+    uint64_t total_repairs_failed;            /**< Total failed repairs */
 };
 
 /* ============================================================================
@@ -978,6 +1034,154 @@ int code_immune_compute_epitope(
 float code_immune_compute_affinity(
     const char* pattern1,
     const char* pattern2
+);
+
+/* ============================================================================
+ * Self-Repair Integration API
+ * ============================================================================ */
+
+/**
+ * @brief Get default auto-repair configuration
+ *
+ * WHAT: Provide sensible default configuration for auto-repair
+ * WHY:  Easy initialization with good defaults
+ * HOW:  Return struct with balanced parameters
+ *
+ * DEFAULTS:
+ * - enabled: true
+ * - min_crash_count: 3
+ * - min_severity: 0.8
+ * - min_confidence: 0.6
+ * - cooldown_ms: 5000
+ * - async_repair: true
+ *
+ * @param config Output configuration (non-NULL)
+ * @return 0 on success, -1 on error
+ */
+int code_immune_auto_repair_default_config(code_immune_auto_repair_config_t* config);
+
+/**
+ * @brief Connect to self-repair coordinator
+ *
+ * WHAT: Link code immune to self-repair pipeline for automatic repairs
+ * WHY:  Enable autonomous crash recovery
+ * HOW:  Store coordinator reference, set up callbacks
+ *
+ * @param system Code immune system
+ * @param coordinator Self-repair coordinator
+ * @return 0 on success, -1 on error
+ */
+int code_immune_connect_self_repair(
+    code_immune_system_t* system,
+    self_repair_coordinator_t* coordinator
+);
+
+/**
+ * @brief Disconnect from self-repair coordinator
+ *
+ * WHAT: Unlink code immune from self-repair pipeline
+ * WHY:  Disable automatic repairs or switch coordinator
+ * HOW:  Clear coordinator reference
+ *
+ * @param system Code immune system
+ * @return 0 on success, -1 on error
+ */
+int code_immune_disconnect_self_repair(code_immune_system_t* system);
+
+/**
+ * @brief Check if self-repair is connected
+ *
+ * @param system Code immune system
+ * @return true if connected, false otherwise
+ */
+bool code_immune_is_self_repair_connected(const code_immune_system_t* system);
+
+/**
+ * @brief Manually trigger repair for an antigen
+ *
+ * WHAT: Initiate self-repair for a specific crash pattern
+ * WHY:  Allow manual repair triggering for known issues
+ * HOW:  Convert antigen to diagnostic, call self-repair
+ *
+ * @param system Code immune system
+ * @param antigen_id Antigen ID to repair
+ * @param repair_id Output: repair ID for tracking (can be NULL)
+ * @return 0 on success (repair initiated), -1 on error
+ */
+int code_immune_trigger_repair(
+    code_immune_system_t* system,
+    uint64_t antigen_id,
+    uint64_t* repair_id
+);
+
+/**
+ * @brief Convert antigen to diagnostic result (integrated API)
+ *
+ * WHAT: Transform code antigen into diagnostic_result_t format
+ * WHY:  Self-repair coordinator expects diagnostic_result_t input
+ * HOW:  Map crash details to error type, severity, stack trace
+ *
+ * @param system Code immune system
+ * @param antigen_id Antigen to convert
+ * @param diag Output diagnostic result (must be pre-allocated)
+ * @return 0 on success, -1 on error
+ */
+int code_immune_get_antigen_diagnostic(
+    code_immune_system_t* system,
+    uint64_t antigen_id,
+    diagnostic_result_t* diag
+);
+
+/**
+ * @brief Notify code immune of repair outcome (integrated API)
+ *
+ * WHAT: Report repair result for learning and feedback
+ * WHY:  Update B cell/antibody effectiveness based on repair success
+ * HOW:  Update internal statistics, adjust affinity scores
+ *
+ * @param system Code immune system
+ * @param outcome Repair outcome details
+ * @return 0 on success, -1 on error
+ */
+int code_immune_handle_repair_outcome(
+    code_immune_system_t* system,
+    const code_immune_repair_outcome_t* outcome
+);
+
+/**
+ * @brief Check if antigen should trigger auto-repair (integrated API)
+ *
+ * WHAT: Evaluate if antigen meets auto-repair thresholds
+ * WHY:  Determine if repair should be automatically triggered
+ * HOW:  Check crash count, severity, confidence against config
+ *
+ * @param system Code immune system
+ * @param antigen_id Antigen to evaluate
+ * @return true if repair should be triggered, false otherwise
+ */
+bool code_immune_check_auto_repair_eligible(
+    code_immune_system_t* system,
+    uint64_t antigen_id
+);
+
+/**
+ * @brief Get self-repair statistics
+ *
+ * WHAT: Get statistics about self-repair integration
+ * WHY:  Monitor repair effectiveness and system health
+ * HOW:  Return count of repairs triggered, successful, failed
+ *
+ * @param system Code immune system
+ * @param triggered Output: total repairs triggered (can be NULL)
+ * @param successful Output: successful repairs (can be NULL)
+ * @param failed Output: failed repairs (can be NULL)
+ * @return 0 on success, -1 on error
+ */
+int code_immune_get_repair_stats(
+    code_immune_system_t* system,
+    uint64_t* triggered,
+    uint64_t* successful,
+    uint64_t* failed
 );
 
 /* ============================================================================

@@ -65,3 +65,36 @@ gtest_discover_tests(integration_parietal_fep
         LABELS "integration;cognitive;parietal;fep;orchestrator"
         TIMEOUT 240
 )
+
+# ----------------------------------------------------------------------------
+# Parietal Training Bridge Integration Test
+# Tests integration between parietal lobe and training system
+# ----------------------------------------------------------------------------
+add_executable(integration_parietal_training
+    test_parietal_training_integration.cpp
+)
+
+target_link_libraries(integration_parietal_training
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(integration_parietal_training
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(integration_parietal_training PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_parietal_training
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;cognitive;parietal;training"
+        TIMEOUT 180
+)

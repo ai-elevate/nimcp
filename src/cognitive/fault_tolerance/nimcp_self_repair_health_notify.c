@@ -381,7 +381,7 @@ void self_repair_health_notify_destroy(
     }
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         bridge->mutex = NULL;
     }
 
@@ -555,6 +555,25 @@ int self_repair_health_notify_send(
     }
     if (notification->intervention <= REPAIR_INTERVENTION_RESTART) {
         bridge->stats.by_intervention[notification->intervention]++;
+    }
+
+    /* Update type-specific counters */
+    switch (notification->type) {
+        case REPAIR_NOTIFY_FAILURE:
+        case REPAIR_NOTIFY_VALIDATION_FAILED:
+            bridge->stats.failures_notified++;
+            break;
+        case REPAIR_NOTIFY_ROLLBACK:
+            bridge->stats.rollbacks_notified++;
+            break;
+        case REPAIR_NOTIFY_HIGH_RISK:
+            bridge->stats.high_risk_notified++;
+            break;
+        case REPAIR_NOTIFY_REPEATED_FAILURE:
+            bridge->stats.repeated_failures_notified++;
+            break;
+        default:
+            break;
     }
 
     /* Invoke callback */

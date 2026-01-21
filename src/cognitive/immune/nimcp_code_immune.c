@@ -12,6 +12,8 @@
  */
 
 #include "cognitive/immune/nimcp_code_immune.h"
+#include "cognitive/fault_tolerance/nimcp_self_repair.h"
+#include "utils/fault_tolerance/nimcp_diagnostics.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -48,6 +50,7 @@ static code_antibody_t* find_antibody_by_id(code_immune_system_t* system, uint64
 static code_crash_type_t signal_to_crash_type(int signal);
 static void process_pending_antigens(code_immune_system_t* system);
 static void decay_antibodies(code_immune_system_t* system, uint64_t delta_ms);
+static void check_auto_repairs(code_immune_system_t* system);
 
 /* Global code immune instance for signal handler callback */
 static code_immune_system_t* g_code_immune_instance = NULL;
@@ -367,6 +370,9 @@ int code_immune_default_config(code_immune_config_t* config) {
     /* Integration */
     config->enable_logging = true;
     config->sync_with_brain_immune = true;
+
+    /* Self-repair integration */
+    code_immune_auto_repair_default_config(&config->auto_repair);
 
     return 0;
 }
@@ -1452,6 +1458,9 @@ int code_immune_update(
 
     /* Decay antibodies */
     decay_antibodies(system, delta_ms);
+
+    /* Check for auto-repairs */
+    check_auto_repairs(system);
 
     /* Update statistics */
     if (system->stats.crashes_detected > 0) {
@@ -2565,6 +2574,433 @@ int code_immune_enable_auto_load(
         "Auto-load %s", enable ? "enabled" : "disabled");
 
     return 0;
+}
+
+/* ============================================================================
+ * Self-Repair Integration Implementation
+ * ============================================================================ */
+
+/* Note: code_immune_auto_repair_default_config is implemented in
+ * nimcp_code_immune_self_repair.c to avoid duplicate definitions */
+
+/**
+ * @brief Connect to self-repair coordinator
+ */
+int code_immune_connect_self_repair(
+    code_immune_system_t* system,
+    self_repair_coordinator_t* coordinator
+) {
+    if (!system || !coordinator) return -1;
+
+    nimcp_mutex_lock(system->mutex);
+    system->self_repair = coordinator;
+    system->last_repair_trigger_ms = 0;
+    system->pending_repairs = 0;
+    nimcp_mutex_unlock(system->mutex);
+
+    if (system->config.enable_logging) {
+        LOG_MODULE_INFO(CODE_IMMUNE_MODULE_NAME, "Connected to self-repair coordinator");
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Disconnect from self-repair coordinator
+ */
+int code_immune_disconnect_self_repair(code_immune_system_t* system) {
+    if (!system) return -1;
+
+    nimcp_mutex_lock(system->mutex);
+    system->self_repair = NULL;
+    nimcp_mutex_unlock(system->mutex);
+
+    if (system->config.enable_logging) {
+        LOG_MODULE_INFO(CODE_IMMUNE_MODULE_NAME, "Disconnected from self-repair coordinator");
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Check if self-repair is connected
+ */
+bool code_immune_is_self_repair_connected(const code_immune_system_t* system) {
+    if (!system) return false;
+    return system->self_repair != NULL;
+}
+
+/**
+ * @brief Convert signal to error_type_t for diagnostics
+ */
+static error_type_t signal_to_error_type(int signal) {
+    switch (signal) {
+        case SIGSEGV: return ERROR_TYPE_SEGFAULT;
+        case SIGBUS:  return ERROR_TYPE_BUS_ERROR;
+        case SIGILL:  return ERROR_TYPE_ILLEGAL_INSTRUCTION;
+        case SIGFPE:  return ERROR_TYPE_FLOATING_POINT_ERROR;
+        case SIGABRT: return ERROR_TYPE_ABORT;
+        default:      return ERROR_TYPE_UNKNOWN;
+    }
+}
+
+/**
+ * @brief Convert antigen to diagnostic result
+ */
+int code_immune_get_antigen_diagnostic(
+    code_immune_system_t* system,
+    uint64_t antigen_id,
+    diagnostic_result_t* diag
+) {
+    if (!system || !diag) return -1;
+
+    nimcp_mutex_lock(system->mutex);
+
+    code_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
+    if (!antigen) {
+        nimcp_mutex_unlock(system->mutex);
+        return -1;
+    }
+
+    memset(diag, 0, sizeof(*diag));
+
+    /* Map antigen fields to diagnostic */
+    diag->error_type = signal_to_error_type(antigen->signal);
+    diag->signal_number = antigen->signal;
+    diag->fault_address = antigen->fault_address;
+    diag->error_id = antigen->id;
+    diag->confidence = antigen->confidence;
+    diag->timestamp = (time_t)(antigen->timestamp / 1000);  /* ms to seconds */
+
+    /* Map severity (0-1 float to enum) */
+    if (antigen->severity >= 0.9f) {
+        diag->severity = DIAG_SEVERITY_FATAL;
+    } else if (antigen->severity >= 0.7f) {
+        diag->severity = DIAG_SEVERITY_CRITICAL;
+    } else if (antigen->severity >= 0.5f) {
+        diag->severity = DIAG_SEVERITY_ERROR;
+    } else if (antigen->severity >= 0.3f) {
+        diag->severity = DIAG_SEVERITY_WARNING;
+    } else {
+        diag->severity = DIAG_SEVERITY_INFO;
+    }
+
+    /* Copy root cause from function name */
+    if (antigen->function_name[0]) {
+        snprintf(diag->root_cause, sizeof(diag->root_cause),
+                 "Crash in function %s at %s:%u",
+                 antigen->function_name, antigen->source_file, antigen->line_number);
+        snprintf(diag->likely_faulty_function, sizeof(diag->likely_faulty_function),
+                 "%s", antigen->function_name);
+    } else {
+        snprintf(diag->root_cause, sizeof(diag->root_cause),
+                 "Signal %d at address %p", antigen->signal, antigen->fault_address);
+    }
+
+    /* Copy stack trace */
+    diag->stack_depth = (uint32_t)antigen->backtrace_depth;
+    if (diag->stack_depth > MAX_STACK_DEPTH) {
+        diag->stack_depth = MAX_STACK_DEPTH;
+    }
+    for (uint32_t i = 0; i < diag->stack_depth; i++) {
+        diag->stack_trace[i].address = antigen->backtrace[i];
+        diag->stack_trace[i].is_symbolicated = false;
+    }
+
+    /* Set recurring flag based on count */
+    diag->is_recurring = (antigen->recurrence_count > 1);
+    diag->occurrence_count = antigen->recurrence_count;
+
+    nimcp_mutex_unlock(system->mutex);
+    return 0;
+}
+
+/**
+ * @brief Check if antigen should trigger auto-repair
+ */
+bool code_immune_check_auto_repair_eligible(
+    code_immune_system_t* system,
+    uint64_t antigen_id
+) {
+    if (!system) return false;
+    if (!system->config.auto_repair.enabled) return false;
+    if (!system->self_repair) return false;
+
+    nimcp_mutex_lock(system->mutex);
+
+    code_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
+    if (!antigen) {
+        nimcp_mutex_unlock(system->mutex);
+        return false;
+    }
+
+    const code_immune_auto_repair_config_t* cfg = &system->config.auto_repair;
+
+    /* Check cooldown */
+    uint64_t now = get_timestamp_ms();
+    if (system->last_repair_trigger_ms > 0 &&
+        (now - system->last_repair_trigger_ms) < cfg->cooldown_ms) {
+        nimcp_mutex_unlock(system->mutex);
+        return false;
+    }
+
+    /* Check crash count */
+    if (antigen->recurrence_count < cfg->min_crash_count) {
+        nimcp_mutex_unlock(system->mutex);
+        return false;
+    }
+
+    /* Check severity */
+    if (antigen->severity < cfg->min_severity) {
+        nimcp_mutex_unlock(system->mutex);
+        return false;
+    }
+
+    /* Check confidence */
+    if (antigen->confidence < cfg->min_confidence) {
+        nimcp_mutex_unlock(system->mutex);
+        return false;
+    }
+
+    /* Already neutralized? */
+    if (antigen->neutralized) {
+        nimcp_mutex_unlock(system->mutex);
+        return false;
+    }
+
+    nimcp_mutex_unlock(system->mutex);
+    return true;
+}
+
+/**
+ * @brief Internal repair completion callback
+ */
+static void code_immune_repair_complete_callback(
+    uint64_t repair_id,
+    const self_repair_result_t* result,
+    void* user_data
+) {
+    code_immune_system_t* system = (code_immune_system_t*)user_data;
+    if (!system || !result) return;
+
+    /* Create outcome notification */
+    code_immune_repair_outcome_t outcome;
+    memset(&outcome, 0, sizeof(outcome));
+    outcome.repair_id = repair_id;
+    outcome.success = result->success;
+    outcome.hot_patched = result->hot_patch_applied;
+    outcome.source_committed = result->source_committed;
+    outcome.fix_confidence = result->fix ? result->fix->confidence : 0.0f;
+
+    if (!result->success) {
+        strncpy(outcome.error_message, result->error_message,
+                sizeof(outcome.error_message) - 1);
+    }
+
+    /* Find antigen from record */
+    if (result->record.diagnostic_id > 0) {
+        outcome.antigen_id = result->record.diagnostic_id;
+    }
+
+    /* Notify system */
+    code_immune_handle_repair_outcome(system, &outcome);
+}
+
+/**
+ * @brief Manually trigger repair for an antigen
+ */
+int code_immune_trigger_repair(
+    code_immune_system_t* system,
+    uint64_t antigen_id,
+    uint64_t* repair_id
+) {
+    if (!system || !system->self_repair) return -1;
+
+    /* Convert antigen to diagnostic */
+    diagnostic_result_t diag;
+    if (code_immune_get_antigen_diagnostic(system, antigen_id, &diag) != 0) {
+        return -1;
+    }
+
+    /* Create repair request */
+    self_repair_request_t request;
+    memset(&request, 0, sizeof(request));
+    request.diagnosis = &diag;
+    request.min_confidence_override = system->config.auto_repair.min_fix_confidence;
+    request.max_risk_override = system->config.auto_repair.max_fix_risk;
+    request.async = system->config.auto_repair.async_repair;
+
+    /* Update timestamp */
+    nimcp_mutex_lock(system->mutex);
+    system->last_repair_trigger_ms = get_timestamp_ms();
+    system->total_repairs_triggered++;
+    system->pending_repairs++;
+    nimcp_mutex_unlock(system->mutex);
+
+    /* Set completion callback if async */
+    if (request.async) {
+        self_repair_set_complete_callback(system->self_repair,
+                                          code_immune_repair_complete_callback,
+                                          system);
+    }
+
+    /* Initiate repair */
+    int result;
+    if (request.async) {
+        uint64_t rid = 0;
+        result = self_repair_initiate_async(system->self_repair, &request, &rid);
+        if (repair_id) *repair_id = rid;
+    } else {
+        self_repair_result_t res;
+        result = self_repair_initiate(system->self_repair, &request, &res);
+
+        /* Process synchronous result */
+        if (result == 0) {
+            code_immune_repair_outcome_t outcome;
+            memset(&outcome, 0, sizeof(outcome));
+            outcome.antigen_id = antigen_id;
+            outcome.repair_id = res.record.repair_id;
+            outcome.success = res.success;
+            outcome.hot_patched = res.hot_patch_applied;
+            outcome.source_committed = res.source_committed;
+            if (res.fix) {
+                outcome.fix_confidence = res.fix->confidence;
+            }
+            if (!res.success) {
+                strncpy(outcome.error_message, res.error_message,
+                        sizeof(outcome.error_message) - 1);
+            }
+            code_immune_handle_repair_outcome(system, &outcome);
+
+            if (repair_id) *repair_id = res.record.repair_id;
+        }
+    }
+
+    if (system->config.enable_logging) {
+        LOG_MODULE_INFO(CODE_IMMUNE_MODULE_NAME,
+            "Triggered repair for antigen %lu: %s",
+            antigen_id, result == 0 ? "initiated" : "failed");
+    }
+
+    return result;
+}
+
+/**
+ * @brief Notify code immune of repair outcome
+ */
+int code_immune_handle_repair_outcome(
+    code_immune_system_t* system,
+    const code_immune_repair_outcome_t* outcome
+) {
+    if (!system || !outcome) return -1;
+
+    nimcp_mutex_lock(system->mutex);
+
+    /* Update statistics */
+    if (system->pending_repairs > 0) {
+        system->pending_repairs--;
+    }
+
+    if (outcome->success) {
+        system->total_repairs_successful++;
+
+        /* Mark antigen as neutralized */
+        code_antigen_t* antigen = find_antigen_by_id(system, outcome->antigen_id);
+        if (antigen) {
+            antigen->neutralized = true;
+            system->stats.crashes_neutralized++;
+        }
+
+        /* Update B cell effectiveness */
+        for (size_t i = 0; i < system->b_cell_count; i++) {
+            code_b_cell_t* b_cell = &system->b_cells[i];
+            if (b_cell->bound_antigen_id == outcome->antigen_id) {
+                b_cell->successful_fixes++;
+                /* Boost affinity for successful repairs */
+                b_cell->affinity = fminf(1.0f, b_cell->affinity + 0.1f);
+                break;
+            }
+        }
+    } else {
+        system->total_repairs_failed++;
+
+        /* Update B cell failure count */
+        for (size_t i = 0; i < system->b_cell_count; i++) {
+            code_b_cell_t* b_cell = &system->b_cells[i];
+            if (b_cell->bound_antigen_id == outcome->antigen_id) {
+                b_cell->failed_fixes++;
+                break;
+            }
+        }
+    }
+
+    nimcp_mutex_unlock(system->mutex);
+
+    if (system->config.enable_logging) {
+        LOG_MODULE_INFO(CODE_IMMUNE_MODULE_NAME,
+            "Repair outcome for antigen %lu: %s (hot_patched=%d, committed=%d)",
+            outcome->antigen_id,
+            outcome->success ? "SUCCESS" : "FAILED",
+            outcome->hot_patched,
+            outcome->source_committed);
+    }
+
+    return 0;
+}
+
+/**
+ * @brief Get self-repair statistics
+ */
+int code_immune_get_repair_stats(
+    code_immune_system_t* system,
+    uint64_t* triggered,
+    uint64_t* successful,
+    uint64_t* failed
+) {
+    if (!system) return -1;
+
+    nimcp_mutex_lock(system->mutex);
+
+    if (triggered) *triggered = system->total_repairs_triggered;
+    if (successful) *successful = system->total_repairs_successful;
+    if (failed) *failed = system->total_repairs_failed;
+
+    nimcp_mutex_unlock(system->mutex);
+    return 0;
+}
+
+/**
+ * @brief Check and trigger auto-repairs (internal helper, called from update)
+ */
+static void check_auto_repairs(code_immune_system_t* system) {
+    if (!system || !system->config.auto_repair.enabled || !system->self_repair) {
+        return;
+    }
+
+    /* Check each unprocessed antigen for auto-repair eligibility */
+    for (size_t i = 0; i < system->antigen_count; i++) {
+        code_antigen_t* antigen = &system->antigens[i];
+
+        /* Skip already neutralized or processed */
+        if (antigen->neutralized) continue;
+
+        /* Check if eligible for auto-repair */
+        if (code_immune_check_auto_repair_eligible(system, antigen->id)) {
+            if (system->config.enable_logging) {
+                LOG_MODULE_INFO(CODE_IMMUNE_MODULE_NAME,
+                    "Auto-triggering repair for antigen %lu (count=%u, severity=%.2f)",
+                    antigen->id, antigen->recurrence_count, antigen->severity);
+            }
+
+            /* Trigger repair (unlocked) */
+            nimcp_mutex_unlock(system->mutex);
+            code_immune_trigger_repair(system, antigen->id, NULL);
+            nimcp_mutex_lock(system->mutex);
+
+            /* Only one repair per update to avoid flooding */
+            break;
+        }
+    }
 }
 
 /* ============================================================================

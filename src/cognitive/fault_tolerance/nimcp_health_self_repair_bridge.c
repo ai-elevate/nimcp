@@ -404,7 +404,7 @@ void health_self_repair_bridge_destroy(health_self_repair_bridge_t* bridge) {
     }
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         bridge->mutex = NULL;
     }
 
@@ -549,6 +549,18 @@ int health_self_repair_bridge_trigger_from_diagnostic(
                 *request_id = tracking->request_id;
             }
 
+            /* Invoke trigger callback (even for aggregated repairs) */
+            if (bridge->trigger_callback) {
+                bridge->trigger_callback(tracking->request_id, diagnostic,
+                                         bridge->callback_user_data);
+            }
+
+            /* Broadcast via bio-async */
+            if (bridge->config.enable_bio_async) {
+                health_self_repair_bridge_broadcast_trigger(bridge,
+                    tracking->request_id, diagnostic);
+            }
+
             bridge->stats.repairs_triggered++;
             bridge->stats.by_severity[diagnostic->severity]++;
 
@@ -580,6 +592,9 @@ int health_self_repair_bridge_trigger_from_diagnostic(
 
     /* Submit to self-repair */
     int ret = submit_repair(bridge, diagnostic, tracking);
+
+    /* Free diagnostic - self_repair copies data, doesn't take ownership */
+    diagnostics_free_result(diagnostic);
 
     nimcp_mutex_unlock(bridge->mutex);
 
@@ -625,6 +640,9 @@ int health_self_repair_bridge_force_trigger(
 
     /* Submit to self-repair */
     int ret = submit_repair(bridge, diagnostic, tracking);
+
+    /* Free diagnostic - self_repair copies data, doesn't take ownership */
+    diagnostics_free_result(diagnostic);
 
     nimcp_mutex_unlock(bridge->mutex);
 
@@ -964,7 +982,8 @@ uint32_t health_self_repair_bridge_process_aggregation(
             submitted++;
         }
 
-        /* Clear from batch (ownership transferred to self-repair) */
+        /* Free diagnostic - self_repair copies data, doesn't take ownership */
+        diagnostics_free_result(diagnostic);
         bridge->aggregation_batch[i].diagnostic = NULL;
     }
 

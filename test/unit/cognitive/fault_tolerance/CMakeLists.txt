@@ -61,3 +61,43 @@ set_tests_properties(unit_cognitive_fault_tolerance_self_repair_bio_async PROPER
     LABELS "unit;self-repair;bio-async"
     TIMEOUT 60
 )
+
+# Health Diagnostic Bridge Unit Tests
+add_executable(unit_cognitive_fault_tolerance_health_diagnostic_bridge
+    test_health_diagnostic_bridge.cpp
+)
+target_link_libraries(unit_cognitive_fault_tolerance_health_diagnostic_bridge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_cognitive_fault_tolerance_health_diagnostic_bridge
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME unit_cognitive_fault_tolerance_health_diagnostic_bridge
+         COMMAND unit_cognitive_fault_tolerance_health_diagnostic_bridge)
+set_tests_properties(unit_cognitive_fault_tolerance_health_diagnostic_bridge PROPERTIES
+    LABELS "unit;health;self-repair"
+)
+
+# Health Self-Repair Bridge Unit Tests
+add_executable(unit_cognitive_fault_tolerance_health_self_repair_bridge
+    test_health_self_repair_bridge.cpp
+)
+target_link_libraries(unit_cognitive_fault_tolerance_health_self_repair_bridge
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(unit_cognitive_fault_tolerance_health_self_repair_bridge
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME unit_cognitive_fault_tolerance_health_self_repair_bridge
+         COMMAND unit_cognitive_fault_tolerance_health_self_repair_bridge)
+set_tests_properties(unit_cognitive_fault_tolerance_health_self_repair_bridge PROPERTIES
+    LABELS "unit;health;self-repair"
+)

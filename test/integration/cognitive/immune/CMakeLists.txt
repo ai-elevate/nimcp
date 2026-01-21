@@ -203,3 +203,21 @@ target_include_directories(integration_cognitive_immune_heal_bridge
 add_test(NAME integration_cognitive_immune_heal_bridge
          COMMAND integration_cognitive_immune_heal_bridge)
 set_tests_properties(integration_cognitive_immune_heal_bridge PROPERTIES LABELS "integration")
+
+# Code Immune Self-Repair Integration Tests
+add_executable(integration_cognitive_immune_code_immune_self_repair
+    test_code_immune_self_repair_integration.cpp
+)
+target_link_libraries(integration_cognitive_immune_code_immune_self_repair
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+)
+target_include_directories(integration_cognitive_immune_code_immune_self_repair
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+)
+add_test(NAME integration_cognitive_immune_code_immune_self_repair
+         COMMAND integration_cognitive_immune_code_immune_self_repair)
+set_tests_properties(integration_cognitive_immune_code_immune_self_repair PROPERTIES LABELS "integration")

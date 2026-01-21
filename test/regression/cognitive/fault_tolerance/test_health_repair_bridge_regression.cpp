@@ -597,7 +597,7 @@ TEST_F(HealthRepairBridgeRegressionTest, StatisticsResetCompleteness) {
 
     EXPECT_EQ(stats.anomalies_converted, 0u);
     EXPECT_EQ(stats.agent_messages_converted, 0u);
-    EXPECT_EQ(stats.conversion_errors, 0u);
+    EXPECT_EQ(stats.conversions_failed, 0u);
 }
 
 //=============================================================================

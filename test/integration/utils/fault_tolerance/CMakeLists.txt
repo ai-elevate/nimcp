@@ -116,3 +116,13 @@ set_tests_properties(integration_utils_fault_tolerance_test_state_manager_integr
 add_ft_integration_test(test_module_recovery_integration)
 set_tests_properties(integration_utils_fault_tolerance_test_module_recovery_integration
                      PROPERTIES TIMEOUT 180)
+
+# STDP Health Metrics Integration Tests (Plasticity Health Monitoring)
+add_ft_integration_test(test_stdp_health_integration)
+set_tests_properties(integration_utils_fault_tolerance_test_stdp_health_integration
+                     PROPERTIES TIMEOUT 180)
+
+# Plasticity Anomaly Detection Integration Tests (Plasticity Health Monitoring)
+add_ft_integration_test(test_plasticity_anomaly_integration)
+set_tests_properties(integration_utils_fault_tolerance_test_plasticity_anomaly_integration
+                     PROPERTIES TIMEOUT 180)

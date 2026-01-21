@@ -73,19 +73,7 @@ extern "C" {
  * Configuration
  * ============================================================================ */
 
-/**
- * @brief Code immune auto-repair configuration
- */
-typedef struct {
-    bool enabled;                       /**< Enable auto-repair integration */
-    uint32_t min_crash_count;           /**< Minimum crashes before triggering */
-    float min_severity;                 /**< Minimum severity (0.0-1.0) */
-    float min_confidence;               /**< Minimum confidence (0.0-1.0) */
-    uint32_t cooldown_ms;               /**< Cooldown between repairs for same pattern */
-    bool notify_health_agent_on_failure; /**< Notify health agent on repair failure */
-    bool learn_from_outcomes;           /**< Update B cell stats from repair outcomes */
-    bool enable_bio_async;              /**< Enable bio-async messaging */
-} code_immune_auto_repair_config_t;
+/* code_immune_auto_repair_config_t is defined in nimcp_code_immune.h */
 
 /* ============================================================================
  * Tracking Structures

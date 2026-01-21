@@ -134,6 +134,12 @@ static const diag_severity_t agent_severity_map[] = {
  * Internal Helper Functions
  * ============================================================================ */
 
+/* Forward declarations */
+static int analyze_patterns_unlocked(
+    health_diag_bridge_t* bridge,
+    diagnostic_result_t* result
+);
+
 /**
  * @brief Find anomaly mapping (custom first, then default)
  */
@@ -352,7 +358,7 @@ void health_diag_bridge_destroy(health_diag_bridge_t* bridge) {
     bridge->initialized = false;
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         bridge->mutex = NULL;
     }
 
@@ -412,7 +418,12 @@ int health_diag_bridge_convert_anomaly(
     /* Fill in diagnostic result */
     diag->error_type = mapping->error_type;
     diag->severity = health_diag_bridge_translate_anomaly_severity(anomaly->severity);
-    diag->confidence = anomaly->confidence > 0 ? anomaly->confidence : mapping->default_confidence;
+
+    /* Set confidence with clamping to [0.0, 1.0] */
+    float conf = anomaly->confidence > 0 ? anomaly->confidence : mapping->default_confidence;
+    if (conf > 1.0f) conf = 1.0f;
+    if (conf < 0.0f) conf = 0.0f;
+    diag->confidence = conf;
 
     /* Copy root cause from anomaly description */
     snprintf(diag->root_cause, sizeof(diag->root_cause), "%s", anomaly->description);
@@ -440,7 +451,7 @@ int health_diag_bridge_convert_anomaly(
 
     /* Analyze patterns if configured */
     if (bridge->config.enable_pattern_analysis) {
-        health_diag_bridge_analyze_patterns(bridge, diag);
+        analyze_patterns_unlocked(bridge, diag);
     }
 
     /* Suggest recovery actions */
@@ -608,7 +619,7 @@ int health_diag_bridge_convert_agent_message(
 
     /* Analyze patterns if configured */
     if (bridge->config.enable_pattern_analysis) {
-        health_diag_bridge_analyze_patterns(bridge, diag);
+        analyze_patterns_unlocked(bridge, diag);
     }
 
     /* Suggest recovery actions */
@@ -676,14 +687,13 @@ int health_diag_bridge_enrich_memory_snapshot(
     return ret;
 }
 
-int health_diag_bridge_analyze_patterns(
+/**
+ * @brief Analyze patterns without locking (internal helper)
+ */
+static int analyze_patterns_unlocked(
     health_diag_bridge_t* bridge,
     diagnostic_result_t* result
 ) {
-    if (!bridge || !result) {
-        return -1;
-    }
-
     /* Pattern analysis is delegated to diagnostics system */
     /* This function marks the result for later pattern matching */
     result->is_recurring = false;
@@ -693,11 +703,24 @@ int health_diag_bridge_analyze_patterns(
 
     /* Actual pattern detection happens when diagnostic is added to history */
     /* Here we just increment the counter for tracking */
-    nimcp_mutex_lock(bridge->mutex);
     bridge->stats.patterns_detected++;
-    nimcp_mutex_unlock(bridge->mutex);
 
     return 0;
+}
+
+int health_diag_bridge_analyze_patterns(
+    health_diag_bridge_t* bridge,
+    diagnostic_result_t* result
+) {
+    if (!bridge || !result) {
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->mutex);
+    int ret = analyze_patterns_unlocked(bridge, result);
+    nimcp_mutex_unlock(bridge->mutex);
+
+    return ret;
 }
 
 /* ============================================================================

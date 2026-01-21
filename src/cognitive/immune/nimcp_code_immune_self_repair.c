@@ -209,6 +209,9 @@ int code_immune_auto_repair_default_config(
     config->min_confidence = CODE_IMMUNE_DEFAULT_MIN_CONFIDENCE;
     config->cooldown_ms = CODE_IMMUNE_DEFAULT_COOLDOWN_MS;
     config->notify_health_agent_on_failure = true;
+    config->async_repair = true;
+    config->min_fix_confidence = 0.7f;
+    config->max_fix_risk = 0.3f;
     config->learn_from_outcomes = true;
     config->enable_bio_async = true;
 
@@ -294,7 +297,7 @@ void code_immune_self_repair_bridge_destroy(
     }
 
     if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+        nimcp_mutex_free(bridge->mutex);
         bridge->mutex = NULL;
     }
 
@@ -510,6 +513,9 @@ int code_immune_trigger_auto_repair(
         return -1;
     }
 
+    /* Free diagnostic - self_repair copies data, doesn't take ownership */
+    diagnostics_free_result(diagnostic);
+
     /* Add tracking record */
     add_tracking_record(bridge, antigen_id, b_cell_id, self_repair_id);
 
@@ -601,34 +607,33 @@ int code_immune_notify_repair_outcome(
 
     nimcp_mutex_lock(bridge->mutex);
 
-    /* Find tracking record */
+    /* Find tracking record (may be NULL for external repairs) */
     code_immune_repair_tracking_t* tracking = find_tracking_record(bridge, repair_id);
-    if (!tracking) {
-        nimcp_mutex_unlock(bridge->mutex);
-        return -1;
+    if (tracking) {
+        /* Update tracking */
+        tracking->completed_at = nimcp_time_get_ms();
+        tracking->success = success;
+        if (error_message) {
+            snprintf(tracking->error_message, sizeof(tracking->error_message),
+                     "%s", error_message);
+        }
     }
 
-    /* Update tracking */
-    tracking->completed_at = nimcp_time_get_ms();
-    tracking->success = success;
-    if (error_message) {
-        snprintf(tracking->error_message, sizeof(tracking->error_message),
-                 "%s", error_message);
-    }
-
-    /* Update statistics */
+    /* Update statistics regardless of tracking (supports external repairs) */
     if (success) {
         bridge->stats.repairs_succeeded++;
     } else {
         bridge->stats.repairs_failed++;
     }
 
-    /* Calculate timing */
-    uint64_t repair_time = tracking->completed_at - tracking->triggered_at;
-    bridge->total_repair_time_ms += repair_time;
-    bridge->repair_count_for_avg++;
-    bridge->stats.avg_repair_time_ms =
-        (float)bridge->total_repair_time_ms / (float)bridge->repair_count_for_avg;
+    /* Calculate timing (only if tracking record exists) */
+    if (tracking) {
+        uint64_t repair_time = tracking->completed_at - tracking->triggered_at;
+        bridge->total_repair_time_ms += repair_time;
+        bridge->repair_count_for_avg++;
+        bridge->stats.avg_repair_time_ms =
+            (float)bridge->total_repair_time_ms / (float)bridge->repair_count_for_avg;
+    }
 
     /* Calculate success rate */
     uint64_t total = bridge->stats.repairs_succeeded + bridge->stats.repairs_failed;
@@ -636,8 +641,8 @@ int code_immune_notify_repair_outcome(
         bridge->stats.success_rate = (float)bridge->stats.repairs_succeeded / (float)total;
     }
 
-    /* Update B cell if learning enabled */
-    if (bridge->config.learn_from_outcomes && tracking->b_cell_id > 0) {
+    /* Update B cell if learning enabled (only if tracking record exists) */
+    if (tracking && bridge->config.learn_from_outcomes && tracking->b_cell_id > 0) {
         /* Get mutable B cell pointer */
         code_b_cell_t* b_cell = NULL;
         for (size_t i = 0; i < bridge->code_immune->b_cell_count; i++) {

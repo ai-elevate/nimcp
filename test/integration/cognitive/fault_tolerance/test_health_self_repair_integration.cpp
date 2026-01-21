@@ -57,7 +57,7 @@ protected:
         baseline_allocated = stats.current_allocated;
 
         // Create full pipeline
-        health_agent = health_agent_create(NULL);
+        health_agent = nimcp_health_agent_create(NULL);
         diag_bridge = health_diag_bridge_create(NULL);
         self_repair = self_repair_create(NULL);
 
@@ -78,7 +78,7 @@ protected:
         if (repair_bridge) health_self_repair_bridge_destroy(repair_bridge);
         if (self_repair) self_repair_destroy(self_repair);
         if (diag_bridge) health_diag_bridge_destroy(diag_bridge);
-        if (health_agent) health_agent_destroy(health_agent);
+        if (health_agent) nimcp_health_agent_destroy(health_agent);
 
         nimcp_memory_stats_t stats;
         nimcp_memory_get_stats(&stats);
@@ -102,8 +102,8 @@ protected:
 
     // Helper: Create test agent message
     void create_test_agent_message(health_agent_message_t* message,
-                                    health_msg_type_t type,
-                                    health_severity_t severity) {
+                                    health_agent_msg_type_t type,
+                                    health_agent_severity_t severity) {
         memset(message, 0, sizeof(*message));
         message->type = type;
         message->severity = severity;
@@ -243,7 +243,7 @@ TEST_F(HealthSelfRepairIntegrationTest, WarningAnomalySkippedWithCriticalPolicy)
     health_self_repair_bridge_stats_t stats;
     health_self_repair_bridge_get_stats(repair_bridge, &stats);
     EXPECT_EQ(stats.repairs_triggered, 0u);
-    EXPECT_EQ(stats.repairs_skipped_policy, 1u);
+    EXPECT_EQ(stats.repairs_skipped, 1u);
 }
 
 TEST_F(HealthSelfRepairIntegrationTest, ManualPolicySkipsAllAutoTriggers) {
@@ -262,7 +262,7 @@ TEST_F(HealthSelfRepairIntegrationTest, ManualPolicySkipsAllAutoTriggers) {
     // Create FATAL anomaly (even FATAL should be skipped with manual policy)
     anomaly_t anomaly;
     create_test_anomaly(&anomaly, ANOMALY_RESOURCE_EXHAUSTION,
-                        ANOMALY_SEVERITY_FATAL, 1.0f);
+                        ANOMALY_SEVERITY_CRITICAL, 1.0f);
 
     uint64_t request_id = 0;
     int ret = health_self_repair_bridge_process_anomaly(repair_bridge, &anomaly, &request_id);
@@ -348,7 +348,7 @@ TEST_F(HealthSelfRepairIntegrationTest, SuggestInterventionForRepeatFailures) {
 
     self_repair_result_t result;
     memset(&result, 0, sizeof(result));
-    result.status = REPAIR_STATUS_FAILED;
+    result.status = REPAIR_STATUS_ERROR;
     result.success = false;
 
     // Suggest intervention
@@ -372,9 +372,9 @@ TEST_F(HealthSelfRepairIntegrationTest, ProcessMultipleAnomalyTypes) {
         error_type_t expected_error;
     } test_cases[] = {
         { ANOMALY_MEMORY_LEAK, ERROR_TYPE_MEMORY_LEAK },
-        { ANOMALY_RESOURCE_EXHAUSTION, ERROR_TYPE_RESOURCE_EXHAUSTION },
+        { ANOMALY_RESOURCE_EXHAUSTION, ERROR_TYPE_OUT_OF_MEMORY },
         { ANOMALY_PERFORMANCE_DEGRADATION, ERROR_TYPE_INVALID_STATE },
-        { ANOMALY_DEADLOCK, ERROR_TYPE_DEADLOCK },
+        { ANOMALY_THREAD_CONTENTION, ERROR_TYPE_DEADLOCK },
     };
 
     for (const auto& tc : test_cases) {
@@ -412,9 +412,7 @@ TEST_F(HealthSelfRepairIntegrationTest, SeverityTranslationConsistency) {
     EXPECT_EQ(
         health_diag_bridge_translate_anomaly_severity(ANOMALY_SEVERITY_CRITICAL),
         DIAG_SEVERITY_CRITICAL);
-    EXPECT_EQ(
-        health_diag_bridge_translate_anomaly_severity(ANOMALY_SEVERITY_FATAL),
-        DIAG_SEVERITY_FATAL);
+    // Note: CRITICAL maps to CRITICAL, not FATAL - there is no ANOMALY_SEVERITY_FATAL
 }
 
 //=============================================================================
@@ -453,7 +451,7 @@ TEST_F(HealthSelfRepairIntegrationTest, StatisticsTrackFullPipeline) {
     // Check repair bridge stats
     health_self_repair_bridge_stats_t repair_stats;
     health_self_repair_bridge_get_stats(repair_bridge, &repair_stats);
-    EXPECT_GE(repair_stats.repairs_triggered + repair_stats.repairs_skipped_rate_limit, 3u);
+    EXPECT_GE(repair_stats.repairs_triggered + repair_stats.repairs_skipped, 3u);
 }
 
 //=============================================================================
