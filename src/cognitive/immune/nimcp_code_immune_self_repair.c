@@ -634,33 +634,35 @@ int code_immune_notify_repair_outcome(
 
     nimcp_mutex_lock(bridge->mutex);
 
-    /* Find tracking record (may be NULL for external repairs) */
+    /* Find tracking record (must exist for valid notification) */
     code_immune_repair_tracking_t* tracking = find_tracking_record(bridge, repair_id);
-    if (tracking) {
-        /* Update tracking */
-        tracking->completed_at = nimcp_time_get_ms();
-        tracking->success = success;
-        if (error_message) {
-            snprintf(tracking->error_message, sizeof(tracking->error_message),
-                     "%s", error_message);
-        }
+    if (!tracking) {
+        /* Unknown repair_id - return error */
+        nimcp_mutex_unlock(bridge->mutex);
+        return -1;
     }
 
-    /* Update statistics regardless of tracking (supports external repairs) */
+    /* Update tracking */
+    tracking->completed_at = nimcp_time_get_ms();
+    tracking->success = success;
+    if (error_message) {
+        snprintf(tracking->error_message, sizeof(tracking->error_message),
+                 "%s", error_message);
+    }
+
+    /* Update statistics */
     if (success) {
         bridge->stats.repairs_succeeded++;
     } else {
         bridge->stats.repairs_failed++;
     }
 
-    /* Calculate timing (only if tracking record exists) */
-    if (tracking) {
-        uint64_t repair_time = tracking->completed_at - tracking->triggered_at;
-        bridge->total_repair_time_ms += repair_time;
-        bridge->repair_count_for_avg++;
-        bridge->stats.avg_repair_time_ms =
-            (float)bridge->total_repair_time_ms / (float)bridge->repair_count_for_avg;
-    }
+    /* Calculate timing */
+    uint64_t repair_time = tracking->completed_at - tracking->triggered_at;
+    bridge->total_repair_time_ms += repair_time;
+    bridge->repair_count_for_avg++;
+    bridge->stats.avg_repair_time_ms =
+        (float)bridge->total_repair_time_ms / (float)bridge->repair_count_for_avg;
 
     /* Calculate success rate */
     uint64_t total = bridge->stats.repairs_succeeded + bridge->stats.repairs_failed;
@@ -668,8 +670,8 @@ int code_immune_notify_repair_outcome(
         bridge->stats.success_rate = (float)bridge->stats.repairs_succeeded / (float)total;
     }
 
-    /* Update B cell if learning enabled (only if tracking record exists) */
-    if (tracking && bridge->config.learn_from_outcomes && tracking->b_cell_id > 0) {
+    /* Update B cell if learning enabled */
+    if (bridge->config.learn_from_outcomes && tracking->b_cell_id > 0) {
         /* Get mutable B cell pointer */
         code_b_cell_t* b_cell = NULL;
         for (size_t i = 0; i < bridge->code_immune->b_cell_count; i++) {

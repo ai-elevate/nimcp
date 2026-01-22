@@ -278,47 +278,55 @@ TEST_F(CodeImmuneSelfRepairIntegrationTest, DisabledBridge) {
 TEST_F(CodeImmuneSelfRepairIntegrationTest, NotifySuccessfulRepair) {
     ASSERT_NE(bridge, nullptr);
 
+    // Notifying about an unknown repair_id returns -1
+    // (tracking record must exist for repair_id to be valid)
     int ret = code_immune_notify_repair_outcome(bridge, 12345, true, NULL);
-    EXPECT_EQ(ret, 0);
+    EXPECT_EQ(ret, -1);
 
-    // Check statistics
+    // Statistics should not be updated for unknown repair_ids
     code_immune_self_repair_stats_t stats;
     code_immune_self_repair_get_stats(bridge, &stats);
-    EXPECT_EQ(stats.repairs_succeeded, 1u);
+    EXPECT_EQ(stats.repairs_succeeded, 0u);
 }
 
 TEST_F(CodeImmuneSelfRepairIntegrationTest, NotifyFailedRepair) {
     ASSERT_NE(bridge, nullptr);
 
+    // Notifying about an unknown repair_id returns -1
+    // (tracking record must exist for repair_id to be valid)
     int ret = code_immune_notify_repair_outcome(
         bridge, 12345, false, "Fix validation failed");
-    EXPECT_EQ(ret, 0);
+    EXPECT_EQ(ret, -1);
 
-    // Check statistics
+    // Statistics should not be updated for unknown repair_ids
     code_immune_self_repair_stats_t stats;
     code_immune_self_repair_get_stats(bridge, &stats);
-    EXPECT_EQ(stats.repairs_failed, 1u);
+    EXPECT_EQ(stats.repairs_failed, 0u);
 }
 
 TEST_F(CodeImmuneSelfRepairIntegrationTest, MultipleOutcomes) {
     ASSERT_NE(bridge, nullptr);
 
-    // Simulate multiple repair outcomes
-    code_immune_notify_repair_outcome(bridge, 1, true, NULL);
-    code_immune_notify_repair_outcome(bridge, 2, true, NULL);
-    code_immune_notify_repair_outcome(bridge, 3, false, "Error");
-    code_immune_notify_repair_outcome(bridge, 4, true, NULL);
-    code_immune_notify_repair_outcome(bridge, 5, false, "Error");
+    // All outcomes for unknown repair_ids should return -1
+    // (tracking records must exist for valid notifications)
+    int ret1 = code_immune_notify_repair_outcome(bridge, 1, true, NULL);
+    int ret2 = code_immune_notify_repair_outcome(bridge, 2, true, NULL);
+    int ret3 = code_immune_notify_repair_outcome(bridge, 3, false, "Error");
+    int ret4 = code_immune_notify_repair_outcome(bridge, 4, true, NULL);
+    int ret5 = code_immune_notify_repair_outcome(bridge, 5, false, "Error");
 
+    // All should return -1 for unknown repair_ids
+    EXPECT_EQ(ret1, -1);
+    EXPECT_EQ(ret2, -1);
+    EXPECT_EQ(ret3, -1);
+    EXPECT_EQ(ret4, -1);
+    EXPECT_EQ(ret5, -1);
+
+    // Statistics should remain at zero
     code_immune_self_repair_stats_t stats;
     code_immune_self_repair_get_stats(bridge, &stats);
-
-    EXPECT_EQ(stats.repairs_succeeded, 3u);
-    EXPECT_EQ(stats.repairs_failed, 2u);
-
-    // Check success rate calculation
-    float expected_rate = 3.0f / 5.0f;  // 60%
-    EXPECT_NEAR(stats.success_rate, expected_rate, 0.01f);
+    EXPECT_EQ(stats.repairs_succeeded, 0u);
+    EXPECT_EQ(stats.repairs_failed, 0u);
 }
 
 //=============================================================================
