@@ -446,6 +446,9 @@ bool brain_save(brain_t brain, const char* filepath)
         return false;
     }
 
+    // Health monitoring: signal start of save operation
+    brain_heartbeat(brain, "brain_save:start", 0.0f);
+
     // Save adaptive network
     bool success = adaptive_network_save(brain->network, filepath, SERIALIZE_FORMAT_BINARY);
 
@@ -454,11 +457,17 @@ bool brain_save(brain_t brain, const char* filepath)
         return false;
     }
 
+    // Health monitoring: network saved, starting metadata
+    brain_heartbeat(brain, "brain_save:metadata", 0.7f);
+
     // Save metadata
     if (!nimcp_brain_save_metadata(brain, filepath)) {
         set_error("Failed to save metadata");
         return false;
     }
+
+    // Health monitoring: save complete
+    brain_heartbeat(brain, "brain_save:complete", 1.0f);
 
     brain_clear_error();
     return true;
@@ -1068,6 +1077,9 @@ bool brain_save_snapshot(brain_t brain, const char* name, const char* descriptio
         return false;
     }
 
+    // Health monitoring: signal start of snapshot operation
+    brain_heartbeat(brain, "brain_save_snapshot:start", 0.0f);
+
     // Phase SNAPSHOT-KG: Backend selection
     // Determine whether to use KG (QuestDB) or file-based storage
     snapshot_backend_t backend = (snapshot_backend_t)brain->snapshot_backend;
@@ -1107,11 +1119,17 @@ bool brain_save_snapshot(brain_t brain, const char* name, const char* descriptio
     snprintf(snapshot_path, sizeof(snapshot_path), "%s/%s_%ld.snapshot",
              snapshot_dir, name, (long)now);
 
+    // Health monitoring: directories ready, starting save
+    brain_heartbeat(brain, "brain_save_snapshot:saving", 0.3f);
+
     // Save brain state to snapshot file
     if (!brain_save(brain, snapshot_path)) {
         set_error("Failed to save snapshot to %s", snapshot_path);
         return false;
     }
+
+    // Health monitoring: save complete, writing metadata
+    brain_heartbeat(brain, "brain_save_snapshot:metadata", 0.9f);
 
     // Save snapshot metadata
     char meta_path[1024];
@@ -1129,6 +1147,9 @@ bool brain_save_snapshot(brain_t brain, const char* name, const char* descriptio
         fclose(meta_file);
     }
 
+    // Health monitoring: snapshot complete
+    brain_heartbeat(brain, "brain_save_snapshot:complete", 1.0f);
+
     brain_clear_error();
     return true;
 }
@@ -1140,6 +1161,9 @@ brain_t brain_restore_snapshot(brain_t brain, const char* name)
         set_error("Null snapshot name provided");
         return NULL;
     }
+
+    // Health monitoring: signal start of restore operation (if brain available)
+    brain_heartbeat(brain, "brain_restore_snapshot:start", 0.0f);
 
     // Phase SNAPSHOT-KG: Backend selection
     // Try KG first if brain has KG persistence, then fall back to file
@@ -1221,6 +1245,9 @@ brain_t brain_restore_snapshot(brain_t brain, const char* name)
         set_error("No snapshot found with name: %s", name);
         return NULL;
     }
+
+    // Health monitoring: found snapshot, starting load
+    brain_heartbeat(brain, "brain_restore_snapshot:loading", 0.5f);
 
     // Load brain from snapshot
     char snapshot_path[1024];
@@ -1717,6 +1744,9 @@ bool brain_save_ex(brain_t brain, const char* filepath, const persistence_config
         return false;
     }
 
+    // Health monitoring: signal start of extended save operation
+    brain_heartbeat(brain, "brain_save_ex:start", 0.0f);
+
     // Use default config if not provided
     persistence_config_t default_cfg = persistence_default_config();
     if (!config) {
@@ -1739,6 +1769,9 @@ bool brain_save_ex(brain_t brain, const char* filepath, const persistence_config
     if (stat(filepath, &st) == 0) {
         bytes_written = (uint64_t)st.st_size;
     }
+
+    // Health monitoring: save complete, computing checksum
+    brain_heartbeat(brain, "brain_save_ex:checksum", 0.8f);
 
     // Compute and save checksum if enabled
     if (success && config->enable_checksum) {
@@ -1779,6 +1812,9 @@ bool brain_save_ex(brain_t brain, const char* filepath, const persistence_config
 
     // Record security interaction
     record_security_interaction(success, 1.0);
+
+    // Health monitoring: extended save complete
+    brain_heartbeat(brain, "brain_save_ex:complete", 1.0f);
 
     return success;
 }
@@ -1901,6 +1937,9 @@ bool brain_save_snapshot_cow(brain_t brain, const char* name,
         return false;
     }
 
+    // Health monitoring: signal start of CoW snapshot operation
+    brain_heartbeat(brain, "brain_save_snapshot_cow:start", 0.0f);
+
     // Use default config if not provided
     persistence_config_t default_cfg = persistence_default_config();
     if (!config) {
@@ -1945,6 +1984,9 @@ bool brain_save_snapshot_cow(brain_t brain, const char* name,
         }
     }
 
+    // Health monitoring: CoW metadata saved, starting file save
+    brain_heartbeat(brain, "brain_save_snapshot_cow:saving", 0.5f);
+
     // Save snapshot using regular file-based method
     bool success = brain_save_snapshot(brain, name, description);
 
@@ -1953,6 +1995,9 @@ bool brain_save_snapshot_cow(brain_t brain, const char* name,
 
     // Record security interaction
     record_security_interaction(success, 1.0);
+
+    // Health monitoring: CoW snapshot complete
+    brain_heartbeat(brain, "brain_save_snapshot_cow:complete", 1.0f);
 
     return success;
 }

@@ -115,6 +115,7 @@
 #include "core/brain/factory/init/nimcp_brain_init_basal_ganglia.h"
 #include "core/brain/factory/init/nimcp_brain_init_pr_memory.h"
 #include "core/brain/factory/init/nimcp_brain_init_world_model.h"
+#include "core/brain/factory/nimcp_brain_init_state_manager.h"
 #include "core/brain/factory/validation/nimcp_brain_validation.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
@@ -233,6 +234,10 @@ extern void set_error(const char* format, ...);
 // Health Agent subsystem macro (autonomous health monitoring)
 #define init_health_agent_subsystem                 nimcp_brain_factory_init_health_agent_subsystem
 #define destroy_health_agent_subsystem              nimcp_brain_factory_destroy_health_agent_subsystem
+
+// State Manager subsystem macro (checkpointing and recovery - Phase 8)
+#define init_state_manager_subsystem                brain_init_state_manager
+#define destroy_state_manager_subsystem             brain_shutdown_state_manager
 
 // Enhanced Basal Ganglia subsystem macro (action selection & motor control)
 #define init_basal_ganglia_subsystem                nimcp_brain_factory_init_basal_ganglia_subsystem
@@ -844,6 +849,19 @@ brain_t brain_create_custom(const brain_config_t* config)
     // BIOLOGICAL: Maps to autonomous nervous system monitoring
     // DEPENDS ON: Immune system, Oscillations, SNN/LNN (if present)
     if (!init_health_agent_subsystem(brain)) { brain_destroy(brain); return NULL; }
+
+    // ========================================================================
+    // STATE MANAGER (CHECKPOINTING & RECOVERY - Phase 8)
+    // ========================================================================
+    // Initialize state manager for module checkpointing:
+    // - Checkpoint: Serialize brain subsystem states for recovery
+    // - Restore: Deserialize states after failure
+    // - Validate: Verify state integrity before/after operations
+    // - Reset: Return invalid modules to safe default state
+    // Registered subsystems: brain_stats, working_memory, executive
+    // BIOLOGICAL: Maps to memory consolidation and state preservation
+    // DEPENDS ON: Health agent (for heartbeat during checkpoint operations)
+    if (!init_state_manager_subsystem(brain)) { brain_destroy(brain); return NULL; }
 
     // ========================================================================
     // ENHANCED BASAL GANGLIA (ACTION SELECTION & MOTOR CONTROL)

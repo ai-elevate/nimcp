@@ -39,3 +39,37 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_kg_module_wiring.cpp")
 
     message(STATUS "  Added Unit test: unit_brain_test_kg_module_wiring")
 endif()
+
+# Brain State Manager Tests (Phase 8)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/test_brain_state_manager.cpp")
+    add_executable(unit_brain_test_state_manager
+        ${CMAKE_CURRENT_SOURCE_DIR}/test_brain_state_manager.cpp
+    )
+
+    target_link_libraries(unit_brain_test_state_manager
+        PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+
+    target_include_directories(unit_brain_test_state_manager
+        PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/include/core/brain
+    )
+
+    target_compile_features(unit_brain_test_state_manager PRIVATE cxx_std_17)
+    target_compile_definitions(unit_brain_test_state_manager PRIVATE NIMCP_TESTING NIMCP_UNIT_TESTING)
+
+    gtest_discover_tests(unit_brain_test_state_manager
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "unit;brain;state_manager;phase8"
+            TIMEOUT 120
+    )
+
+    message(STATUS "  Added Unit test: unit_brain_test_state_manager")
+endif()

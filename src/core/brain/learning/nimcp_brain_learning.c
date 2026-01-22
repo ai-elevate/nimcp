@@ -45,6 +45,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "async/nimcp_future.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "core/brain/nimcp_brain_internal.h"
 
 #define LOG_MODULE "core_brain_learning"
 
@@ -341,7 +342,9 @@ float brain_learn_example(brain_t brain, const float* features, uint32_t num_fea
     float* target = nimcp_malloc(brain->config.num_outputs * sizeof(float));
     if (!target) {
         set_error("Failed to allocate target vector (%u outputs)", brain->config.num_outputs);
-        return NIMCP_ERROR_MEMORY;
+        NIMCP_THROW(NIMCP_ERROR_NO_MEMORY,
+                    "failed to allocate target vector for brain learning");
+        return -1.0F;
     }
     nimcp_brain_learning_label_to_output(brain, label, target, confidence);
 
@@ -1017,7 +1020,14 @@ float brain_learn_batch(brain_t brain, const brain_example_t* examples, uint32_t
         return -1.0F;
     }
 
+    // Health monitoring: signal start of batch learning
+    brain_heartbeat(brain, "brain_learn_batch:start", 0.0f);
+
     float total_loss = 0.0F;
+
+    // Calculate heartbeat interval (every 10% or every 100 examples, whichever is larger)
+    uint32_t heartbeat_interval = (num_examples / 10 > 100) ? num_examples / 10 : 100;
+    if (heartbeat_interval == 0) heartbeat_interval = 1;
 
     for (uint32_t i = 0; i < num_examples; i++) {
         float loss = brain_learn_example(brain, examples[i].features, examples[i].num_features,
@@ -1028,7 +1038,16 @@ float brain_learn_batch(brain_t brain, const brain_example_t* examples, uint32_t
         }
 
         total_loss += loss;
+
+        // Health monitoring: periodic progress update
+        if ((i + 1) % heartbeat_interval == 0) {
+            float progress = (float)(i + 1) / (float)num_examples;
+            brain_heartbeat(brain, "brain_learn_batch:progress", progress);
+        }
     }
+
+    // Health monitoring: batch learning complete
+    brain_heartbeat(brain, "brain_learn_batch:complete", 1.0f);
 
     brain_clear_error();
     return total_loss / num_examples;

@@ -992,6 +992,20 @@ struct brain_struct {
     bool health_agent_enabled;                             // Health agent enabled for this brain
     bool health_agent_owns_agent;                          // Whether brain owns (should destroy) the agent
 
+    // === STATE MANAGER INTEGRATION (Phase 8: Checkpointing) ===
+    //
+    // The State Manager provides centralized state checkpointing and recovery:
+    // - Checkpoint: Serialize module states for recovery
+    // - Restore: Deserialize states after failure
+    // - Validate: Verify state integrity
+    // - Reset: Return to safe default state
+    //
+    // Brain subsystems register with state manager for automatic checkpointing.
+    //
+    struct nimcp_state_manager* state_manager;             // Module state manager
+    bool state_manager_enabled;                            // State manager enabled for this brain
+    bool state_manager_owns_manager;                       // Whether brain owns (should destroy) manager
+
     // === BROCA'S REGION INTEGRATION (Language Production) ===
     //
     // Broca's Region (BA44/45) provides language production capabilities:
@@ -1623,6 +1637,40 @@ struct task_strategy {
      */
     float (*compute_loss)(const float* predicted, const float* target, uint32_t size);
 };
+
+//=============================================================================
+// Health Agent Heartbeat Helper (Phase 8: System-Wide Health Integration)
+//=============================================================================
+
+/**
+ * @brief Forward declaration for health agent heartbeat
+ */
+struct nimcp_health_agent;
+extern void nimcp_health_agent_heartbeat_ex(struct nimcp_health_agent* agent,
+                                             const char* operation,
+                                             float progress);
+
+/**
+ * @brief Forward declaration for state manager
+ */
+struct nimcp_state_manager;
+
+/**
+ * @brief Send heartbeat for long-running brain operations
+ *
+ * WHAT: Notify health agent that brain is alive during long operations
+ * WHY:  Prevent false-positive hang detection during expected long operations
+ * HOW:  Check if health agent is enabled and call heartbeat_ex
+ *
+ * @param brain The brain instance
+ * @param operation Description of current operation (e.g., "brain_destroy")
+ * @param progress Progress indicator (0.0 to 1.0)
+ */
+static inline void brain_heartbeat(brain_t brain, const char* operation, float progress) {
+    if (brain && brain->health_agent_enabled && brain->health_agent) {
+        nimcp_health_agent_heartbeat_ex(brain->health_agent, operation, progress);
+    }
+}
 
 #ifdef __cplusplus
 }

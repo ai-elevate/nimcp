@@ -56,6 +56,7 @@
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "core/brain/factory/init/nimcp_brain_init.h"
 #include "core/brain/factory/init/nimcp_brain_init_subsystems.h"
+#include "core/brain/factory/nimcp_brain_init_state_manager.h"
 
 /* Coordinator/Orchestrator headers for cleanup */
 #include "async/nimcp_bio_async_orchestrator.h"
@@ -689,10 +690,16 @@ void brain_destroy(brain_t brain)
     // STATE TRANSITION: * -> SHUTDOWN
     // All brain states can transition to SHUTDOWN for cleanup
 
+    // Phase 8: Signal start of shutdown to health agent
+    brain_heartbeat(brain, "brain_destroy:start", 0.0f);
+
     // Save final snapshot if configured
     if (brain->config.snapshot_dir && brain->config.save_final_snapshot) {
         brain_save_snapshot(brain, "final", "Snapshot at brain destruction");
     }
+
+    // Phase 8: Signal network cleanup phase
+    brain_heartbeat(brain, "brain_destroy:network", 0.1f);
 
     // Handle network destruction with reference counting
     if (brain->network) {
@@ -745,6 +752,9 @@ void brain_destroy(brain_t brain)
     // Cleanup subsystems (extensive list truncated for brevity)
     // ... (all the cleanup code from original brain_destroy)
 
+    // Phase 8: Signal subsystem cleanup phase
+    brain_heartbeat(brain, "brain_destroy:subsystems", 0.3f);
+
     // Cleanup Prime Resonant memory system
     nimcp_brain_factory_destroy_pr_memory_subsystem(brain);
 
@@ -759,9 +769,16 @@ void brain_destroy(brain_t brain)
         brain->immune_enabled = false;
     }
 
+    // Cleanup state manager (checkpointing - Phase 8)
+    // Must be cleaned up before health agent since it uses heartbeat calls
+    brain_shutdown_state_manager(brain);
+
     // Cleanup health agent (autonomous monitoring)
     // Must be cleaned up after immune system since it communicates with it
     nimcp_brain_factory_destroy_health_agent_subsystem(brain);
+
+    // Phase 8: Signal coordinator cleanup phase
+    brain_heartbeat(brain, "brain_destroy:coordinators", 0.5f);
 
     // ========================================================================
     // COORDINATOR/ORCHESTRATOR CLEANUP (reverse initialization order)
@@ -831,6 +848,9 @@ void brain_destroy(brain_t brain)
         brain->bio_async_orchestrator_enabled = false;
     }
 
+    // Phase 8: Signal FEP/cognitive cleanup phase
+    brain_heartbeat(brain, "brain_destroy:fep_cognitive", 0.6f);
+
     // 0. Cleanup FEP orchestrator
     if (brain->fep_orchestrator) {
         fep_orchestrator_stop(brain->fep_orchestrator);
@@ -893,6 +913,9 @@ void brain_destroy(brain_t brain)
         nimcp_brain_factory_destroy_mental_health_guardian_subsystem(brain);
     }
 
+    // Phase 8: Signal medulla/brainstem cleanup phase
+    brain_heartbeat(brain, "brain_destroy:medulla", 0.85f);
+
     // -2. Cleanup Medulla Oblongata (brainstem autonomic regulation)
     // Medulla is destroyed late - it provides foundational regulation
     if (brain->medulla) {
@@ -908,6 +931,9 @@ void brain_destroy(brain_t brain)
         brain->medulla_enabled = false;
         brain->last_medulla_update_us = 0;
     }
+
+    // Phase 8: Signal final cleanup phase
+    brain_heartbeat(brain, "brain_destroy:final", 0.95f);
 
     // Cleanup cache
     clear_cache(brain);

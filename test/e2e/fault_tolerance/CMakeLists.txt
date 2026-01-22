@@ -147,3 +147,11 @@ set_tests_properties(e2e_fault_tolerance_test_exception_stress_e2e PROPERTIES TI
 # Exception Module E2E Tests (Complete Exception Handling Pipelines for Converted Modules)
 add_e2e_fault_tolerance_test(test_exception_module_e2e)
 set_tests_properties(e2e_fault_tolerance_test_exception_module_e2e PROPERTIES TIMEOUT 900)
+
+# Exception Comprehensive E2E Tests (Complete Exception Pipeline Coverage)
+add_e2e_fault_tolerance_test(test_exception_e2e_comprehensive)
+set_tests_properties(e2e_fault_tolerance_test_exception_e2e_comprehensive PROPERTIES TIMEOUT 900)
+
+# Brain State Manager E2E Tests (Phase 8: System-Wide Health Integration)
+add_e2e_fault_tolerance_test(test_brain_state_manager_e2e)
+set_tests_properties(e2e_fault_tolerance_test_brain_state_manager_e2e PROPERTIES TIMEOUT 600)

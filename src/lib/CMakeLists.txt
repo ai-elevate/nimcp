@@ -86,6 +86,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_mental_health_guardian.c  # Mental Health Guardian (independent monitor)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_fault_tolerance.c    # Fault tolerance with parietal integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_health_agent.c      # Health agent autonomous monitoring
+    ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_state_manager.c    # State manager for checkpointing (Phase 8)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_basal_ganglia.c     # Enhanced basal ganglia action selection
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_broca.c            # Broca's region language production
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/factory/init/nimcp_brain_init_wernicke.c         # Wernicke's region language comprehension
@@ -2413,6 +2414,7 @@ set(NIMCP_CORE_SOURCES
     # Physics layer modules - Graph Theory, Dynamical Systems, Information Geometry
     ${CMAKE_CURRENT_SOURCE_DIR}/../physics/graphs/nimcp_graph_theory_bridge.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../physics/dynamics/nimcp_dynamical_systems.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../physics/geometry/nimcp_information_geometry.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../physics/geometry/nimcp_information_geometry_bridge.c
 
     # Biology layer modules
