@@ -202,12 +202,9 @@ hypo_immune_bridge_t* hypo_immune_bridge_create(
     /* Initialize timing */
     bridge->last_update_us = nimcp_time_get_us();
 
-    /* Create mutex */
-    mutex_attr_t attr;
-    attr.type = MUTEX_TYPE_RECURSIVE;
-    bridge->base.mutex = nimcp_mutex_create(&attr);
-    if (!bridge->base.mutex) {
-        nimcp_log(LOG_LEVEL_ERROR, "hypo_immune_bridge_create: mutex creation failed");
+    /* Initialize bridge base (creates mutex) */
+    if (bridge_base_init(&bridge->base, 0, "hypothalamus_immune") != 0) {
+        nimcp_log(LOG_LEVEL_ERROR, "hypo_immune_bridge_create: bridge_base_init failed");
         nimcp_free(bridge);
         return NULL;
     }

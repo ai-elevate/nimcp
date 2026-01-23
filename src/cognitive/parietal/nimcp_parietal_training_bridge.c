@@ -201,11 +201,8 @@ parietal_training_bridge_t* parietal_training_create(
     bridge->parietal = parietal;
     bridge->training = training;
 
-    /* Create mutex */
-    mutex_attr_t attr;
-    attr.type = MUTEX_TYPE_NORMAL;
-    bridge->base.mutex = nimcp_mutex_create(&attr);
-    if (!bridge->base.mutex) {
+    /* Initialize bridge base (creates mutex) */
+    if (bridge_base_init(&bridge->base, 0, "parietal_training") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -259,7 +256,7 @@ void parietal_training_destroy(parietal_training_bridge_t* bridge) {
     }
 
     if (bridge->base.mutex) {
-        nimcp_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     bridge->magic = 0;

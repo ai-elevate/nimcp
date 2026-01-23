@@ -512,18 +512,6 @@ safety_plasticity_bridge_t* safety_plasticity_bridge_create(
         safety_plasticity_bridge_default_config(&bridge->config);
     }
 
-    /* Create mutex */
-    mutex_attr_t attr;
-    memset(&attr, 0, sizeof(attr));
-    attr.type = MUTEX_TYPE_NORMAL;
-    bridge->base.mutex = nimcp_mutex_create(&attr);
-    if (!bridge->base.mutex) {
-        NIMCP_LOGGING_ERROR("[SAFETY-PLASTICITY] Failed to create mutex");
-        bridge_base_cleanup(&bridge->base);
-        nimcp_free(bridge);
-        return NULL;
-    }
-
     /* Initialize state */
     bridge->state.last_event_type = SAFETY_EVENT_COUNT;
 

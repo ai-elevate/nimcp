@@ -213,11 +213,8 @@ training_bio_async_bridge_t* training_bio_bridge_create(
         bridge->config = training_bio_bridge_default_config();
     }
 
-    /* Initialize mutex */
-    mutex_attr_t attr = {0};
-    attr.type = MUTEX_TYPE_NORMAL;
-    bridge->base.mutex = nimcp_mutex_create(&attr);
-    if (!bridge->base.mutex) {
+    /* Initialize bridge base (creates mutex) */
+    if (bridge_base_init(&bridge->base, 0, "training_bio_async") != 0) {
         nimcp_free(bridge);
         return NULL;
     }

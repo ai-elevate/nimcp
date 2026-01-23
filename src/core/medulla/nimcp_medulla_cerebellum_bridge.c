@@ -463,11 +463,8 @@ med_cereb_bridge_t med_cereb_bridge_create(const med_cereb_bridge_config_t* conf
         med_cereb_bridge_default_config(&bridge->config);
     }
 
-    /* Initialize mutex */
-    mutex_attr_t attr = {0};
-    attr.type = MUTEX_TYPE_RECURSIVE;
-    bridge->base.mutex = nimcp_mutex_create(&attr);
-    if (!bridge->base.mutex) {
+    /* Initialize bridge base (creates mutex) */
+    if (bridge_base_init(&bridge->base, 0, "medulla_cerebellum") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
