@@ -525,16 +525,19 @@ bool rate_coding_instantaneous_rate(
 spike_train_t* rate_coding_spike_train_create(uint32_t capacity) {
     // Guard clause
     if (capacity == 0 || capacity > RATE_CODING_MAX_SPIKE_HISTORY) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "rate_coding_spike_train_create: capacity is 0 or exceeds max");
         return NULL;
     }
 
     spike_train_t* train = (spike_train_t*)nimcp_calloc(1, sizeof(spike_train_t));
     if (!train) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rate_coding_spike_train_create: failed to allocate train");
         return NULL;
     }
 
     train->spike_times = (uint64_t*)nimcp_calloc(capacity, sizeof(uint64_t));
     if (!train->spike_times) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rate_coding_spike_train_create: failed to allocate spike_times");
         nimcp_free(train);
         return NULL;
     }

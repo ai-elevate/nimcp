@@ -149,6 +149,7 @@ tcb_config_t tcb_config_default(void) {
 tcb_context_t* tcb_create(const tcb_config_t* config) {
     tcb_context_t* ctx = nimcp_calloc(1, sizeof(tcb_context_t));
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tcb_create: failed to allocate context");
         return NULL;
     }
 
@@ -161,6 +162,7 @@ tcb_context_t* tcb_create(const tcb_config_t* config) {
 
     /* Initialize mutex */
     if (nimcp_platform_mutex_init(&ctx->mutex, false) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tcb_create: failed to initialize mutex");
         nimcp_free(ctx);
         return NULL;
     }

@@ -21,7 +21,14 @@ void swarm_flocking_fep_default_config(swarm_flocking_fep_config_t* config) {
 }
 
 swarm_flocking_fep_bridge_t* swarm_flocking_fep_create(const swarm_flocking_fep_config_t* config, nimcp_flocking_engine_t* flocking_engine, fep_system_t* fep_system) {
-    if (!flocking_engine || !fep_system) return NULL;
+    if (!flocking_engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_flocking_fep_create: flocking_engine is NULL");
+        return NULL;
+    }
+    if (!fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_flocking_fep_create: fep_system is NULL");
+        return NULL;
+    }
     swarm_flocking_fep_bridge_t* bridge = (swarm_flocking_fep_bridge_t*)nimcp_malloc(sizeof(swarm_flocking_fep_bridge_t));
     if (!bridge) return NULL;
     memset(bridge, 0, sizeof(swarm_flocking_fep_bridge_t));

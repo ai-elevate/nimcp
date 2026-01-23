@@ -191,7 +191,10 @@ static bool should_chain_fixes(
 
 int heal_bridge_default_config(heal_bridge_config_t* config)
 {
-    if (config == NULL) return -1;
+    if (config == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "heal_bridge_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(heal_bridge_config_t));
 
@@ -229,7 +232,10 @@ heal_bridge_t* heal_bridge_create(
     const heal_bridge_config_t* config)
 {
     heal_bridge_t* bridge = nimcp_calloc(1, sizeof(heal_bridge_t));
-    if (bridge == NULL) return NULL;
+    if (bridge == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "heal_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     /* Apply configuration */
     if (config != NULL) {
@@ -252,6 +258,7 @@ heal_bridge_t* heal_bridge_create(
     bridge->candidates = nimcp_calloc(bridge->candidate_capacity,
                                        sizeof(pattern_candidate_t));
     if (bridge->candidates == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "heal_bridge_create: failed to allocate candidates");
         nimcp_free(bridge);
         return NULL;
     }
@@ -263,6 +270,7 @@ heal_bridge_t* heal_bridge_create(
     bridge->active_chains = nimcp_calloc(bridge->chain_capacity,
                                           sizeof(fix_chain_t));
     if (bridge->active_chains == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "heal_bridge_create: failed to allocate fix chains");
         nimcp_free(bridge->candidates);
         nimcp_free(bridge);
         return NULL;
@@ -279,6 +287,7 @@ heal_bridge_t* heal_bridge_create(
         bridge->rollback_history = nimcp_calloc(bridge->rollback_capacity,
                                                  sizeof(rollback_entry_t));
         if (bridge->rollback_history == NULL) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "heal_bridge_create: failed to allocate rollback history");
             nimcp_free(bridge->active_chains);
             nimcp_free(bridge->candidates);
             nimcp_free(bridge);
@@ -293,6 +302,7 @@ heal_bridge_t* heal_bridge_create(
 
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "heal") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "heal_bridge_create: failed to initialize bridge base");
         nimcp_free(bridge->rollback_history);
         nimcp_free(bridge->active_chains);
         nimcp_free(bridge->candidates);

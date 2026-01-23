@@ -133,6 +133,7 @@ metabolic_plasticity_t* metabolic_plasticity_create(const metabolic_config_t* co
     metabolic_plasticity_t* metabolic = (metabolic_plasticity_t*)
         nimcp_malloc(sizeof(metabolic_plasticity_t));
     if (!metabolic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metabolic_plasticity_create: failed to allocate structure");
         NIMCP_LOGGING_ERROR("Failed to allocate metabolic plasticity");
         return NULL;
     }
@@ -161,6 +162,7 @@ metabolic_plasticity_t* metabolic_plasticity_create(const metabolic_config_t* co
     /* Create mutex */
     metabolic->mutex = nimcp_platform_mutex_create();
     if (!metabolic->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metabolic_plasticity_create: failed to create mutex");
         nimcp_free(metabolic);
         NIMCP_LOGGING_ERROR("Failed to create metabolic mutex");
         return NULL;

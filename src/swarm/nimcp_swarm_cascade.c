@@ -258,7 +258,7 @@ nimcp_cascade_system_t* nimcp_cascade_create(
     void *bio_ctx
 ) {
     if (!config) {
-        LOG_ERROR( "Cascade: NULL configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_cascade_create: config is NULL");
         return NULL;
     }
 

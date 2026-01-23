@@ -62,11 +62,15 @@ middleware_context_t* middleware_context_create(brain_t brain,
         max_patterns > SIZE_MAX / sizeof(float) ||
         event_history_size > SIZE_MAX / sizeof(brain_event_t) ||
         num_stages > SIZE_MAX / sizeof(uint64_t)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "middleware_context_create: size overflow detected");
         return NULL;  // Overflow would occur
     }
 
     middleware_context_t* ctx = nimcp_calloc(1, sizeof(middleware_context_t));
-    if (!ctx) return NULL;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "middleware_context_create: failed to allocate context");
+        return NULL;
+    }
 
     ctx->brain = brain;
 

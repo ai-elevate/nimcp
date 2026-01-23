@@ -51,7 +51,7 @@ snn_buffer_bridge_t* snn_buffer_bridge_create(
 ) {
     /* Guard clauses */
     if (!network) {
-        NIMCP_LOGGING_ERROR("SNN network is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_bridge_create: network is NULL");
         return NULL;
     }
 

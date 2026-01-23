@@ -491,7 +491,8 @@ void medulla_destroy(medulla_t medulla) {
 
 int medulla_start(medulla_t medulla) {
     if (!medulla) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_start: medulla is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(medulla->mutex);
@@ -524,7 +525,8 @@ int medulla_start(medulla_t medulla) {
 
 int medulla_stop(medulla_t medulla) {
     if (!medulla) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_stop: medulla is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(medulla->mutex);
@@ -553,7 +555,8 @@ int medulla_stop(medulla_t medulla) {
 
 int medulla_update(medulla_t medulla, float dt) {
     if (!medulla) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_update: medulla is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(medulla->mutex);
@@ -612,7 +615,8 @@ int medulla_update(medulla_t medulla, float dt) {
 
 int medulla_emergency_shutdown(medulla_t medulla, const char* reason) {
     if (!medulla) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_emergency_shutdown: medulla is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(medulla->mutex);
@@ -641,7 +645,8 @@ int medulla_emergency_shutdown(medulla_t medulla, const char* reason) {
 
 int medulla_request_state_change(medulla_t medulla, medulla_state_t new_state) {
     if (!medulla) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_request_state_change: medulla is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(medulla->mutex);
@@ -670,7 +675,8 @@ int medulla_request_state_change(medulla_t medulla, medulla_state_t new_state) {
 
 int medulla_connect_health_monitor(medulla_t medulla, health_monitor_t health_monitor) {
     if (!medulla) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_connect_health_monitor: medulla is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(medulla->mutex);
@@ -683,7 +689,8 @@ int medulla_connect_health_monitor(medulla_t medulla, health_monitor_t health_mo
 
 int medulla_connect_recovery_system(medulla_t medulla, nimcp_recovery_t recovery) {
     if (!medulla) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_connect_recovery_system: medulla is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(medulla->mutex);
@@ -696,7 +703,8 @@ int medulla_connect_recovery_system(medulla_t medulla, nimcp_recovery_t recovery
 
 int medulla_connect_sleep_wake(medulla_t medulla, sleep_system_t sleep_wake) {
     if (!medulla) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_connect_sleep_wake: medulla is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(medulla->mutex);
@@ -709,7 +717,8 @@ int medulla_connect_sleep_wake(medulla_t medulla, sleep_system_t sleep_wake) {
 
 int medulla_connect_neuromodulators(medulla_t medulla, neuromodulator_system_t neuromodulators) {
     if (!medulla) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_connect_neuromodulators: medulla is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(medulla->mutex);
@@ -733,8 +742,13 @@ float medulla_get_arousal_level(const medulla_t medulla) {
 }
 
 int medulla_boost_arousal(medulla_t medulla, float delta) {
-    if (!medulla || delta < 0.0f) {
-        return -1;
+    if (!medulla) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_boost_arousal: medulla is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (delta < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "medulla_boost_arousal: delta must be non-negative");
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     float new_arousal = medulla->current_arousal + delta;
@@ -749,8 +763,13 @@ int medulla_boost_arousal(medulla_t medulla, float delta) {
 }
 
 int medulla_reduce_arousal(medulla_t medulla, float delta) {
-    if (!medulla || delta < 0.0f) {
-        return -1;
+    if (!medulla) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_reduce_arousal: medulla is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (delta < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "medulla_reduce_arousal: delta must be non-negative");
+        return NIMCP_ERROR_INVALID_PARAM;
     }
 
     float new_arousal = medulla->current_arousal - delta;
@@ -781,8 +800,13 @@ circadian_phase_t medulla_get_circadian_phase(const medulla_t medulla) {
 }
 
 int medulla_get_stats(const medulla_t medulla, medulla_stats_t* stats) {
-    if (!medulla || !stats) {
-        return -1;
+    if (!medulla) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_get_stats: medulla is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_get_stats: stats is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     nimcp_platform_mutex_lock(medulla->mutex);
@@ -798,7 +822,8 @@ int medulla_get_stats(const medulla_t medulla, medulla_stats_t* stats) {
 
 int medulla_connect_bio_async(medulla_t medulla) {
     if (!medulla) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_connect_bio_async: medulla is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (medulla->bio_async_enabled) {
@@ -816,7 +841,8 @@ int medulla_connect_bio_async(medulla_t medulla) {
 
 int medulla_disconnect_bio_async(medulla_t medulla) {
     if (!medulla) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_disconnect_bio_async: medulla is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (!medulla->bio_async_enabled) {

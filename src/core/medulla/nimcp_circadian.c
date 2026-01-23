@@ -202,6 +202,7 @@ int circadian_default_config(circadian_config_t* config)
      */
 
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circadian_default_config: config is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -229,6 +230,7 @@ int circadian_update(circadian_rhythm_t* rhythm)
      */
 
     if (!rhythm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circadian_update: rhythm is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -318,10 +320,12 @@ int circadian_reset_phase(circadian_rhythm_t* rhythm, circadian_phase_t phase)
      */
 
     if (!rhythm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circadian_reset_phase: rhythm is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (phase >= CIRCADIAN_PHASE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "circadian_reset_phase: phase out of range");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -373,10 +377,12 @@ int circadian_apply_zeitgeber(circadian_rhythm_t* rhythm,
      */
 
     if (!rhythm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circadian_apply_zeitgeber: rhythm is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (zeitgeber >= CIRCADIAN_ZEITGEBER_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "circadian_apply_zeitgeber: zeitgeber out of range");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 

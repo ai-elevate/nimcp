@@ -35,10 +35,16 @@ homeostatic_normalizer_t* homeostatic_normalizer_create(
     float target_activity,
     float time_constant
 ) {
-    if (num_channels == 0 || time_constant <= 0.0F) return NULL;
+    if (num_channels == 0 || time_constant <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "homeostatic_normalizer_create: invalid num_channels or time_constant");
+        return NULL;
+    }
 
     homeostatic_normalizer_t* norm = nimcp_calloc(1, sizeof(homeostatic_normalizer_t));
-    if (!norm) return NULL;
+    if (!norm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "homeostatic_normalizer_create: failed to allocate normalizer");
+        return NULL;
+    }
 
     norm->num_channels = num_channels;
     norm->target_activity = target_activity;
@@ -46,6 +52,7 @@ homeostatic_normalizer_t* homeostatic_normalizer_create(
 
     norm->channels = nimcp_calloc(num_channels, sizeof(homeostatic_channel_t));
     if (!norm->channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "homeostatic_normalizer_create: failed to allocate channels");
         nimcp_free(norm);
         return NULL;
     }

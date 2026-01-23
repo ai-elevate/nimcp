@@ -335,6 +335,7 @@ bool temporal_coding_compute_jitter(
 
 temporal_features_t* temporal_features_create(uint32_t num_isi_bins) {
     if (num_isi_bins == 0 || num_isi_bins > TEMPORAL_MAX_BINS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_features_create: num_isi_bins is 0 or exceeds max");
         return NULL;
     }
 
@@ -342,11 +343,13 @@ temporal_features_t* temporal_features_create(uint32_t num_isi_bins) {
         1, sizeof(temporal_features_t)
     );
     if (!features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "temporal_features_create: failed to allocate features");
         return NULL;
     }
 
     features->isi_histogram = (float*)nimcp_calloc(num_isi_bins, sizeof(float));
     if (!features->isi_histogram) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "temporal_features_create: failed to allocate histogram");
         nimcp_free(features);
         return NULL;
     }

@@ -186,12 +186,16 @@ pc_layer_state_t* pc_layer_state_create(const pc_layer_params_t* params) {
      */
 
     if (!params || params->num_units == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pc_layer_state_create: params is NULL or num_units is 0");
         NIMCP_LOGGING_ERROR("Invalid params in pc_layer_state_create");
         return NULL;
     }
 
     pc_layer_state_t* state = nimcp_calloc(1, sizeof(pc_layer_state_t));
-    if (!state) return NULL;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pc_layer_state_create: failed to allocate state");
+        return NULL;
+    }
 
     state->num_units = params->num_units;
 
@@ -205,6 +209,7 @@ pc_layer_state_t* pc_layer_state_create(const pc_layer_params_t* params) {
 
     if (!state->mu || !state->mu_prior || !state->error ||
         !state->precision || !state->precision_log || !state->error_variance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pc_layer_state_create: failed to allocate arrays");
         pc_layer_state_destroy(state);
         return NULL;
     }

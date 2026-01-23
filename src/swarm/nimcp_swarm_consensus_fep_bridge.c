@@ -21,7 +21,14 @@ void swarm_consensus_fep_default_config(swarm_consensus_fep_config_t* config) {
 }
 
 swarm_consensus_fep_bridge_t* swarm_consensus_fep_create(const swarm_consensus_fep_config_t* config, swarm_consensus_t consensus_ctx, fep_system_t* fep_system) {
-    if (!consensus_ctx || !fep_system) return NULL;
+    if (!consensus_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_consensus_fep_create: consensus_ctx is NULL");
+        return NULL;
+    }
+    if (!fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_consensus_fep_create: fep_system is NULL");
+        return NULL;
+    }
     swarm_consensus_fep_bridge_t* bridge = (swarm_consensus_fep_bridge_t*)nimcp_malloc(sizeof(swarm_consensus_fep_bridge_t));
     if (!bridge) return NULL;
     memset(bridge, 0, sizeof(swarm_consensus_fep_bridge_t));

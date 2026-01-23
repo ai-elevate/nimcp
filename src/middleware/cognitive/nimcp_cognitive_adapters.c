@@ -72,13 +72,17 @@ wm_adapter_t* wm_adapter_create(const wm_adapter_config_t* config) {
     }
 
     wm_adapter_t* adapter = nimcp_calloc(1, sizeof(wm_adapter_t));
-    if (!adapter) return NULL;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_adapter_create: failed to allocate adapter");
+        return NULL;
+    }
 
     adapter->config = *config;
 
     // Allocate item array
     adapter->items = nimcp_calloc(config->capacity, sizeof(wm_item_t));
     if (!adapter->items) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_adapter_create: failed to allocate items");
         nimcp_free(adapter);
         return NULL;
     }

@@ -340,7 +340,10 @@ void hypo_homeostasis_destroy(hypo_homeostasis_handle_t* system) {
 }
 
 bool hypo_homeostasis_reset(hypo_homeostasis_handle_t* system) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_homeostasis_reset: system is NULL");
+        return false;
+    }
 
     if (system->mutex) nimcp_mutex_lock(system->mutex);
 
@@ -384,7 +387,14 @@ bool hypo_homeostasis_reset(hypo_homeostasis_handle_t* system) {
 bool hypo_homeostasis_set_value(hypo_homeostasis_handle_t* system,
                                  hypo_variable_type_t var_type,
                                  float value) {
-    if (!system || var_type >= HYPO_VAR_COUNT) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_homeostasis_set_value: system is NULL");
+        return false;
+    }
+    if (var_type >= HYPO_VAR_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_homeostasis_set_value: invalid var_type");
+        return false;
+    }
 
     if (system->mutex) nimcp_mutex_lock(system->mutex);
 
@@ -397,7 +407,18 @@ bool hypo_homeostasis_set_value(hypo_homeostasis_handle_t* system,
 bool hypo_homeostasis_get_variable(const hypo_homeostasis_handle_t* system,
                                     hypo_variable_type_t var_type,
                                     hypo_homeostatic_var_t* var) {
-    if (!system || !var || var_type >= HYPO_VAR_COUNT) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_homeostasis_get_variable: system is NULL");
+        return false;
+    }
+    if (!var) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_homeostasis_get_variable: var is NULL");
+        return false;
+    }
+    if (var_type >= HYPO_VAR_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_homeostasis_get_variable: invalid var_type");
+        return false;
+    }
 
     *var = system->variables[var_type];
     return true;
@@ -407,7 +428,14 @@ bool hypo_homeostasis_modify_setpoint(hypo_homeostasis_handle_t* system,
                                        hypo_variable_type_t var_type,
                                        float new_setpoint,
                                        uint32_t modifier_id) {
-    if (!system || var_type >= HYPO_VAR_COUNT) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_homeostasis_modify_setpoint: system is NULL");
+        return false;
+    }
+    if (var_type >= HYPO_VAR_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_homeostasis_modify_setpoint: invalid var_type");
+        return false;
+    }
 
     bool success = false;
 

@@ -112,15 +112,22 @@ temporal_accumulator_t* temporal_accumulator_create(
     integration_mode_t mode
 ) {
     // Guard: validate inputs
-    if (num_channels == 0 || alpha < 0.0F || alpha > 1.0F) return NULL;
+    if (num_channels == 0 || alpha < 0.0F || alpha > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "temporal_accumulator_create: invalid num_channels or alpha");
+        return NULL;
+    }
 
     // Allocate structure
     temporal_accumulator_t* acc = nimcp_calloc(1, sizeof(temporal_accumulator_t));
-    if (!acc) return NULL;
+    if (!acc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "temporal_accumulator_create: failed to allocate accumulator");
+        return NULL;
+    }
 
     // Allocate channel states
     acc->channels = nimcp_calloc(num_channels, sizeof(channel_state_t));
     if (!acc->channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "temporal_accumulator_create: failed to allocate channels");
         nimcp_free(acc);
         return NULL;
     }

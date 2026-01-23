@@ -21,7 +21,14 @@ void swarm_signal_fep_default_config(swarm_signal_fep_config_t* config) {
 }
 
 swarm_signal_fep_bridge_t* swarm_signal_fep_create(const swarm_signal_fep_config_t* config, void* signal_ctx, fep_system_t* fep_system) {
-    if (!signal_ctx || !fep_system) return NULL;
+    if (!signal_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_signal_fep_create: signal_ctx is NULL");
+        return NULL;
+    }
+    if (!fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_signal_fep_create: fep_system is NULL");
+        return NULL;
+    }
     swarm_signal_fep_bridge_t* bridge = (swarm_signal_fep_bridge_t*)nimcp_malloc(sizeof(swarm_signal_fep_bridge_t));
     if (!bridge) return NULL;
     memset(bridge, 0, sizeof(swarm_signal_fep_bridge_t));

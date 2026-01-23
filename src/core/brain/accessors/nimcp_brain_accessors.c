@@ -128,16 +128,19 @@ bool brain_get_mirror_activations(brain_t brain, float* activations,
 {
     // Guard: Validate parameters
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_mirror_activations: brain is NULL");
         set_error("brain_get_mirror_activations: NULL brain");
         return false;
     }
 
     if (!activations || !out_size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_mirror_activations: output parameters are NULL");
         set_error("brain_get_mirror_activations: NULL output parameters");
         return false;
     }
 
     if (max_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_get_mirror_activations: max_size must be > 0");
         set_error("brain_get_mirror_activations: max_size must be > 0");
         return false;
     }
@@ -198,16 +201,19 @@ bool brain_compute_empathy(brain_t brain, const float* observed_features,
 {
     // Guard: Validate parameters
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_compute_empathy: brain is NULL");
         set_error("brain_compute_empathy: NULL brain");
         return false;
     }
 
     if (!observed_features || num_features == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_compute_empathy: invalid features");
         set_error("brain_compute_empathy: invalid features");
         return false;
     }
 
     if (!empathy_valence || !empathy_arousal || !empathy_confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_compute_empathy: output parameters are NULL");
         set_error("brain_compute_empathy: NULL output parameters");
         return false;
     }
@@ -297,16 +303,19 @@ bool brain_compute_empathy(brain_t brain, const float* observed_features,
 
 bool brain_enable_astrocytes(brain_t brain, uint32_t num_astrocytes, float coverage_radius_um) {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_enable_astrocytes: brain is NULL");
         set_error("brain_enable_astrocytes: NULL brain");
         return false;
     }
 
     if (!brain->config.enable_glial) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "brain_enable_astrocytes: enable_glial must be true in config");
         set_error("brain_enable_astrocytes: enable_glial must be true in config");
         return false;
     }
 
     if (!brain->glial) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "brain_enable_astrocytes: glial integration system not initialized");
         set_error("brain_enable_astrocytes: glial integration system not initialized");
         return false;
     }
@@ -371,11 +380,13 @@ bool brain_enable_astrocytes(brain_t brain, uint32_t num_astrocytes, float cover
 
 bool brain_get_astrocyte_stats(brain_t brain, astrocyte_stats_t* stats) {
     if (!brain || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_astrocyte_stats: brain or stats is NULL");
         set_error("brain_get_astrocyte_stats: NULL parameter");
         return false;
     }
 
     if (!brain->glial) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "brain_get_astrocyte_stats: glial integration not initialized");
         set_error("brain_get_astrocyte_stats: glial integration not initialized");
         return false;
     }

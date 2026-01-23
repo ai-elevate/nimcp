@@ -56,7 +56,10 @@ static float compute_risk(float probability, float magnitude) {
  *===========================================================================*/
 
 int ofc_default_config(ofc_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_default_config: config is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -165,7 +168,10 @@ void ofc_destroy(nimcp_ofc_t* ofc) {
 }
 
 int ofc_init(nimcp_ofc_t* ofc) {
-    if (!ofc) return -1;
+    if (!ofc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_init: ofc is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(ofc->mutex);
 
@@ -191,7 +197,10 @@ int ofc_init(nimcp_ofc_t* ofc) {
 }
 
 int ofc_reset(nimcp_ofc_t* ofc) {
-    if (!ofc) return -1;
+    if (!ofc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_reset: ofc is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     return ofc_init(ofc);
 }
 
@@ -202,7 +211,14 @@ int ofc_reset(nimcp_ofc_t* ofc) {
 int ofc_present_option(nimcp_ofc_t* ofc, uint32_t stimulus_id,
                        float reward_magnitude, float reward_probability,
                        float delay) {
-    if (!ofc || !ofc->initialized) return -1;
+    if (!ofc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_present_option: ofc is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!ofc->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "ofc_present_option: ofc not initialized");
+        return NIMCP_ERROR_INVALID_STATE;
+    }
 
     nimcp_mutex_lock(ofc->mutex);
 
@@ -265,7 +281,14 @@ int ofc_present_option(nimcp_ofc_t* ofc, uint32_t stimulus_id,
 
 int ofc_compute_value(nimcp_ofc_t* ofc, uint32_t stimulus_id,
                       ofc_value_t* result) {
-    if (!ofc || !result) return -1;
+    if (!ofc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_compute_value: ofc is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_compute_value: result is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(ofc->mutex);
 
@@ -292,7 +315,10 @@ int ofc_compute_value(nimcp_ofc_t* ofc, uint32_t stimulus_id,
 
 int ofc_update_prediction_error(nimcp_ofc_t* ofc, uint32_t stimulus_id,
                                 float received_reward) {
-    if (!ofc) return -1;
+    if (!ofc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_update_prediction_error: ofc is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(ofc->mutex);
 
@@ -362,7 +388,18 @@ float ofc_get_integrated_value(nimcp_ofc_t* ofc, uint32_t stimulus_id) {
  *===========================================================================*/
 
 int ofc_make_decision(nimcp_ofc_t* ofc, ofc_decision_t* decision) {
-    if (!ofc || !decision || ofc->num_options == 0) return -1;
+    if (!ofc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_make_decision: ofc is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!decision) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc_make_decision: decision is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (ofc->num_options == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "ofc_make_decision: no options available");
+        return NIMCP_ERROR_INVALID_STATE;
+    }
 
     nimcp_mutex_lock(ofc->mutex);
 

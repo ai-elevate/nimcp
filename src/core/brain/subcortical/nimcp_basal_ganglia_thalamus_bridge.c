@@ -39,7 +39,10 @@ void bgt_bridge_default_config(bgt_bridge_config_t* config) {
 
 bgt_bridge_t* bgt_bridge_create(const bgt_bridge_config_t* config) {
     bgt_bridge_t* bridge = nimcp_calloc(1, sizeof(bgt_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bgt_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     /* Apply config */
     if (config) {
@@ -52,7 +55,10 @@ bgt_bridge_t* bgt_bridge_create(const bgt_bridge_config_t* config) {
 
     /* Allocate channel mapping */
     bridge->channels = nimcp_calloc(nc, sizeof(bgt_channel_map_t));
-    if (!bridge->channels) goto fail;
+    if (!bridge->channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bgt_bridge_create: failed to allocate channels");
+        goto fail;
+    }
     bridge->num_channels = nc;
 
     /* Allocate buffers */
@@ -60,7 +66,10 @@ bgt_bridge_t* bgt_bridge_create(const bgt_bridge_config_t* config) {
     bridge->thal_input_buffer = nimcp_calloc(nc, sizeof(float));
     bridge->motor_output_buffer = nimcp_calloc(nc, sizeof(float));
     if (!bridge->bg_output_buffer || !bridge->thal_input_buffer ||
-        !bridge->motor_output_buffer) goto fail;
+        !bridge->motor_output_buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bgt_bridge_create: failed to allocate buffers");
+        goto fail;
+    }
 
     /* Initialize state */
     bridge->current_mode = BGT_MODE_NORMAL;
@@ -72,7 +81,10 @@ bgt_bridge_t* bgt_bridge_create(const bgt_bridge_config_t* config) {
     bgt_bridge_create_default_mapping(bridge);
 
     /* Create mutex */
-    if (bridge_base_init(&bridge->base, 0, "basal_ganglia_thalamus") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "basal_ganglia_thalamus") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "bgt_bridge_create: failed to initialize bridge base");
+        goto fail;
+    }
 
     return bridge;
 

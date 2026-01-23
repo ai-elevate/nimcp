@@ -29,8 +29,12 @@ void snn_free_energy_config_default(snn_free_energy_config_t* config) {
 }
 
 snn_free_energy_bridge_t* snn_free_energy_bridge_create(const snn_free_energy_config_t* config, snn_network_t* snn, free_energy_system_t* free_energy_system) {
-    if (!config || !snn) {
-        NIMCP_LOGGING_ERROR("Null parameters to snn_free_energy_bridge_create");
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_free_energy_bridge_create: config is NULL");
+        return NULL;
+    }
+    if (!snn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_free_energy_bridge_create: snn is NULL");
         return NULL;
     }
 

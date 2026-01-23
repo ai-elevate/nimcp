@@ -43,7 +43,10 @@ bgtr_bridge_t* bgtr_bridge_create(
     uint32_t num_actions
 ) {
     bgtr_bridge_t* bridge = nimcp_calloc(1, sizeof(bgtr_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bgtr_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     /* Apply config */
     if (config) {
@@ -58,6 +61,7 @@ bgtr_bridge_t* bgtr_bridge_create(
     bridge->max_traces = bridge->config.max_traces;
     bridge->traces = nimcp_calloc(bridge->max_traces, sizeof(bgtr_eligibility_trace_t));
     if (!bridge->traces) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bgtr_bridge_create: failed to allocate traces");
         nimcp_free(bridge);
         return NULL;
     }
@@ -75,7 +79,12 @@ bgtr_bridge_t* bgtr_bridge_create(
     bridge->last_action_time = 0;
 
     /* Create mutex */
-    if (bridge_base_init(&bridge->base, 0, "basal_ganglia_training") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "basal_ganglia_training") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "bgtr_bridge_create: failed to initialize bridge base");
+        nimcp_free(bridge->traces);
+        nimcp_free(bridge);
+        return NULL;
+    }
 
     return bridge;
 }

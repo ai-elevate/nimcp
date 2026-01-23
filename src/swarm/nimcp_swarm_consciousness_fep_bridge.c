@@ -27,7 +27,14 @@ swarm_consciousness_fep_bridge_t* swarm_consciousness_fep_create(
     swarm_consciousness_ctx_t* consciousness_ctx,
     fep_system_t* fep_system)
 {
-    if (!consciousness_ctx || !fep_system) return NULL;
+    if (!consciousness_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_consciousness_fep_create: consciousness_ctx is NULL");
+        return NULL;
+    }
+    if (!fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_consciousness_fep_create: fep_system is NULL");
+        return NULL;
+    }
 
     swarm_consciousness_fep_bridge_t* bridge = (swarm_consciousness_fep_bridge_t*)nimcp_malloc(sizeof(swarm_consciousness_fep_bridge_t));
     if (!bridge) return NULL;

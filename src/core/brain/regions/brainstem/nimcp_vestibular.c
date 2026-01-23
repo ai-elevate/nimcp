@@ -219,7 +219,10 @@ void vestibular_destroy(vestibular_processor_t* p) {
 }
 
 bool vestibular_reset(vestibular_processor_t* p) {
-    if (!p) return false;
+    if (!p) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vestibular_reset: processor is NULL");
+        return false;
+    }
 
     LOG_DEBUG("[%s] Resetting processor", VESTIBULAR_LOG_MODULE);
 
@@ -258,7 +261,12 @@ bool vestibular_reset(vestibular_processor_t* p) {
 
 bool vestibular_process_input(vestibular_processor_t* p,
                                const vestibular_input_t* input) {
-    if (!p || !input) {
+    if (!p) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vestibular_process_input: processor is NULL");
+        return false;
+    }
+    if (!input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vestibular_process_input: input is NULL");
         set_error(p, VESTIBULAR_ERROR_INVALID_INPUT);
         return false;
     }
@@ -291,7 +299,12 @@ bool vestibular_process_input(vestibular_processor_t* p,
 
 bool vestibular_process_canal_input(vestibular_processor_t* p,
                                      const semicircular_canal_input_t* input) {
-    if (!p || !input) {
+    if (!p) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vestibular_process_canal_input: processor is NULL");
+        return false;
+    }
+    if (!input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vestibular_process_canal_input: input is NULL");
         set_error(p, VESTIBULAR_ERROR_INVALID_INPUT);
         return false;
     }
@@ -376,7 +389,12 @@ bool vestibular_process_canal_input(vestibular_processor_t* p,
 
 bool vestibular_process_otolith_input(vestibular_processor_t* p,
                                        const otolith_input_t* input) {
-    if (!p || !input) {
+    if (!p) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vestibular_process_otolith_input: processor is NULL");
+        return false;
+    }
+    if (!input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vestibular_process_otolith_input: input is NULL");
         set_error(p, VESTIBULAR_ERROR_INVALID_INPUT);
         return false;
     }
@@ -437,7 +455,14 @@ bool vestibular_process_otolith_input(vestibular_processor_t* p,
 
 bool vestibular_get_vor_command(const vestibular_processor_t* p,
                                  float eye_velocity[3]) {
-    if (!p || !eye_velocity) return false;
+    if (!p) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vestibular_get_vor_command: processor is NULL");
+        return false;
+    }
+    if (!eye_velocity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vestibular_get_vor_command: eye_velocity is NULL");
+        return false;
+    }
 
     eye_velocity[0] = p->vor.eye_velocity[0];
     eye_velocity[1] = p->vor.eye_velocity[1];
@@ -449,7 +474,14 @@ bool vestibular_get_vor_command(const vestibular_processor_t* p,
 bool vestibular_set_vor_gain(vestibular_processor_t* p,
                               const float* gain,
                               bool per_axis) {
-    if (!p || !gain) return false;
+    if (!p) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vestibular_set_vor_gain: processor is NULL");
+        return false;
+    }
+    if (!gain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vestibular_set_vor_gain: gain is NULL");
+        return false;
+    }
 
     if (per_axis) {
         for (int i = 0; i < 3; i++) {
@@ -472,7 +504,14 @@ bool vestibular_set_vor_gain(vestibular_processor_t* p,
 
 bool vestibular_get_vor_gain(const vestibular_processor_t* p,
                               float gain[3]) {
-    if (!p || !gain) return false;
+    if (!p) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vestibular_get_vor_gain: processor is NULL");
+        return false;
+    }
+    if (!gain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vestibular_get_vor_gain: gain is NULL");
+        return false;
+    }
 
     gain[0] = p->vor.gain[0];
     gain[1] = p->vor.gain[1];
@@ -484,7 +523,10 @@ bool vestibular_get_vor_gain(const vestibular_processor_t* p,
 bool vestibular_report_retinal_slip(vestibular_processor_t* p,
                                      float retinal_slip,
                                      const float direction[3]) {
-    if (!p) return false;
+    if (!p) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vestibular_report_retinal_slip: processor is NULL");
+        return false;
+    }
 
     p->vor.retinal_slip = retinal_slip;
 

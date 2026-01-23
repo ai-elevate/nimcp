@@ -29,8 +29,12 @@ void snn_wellbeing_config_default(snn_wellbeing_config_t* config) {
 }
 
 snn_wellbeing_bridge_t* snn_wellbeing_bridge_create(const snn_wellbeing_config_t* config, snn_network_t* snn, wellbeing_system_t* wellbeing_system) {
-    if (!config || !snn) {
-        NIMCP_LOGGING_ERROR("Null parameters to snn_wellbeing_bridge_create");
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_wellbeing_bridge_create: config is NULL");
+        return NULL;
+    }
+    if (!snn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_wellbeing_bridge_create: snn is NULL");
         return NULL;
     }
 

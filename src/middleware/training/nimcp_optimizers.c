@@ -897,11 +897,13 @@ nimcp_optimizer_context_t* nimcp_optimizer_create(
     unified_mem_manager_t memory_mgr)
 {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_optimizer_create: config is NULL");
         return NULL;
     }
 
     nimcp_optimizer_context_t* ctx = (nimcp_optimizer_context_t*)nimcp_calloc(1, sizeof(*ctx));
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_optimizer_create: failed to allocate context");
         return NULL;
     }
 

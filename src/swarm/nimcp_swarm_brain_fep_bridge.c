@@ -50,8 +50,12 @@ swarm_brain_fep_bridge_t* swarm_brain_fep_create(
     swarm_brain_t* swarm_brain,
     fep_system_t* fep_system)
 {
-    if (!swarm_brain || !fep_system) {
-        NIMCP_LOGGING_ERROR("Null swarm_brain or fep_system");
+    if (!swarm_brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_fep_create: swarm_brain is NULL");
+        return NULL;
+    }
+    if (!fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_brain_fep_create: fep_system is NULL");
         return NULL;
     }
 

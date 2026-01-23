@@ -755,6 +755,15 @@ nimcp_multi_swarm_coordinator_t* nimcp_multi_swarm_create(
     void* brain,
     bio_router_t* router
 ) {
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_multi_swarm_create: brain is NULL");
+        return NULL;
+    }
+    if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_multi_swarm_create: router is NULL");
+        return NULL;
+    }
+
     LOG_INFO("Creating multi-swarm coordinator");
 
     nimcp_multi_swarm_coordinator_t* coordinator =

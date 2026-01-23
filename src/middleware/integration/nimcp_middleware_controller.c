@@ -282,12 +282,14 @@ middleware_controller_t* middleware_controller_create_custom(
 
     /* Guard: require brain */
     if (brain == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "middleware_controller_create_custom: brain is NULL");
         LOG_ERROR("Cannot create middleware controller: brain is NULL");
         return NULL;
     }
 
     /* Guard: require config */
     if (config == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "middleware_controller_create_custom: config is NULL");
         LOG_ERROR("Cannot create middleware controller: config is NULL");
         return NULL;
     }
@@ -295,12 +297,14 @@ middleware_controller_t* middleware_controller_create_custom(
     /* Allocate controller */
     middleware_controller_t* ctrl = nimcp_calloc(1, sizeof(middleware_controller_t));
     if (ctrl == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "middleware_controller_create_custom: failed to allocate controller");
         LOG_ERROR("Failed to allocate middleware controller");
         return NULL;
     }
 
     /* Initialize mutex */
     if (nimcp_mutex_init(&ctrl->mutex, NULL) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "middleware_controller_create_custom: failed to initialize mutex");
         LOG_ERROR("Failed to initialize mutex for middleware controller");
         nimcp_free(ctrl);
         return NULL;

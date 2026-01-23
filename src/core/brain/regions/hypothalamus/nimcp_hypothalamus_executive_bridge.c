@@ -353,11 +353,13 @@ hypo_exec_bridge_t* hypo_exec_bridge_create(
     const hypo_exec_bridge_config_t* config) {
 
     if (!drives) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_exec_bridge_create: drives is NULL");
         return NULL;
     }
 
     hypo_exec_bridge_t* bridge = calloc(1, sizeof(hypo_exec_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_exec_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -382,6 +384,7 @@ hypo_exec_bridge_t* hypo_exec_bridge_create(
     };
     bridge->base.mutex = nimcp_mutex_create(&attr);
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "hypo_exec_bridge_create: failed to create mutex");
         free(bridge);
         return NULL;
     }

@@ -590,9 +590,11 @@ bool feature_extractor_compute_spike_entropy(
 
 middleware_features_t* middleware_features_create(void) {
     middleware_features_t* features = nimcp_calloc(1, sizeof(middleware_features_t));
-    if (features) {
-        features->valid = false;
+    if (!features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "middleware_features_create: failed to allocate features");
+        return NULL;
     }
+    features->valid = false;
     return features;
 }
 
@@ -602,11 +604,13 @@ void middleware_features_destroy(middleware_features_t* features) {
 
 spike_data_t* spike_data_create(uint32_t num_neurons) {
     if (num_neurons == 0 || num_neurons > FEATURE_EXTRACTOR_MAX_NEURONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spike_data_create: num_neurons is 0 or exceeds max");
         return NULL;
     }
 
     spike_data_t* data = nimcp_calloc(1, sizeof(spike_data_t));
     if (!data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "spike_data_create: failed to allocate data");
         return NULL;
     }
 
@@ -614,6 +618,7 @@ spike_data_t* spike_data_create(uint32_t num_neurons) {
     data->spike_counts = nimcp_calloc(num_neurons, sizeof(uint32_t));
 
     if (!data->spike_times || !data->spike_counts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "spike_data_create: failed to allocate arrays");
         spike_data_destroy(data);
         return NULL;
     }

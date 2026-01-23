@@ -405,12 +405,16 @@ oscillation_detector_config_t oscillation_detector_default_config(void) {
 
 oscillation_detector_t* oscillation_detector_create(const oscillation_detector_config_t* config) {
     if (!config || config->window_size == 0 || config->sample_rate_hz <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "oscillation_detector_create: config is NULL or invalid");
         return NULL;
     }
 
     oscillation_detector_t* detector = (oscillation_detector_t*)nimcp_calloc(1,
                                                     sizeof(oscillation_detector_t));
-    if (!detector) return NULL;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "oscillation_detector_create: failed to allocate detector");
+        return NULL;
+    }
 
     detector->config = *config;
 

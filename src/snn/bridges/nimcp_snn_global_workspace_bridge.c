@@ -30,8 +30,12 @@ void snn_global_workspace_config_default(snn_global_workspace_config_t* config) 
 }
 
 snn_global_workspace_bridge_t* snn_global_workspace_bridge_create(const snn_global_workspace_config_t* config, snn_network_t* snn, global_workspace_t* workspace) {
-    if (!config || !snn) {
-        NIMCP_LOGGING_ERROR("Null parameters to snn_global_workspace_bridge_create");
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_global_workspace_bridge_create: config is NULL");
+        return NULL;
+    }
+    if (!snn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_global_workspace_bridge_create: snn is NULL");
         return NULL;
     }
 

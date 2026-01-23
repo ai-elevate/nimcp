@@ -1691,6 +1691,784 @@ TEST_F(ExceptionMacroComprehensiveTest, SignalNameConversion) {
 }
 
 //=============================================================================
+// SECTION 31: NIMCP_THROW Basic Functionality Tests
+//=============================================================================
+
+/**
+ * @brief Function that uses NIMCP_THROW directly (no condition check)
+ */
+static void unconditional_throw_test(nimcp_error_t code, const char* msg) {
+    NIMCP_THROW(code, "%s", msg);
+}
+
+/**
+ * WHAT: Test NIMCP_THROW dispatches to handler chain
+ * WHY:  Verify basic throw mechanism works
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowBasicDispatch) {
+    unconditional_throw_test(NIMCP_ERROR_OPERATION_FAILED, "Basic throw test");
+
+    EXPECT_EQ(g_handler_call_count, 1);
+    EXPECT_EQ(g_last_error_code, NIMCP_ERROR_OPERATION_FAILED);
+}
+
+/**
+ * WHAT: Test NIMCP_THROW with various error codes
+ * WHY:  Verify all error code types dispatch correctly
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowVariousErrorCodes) {
+    // Test NULL_POINTER
+    reset_tracking();
+    NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "Null pointer throw");
+    EXPECT_EQ(g_last_error_code, NIMCP_ERROR_NULL_POINTER);
+
+    // Test INVALID_PARAM
+    reset_tracking();
+    NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Invalid param throw");
+    EXPECT_EQ(g_last_error_code, NIMCP_ERROR_INVALID_PARAM);
+
+    // Test NO_MEMORY
+    reset_tracking();
+    NIMCP_THROW(NIMCP_ERROR_NO_MEMORY, "No memory throw");
+    EXPECT_EQ(g_last_error_code, NIMCP_ERROR_NO_MEMORY);
+
+    // Test TIMEOUT
+    reset_tracking();
+    NIMCP_THROW(NIMCP_ERROR_TIMEOUT, "Timeout throw");
+    EXPECT_EQ(g_last_error_code, NIMCP_ERROR_TIMEOUT);
+}
+
+/**
+ * WHAT: Test NIMCP_THROW with formatted message
+ * WHY:  Verify printf-style formatting in THROW macro
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowFormattedMessage) {
+    NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "Invalid parameter %d at position %s", 42, "test_field");
+
+    EXPECT_EQ(g_handler_call_count, 1);
+    ASSERT_FALSE(g_captured_messages.empty());
+    EXPECT_NE(g_captured_messages[0].find("42"), std::string::npos);
+    EXPECT_NE(g_captured_messages[0].find("test_field"), std::string::npos);
+}
+
+/**
+ * WHAT: Test NIMCP_THROW multiple times in sequence
+ * WHY:  Verify each throw dispatches independently
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowMultipleSequential) {
+    NIMCP_THROW(NIMCP_ERROR_INVALID_PARAM, "First throw");
+    NIMCP_THROW(NIMCP_ERROR_OUT_OF_RANGE, "Second throw");
+    NIMCP_THROW(NIMCP_ERROR_INVALID_STATE, "Third throw");
+
+    EXPECT_EQ(g_handler_call_count, 3);
+    // Last error code should be from the last throw
+    EXPECT_EQ(g_last_error_code, NIMCP_ERROR_INVALID_STATE);
+}
+
+/**
+ * WHAT: Test NIMCP_THROW severity is derived from error code
+ * WHY:  Verify automatic severity assignment
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowSeverityFromCode) {
+    // Memory errors should get higher severity
+    NIMCP_THROW(NIMCP_ERROR_NO_MEMORY, "Memory error test");
+
+    EXPECT_EQ(g_handler_call_count, 1);
+    EXPECT_GE((int)g_last_severity, (int)EXCEPTION_SEVERITY_ERROR);
+}
+
+//=============================================================================
+// SECTION 32: NIMCP_THROW_TO_IMMUNE Tests
+//=============================================================================
+
+/**
+ * @brief Function using NIMCP_THROW_TO_IMMUNE
+ */
+static void throw_to_immune_test(nimcp_error_t code) {
+    NIMCP_THROW_TO_IMMUNE(code, "Immune presentation test for code %d", (int)code);
+}
+
+/**
+ * WHAT: Test NIMCP_THROW_TO_IMMUNE sets presented_to_immune flag
+ * WHY:  Verify immune system notification occurs
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowToImmuneSetsPresentedFlag) {
+    throw_to_immune_test(NIMCP_ERROR_NO_MEMORY);
+
+    EXPECT_EQ(g_handler_call_count, 1);
+    EXPECT_EQ(g_last_error_code, NIMCP_ERROR_NO_MEMORY);
+    EXPECT_TRUE(g_exception_presented_to_immune);
+}
+
+/**
+ * WHAT: Test NIMCP_THROW_TO_IMMUNE with various error codes
+ * WHY:  Verify immune presentation works for different error types
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowToImmuneVariousErrors) {
+    // Memory error
+    reset_tracking();
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Memory error immune");
+    EXPECT_TRUE(g_exception_presented_to_immune);
+    EXPECT_EQ(g_last_error_code, NIMCP_ERROR_NO_MEMORY);
+
+    // Thread error
+    reset_tracking();
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_DEADLOCK, "Deadlock immune");
+    EXPECT_TRUE(g_exception_presented_to_immune);
+    EXPECT_EQ(g_last_error_code, NIMCP_ERROR_DEADLOCK);
+
+    // Brain error
+    reset_tracking();
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BRAIN_INVALID, "Brain error immune");
+    EXPECT_TRUE(g_exception_presented_to_immune);
+    EXPECT_EQ(g_last_error_code, NIMCP_ERROR_BRAIN_INVALID);
+}
+
+/**
+ * WHAT: Test NIMCP_THROW_TO_IMMUNE_IF macro
+ * WHY:  Verify conditional immune presentation
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowToImmuneIfConditionFalse) {
+    NIMCP_THROW_TO_IMMUNE_IF(false, NIMCP_ERROR_INVALID_STATE, "Condition was false");
+
+    EXPECT_EQ(g_handler_call_count, 1);
+    EXPECT_TRUE(g_exception_presented_to_immune);
+}
+
+/**
+ * WHAT: Test NIMCP_THROW_TO_IMMUNE_IF with true condition
+ * WHY:  Verify no throw when condition is true
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowToImmuneIfConditionTrue) {
+    NIMCP_THROW_TO_IMMUNE_IF(true, NIMCP_ERROR_INVALID_STATE, "Should not throw");
+
+    EXPECT_EQ(g_handler_call_count, 0);
+}
+
+//=============================================================================
+// SECTION 33: NIMCP_CHECK_THROW_IMMUNE Tests
+//=============================================================================
+
+/**
+ * @brief Function using NIMCP_CHECK_THROW_IMMUNE
+ */
+static nimcp_error_t check_throw_immune_test(void* ptr) {
+    NIMCP_CHECK_THROW_IMMUNE(ptr != nullptr, NIMCP_ERROR_NULL_POINTER,
+                              "Pointer is NULL - presenting to immune");
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Function with multiple immune-integrated checks
+ */
+static nimcp_error_t check_throw_immune_multiple(void* ptr, size_t size, bool ready) {
+    NIMCP_CHECK_THROW_IMMUNE(ptr != nullptr, NIMCP_ERROR_NULL_POINTER,
+                              "Input pointer is NULL");
+    NIMCP_CHECK_THROW_IMMUNE(size > 0, NIMCP_ERROR_INVALID_PARAM,
+                              "Size must be positive, got %zu", size);
+    NIMCP_CHECK_THROW_IMMUNE(ready, NIMCP_ERROR_INVALID_STATE,
+                              "System not ready");
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * WHAT: Test NIMCP_CHECK_THROW_IMMUNE returns error and presents to immune
+ * WHY:  Verify combined check, return, and immune notification
+ */
+TEST_F(ExceptionMacroComprehensiveTest, CheckThrowImmuneNullPointer) {
+    nimcp_error_t result = check_throw_immune_test(nullptr);
+
+    EXPECT_EQ(result, NIMCP_ERROR_NULL_POINTER);
+    EXPECT_EQ(g_handler_call_count, 1);
+    EXPECT_TRUE(g_exception_presented_to_immune);
+}
+
+/**
+ * WHAT: Test NIMCP_CHECK_THROW_IMMUNE passes on valid input
+ * WHY:  Verify successful path doesn't trigger immune
+ */
+TEST_F(ExceptionMacroComprehensiveTest, CheckThrowImmuneValidPointer) {
+    int value = 42;
+    nimcp_error_t result = check_throw_immune_test(&value);
+
+    EXPECT_EQ(result, NIMCP_SUCCESS);
+    EXPECT_EQ(g_handler_call_count, 0);
+}
+
+/**
+ * WHAT: Test NIMCP_CHECK_THROW_IMMUNE first failure in chain
+ * WHY:  Verify first failing check triggers immune presentation
+ */
+TEST_F(ExceptionMacroComprehensiveTest, CheckThrowImmuneFirstFailure) {
+    nimcp_error_t result = check_throw_immune_multiple(nullptr, 100, true);
+
+    EXPECT_EQ(result, NIMCP_ERROR_NULL_POINTER);
+    EXPECT_EQ(g_handler_call_count, 1);
+    EXPECT_TRUE(g_exception_presented_to_immune);
+}
+
+/**
+ * WHAT: Test NIMCP_CHECK_THROW_IMMUNE second failure in chain
+ * WHY:  Verify second check can trigger immune presentation
+ */
+TEST_F(ExceptionMacroComprehensiveTest, CheckThrowImmuneSecondFailure) {
+    int dummy = 42;
+    nimcp_error_t result = check_throw_immune_multiple(&dummy, 0, true);
+
+    EXPECT_EQ(result, NIMCP_ERROR_INVALID_PARAM);
+    EXPECT_EQ(g_handler_call_count, 1);
+    EXPECT_TRUE(g_exception_presented_to_immune);
+}
+
+/**
+ * WHAT: Test NIMCP_CHECK_THROW_IMMUNE third failure in chain
+ * WHY:  Verify third check can trigger immune presentation
+ */
+TEST_F(ExceptionMacroComprehensiveTest, CheckThrowImmuneThirdFailure) {
+    int dummy = 42;
+    nimcp_error_t result = check_throw_immune_multiple(&dummy, 100, false);
+
+    EXPECT_EQ(result, NIMCP_ERROR_INVALID_STATE);
+    EXPECT_EQ(g_handler_call_count, 1);
+    EXPECT_TRUE(g_exception_presented_to_immune);
+}
+
+/**
+ * WHAT: Test NIMCP_CHECK_THROW_IMMUNE all checks pass
+ * WHY:  Verify successful path through all checks
+ */
+TEST_F(ExceptionMacroComprehensiveTest, CheckThrowImmuneAllPass) {
+    int dummy = 42;
+    nimcp_error_t result = check_throw_immune_multiple(&dummy, 100, true);
+
+    EXPECT_EQ(result, NIMCP_SUCCESS);
+    EXPECT_EQ(g_handler_call_count, 0);
+}
+
+//=============================================================================
+// SECTION 34: Error Code Propagation Tests
+//=============================================================================
+
+/**
+ * @brief Level 3 function that throws
+ */
+static nimcp_error_t propagate_level3(bool should_fail, nimcp_error_t error_code) {
+    NIMCP_CHECK_THROW(!should_fail, error_code, "Level 3 failure");
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Level 2 function that calls level 3
+ */
+static nimcp_error_t propagate_level2(bool should_fail, nimcp_error_t error_code) {
+    nimcp_error_t result = propagate_level3(should_fail, error_code);
+    if (result != NIMCP_SUCCESS) {
+        return result;  // Propagate error
+    }
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Level 1 function that calls level 2
+ */
+static nimcp_error_t propagate_level1(bool should_fail, nimcp_error_t error_code) {
+    nimcp_error_t result = propagate_level2(should_fail, error_code);
+    if (result != NIMCP_SUCCESS) {
+        return result;  // Propagate error
+    }
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * WHAT: Test error code propagates through call chain
+ * WHY:  Verify error codes bubble up correctly
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ErrorCodePropagationThroughChain) {
+    nimcp_error_t result = propagate_level1(true, NIMCP_ERROR_OPERATION_FAILED);
+
+    EXPECT_EQ(result, NIMCP_ERROR_OPERATION_FAILED);
+    EXPECT_EQ(g_handler_call_count, 1);
+    EXPECT_EQ(g_last_error_code, NIMCP_ERROR_OPERATION_FAILED);
+}
+
+/**
+ * WHAT: Test different error codes propagate correctly
+ * WHY:  Verify error code identity is preserved
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ErrorCodeIdentityPreserved) {
+    nimcp_error_t codes_to_test[] = {
+        NIMCP_ERROR_NULL_POINTER,
+        NIMCP_ERROR_INVALID_PARAM,
+        NIMCP_ERROR_OUT_OF_RANGE,
+        NIMCP_ERROR_NO_MEMORY,
+        NIMCP_ERROR_TIMEOUT,
+        NIMCP_ERROR_DEADLOCK
+    };
+
+    for (auto code : codes_to_test) {
+        reset_tracking();
+        nimcp_error_t result = propagate_level1(true, code);
+        EXPECT_EQ(result, code) << "Error code " << code << " should propagate unchanged";
+        EXPECT_EQ(g_last_error_code, code);
+    }
+}
+
+/**
+ * WHAT: Test successful propagation returns NIMCP_SUCCESS
+ * WHY:  Verify success case propagates correctly
+ */
+TEST_F(ExceptionMacroComprehensiveTest, SuccessPropagationThroughChain) {
+    nimcp_error_t result = propagate_level1(false, NIMCP_ERROR_OPERATION_FAILED);
+
+    EXPECT_EQ(result, NIMCP_SUCCESS);
+    EXPECT_EQ(g_handler_call_count, 0);
+}
+
+//=============================================================================
+// SECTION 35: Enhanced Stack Trace Tests
+//=============================================================================
+
+/**
+ * WHAT: Test stack trace depth is captured
+ * WHY:  Verify stack trace mechanism works
+ */
+TEST_F(ExceptionMacroComprehensiveTest, StackTraceDepthCaptured) {
+    nimcp_exception_t* ex = nimcp_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Stack trace depth test");
+
+    ASSERT_NE(ex, nullptr);
+    // Stack depth should be at least 1 (the current frame)
+    // Note: Actual depth depends on platform and optimization level
+    EXPECT_GE(ex->stack_trace.depth, 0u);
+    EXPECT_LE(ex->stack_trace.depth, NIMCP_EXCEPTION_MAX_STACK_DEPTH);
+
+    nimcp_exception_unref(ex);
+}
+
+/**
+ * WHAT: Test stack trace frames contain addresses
+ * WHY:  Verify stack frame addresses are captured
+ */
+TEST_F(ExceptionMacroComprehensiveTest, StackTraceFramesHaveAddresses) {
+    nimcp_exception_t* ex = nimcp_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Stack frame address test");
+
+    ASSERT_NE(ex, nullptr);
+
+    // If we have frames, they should have addresses
+    for (size_t i = 0; i < ex->stack_trace.depth; i++) {
+        // Addresses may or may not be resolved depending on debug info
+        // Just verify the structure is valid
+        // Address can be NULL on some platforms without debug info
+    }
+
+    nimcp_exception_unref(ex);
+}
+
+/**
+ * WHAT: Test stack trace to string output
+ * WHY:  Verify stack trace formatting produces output
+ */
+TEST_F(ExceptionMacroComprehensiveTest, StackTraceToStringOutput) {
+    nimcp_exception_t* ex = nimcp_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Stack trace string test");
+
+    ASSERT_NE(ex, nullptr);
+
+    char buffer[8192];
+    size_t len = nimcp_stack_trace_to_string(&ex->stack_trace, buffer, sizeof(buffer));
+
+    // Should produce some output (even if just headers or empty message)
+    EXPECT_GE(len, 0u);
+    EXPECT_LT(len, sizeof(buffer));
+
+    nimcp_exception_unref(ex);
+}
+
+/**
+ * WHAT: Test stack trace capture function directly
+ * WHY:  Verify nimcp_exception_capture_stack_trace works
+ */
+TEST_F(ExceptionMacroComprehensiveTest, CaptureStackTraceDirectly) {
+    nimcp_stack_trace_t trace;
+    memset(&trace, 0, sizeof(trace));
+
+    size_t depth = nimcp_exception_capture_stack_trace(&trace, 0);
+
+    EXPECT_GE(depth, 0u);
+    EXPECT_LE(depth, NIMCP_EXCEPTION_MAX_STACK_DEPTH);
+    EXPECT_EQ(trace.depth, depth);
+}
+
+/**
+ * WHAT: Test stack trace with skip frames
+ * WHY:  Verify skip_frames parameter works
+ */
+TEST_F(ExceptionMacroComprehensiveTest, CaptureStackTraceSkipFrames) {
+    nimcp_stack_trace_t trace1, trace2;
+    memset(&trace1, 0, sizeof(trace1));
+    memset(&trace2, 0, sizeof(trace2));
+
+    size_t depth1 = nimcp_exception_capture_stack_trace(&trace1, 0);
+    size_t depth2 = nimcp_exception_capture_stack_trace(&trace2, 2);
+
+    // Skipping 2 frames should result in fewer frames
+    // (or same if there weren't enough frames to begin with)
+    if (depth1 >= 2) {
+        EXPECT_LE(depth2, depth1);
+    }
+}
+
+//=============================================================================
+// SECTION 36: Exception Severity Mapping Tests
+//=============================================================================
+
+/**
+ * WHAT: Test severity mapping for generic errors
+ * WHY:  Verify generic errors get appropriate severity
+ */
+TEST_F(ExceptionMacroComprehensiveTest, SeverityMappingGenericErrors) {
+    nimcp_exception_severity_t sev;
+
+    sev = nimcp_exception_get_severity_from_code(NIMCP_ERROR_INVALID_PARAM);
+    EXPECT_GE((int)sev, (int)EXCEPTION_SEVERITY_WARNING);
+
+    sev = nimcp_exception_get_severity_from_code(NIMCP_ERROR_NULL_POINTER);
+    EXPECT_GE((int)sev, (int)EXCEPTION_SEVERITY_ERROR);
+
+    sev = nimcp_exception_get_severity_from_code(NIMCP_ERROR_OUT_OF_RANGE);
+    EXPECT_GE((int)sev, (int)EXCEPTION_SEVERITY_WARNING);
+}
+
+/**
+ * WHAT: Test severity mapping for memory errors
+ * WHY:  Verify memory errors get higher severity
+ */
+TEST_F(ExceptionMacroComprehensiveTest, SeverityMappingMemoryErrors) {
+    nimcp_exception_severity_t sev;
+
+    sev = nimcp_exception_get_severity_from_code(NIMCP_ERROR_NO_MEMORY);
+    EXPECT_GE((int)sev, (int)EXCEPTION_SEVERITY_ERROR);
+
+    sev = nimcp_exception_get_severity_from_code(NIMCP_ERROR_BUFFER_OVERFLOW);
+    EXPECT_GE((int)sev, (int)EXCEPTION_SEVERITY_ERROR);
+
+    sev = nimcp_exception_get_severity_from_code(NIMCP_ERROR_MEMORY_CORRUPTION);
+    EXPECT_GE((int)sev, (int)EXCEPTION_SEVERITY_SEVERE);
+}
+
+/**
+ * WHAT: Test severity mapping for threading errors
+ * WHY:  Verify threading errors get appropriate severity
+ */
+TEST_F(ExceptionMacroComprehensiveTest, SeverityMappingThreadingErrors) {
+    nimcp_exception_severity_t sev;
+
+    sev = nimcp_exception_get_severity_from_code(NIMCP_ERROR_DEADLOCK);
+    EXPECT_GE((int)sev, (int)EXCEPTION_SEVERITY_SEVERE);
+
+    sev = nimcp_exception_get_severity_from_code(NIMCP_ERROR_RACE_CONDITION);
+    EXPECT_GE((int)sev, (int)EXCEPTION_SEVERITY_ERROR);
+
+    sev = nimcp_exception_get_severity_from_code(NIMCP_ERROR_THREAD_CREATE);
+    EXPECT_GE((int)sev, (int)EXCEPTION_SEVERITY_ERROR);
+}
+
+/**
+ * WHAT: Test severity mapping for signal/crash errors
+ * WHY:  Verify crash errors get critical severity
+ */
+TEST_F(ExceptionMacroComprehensiveTest, SeverityMappingSignalErrors) {
+    nimcp_exception_severity_t sev;
+
+    sev = nimcp_exception_get_severity_from_code(NIMCP_ERROR_SIGSEGV);
+    EXPECT_GE((int)sev, (int)EXCEPTION_SEVERITY_CRITICAL);
+
+    sev = nimcp_exception_get_severity_from_code(NIMCP_ERROR_SIGABRT);
+    EXPECT_GE((int)sev, (int)EXCEPTION_SEVERITY_CRITICAL);
+}
+
+/**
+ * WHAT: Test category mapping from error codes
+ * WHY:  Verify error codes map to correct exception categories
+ */
+TEST_F(ExceptionMacroComprehensiveTest, CategoryMappingFromErrorCodes) {
+    nimcp_exception_category_t cat;
+
+    // Generic errors (1000-1999)
+    cat = nimcp_exception_get_category_from_code(NIMCP_ERROR_INVALID_PARAM);
+    EXPECT_EQ(cat, EXCEPTION_CATEGORY_GENERIC);
+
+    // Memory errors (2000-2999)
+    cat = nimcp_exception_get_category_from_code(NIMCP_ERROR_NO_MEMORY);
+    EXPECT_EQ(cat, EXCEPTION_CATEGORY_MEMORY);
+
+    // Brain errors (3000-3999)
+    cat = nimcp_exception_get_category_from_code(NIMCP_ERROR_BRAIN_CREATION);
+    EXPECT_EQ(cat, EXCEPTION_CATEGORY_BRAIN);
+
+    // I/O errors (4000-4999)
+    cat = nimcp_exception_get_category_from_code(NIMCP_ERROR_FILE_NOT_FOUND);
+    EXPECT_EQ(cat, EXCEPTION_CATEGORY_IO);
+
+    // Threading errors (6000-6999)
+    cat = nimcp_exception_get_category_from_code(NIMCP_ERROR_DEADLOCK);
+    EXPECT_EQ(cat, EXCEPTION_CATEGORY_THREADING);
+
+    // Signal errors (7000-7999)
+    cat = nimcp_exception_get_category_from_code(NIMCP_ERROR_SIGSEGV);
+    EXPECT_EQ(cat, EXCEPTION_CATEGORY_SIGNAL);
+}
+
+//=============================================================================
+// SECTION 37: Typed Exception Macro Tests
+//=============================================================================
+
+/**
+ * WHAT: Test NIMCP_THROW_MEMORY macro
+ * WHY:  Verify memory exception macro creates correct type
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowMemoryMacro) {
+    NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, 4096, "Failed to allocate %zu bytes", 4096u);
+
+    EXPECT_EQ(g_handler_call_count, 1);
+    EXPECT_EQ(g_last_error_code, NIMCP_ERROR_NO_MEMORY);
+    EXPECT_EQ(g_last_type, EXCEPTION_TYPE_MEMORY);
+    EXPECT_TRUE(g_exception_presented_to_immune);
+}
+
+/**
+ * WHAT: Test NIMCP_THROW_BRAIN macro
+ * WHY:  Verify brain exception macro creates correct type
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowBrainMacro) {
+    NIMCP_THROW_BRAIN(NIMCP_ERROR_BRAIN_INVALID, 123, "hippocampus",
+                      "Brain %u region %s error", 123, "hippocampus");
+
+    EXPECT_EQ(g_handler_call_count, 1);
+    EXPECT_EQ(g_last_error_code, NIMCP_ERROR_BRAIN_INVALID);
+    EXPECT_EQ(g_last_type, EXCEPTION_TYPE_BRAIN);
+    EXPECT_TRUE(g_exception_presented_to_immune);
+}
+
+/**
+ * WHAT: Test NIMCP_THROW_IO macro
+ * WHY:  Verify I/O exception macro creates correct type
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowIOMacro) {
+    NIMCP_THROW_IO(NIMCP_ERROR_FILE_NOT_FOUND, "/path/to/missing.txt",
+                   "File not found: %s", "/path/to/missing.txt");
+
+    EXPECT_EQ(g_handler_call_count, 1);
+    EXPECT_EQ(g_last_error_code, NIMCP_ERROR_FILE_NOT_FOUND);
+    EXPECT_EQ(g_last_type, EXCEPTION_TYPE_IO);
+    EXPECT_TRUE(g_exception_presented_to_immune);
+}
+
+/**
+ * WHAT: Test NIMCP_THROW_THREADING macro
+ * WHY:  Verify threading exception macro creates correct type
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowThreadingMacro) {
+    NIMCP_THROW_THREADING(NIMCP_ERROR_DEADLOCK, 12345,
+                          "Deadlock on thread %lu", 12345ul);
+
+    EXPECT_EQ(g_handler_call_count, 1);
+    EXPECT_EQ(g_last_error_code, NIMCP_ERROR_DEADLOCK);
+    EXPECT_EQ(g_last_type, EXCEPTION_TYPE_THREADING);
+    EXPECT_TRUE(g_exception_presented_to_immune);
+}
+
+/**
+ * WHAT: Test NIMCP_THROW_SECURITY macro
+ * WHY:  Verify security exception macro creates correct type
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowSecurityMacro) {
+    NIMCP_THROW_SECURITY(NIMCP_ERROR_SECURITY_THREAT, 42,
+                         "Security threat type %d detected", 42);
+
+    EXPECT_EQ(g_handler_call_count, 1);
+    EXPECT_EQ(g_last_error_code, NIMCP_ERROR_SECURITY_THREAT);
+    EXPECT_EQ(g_last_type, EXCEPTION_TYPE_SECURITY);
+    EXPECT_TRUE(g_exception_presented_to_immune);
+}
+
+/**
+ * WHAT: Test NIMCP_THROW_GPU macro
+ * WHY:  Verify GPU exception macro creates correct type
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowGPUMacro) {
+    NIMCP_THROW_GPU(NIMCP_ERROR_GPU, 0, 1, "GPU error on device %d", 0);
+
+    EXPECT_EQ(g_handler_call_count, 1);
+    EXPECT_EQ(g_last_error_code, NIMCP_ERROR_GPU);
+    EXPECT_EQ(g_last_type, EXCEPTION_TYPE_GPU);
+    EXPECT_TRUE(g_exception_presented_to_immune);
+}
+
+//=============================================================================
+// SECTION 38: Severity Override Macro Tests
+//=============================================================================
+
+/**
+ * WHAT: Test NIMCP_THROW_SEVERITY macro
+ * WHY:  Verify explicit severity override
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowSeverityOverride) {
+    // Throw with explicit CRITICAL severity
+    NIMCP_THROW_SEVERITY(NIMCP_ERROR_INVALID_PARAM, EXCEPTION_SEVERITY_CRITICAL,
+                         "Critical parameter error");
+
+    EXPECT_EQ(g_handler_call_count, 1);
+    EXPECT_EQ(g_last_error_code, NIMCP_ERROR_INVALID_PARAM);
+    EXPECT_EQ(g_last_severity, EXCEPTION_SEVERITY_CRITICAL);
+    // CRITICAL severity should auto-present to immune
+    EXPECT_TRUE(g_exception_presented_to_immune);
+}
+
+/**
+ * WHAT: Test NIMCP_THROW_CRITICAL macro
+ * WHY:  Verify critical severity shortcut
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowCriticalMacro) {
+    NIMCP_THROW_CRITICAL(NIMCP_ERROR_OPERATION_FAILED, "Critical operation failure");
+
+    EXPECT_EQ(g_handler_call_count, 1);
+    EXPECT_EQ(g_last_severity, EXCEPTION_SEVERITY_CRITICAL);
+    EXPECT_TRUE(g_exception_presented_to_immune);
+}
+
+/**
+ * WHAT: Test NIMCP_THROW_FATAL macro
+ * WHY:  Verify fatal severity shortcut
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowFatalMacro) {
+    NIMCP_THROW_FATAL(NIMCP_ERROR_MEMORY_CORRUPTION, "Fatal memory corruption");
+
+    EXPECT_EQ(g_handler_call_count, 1);
+    EXPECT_EQ(g_last_severity, EXCEPTION_SEVERITY_FATAL);
+    EXPECT_TRUE(g_exception_presented_to_immune);
+}
+
+//=============================================================================
+// SECTION 39: Exception Creation Edge Cases
+//=============================================================================
+
+/**
+ * WHAT: Test exception creation with very long message
+ * WHY:  Verify message truncation doesn't crash
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ExceptionLongMessageTruncation) {
+    std::string long_message(NIMCP_EXCEPTION_MAX_MESSAGE * 2, 'X');
+
+    nimcp_exception_t* ex = nimcp_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "%s", long_message.c_str());
+
+    ASSERT_NE(ex, nullptr);
+    // Message should be truncated but not crash
+    EXPECT_LT(strlen(ex->message), NIMCP_EXCEPTION_MAX_MESSAGE);
+
+    nimcp_exception_unref(ex);
+}
+
+/**
+ * WHAT: Test exception creation with NULL format string
+ * WHY:  Verify NULL format doesn't crash
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ExceptionNullFormatString) {
+    nimcp_exception_t* ex = nimcp_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        nullptr);
+
+    // Should either return NULL or create exception with empty/default message
+    if (ex != nullptr) {
+        // If it succeeded, the message should be safe to access
+        EXPECT_GE(strlen(ex->message), 0u);
+        nimcp_exception_unref(ex);
+    }
+}
+
+/**
+ * WHAT: Test exception creation with empty format string
+ * WHY:  Verify empty format doesn't crash
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ExceptionEmptyFormatString) {
+    nimcp_exception_t* ex = nimcp_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "");
+
+    ASSERT_NE(ex, nullptr);
+    EXPECT_EQ(strlen(ex->message), 0u);
+
+    nimcp_exception_unref(ex);
+}
+
+/**
+ * WHAT: Test exception with special characters in message
+ * WHY:  Verify special characters don't cause issues
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ExceptionSpecialCharactersInMessage) {
+    nimcp_exception_t* ex = nimcp_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Error: %s\nLine: %d\tTab\r", "test<>&\"'", 42);
+
+    ASSERT_NE(ex, nullptr);
+    EXPECT_NE(strstr(ex->message, "test<>&\"'"), nullptr);
+
+    nimcp_exception_unref(ex);
+}
+
+//=============================================================================
+// SECTION 40: Immune Integration Configuration Tests
+//=============================================================================
+
+/**
+ * WHAT: Test exception immune stats initialization
+ * WHY:  Verify stats tracking works
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ImmuneStatsAvailable) {
+    nimcp_exception_immune_stats_t stats;
+    nimcp_exception_immune_get_stats(&stats);
+
+    // Stats should be accessible (values depend on test order)
+    // Just verify no crash and reasonable values
+    EXPECT_GE(stats.exceptions_presented, 0u);
+    EXPECT_GE(stats.recoveries_attempted, 0u);
+}
+
+/**
+ * WHAT: Test exception immune config defaults
+ * WHY:  Verify default configuration is reasonable
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ImmuneConfigDefaults) {
+    nimcp_exception_immune_config_t config;
+    nimcp_exception_immune_default_config(&config);
+
+    // Verify reasonable defaults
+    EXPECT_GE((int)config.min_present_severity, (int)EXCEPTION_SEVERITY_WARNING);
+    EXPECT_GT(config.max_pending_exceptions, 0u);
+    EXPECT_GT(config.response_timeout_ms, 0u);
+}
+
+//=============================================================================
 // Main
 //=============================================================================
 

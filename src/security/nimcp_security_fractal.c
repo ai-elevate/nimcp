@@ -91,7 +91,14 @@ nimcp_result_t nimcp_fractal_security_init(
     nimcp_fractal_security_t* fsc,
     const nimcp_fsc_config_t* config
 ) {
-    if (!fsc || !config) return NIMCP_INVALID_PARAM;
+    if (!fsc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_fractal_security_init: fsc is NULL");
+        return NIMCP_INVALID_PARAM;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_fractal_security_init: config is NULL");
+        return NIMCP_INVALID_PARAM;
+    }
     if (fsc->initialized) return NIMCP_INVALID_STATE;
 
     nimcp_mutex_lock(&fsc->lock);

@@ -47,7 +47,10 @@ void bge_bridge_default_config(bge_bridge_config_t* config) {
 
 bge_bridge_t* bge_bridge_create(const bge_bridge_config_t* config) {
     bge_bridge_t* bridge = nimcp_calloc(1, sizeof(bge_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bge_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     /* Apply config */
     if (config) {
@@ -78,7 +81,11 @@ bge_bridge_t* bge_bridge_create(const bge_bridge_config_t* config) {
     bridge->inhibited_action = 0;
 
     /* Create mutex */
-    if (bridge_base_init(&bridge->base, 0, "basal_ganglia_executive") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "basal_ganglia_executive") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "bge_bridge_create: failed to initialize bridge base");
+        nimcp_free(bridge);
+        return NULL;
+    }
 
     return bridge;
 }

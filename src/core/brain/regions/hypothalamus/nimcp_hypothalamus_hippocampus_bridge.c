@@ -81,13 +81,13 @@ hypo_hipp_bridge_t* hypo_hipp_bridge_create(
     const hypo_hipp_bridge_config_t* config) {
 
     if (!drives) {
-        NIMCP_LOG_ERROR("hypo_hipp_bridge_create: NULL drives");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_hipp_bridge_create: drives is NULL");
         return NULL;
     }
 
     hypo_hipp_bridge_t* bridge = nimcp_calloc(1, sizeof(hypo_hipp_bridge_t));
     if (!bridge) {
-        NIMCP_LOG_ERROR("hypo_hipp_bridge_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_hipp_bridge_create: failed to allocate bridge");
         return NULL;
     }
 

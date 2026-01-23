@@ -29,8 +29,12 @@ void snn_curiosity_config_default(snn_curiosity_config_t* config) {
 }
 
 snn_curiosity_bridge_t* snn_curiosity_bridge_create(const snn_curiosity_config_t* config, snn_network_t* snn, curiosity_system_t* curiosity_system) {
-    if (!config || !snn) {
-        NIMCP_LOGGING_ERROR("Null parameters to snn_curiosity_bridge_create");
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_curiosity_bridge_create: config is NULL");
+        return NULL;
+    }
+    if (!snn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_curiosity_bridge_create: snn is NULL");
         return NULL;
     }
 

@@ -135,8 +135,10 @@ nimcp_result_t nimcp_srb_init(
     nimcp_security_recovery_bridge_t* bridge,
     const nimcp_srb_config_t* config)
 {
-    if (!bridge)
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_srb_init: bridge is NULL");
         return NIMCP_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(&bridge->lock);
 

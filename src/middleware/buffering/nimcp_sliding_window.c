@@ -166,11 +166,17 @@ sliding_window_t* sliding_window_create(
     uint32_t overlap_percent
 ) {
     // Guard: validate inputs
-    if (window_size == 0 || overlap_percent >= 100) return NULL;
+    if (window_size == 0 || overlap_percent >= 100) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sliding_window_create: invalid window_size or overlap_percent");
+        return NULL;
+    }
 
     // Allocate structure
     sliding_window_t* window = nimcp_calloc(1, sizeof(sliding_window_t));
-    if (!window) return NULL;
+    if (!window) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sliding_window_create: failed to allocate window");
+        return NULL;
+    }
 
     // Create circular buffer (overwrite oldest on overflow)
     window->buffer = circular_buffer_create(
@@ -179,6 +185,7 @@ sliding_window_t* sliding_window_create(
         OVERFLOW_OVERWRITE
     );
     if (!window->buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sliding_window_create: failed to create buffer");
         nimcp_free(window);
         return NULL;
     }

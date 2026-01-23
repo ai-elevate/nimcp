@@ -133,11 +133,15 @@ routing_table_config_t routing_table_default_config(void) {
 
 routing_table_t* routing_table_create(const routing_table_config_t* config) {
     if (!config || config->max_routes == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "routing_table_create: config is NULL or max_routes is 0");
         return NULL;
     }
 
     routing_table_t* table = (routing_table_t*)nimcp_calloc(1, sizeof(routing_table_t));
-    if (!table) return NULL;
+    if (!table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "routing_table_create: failed to allocate table");
+        return NULL;
+    }
 
     table->config = *config;
 

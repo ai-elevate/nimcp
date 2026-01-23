@@ -301,16 +301,21 @@ synchrony_detector_config_t synchrony_detector_default_config(uint32_t num_neuro
 synchrony_detector_t* synchrony_detector_create(const synchrony_detector_config_t* config) {
     // Validate input
     if (!config || config->num_neurons == 0 || config->num_neurons > SYNCHRONY_MAX_NEURONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "synchrony_detector_create: config is NULL or num_neurons invalid");
         return NULL;
     }
 
     if (config->num_windows == 0 || config->num_windows > SYNCHRONY_MAX_WINDOWS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "synchrony_detector_create: num_windows invalid");
         return NULL;
     }
 
     // Allocate detector
     synchrony_detector_t* detector = (synchrony_detector_t*)nimcp_calloc(1, sizeof(synchrony_detector_t));
-    if (!detector) return NULL;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "synchrony_detector_create: failed to allocate detector");
+        return NULL;
+    }
 
     // Copy configuration
     detector->num_neurons = config->num_neurons;

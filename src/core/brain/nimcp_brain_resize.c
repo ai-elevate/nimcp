@@ -465,6 +465,7 @@ bool brain_resize(brain_t brain, uint32_t new_neuron_count)
 
     // Guard: Validate brain handle
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_resize: brain is NULL");
         LOG_ERROR("brain_resize: NULL brain handle");
         return false;
     }
@@ -738,6 +739,7 @@ bool brain_auto_resize(brain_t brain)
 
     // Guard: Validate brain
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_auto_resize: brain is NULL");
         LOG_ERROR("brain_auto_resize: NULL brain");
         return false;
     }
@@ -880,7 +882,12 @@ uint32_t brain_get_neuron_count(brain_t brain)
  */
 bool brain_get_utilization_metrics(brain_t brain, float* utilization, float* saturation)
 {
-    if (!brain || !utilization || !saturation) {
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_utilization_metrics: brain is NULL");
+        return false;
+    }
+    if (!utilization || !saturation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_get_utilization_metrics: output parameters are NULL");
         return false;
     }
 

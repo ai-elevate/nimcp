@@ -362,6 +362,7 @@ tpb_context_t* tpb_create(const tpb_config_t* config)
 {
     tpb_context_t* ctx = nimcp_malloc(sizeof(tpb_context_t));
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tpb_create: failed to allocate bridge context");
         LOG_ERROR("[%s] ", TPB_LOG_MODULE, "Failed to allocate bridge context");
         return NULL;
     }

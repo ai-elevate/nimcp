@@ -302,11 +302,15 @@ sequence_detector_config_t sequence_detector_default_config(void) {
 
 sequence_detector_t* sequence_detector_create(const sequence_detector_config_t* config) {
     if (!config || config->max_templates == 0 || config->max_sequence_length == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "sequence_detector_create: config is NULL or invalid");
         return NULL;
     }
 
     sequence_detector_t* detector = (sequence_detector_t*)nimcp_calloc(1, sizeof(sequence_detector_t));
-    if (!detector) return NULL;
+    if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sequence_detector_create: failed to allocate detector");
+        return NULL;
+    }
 
     detector->config = *config;
 

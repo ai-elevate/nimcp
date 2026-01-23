@@ -219,6 +219,7 @@ void arousal_state_destroy(arousal_state_t* state) {
 int arousal_state_default_config(arousal_state_config_t* config) {
     // Guard: NULL check
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arousal_state_default_config: config is NULL");
         NIMCP_LOGGING_ERROR("NULL config pointer");
         return NIMCP_ERROR_NULL_POINTER;
     }
@@ -245,12 +246,14 @@ int arousal_state_default_config(arousal_state_config_t* config) {
 int arousal_state_update(arousal_state_t* state, float delta_ms) {
     // Guard: NULL check
     if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arousal_state_update: state is NULL");
         NIMCP_LOGGING_ERROR("NULL state pointer");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
     // Guard: Invalid delta
     if (delta_ms < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "arousal_state_update: delta_ms is negative");
         NIMCP_LOGGING_ERROR("Invalid negative delta_ms: %f", delta_ms);
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -316,10 +319,12 @@ int arousal_state_update(arousal_state_t* state, float delta_ms) {
 int arousal_state_get_level(const arousal_state_t* state, float* out_level) {
     // Guard: NULL checks
     if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arousal_state_get_level: state is NULL");
         NIMCP_LOGGING_ERROR("NULL state pointer");
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (!out_level) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arousal_state_get_level: out_level is NULL");
         NIMCP_LOGGING_ERROR("NULL out_level pointer");
         return NIMCP_ERROR_NULL_POINTER;
     }
@@ -334,10 +339,12 @@ int arousal_state_get_level(const arousal_state_t* state, float* out_level) {
 int arousal_state_get_state(const arousal_state_t* state, arousal_state_enum_t* out_state) {
     // Guard: NULL checks
     if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arousal_state_get_state: state is NULL");
         NIMCP_LOGGING_ERROR("NULL state pointer");
         return NIMCP_ERROR_NULL_POINTER;
     }
     if (!out_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arousal_state_get_state: out_state is NULL");
         NIMCP_LOGGING_ERROR("NULL out_state pointer");
         return NIMCP_ERROR_NULL_POINTER;
     }
@@ -352,12 +359,14 @@ int arousal_state_get_state(const arousal_state_t* state, arousal_state_enum_t* 
 int arousal_state_set_target(arousal_state_t* state, float target_level) {
     // Guard: NULL check
     if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arousal_state_set_target: state is NULL");
         NIMCP_LOGGING_ERROR("NULL state pointer");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
     // Guard: Range check
     if (target_level < 0.0f || target_level > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "arousal_state_set_target: target_level out of range");
         NIMCP_LOGGING_ERROR("Invalid target_level: %f (must be 0.0-1.0)", target_level);
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -377,12 +386,14 @@ int arousal_state_set_target(arousal_state_t* state, float target_level) {
 int arousal_state_apply_stimulus(arousal_state_t* state, float stimulus_magnitude) {
     // Guard: NULL check
     if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arousal_state_apply_stimulus: state is NULL");
         NIMCP_LOGGING_ERROR("NULL state pointer");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
     // Guard: Range check
     if (stimulus_magnitude < -1.0f || stimulus_magnitude > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "arousal_state_apply_stimulus: magnitude out of range");
         NIMCP_LOGGING_ERROR("Invalid stimulus_magnitude: %f (must be -1.0 to 1.0)",
             stimulus_magnitude);
         return NIMCP_ERROR_INVALID_PARAM;

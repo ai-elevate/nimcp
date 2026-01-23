@@ -198,14 +198,14 @@ hypo_drive_quantum_bridge_t* hypo_drive_quantum_bridge_create(
     const hypo_drive_quantum_config_t* config) {
 
     if (!drives) {
-        NIMCP_LOG_ERROR("hypo_drive_quantum_bridge_create: NULL drives");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_quantum_bridge_create: drives is NULL");
         return NULL;
     }
 
     hypo_drive_quantum_bridge_t* bridge = nimcp_calloc(1,
         sizeof(hypo_drive_quantum_bridge_t));
     if (!bridge) {
-        NIMCP_LOG_ERROR("hypo_drive_quantum_bridge_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_drive_quantum_bridge_create: failed to allocate bridge");
         return NULL;
     }
 

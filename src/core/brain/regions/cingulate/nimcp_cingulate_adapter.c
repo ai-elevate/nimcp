@@ -336,7 +336,10 @@ void cingulate_destroy(cingulate_adapter_t* adapter) {
 }
 
 bool cingulate_reset(cingulate_adapter_t* adapter) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_reset: adapter is NULL");
+        return false;
+    }
 
     LOG_DEBUG("[%s] Resetting adapter state", CINGULATE_LOG_MODULE);
 
@@ -381,6 +384,7 @@ bool cingulate_reset(cingulate_adapter_t* adapter) {
 
 bool cingulate_begin_monitoring(cingulate_adapter_t* adapter, uint32_t num_options) {
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_begin_monitoring: adapter is NULL");
         return false;
     }
 
@@ -412,8 +416,13 @@ bool cingulate_begin_monitoring(cingulate_adapter_t* adapter, uint32_t num_optio
 
 bool cingulate_update_response(cingulate_adapter_t* adapter,
                                 const cingulate_response_option_t* option) {
-    if (!adapter || !option) {
-        if (adapter) set_error(adapter, CINGULATE_ERROR_INVALID_INPUT);
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_update_response: adapter is NULL");
+        return false;
+    }
+    if (!option) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_update_response: option is NULL");
+        set_error(adapter, CINGULATE_ERROR_INVALID_INPUT);
         return false;
     }
 
@@ -444,7 +453,10 @@ bool cingulate_update_response(cingulate_adapter_t* adapter,
 
 bool cingulate_evaluate_conflict(cingulate_adapter_t* adapter,
                                   cingulate_conflict_t* conflict) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_evaluate_conflict: adapter is NULL");
+        return false;
+    }
 
     if (!adapter->monitoring_active || adapter->num_response_options < 2) {
         return false;
@@ -536,7 +548,14 @@ bool cingulate_evaluate_conflict(cingulate_adapter_t* adapter,
 
 bool cingulate_requires_control(const cingulate_adapter_t* adapter,
                                  const cingulate_conflict_t* conflict) {
-    if (!adapter || !conflict) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_requires_control: adapter is NULL");
+        return false;
+    }
+    if (!conflict) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_requires_control: conflict is NULL");
+        return false;
+    }
     return conflict->requires_control;
 }
 
@@ -547,7 +566,10 @@ bool cingulate_requires_control(const cingulate_adapter_t* adapter,
 bool cingulate_report_response(cingulate_adapter_t* adapter,
                                 uint32_t executed_option,
                                 uint32_t intended_option) {
-    if (!adapter) return false;
+    if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cingulate_report_response: adapter is NULL");
+        return false;
+    }
 
     /* Check for error (mismatch between executed and intended) */
     if (intended_option != 0 && executed_option != intended_option) {

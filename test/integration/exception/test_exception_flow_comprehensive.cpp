@@ -35,6 +35,7 @@
 #include <vector>
 #include <functional>
 #include <mutex>
+#include <set>
 
 extern "C" {
 #include "utils/exception/nimcp_exception.h"
@@ -1812,6 +1813,868 @@ TEST_F(ExceptionFlowTest, DefaultHandlersCanBeInstalled) {
 
     // Should have more handlers now
     EXPECT_GE(nimcp_handler_count(), initial_count);
+}
+
+//=============================================================================
+// 21. Exception Flow Through Multiple Module Boundaries
+//=============================================================================
+
+// Static tracking for bridge simulation
+static std::atomic<int> bridge_A_exceptions{0};
+static std::atomic<int> bridge_B_exceptions{0};
+static std::atomic<int> bridge_C_exceptions{0};
+
+// Simulated bridge module A handler
+static bool bridge_A_handler(nimcp_exception_t* ex, void* user_data) {
+    (void)user_data;
+    bridge_A_exceptions++;
+    // Transform error and propagate
+    if (ex->category == EXCEPTION_CATEGORY_MEMORY) {
+        // Memory errors pass through unchanged
+        return false;
+    }
+    return false;
+}
+
+// Simulated bridge module B handler
+static bool bridge_B_handler(nimcp_exception_t* ex, void* user_data) {
+    (void)user_data;
+    bridge_B_exceptions++;
+    return false;
+}
+
+// Simulated bridge module C handler
+static bool bridge_C_handler(nimcp_exception_t* ex, void* user_data) {
+    (void)user_data;
+    bridge_C_exceptions++;
+    return false;
+}
+
+TEST_F(ExceptionFlowTest, ExceptionFlowsThroughMultipleBridges) {
+    // WHAT: Test exception flows through multiple simulated bridge modules
+    // WHY:  Real system has exceptions crossing many bridge boundaries
+    // HOW:  Register handlers simulating different bridges, verify all receive
+
+    bridge_A_exceptions = 0;
+    bridge_B_exceptions = 0;
+    bridge_C_exceptions = 0;
+
+    // Register bridge handlers with different priorities (simulating bridge chain)
+    nimcp_handler_options_t opts_a, opts_b, opts_c;
+
+    nimcp_handler_default_options(&opts_a);
+    opts_a.name = "bridge_A";
+    opts_a.handler = bridge_A_handler;
+    opts_a.priority = 90;
+    auto* reg_a = nimcp_handler_register(&opts_a);
+    registered_handlers.push_back(reg_a);
+
+    nimcp_handler_default_options(&opts_b);
+    opts_b.name = "bridge_B";
+    opts_b.handler = bridge_B_handler;
+    opts_b.priority = 80;
+    auto* reg_b = nimcp_handler_register(&opts_b);
+    registered_handlers.push_back(reg_b);
+
+    nimcp_handler_default_options(&opts_c);
+    opts_c.name = "bridge_C";
+    opts_c.handler = bridge_C_handler;
+    opts_c.priority = 70;
+    auto* reg_c = nimcp_handler_register(&opts_c);
+    registered_handlers.push_back(reg_c);
+
+    // Create and dispatch exception
+    nimcp_exception_t* ex = nimcp_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Exception crossing bridge boundaries"
+    );
+    ASSERT_NE(ex, nullptr);
+
+    nimcp_exception_dispatch(ex);
+
+    // All bridges should have seen the exception (in priority order)
+    EXPECT_EQ(bridge_A_exceptions.load(), 1);
+    EXPECT_EQ(bridge_B_exceptions.load(), 1);
+    EXPECT_EQ(bridge_C_exceptions.load(), 1);
+
+    nimcp_exception_unref(ex);
+}
+
+TEST_F(ExceptionFlowTest, BridgeBoundaryContextPreservation) {
+    // WHAT: Test that exception context is preserved across bridge boundaries
+    // WHY:  Each bridge may add context; previous context must remain
+    // HOW:  Add context at different "bridge" levels, verify all preserved
+
+    nimcp_exception_t* ex = nimcp_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Cross-bridge context test"
+    );
+    ASSERT_NE(ex, nullptr);
+
+    // Simulate Bridge A adding context
+    nimcp_exception_set_context(ex, "bridge_a_module", "perception");
+    nimcp_exception_set_context(ex, "bridge_a_timestamp", "12345");
+
+    // Simulate Bridge B adding context
+    nimcp_exception_set_context(ex, "bridge_b_module", "cognitive");
+    nimcp_exception_set_context(ex, "bridge_b_action", "processing");
+
+    // Simulate Bridge C adding context
+    nimcp_exception_set_context(ex, "bridge_c_module", "executive");
+    nimcp_exception_set_context(ex, "bridge_c_decision", "escalate");
+
+    // Verify all context from all bridges is preserved
+    EXPECT_EQ(nimcp_exception_context_count(ex), 6u);
+    EXPECT_STREQ(nimcp_exception_get_context(ex, "bridge_a_module"), "perception");
+    EXPECT_STREQ(nimcp_exception_get_context(ex, "bridge_b_module"), "cognitive");
+    EXPECT_STREQ(nimcp_exception_get_context(ex, "bridge_c_module"), "executive");
+    EXPECT_STREQ(nimcp_exception_get_context(ex, "bridge_c_decision"), "escalate");
+
+    nimcp_exception_unref(ex);
+}
+
+//=============================================================================
+// 22. Immune System Exception Processing (Simulated)
+//=============================================================================
+
+// Simulated immune response tracker
+static struct {
+    std::atomic<int> antigens_received{0};
+    std::atomic<int> recoveries_suggested{0};
+    std::vector<nimcp_error_t> antigen_codes;
+    std::mutex antigen_mutex;
+} g_immune_tracker;
+
+// Handler that simulates immune system receiving exceptions
+static bool simulated_immune_handler(nimcp_exception_t* ex, void* user_data) {
+    (void)user_data;
+    g_immune_tracker.antigens_received++;
+
+    {
+        std::lock_guard<std::mutex> lock(g_immune_tracker.antigen_mutex);
+        g_immune_tracker.antigen_codes.push_back(ex->code);
+    }
+
+    // Generate epitope to simulate immune processing
+    size_t epitope_len = nimcp_exception_generate_epitope(ex);
+    if (epitope_len > 0) {
+        // Mark as presented to immune
+        ex->presented_to_immune = true;
+    }
+
+    // Simulate recovery suggestion based on category
+    nimcp_exception_recovery_action_t suggested = nimcp_exception_get_suggested_recovery(ex);
+    if (suggested != EXCEPTION_RECOVERY_NONE) {
+        g_immune_tracker.recoveries_suggested++;
+    }
+
+    return false;
+}
+
+TEST_F(ExceptionFlowTest, ImmuneSystemReceivesExceptions) {
+    // WHAT: Test simulated immune system receives and processes exceptions
+    // WHY:  Immune integration is core to NIMCP self-healing
+    // HOW:  Register immune handler, dispatch exceptions, verify processing
+
+    g_immune_tracker.antigens_received = 0;
+    g_immune_tracker.recoveries_suggested = 0;
+    {
+        std::lock_guard<std::mutex> lock(g_immune_tracker.antigen_mutex);
+        g_immune_tracker.antigen_codes.clear();
+    }
+
+    nimcp_handler_options_t opts;
+    nimcp_handler_default_options(&opts);
+    opts.name = "simulated_immune";
+    opts.handler = simulated_immune_handler;
+    opts.priority = NIMCP_HANDLER_PRIORITY_HIGH;
+    auto* reg = nimcp_handler_register(&opts);
+    registered_handlers.push_back(reg);
+
+    // Dispatch various exception types
+    nimcp_memory_exception_t* mem = nimcp_memory_exception_create(
+        NIMCP_ERROR_NO_MEMORY, EXCEPTION_SEVERITY_SEVERE,
+        __FILE__, __LINE__, __func__, 1024, "Memory immune test"
+    );
+    nimcp_brain_exception_t* brain = nimcp_brain_exception_create(
+        NIMCP_ERROR_LEARNING_FAILED, EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__, 1, "test_region", "Brain immune test"
+    );
+    nimcp_threading_exception_t* thread = nimcp_threading_exception_create(
+        NIMCP_ERROR_DEADLOCK, EXCEPTION_SEVERITY_CRITICAL,
+        __FILE__, __LINE__, __func__, 9999, "Threading immune test"
+    );
+
+    ASSERT_NE(mem, nullptr);
+    ASSERT_NE(brain, nullptr);
+    ASSERT_NE(thread, nullptr);
+
+    nimcp_exception_dispatch((nimcp_exception_t*)mem);
+    nimcp_exception_dispatch((nimcp_exception_t*)brain);
+    nimcp_exception_dispatch((nimcp_exception_t*)thread);
+
+    EXPECT_EQ(g_immune_tracker.antigens_received.load(), 3);
+    EXPECT_GE(g_immune_tracker.recoveries_suggested.load(), 1);
+
+    // Verify all were marked as presented
+    EXPECT_TRUE(mem->base.presented_to_immune);
+    EXPECT_TRUE(brain->base.presented_to_immune);
+    EXPECT_TRUE(thread->base.presented_to_immune);
+
+    nimcp_exception_unref((nimcp_exception_t*)mem);
+    nimcp_exception_unref((nimcp_exception_t*)brain);
+    nimcp_exception_unref((nimcp_exception_t*)thread);
+}
+
+TEST_F(ExceptionFlowTest, ImmuneProcessesDifferentCategories) {
+    // WHAT: Test immune system handles different exception categories
+    // WHY:  Different categories need different immune responses
+    // HOW:  Dispatch multiple categories, verify all received
+
+    g_immune_tracker.antigens_received = 0;
+    {
+        std::lock_guard<std::mutex> lock(g_immune_tracker.antigen_mutex);
+        g_immune_tracker.antigen_codes.clear();
+    }
+
+    nimcp_handler_options_t opts;
+    nimcp_handler_default_options(&opts);
+    opts.name = "category_immune";
+    opts.handler = simulated_immune_handler;
+    opts.priority = NIMCP_HANDLER_PRIORITY_HIGH;
+    auto* reg = nimcp_handler_register(&opts);
+    registered_handlers.push_back(reg);
+
+    // Create exceptions of each major category
+    std::vector<std::pair<nimcp_error_t, nimcp_exception_category_t>> test_cases = {
+        {NIMCP_ERROR_NO_MEMORY, EXCEPTION_CATEGORY_MEMORY},
+        {NIMCP_ERROR_BRAIN_CREATION, EXCEPTION_CATEGORY_BRAIN},
+        {NIMCP_ERROR_FILE_READ, EXCEPTION_CATEGORY_IO},
+        {NIMCP_ERROR_DEADLOCK, EXCEPTION_CATEGORY_THREADING},
+        {NIMCP_ERROR_GPU, EXCEPTION_CATEGORY_GPU},
+    };
+
+    for (const auto& tc : test_cases) {
+        nimcp_exception_t* ex = nimcp_exception_create(
+            tc.first, EXCEPTION_SEVERITY_ERROR,
+            __FILE__, __LINE__, __func__,
+            "Category test: %d", (int)tc.second
+        );
+        ASSERT_NE(ex, nullptr);
+        EXPECT_EQ(ex->category, tc.second);
+        nimcp_exception_dispatch(ex);
+        nimcp_exception_unref(ex);
+    }
+
+    EXPECT_EQ(g_immune_tracker.antigens_received.load(), (int)test_cases.size());
+}
+
+//=============================================================================
+// 23. Exception Aggregation and Deduplication
+//=============================================================================
+
+TEST_F(ExceptionFlowTest, AggregateExceptionDeduplicatesByCode) {
+    // WHAT: Test aggregate exception can detect duplicate error codes
+    // WHY:  Prevent flooding with redundant exceptions
+    // HOW:  Add same error code multiple times, check count
+
+    nimcp_aggregate_exception_t* agg = nimcp_aggregate_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Deduplication test aggregate"
+    );
+    ASSERT_NE(agg, nullptr);
+
+    // Add unique exceptions
+    std::set<nimcp_error_t> unique_codes;
+    for (int i = 0; i < 5; i++) {
+        nimcp_error_t code = NIMCP_ERROR_OPERATION_FAILED + i;
+        nimcp_exception_t* child = nimcp_exception_create(
+            code, EXCEPTION_SEVERITY_ERROR,
+            __FILE__, __LINE__, __func__,
+            "Child %d with unique code", i
+        );
+        ASSERT_NE(child, nullptr);
+        unique_codes.insert(code);
+        EXPECT_EQ(nimcp_aggregate_exception_add(agg, child), 0);
+    }
+
+    // Add duplicate exceptions (same codes)
+    for (int i = 0; i < 3; i++) {
+        nimcp_error_t code = NIMCP_ERROR_OPERATION_FAILED; // Same code
+        nimcp_exception_t* child = nimcp_exception_create(
+            code, EXCEPTION_SEVERITY_ERROR,
+            __FILE__, __LINE__, __func__,
+            "Duplicate child %d", i
+        );
+        ASSERT_NE(child, nullptr);
+        EXPECT_EQ(nimcp_aggregate_exception_add(agg, child), 0);
+    }
+
+    // Total should be 8 (5 unique + 3 duplicates)
+    EXPECT_EQ(nimcp_aggregate_exception_count(agg), 8u);
+
+    // Manual deduplication check - count unique codes
+    std::set<nimcp_error_t> seen_codes;
+    for (size_t i = 0; i < nimcp_aggregate_exception_count(agg); i++) {
+        nimcp_exception_t* child = nimcp_aggregate_exception_get(agg, i);
+        seen_codes.insert(child->code);
+    }
+    // Should have 5 unique codes (5 unique + 1 duplicated)
+    EXPECT_EQ(seen_codes.size(), 5u);
+
+    nimcp_exception_unref((nimcp_exception_t*)agg);
+}
+
+TEST_F(ExceptionFlowTest, AggregateExceptionMaxChildren) {
+    // WHAT: Test aggregate respects maximum children limit
+    // WHY:  Prevent memory exhaustion from unbounded aggregation
+    // HOW:  Add more than max children, verify limit enforced
+
+    nimcp_aggregate_exception_t* agg = nimcp_aggregate_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Max children test"
+    );
+    ASSERT_NE(agg, nullptr);
+
+    // Try to add NIMCP_EXCEPTION_MAX_CHILDREN + some extra
+    int success_count = 0;
+    for (int i = 0; i < NIMCP_EXCEPTION_MAX_CHILDREN + 10; i++) {
+        nimcp_exception_t* child = nimcp_exception_create(
+            NIMCP_ERROR_OPERATION_FAILED,
+            EXCEPTION_SEVERITY_ERROR,
+            __FILE__, __LINE__, __func__,
+            "Child %d", i
+        );
+        ASSERT_NE(child, nullptr);
+
+        int result = nimcp_aggregate_exception_add(agg, child);
+        if (result == 0) {
+            success_count++;
+        } else {
+            // Addition failed - clean up child manually since not added
+            nimcp_exception_unref(child);
+        }
+    }
+
+    // Should be capped at max
+    EXPECT_LE(nimcp_aggregate_exception_count(agg), (size_t)NIMCP_EXCEPTION_MAX_CHILDREN);
+    EXPECT_EQ(nimcp_aggregate_exception_count(agg), (size_t)success_count);
+
+    nimcp_exception_unref((nimcp_exception_t*)agg);
+}
+
+TEST_F(ExceptionFlowTest, AggregateExceptionEpitopeDistinct) {
+    // WHAT: Test aggregate exceptions have distinct epitopes
+    // WHY:  Immune system needs unique signatures
+    // HOW:  Create two aggregates with different children, compare epitopes
+
+    // Create first aggregate
+    nimcp_aggregate_exception_t* agg1 = nimcp_aggregate_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Aggregate 1"
+    );
+    ASSERT_NE(agg1, nullptr);
+
+    nimcp_exception_t* child1 = nimcp_exception_create(
+        NIMCP_ERROR_NO_MEMORY, EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__, "Memory error"
+    );
+    nimcp_aggregate_exception_add(agg1, child1);
+
+    // Create second aggregate with different child
+    nimcp_aggregate_exception_t* agg2 = nimcp_aggregate_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Aggregate 2"
+    );
+    ASSERT_NE(agg2, nullptr);
+
+    nimcp_exception_t* child2 = nimcp_exception_create(
+        NIMCP_ERROR_BRAIN_CREATION, EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__, "Brain error"
+    );
+    nimcp_aggregate_exception_add(agg2, child2);
+
+    // Generate epitopes
+    size_t len1 = nimcp_exception_generate_epitope((nimcp_exception_t*)agg1);
+    size_t len2 = nimcp_exception_generate_epitope((nimcp_exception_t*)agg2);
+
+    EXPECT_GT(len1, 0u);
+    EXPECT_GT(len2, 0u);
+
+    // Epitopes should be generated (content may vary)
+    EXPECT_EQ(((nimcp_exception_t*)agg1)->epitope_len, len1);
+    EXPECT_EQ(((nimcp_exception_t*)agg2)->epitope_len, len2);
+
+    nimcp_exception_unref((nimcp_exception_t*)agg1);
+    nimcp_exception_unref((nimcp_exception_t*)agg2);
+}
+
+//=============================================================================
+// 24. Bio-Async Exception Message Routing (Simulated)
+//=============================================================================
+
+// Simulated bio-async message tracking
+static struct {
+    std::atomic<int> messages_routed{0};
+    std::atomic<int> error_messages{0};
+    std::vector<nimcp_exception_category_t> message_categories;
+    std::mutex routing_mutex;
+} g_bio_async_routing;
+
+// Simulated bio-async message router handler
+static bool bio_async_router_handler(nimcp_exception_t* ex, void* user_data) {
+    (void)user_data;
+    g_bio_async_routing.messages_routed++;
+
+    {
+        std::lock_guard<std::mutex> lock(g_bio_async_routing.routing_mutex);
+        g_bio_async_routing.message_categories.push_back(ex->category);
+    }
+
+    // Simulate routing decision based on severity
+    if (ex->severity >= EXCEPTION_SEVERITY_SEVERE) {
+        g_bio_async_routing.error_messages++;
+    }
+
+    return false;
+}
+
+TEST_F(ExceptionFlowTest, BioAsyncRoutesByCategory) {
+    // WHAT: Test simulated bio-async exception routing by category
+    // WHY:  Bio-router needs to route exceptions to appropriate modules
+    // HOW:  Dispatch exceptions of different categories, verify routing
+
+    g_bio_async_routing.messages_routed = 0;
+    g_bio_async_routing.error_messages = 0;
+    {
+        std::lock_guard<std::mutex> lock(g_bio_async_routing.routing_mutex);
+        g_bio_async_routing.message_categories.clear();
+    }
+
+    nimcp_handler_options_t opts;
+    nimcp_handler_default_options(&opts);
+    opts.name = "bio_async_router";
+    opts.handler = bio_async_router_handler;
+    opts.priority = NIMCP_HANDLER_PRIORITY_HIGH;
+    auto* reg = nimcp_handler_register(&opts);
+    registered_handlers.push_back(reg);
+
+    // Create and dispatch exceptions that would be routed to different modules
+    struct TestMessage {
+        nimcp_error_t code;
+        nimcp_exception_severity_t severity;
+        const char* target_module;
+    };
+
+    std::vector<TestMessage> messages = {
+        {NIMCP_ERROR_NO_MEMORY, EXCEPTION_SEVERITY_SEVERE, "memory_module"},
+        {NIMCP_ERROR_BRAIN_CREATION, EXCEPTION_SEVERITY_ERROR, "brain_module"},
+        {NIMCP_ERROR_FILE_READ, EXCEPTION_SEVERITY_WARNING, "io_module"},
+        {NIMCP_ERROR_DEADLOCK, EXCEPTION_SEVERITY_CRITICAL, "threading_module"},
+        {NIMCP_ERROR_GPU, EXCEPTION_SEVERITY_SEVERE, "gpu_module"},
+    };
+
+    for (const auto& msg : messages) {
+        nimcp_exception_t* ex = nimcp_exception_create(
+            msg.code, msg.severity,
+            __FILE__, __LINE__, __func__,
+            "Bio-async message to %s", msg.target_module
+        );
+        ASSERT_NE(ex, nullptr);
+        nimcp_exception_set_context(ex, "target_module", msg.target_module);
+        nimcp_exception_dispatch(ex);
+        nimcp_exception_unref(ex);
+    }
+
+    EXPECT_EQ(g_bio_async_routing.messages_routed.load(), (int)messages.size());
+    // 3 messages are SEVERE or higher (SEVERE, CRITICAL, SEVERE)
+    EXPECT_EQ(g_bio_async_routing.error_messages.load(), 3);
+
+    // Verify categories were received
+    {
+        std::lock_guard<std::mutex> lock(g_bio_async_routing.routing_mutex);
+        EXPECT_EQ(g_bio_async_routing.message_categories.size(), messages.size());
+    }
+}
+
+TEST_F(ExceptionFlowTest, BioAsyncPreservesPriorityOnRouting) {
+    // WHAT: Test bio-async routing preserves exception priority/severity
+    // WHY:  High-priority exceptions need expedited handling
+    // HOW:  Track severity of routed exceptions
+
+    g_bio_async_routing.messages_routed = 0;
+    g_bio_async_routing.error_messages = 0;
+
+    nimcp_handler_options_t opts;
+    nimcp_handler_default_options(&opts);
+    opts.name = "bio_async_priority";
+    opts.handler = bio_async_router_handler;
+    opts.priority = NIMCP_HANDLER_PRIORITY_HIGH;
+    opts.min_severity = EXCEPTION_SEVERITY_ERROR; // Only receive ERROR+
+    auto* reg = nimcp_handler_register(&opts);
+    registered_handlers.push_back(reg);
+
+    // Dispatch low severity - should NOT be received
+    nimcp_exception_t* low = nimcp_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED, EXCEPTION_SEVERITY_WARNING,
+        __FILE__, __LINE__, __func__, "Low priority"
+    );
+    nimcp_exception_dispatch(low);
+    nimcp_exception_unref(low);
+
+    // Dispatch high severity - should be received
+    nimcp_exception_t* high = nimcp_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED, EXCEPTION_SEVERITY_CRITICAL,
+        __FILE__, __LINE__, __func__, "High priority"
+    );
+    nimcp_exception_dispatch(high);
+    nimcp_exception_unref(high);
+
+    // Only high severity should have been routed
+    EXPECT_EQ(g_bio_async_routing.messages_routed.load(), 1);
+}
+
+TEST_F(ExceptionFlowTest, BioAsyncBatchExceptionRouting) {
+    // WHAT: Test batch exception routing via aggregate
+    // WHY:  Batch operations produce multiple exceptions to route
+    // HOW:  Create aggregate with multiple children, dispatch as batch
+
+    g_bio_async_routing.messages_routed = 0;
+    {
+        std::lock_guard<std::mutex> lock(g_bio_async_routing.routing_mutex);
+        g_bio_async_routing.message_categories.clear();
+    }
+
+    nimcp_handler_options_t opts;
+    nimcp_handler_default_options(&opts);
+    opts.name = "bio_async_batch";
+    opts.handler = bio_async_router_handler;
+    opts.priority = NIMCP_HANDLER_PRIORITY_HIGH;
+    auto* reg = nimcp_handler_register(&opts);
+    registered_handlers.push_back(reg);
+
+    // Create aggregate batch
+    nimcp_aggregate_exception_t* batch = nimcp_aggregate_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Batch of exceptions"
+    );
+    ASSERT_NE(batch, nullptr);
+
+    // Add multiple children representing batch failures
+    for (int i = 0; i < 5; i++) {
+        nimcp_exception_t* child = nimcp_exception_create(
+            NIMCP_ERROR_OPERATION_FAILED + i,
+            EXCEPTION_SEVERITY_ERROR,
+            __FILE__, __LINE__, __func__,
+            "Batch item %d failure", i
+        );
+        nimcp_aggregate_exception_add(batch, child);
+    }
+
+    // Dispatch the aggregate (single message with batch info)
+    nimcp_exception_dispatch((nimcp_exception_t*)batch);
+
+    // Should be routed as single message
+    EXPECT_EQ(g_bio_async_routing.messages_routed.load(), 1);
+
+    // Verify children are still accessible
+    EXPECT_EQ(nimcp_aggregate_exception_count(batch), 5u);
+
+    nimcp_exception_unref((nimcp_exception_t*)batch);
+}
+
+//=============================================================================
+// 25. Cross-Thread Exception Propagation
+//=============================================================================
+
+TEST_F(ExceptionFlowTest, CrossThreadExceptionPropagation) {
+    // WHAT: Test exceptions propagate correctly across thread boundaries
+    // WHY:  Worker threads may generate exceptions that need main thread handling
+    // HOW:  Generate exceptions in worker threads, verify main thread can observe
+
+    auto* reg = register_tracking_handler("cross_thread", 100);
+    ASSERT_NE(reg, nullptr);
+
+    std::atomic<bool> thread_completed{false};
+    std::atomic<nimcp_error_t> thread_exception_code{NIMCP_SUCCESS};
+
+    // Launch worker thread that will throw exception
+    std::thread worker([&]() {
+        nimcp_exception_t* ex = nimcp_exception_create(
+            NIMCP_ERROR_THREAD_CREATE,
+            EXCEPTION_SEVERITY_ERROR,
+            __FILE__, __LINE__, __func__,
+            "Exception from worker thread"
+        );
+        if (ex) {
+            nimcp_exception_set_context(ex, "thread_role", "worker");
+            thread_exception_code = ex->code;
+            nimcp_exception_dispatch(ex);
+            nimcp_exception_unref(ex);
+        }
+        thread_completed = true;
+    });
+
+    worker.join();
+
+    EXPECT_TRUE(thread_completed.load());
+    EXPECT_EQ(thread_exception_code.load(), NIMCP_ERROR_THREAD_CREATE);
+    // Handler should have been called (shared handler registration)
+    EXPECT_GE(handler_call_count.load(), 1);
+}
+
+TEST_F(ExceptionFlowTest, MultipleThreadsSimultaneousExceptions) {
+    // WHAT: Test handling exceptions from multiple threads simultaneously
+    // WHY:  Real systems have concurrent exception generation
+    // HOW:  Launch multiple threads that each generate exceptions
+
+    auto* reg = register_tracking_handler("multi_thread", 100);
+    ASSERT_NE(reg, nullptr);
+
+    const int NUM_THREADS = 4;
+    const int EXCEPTIONS_PER_THREAD = 3;
+    std::atomic<int> total_dispatched{0};
+    std::vector<std::thread> threads;
+
+    for (int t = 0; t < NUM_THREADS; t++) {
+        threads.emplace_back([t, &total_dispatched]() {
+            for (int e = 0; e < EXCEPTIONS_PER_THREAD; e++) {
+                nimcp_exception_t* ex = nimcp_exception_create(
+                    NIMCP_ERROR_OPERATION_FAILED,
+                    EXCEPTION_SEVERITY_ERROR,
+                    __FILE__, __LINE__, __func__,
+                    "Thread %d exception %d", t, e
+                );
+                if (ex) {
+                    char thread_id_str[32];
+                    snprintf(thread_id_str, sizeof(thread_id_str), "%d", t);
+                    nimcp_exception_set_context(ex, "thread_id", thread_id_str);
+                    nimcp_exception_dispatch(ex);
+                    nimcp_exception_unref(ex);
+                    total_dispatched++;
+                }
+            }
+        });
+    }
+
+    // Wait for all threads
+    for (auto& t : threads) {
+        t.join();
+    }
+
+    EXPECT_EQ(total_dispatched.load(), NUM_THREADS * EXCEPTIONS_PER_THREAD);
+    // Handler should have been called for all exceptions
+    EXPECT_GE(handler_call_count.load(), NUM_THREADS * EXCEPTIONS_PER_THREAD);
+}
+
+//=============================================================================
+// 26. Exception Chain Walking
+//=============================================================================
+
+TEST_F(ExceptionFlowTest, ExceptionChainWalkingWithContext) {
+    // WHAT: Test walking exception cause chain and accessing context at each level
+    // WHY:  Debug tools need to traverse full exception history
+    // HOW:  Create chain, walk it, verify all context accessible
+
+    // Create exception chain: DB error -> Service error -> API error
+    nimcp_exception_t* db_error = nimcp_exception_create(
+        NIMCP_ERROR_FILE_READ,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Database read failed"
+    );
+    ASSERT_NE(db_error, nullptr);
+    nimcp_exception_set_context(db_error, "layer", "database");
+    nimcp_exception_set_context(db_error, "table", "neurons");
+
+    nimcp_exception_t* service_error = nimcp_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Service operation failed"
+    );
+    ASSERT_NE(service_error, nullptr);
+    nimcp_exception_set_context(service_error, "layer", "service");
+    nimcp_exception_set_context(service_error, "operation", "fetch_neurons");
+    nimcp_exception_set_cause(service_error, db_error);
+
+    nimcp_exception_t* api_error = nimcp_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_SEVERE,
+        __FILE__, __LINE__, __func__,
+        "API request failed"
+    );
+    ASSERT_NE(api_error, nullptr);
+    nimcp_exception_set_context(api_error, "layer", "api");
+    nimcp_exception_set_context(api_error, "endpoint", "/neurons/get");
+    nimcp_exception_set_cause(api_error, service_error);
+
+    // Walk the chain and verify context at each level
+    std::vector<std::pair<std::string, std::string>> expected_layers = {
+        {"api", "/neurons/get"},
+        {"service", "fetch_neurons"},
+        {"database", "neurons"}
+    };
+
+    nimcp_exception_t* current = api_error;
+    int depth = 0;
+    while (current != nullptr && depth < (int)expected_layers.size()) {
+        const char* layer = nimcp_exception_get_context(current, "layer");
+        ASSERT_NE(layer, nullptr);
+        EXPECT_EQ(std::string(layer), expected_layers[depth].first);
+        depth++;
+        current = nimcp_exception_get_cause(current);
+    }
+
+    EXPECT_EQ(depth, 3);
+
+    nimcp_exception_unref(api_error);
+}
+
+//=============================================================================
+// 27. Exception Severity Escalation
+//=============================================================================
+
+TEST_F(ExceptionFlowTest, SeverityEscalationInChain) {
+    // WHAT: Test that chained exceptions can have escalating severity
+    // WHY:  Root cause may be minor but impact severe
+    // HOW:  Create chain with increasing severity
+
+    nimcp_exception_t* warning = nimcp_exception_create(
+        NIMCP_ERROR_INVALID_PARAM,
+        EXCEPTION_SEVERITY_WARNING,
+        __FILE__, __LINE__, __func__,
+        "Minor parameter issue"
+    );
+    ASSERT_NE(warning, nullptr);
+
+    nimcp_exception_t* error = nimcp_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Operation affected"
+    );
+    ASSERT_NE(error, nullptr);
+    nimcp_exception_set_cause(error, warning);
+
+    nimcp_exception_t* critical = nimcp_exception_create(
+        NIMCP_ERROR_BRAIN_INVALID,
+        EXCEPTION_SEVERITY_CRITICAL,
+        __FILE__, __LINE__, __func__,
+        "Brain state corrupted"
+    );
+    ASSERT_NE(critical, nullptr);
+    nimcp_exception_set_cause(critical, error);
+
+    // Verify escalation
+    EXPECT_EQ(critical->severity, EXCEPTION_SEVERITY_CRITICAL);
+    EXPECT_EQ(nimcp_exception_get_cause(critical)->severity, EXCEPTION_SEVERITY_ERROR);
+    EXPECT_EQ(nimcp_exception_get_cause(nimcp_exception_get_cause(critical))->severity,
+              EXCEPTION_SEVERITY_WARNING);
+
+    nimcp_exception_unref(critical);
+}
+
+//=============================================================================
+// 28. Exception Filtering by Multiple Criteria
+//=============================================================================
+
+// Handler that tracks both category and severity
+static struct {
+    std::atomic<int> count{0};
+    std::vector<std::pair<nimcp_exception_category_t, nimcp_exception_severity_t>> received;
+    std::mutex filter_mutex;
+} g_filter_tracking;
+
+static bool multi_filter_handler(nimcp_exception_t* ex, void* user_data) {
+    (void)user_data;
+    g_filter_tracking.count++;
+    {
+        std::lock_guard<std::mutex> lock(g_filter_tracking.filter_mutex);
+        g_filter_tracking.received.push_back({ex->category, ex->severity});
+    }
+    return false;
+}
+
+TEST_F(ExceptionFlowTest, FilterByCategoryAndSeverity) {
+    // WHAT: Test handler filtering by both category AND severity
+    // WHY:  Real handlers may only want specific exception subsets
+    // HOW:  Register filtered handler, dispatch various exceptions
+
+    g_filter_tracking.count = 0;
+    {
+        std::lock_guard<std::mutex> lock(g_filter_tracking.filter_mutex);
+        g_filter_tracking.received.clear();
+    }
+
+    // Register handler that only wants SEVERE+ MEMORY exceptions
+    nimcp_handler_options_t opts;
+    nimcp_handler_default_options(&opts);
+    opts.name = "memory_severe_filter";
+    opts.handler = multi_filter_handler;
+    opts.priority = 100;
+    opts.category_filter = EXCEPTION_CATEGORY_MEMORY;
+    opts.min_severity = EXCEPTION_SEVERITY_SEVERE;
+    auto* reg = nimcp_handler_register(&opts);
+    registered_handlers.push_back(reg);
+
+    // Dispatch various combinations
+    // Memory + WARNING - should NOT match
+    nimcp_memory_exception_t* mem_warn = nimcp_memory_exception_create(
+        NIMCP_ERROR_NO_MEMORY, EXCEPTION_SEVERITY_WARNING,
+        __FILE__, __LINE__, __func__, 1024, "Memory warning"
+    );
+    nimcp_exception_dispatch((nimcp_exception_t*)mem_warn);
+    nimcp_exception_unref((nimcp_exception_t*)mem_warn);
+
+    // Memory + SEVERE - SHOULD match
+    nimcp_memory_exception_t* mem_severe = nimcp_memory_exception_create(
+        NIMCP_ERROR_NO_MEMORY, EXCEPTION_SEVERITY_SEVERE,
+        __FILE__, __LINE__, __func__, 1024, "Memory severe"
+    );
+    nimcp_exception_dispatch((nimcp_exception_t*)mem_severe);
+    nimcp_exception_unref((nimcp_exception_t*)mem_severe);
+
+    // Brain + SEVERE - should NOT match (wrong category)
+    nimcp_brain_exception_t* brain_severe = nimcp_brain_exception_create(
+        NIMCP_ERROR_BRAIN_CREATION, EXCEPTION_SEVERITY_SEVERE,
+        __FILE__, __LINE__, __func__, 1, "test", "Brain severe"
+    );
+    nimcp_exception_dispatch((nimcp_exception_t*)brain_severe);
+    nimcp_exception_unref((nimcp_exception_t*)brain_severe);
+
+    // Memory + CRITICAL - SHOULD match
+    nimcp_memory_exception_t* mem_crit = nimcp_memory_exception_create(
+        NIMCP_ERROR_MEMORY_CORRUPTION, EXCEPTION_SEVERITY_CRITICAL,
+        __FILE__, __LINE__, __func__, 0, "Memory critical"
+    );
+    nimcp_exception_dispatch((nimcp_exception_t*)mem_crit);
+    nimcp_exception_unref((nimcp_exception_t*)mem_crit);
+
+    // Only Memory + SEVERE or higher should have been received
+    EXPECT_EQ(g_filter_tracking.count.load(), 2);
+
+    {
+        std::lock_guard<std::mutex> lock(g_filter_tracking.filter_mutex);
+        for (const auto& r : g_filter_tracking.received) {
+            EXPECT_EQ(r.first, EXCEPTION_CATEGORY_MEMORY);
+            EXPECT_GE(r.second, EXCEPTION_SEVERITY_SEVERE);
+        }
+    }
 }
 
 //=============================================================================

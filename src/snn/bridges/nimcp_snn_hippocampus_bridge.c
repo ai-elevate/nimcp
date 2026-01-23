@@ -122,8 +122,16 @@ snn_hippocampus_bridge_t* snn_hippocampus_bridge_create(
     brain_region_t* hippocampus_region
 ) {
     /* Guard clauses */
-    if (!config || !network || !hippocampus_region) {
-        NIMCP_LOGGING_ERROR("Null parameter in snn_hippocampus_bridge_create");
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_bridge_create: config is NULL");
+        return NULL;
+    }
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_bridge_create: network is NULL");
+        return NULL;
+    }
+    if (!hippocampus_region) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_bridge_create: hippocampus_region is NULL");
         return NULL;
     }
 

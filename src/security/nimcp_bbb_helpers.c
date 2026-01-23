@@ -86,6 +86,7 @@ bool bbb_helpers_is_initialized(void)
 bool bbb_register_module(const char* module_name, bbb_module_type_t type)
 {
     if (!module_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_register_module: module_name is NULL");
         return false;
     }
 
@@ -103,6 +104,7 @@ bool bbb_register_module(const char* module_name, bbb_module_type_t type)
 bool bbb_unregister_module(const char* module_name)
 {
     if (!module_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_unregister_module: module_name is NULL");
         return false;
     }
 

@@ -92,6 +92,7 @@ triplet_stdp_synapse_t* triplet_stdp_synapse_create(
         sizeof(triplet_stdp_synapse_t)
     );
     if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "triplet_stdp_synapse_create: failed to allocate synapse");
         NIMCP_LOGGING_ERROR("Failed to allocate triplet STDP synapse");
         return NULL;
     }

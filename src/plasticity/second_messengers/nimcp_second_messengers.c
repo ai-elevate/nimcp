@@ -159,6 +159,7 @@ second_messenger_system_t* second_messenger_create(
 ) {
     /* Validate parameters */
     if (max_neurons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "second_messenger_create: max_neurons must be > 0");
         LOG_MODULE_ERROR(LOG_MODULE, "max_neurons must be > 0");
         return NULL;
     }
@@ -175,6 +176,7 @@ second_messenger_system_t* second_messenger_create(
     /* Allocate system structure */
     second_messenger_system_t* sys = nimcp_calloc(1, sizeof(second_messenger_system_t));
     if (!sys) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "second_messenger_create: failed to allocate system");
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to allocate system structure");
         return NULL;
     }
@@ -186,6 +188,7 @@ second_messenger_system_t* second_messenger_create(
     /* Allocate state arrays */
     sys->states = nimcp_calloc(max_neurons, sizeof(second_messenger_state_t));
     if (!sys->states) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "second_messenger_create: failed to allocate states array");
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to allocate states array");
         nimcp_free(sys);
         return NULL;
@@ -193,6 +196,7 @@ second_messenger_system_t* second_messenger_create(
 
     sys->neuron_active = nimcp_calloc(max_neurons, sizeof(bool));
     if (!sys->neuron_active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "second_messenger_create: failed to allocate active flags");
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to allocate active flags");
         nimcp_free(sys->states);
         nimcp_free(sys);

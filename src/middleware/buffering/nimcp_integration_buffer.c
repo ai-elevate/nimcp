@@ -60,12 +60,16 @@ integration_buffer_t* integration_buffer_create(
 ) {
     // Guard: validate inputs
     if (fast_size == 0 || medium_size == 0 || slow_size == 0 || num_channels == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "integration_buffer_create: invalid size or channel count");
         return NULL;
     }
 
     // Allocate structure
     integration_buffer_t* buf = nimcp_calloc(1, sizeof(integration_buffer_t));
-    if (!buf) return NULL;
+    if (!buf) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "integration_buffer_create: failed to allocate buffer");
+        return NULL;
+    }
 
     // Configure capacities
     buf->capacities[TIMESCALE_FAST] = fast_size;
@@ -81,6 +85,7 @@ integration_buffer_t* integration_buffer_create(
     // Allocate channel buffers
     buf->channels = nimcp_calloc(num_channels, sizeof(channel_buffers_t));
     if (!buf->channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "integration_buffer_create: failed to allocate channels");
         nimcp_free(buf);
         return NULL;
     }
@@ -115,6 +120,7 @@ integration_buffer_t* integration_buffer_create(
         }
 
         if (alloc_failed) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "integration_buffer_create: failed to allocate channel buffers");
             // Cleanup on failure
             for (size_t j = 0; j <= ch; j++) {
                 for (int i = 0; i < TIMESCALE_COUNT; i++) {

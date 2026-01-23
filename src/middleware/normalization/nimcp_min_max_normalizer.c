@@ -39,10 +39,16 @@ min_max_normalizer_t* minmax_normalizer_create(
     float target_max,
     bool use_percentiles
 ) {
-    if (num_channels == 0 || target_min >= target_max) return NULL;
+    if (num_channels == 0 || target_min >= target_max) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "minmax_normalizer_create: invalid num_channels or target range");
+        return NULL;
+    }
 
     min_max_normalizer_t* norm = nimcp_calloc(1, sizeof(min_max_normalizer_t));
-    if (!norm) return NULL;
+    if (!norm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "minmax_normalizer_create: failed to allocate normalizer");
+        return NULL;
+    }
 
     norm->num_channels = num_channels;
     norm->target_min = target_min;
@@ -51,6 +57,7 @@ min_max_normalizer_t* minmax_normalizer_create(
 
     norm->channels = nimcp_calloc(num_channels, sizeof(channel_stats_t));
     if (!norm->channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "minmax_normalizer_create: failed to allocate channels");
         nimcp_free(norm);
         return NULL;
     }

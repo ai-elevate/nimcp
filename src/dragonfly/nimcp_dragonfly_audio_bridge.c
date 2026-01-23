@@ -167,7 +167,10 @@ dragonfly_audio_bridge_t* dragonfly_audio_bridge_create(
     const audio_bridge_config_t* config
 ) {
     dragonfly_audio_bridge_t* bridge = calloc(1, sizeof(dragonfly_audio_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dragonfly_audio_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     /* Store connected systems */
     bridge->dragonfly = dragonfly;
@@ -176,6 +179,7 @@ dragonfly_audio_bridge_t* dragonfly_audio_bridge_create(
     /* Apply configuration */
     if (config) {
         if (!audio_bridge_validate_config(config)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dragonfly_audio_bridge_create: invalid configuration");
             free(bridge);
             return NULL;
         }
@@ -186,6 +190,7 @@ dragonfly_audio_bridge_t* dragonfly_audio_bridge_create(
 
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "dragonfly_audio") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_audio_bridge_create: failed to initialize bridge base");
         free(bridge);
         return NULL;
     }

@@ -21,7 +21,14 @@ void swarm_memory_fep_default_config(swarm_memory_fep_config_t* config) {
 }
 
 swarm_memory_fep_bridge_t* swarm_memory_fep_create(const swarm_memory_fep_config_t* config, void* memory_ctx, fep_system_t* fep_system) {
-    if (!memory_ctx || !fep_system) return NULL;
+    if (!memory_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_memory_fep_create: memory_ctx is NULL");
+        return NULL;
+    }
+    if (!fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_memory_fep_create: fep_system is NULL");
+        return NULL;
+    }
     swarm_memory_fep_bridge_t* bridge = (swarm_memory_fep_bridge_t*)nimcp_malloc(sizeof(swarm_memory_fep_bridge_t));
     if (!bridge) return NULL;
     memset(bridge, 0, sizeof(swarm_memory_fep_bridge_t));

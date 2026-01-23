@@ -86,12 +86,16 @@ phase_buffer_config_t phase_buffer_default_config(void) {
 
 phase_coded_buffer_t* phase_buffer_create(const phase_buffer_config_t* config) {
     if (!config || config->capacity == 0 || config->capacity > PHASE_BUFFER_MAX_CAPACITY) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "phase_buffer_create: config is NULL or capacity invalid");
         return NULL;
     }
 
     phase_coded_buffer_t* buffer = (phase_coded_buffer_t*)nimcp_calloc(1,
                                                     sizeof(phase_coded_buffer_t));
-    if (!buffer) return NULL;
+    if (!buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "phase_buffer_create: failed to allocate buffer");
+        return NULL;
+    }
 
     buffer->config = *config;
 
@@ -99,6 +103,7 @@ phase_coded_buffer_t* phase_buffer_create(const phase_buffer_config_t* config) {
     buffer->items = (phase_coded_item_t*)nimcp_calloc(config->capacity,
                                                       sizeof(phase_coded_item_t));
     if (!buffer->items) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "phase_buffer_create: failed to allocate items");
         phase_buffer_destroy(buffer);
         return NULL;
     }

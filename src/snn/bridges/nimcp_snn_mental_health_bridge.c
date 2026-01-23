@@ -76,8 +76,12 @@ snn_mental_health_bridge_t* snn_mental_health_bridge_create(
     snn_network_t* snn
 ) {
     /* Guard: Validate inputs */
-    if (!config || !snn) {
-        NIMCP_LOGGING_ERROR("Null parameters to snn_mental_health_bridge_create");
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_mental_health_bridge_create: config is NULL");
+        return NULL;
+    }
+    if (!snn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_mental_health_bridge_create: snn is NULL");
         return NULL;
     }
 

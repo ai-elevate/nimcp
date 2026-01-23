@@ -441,7 +441,13 @@ bool nimcp_brain_save_metadata(brain_t brain, const char* filepath)
 bool brain_save(brain_t brain, const char* filepath)
 {
     // Guard: Validate parameters
-    if (!brain || !filepath) {
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_save: brain is NULL");
+        set_error("Invalid parameters to brain_save");
+        return false;
+    }
+    if (!filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_save: filepath is NULL");
         set_error("Invalid parameters to brain_save");
         return false;
     }

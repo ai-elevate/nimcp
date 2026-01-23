@@ -394,7 +394,10 @@ void hypo_drive_destroy(hypo_drive_system_handle_t* system) {
 }
 
 bool hypo_drive_reset(hypo_drive_system_handle_t* system) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_reset: system is NULL");
+        return false;
+    }
 
     LOG_DEBUG(DRIVE_LOG_MODULE, "Resetting drive system state");
 
@@ -452,7 +455,10 @@ bool hypo_drive_reset(hypo_drive_system_handle_t* system) {
  *===========================================================================*/
 
 bool hypo_drive_update(hypo_drive_system_handle_t* system, uint64_t delta_time_us) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_update: system is NULL");
+        return false;
+    }
 
     if (system->mutex) {
         nimcp_mutex_lock(system->mutex);
@@ -560,7 +566,18 @@ bool hypo_drive_update(hypo_drive_system_handle_t* system, uint64_t delta_time_u
 bool hypo_drive_get_state(const hypo_drive_system_handle_t* system,
                           hypo_drive_type_t drive_type,
                           hypo_drive_state_t* state) {
-    if (!system || !state || drive_type >= HYPO_DRIVE_COUNT) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_get_state: system is NULL");
+        return false;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_get_state: state is NULL");
+        return false;
+    }
+    if (drive_type >= HYPO_DRIVE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_drive_get_state: invalid drive_type");
+        return false;
+    }
 
     *state = system->drives[drive_type];
     return true;
@@ -568,7 +585,14 @@ bool hypo_drive_get_state(const hypo_drive_system_handle_t* system,
 
 bool hypo_drive_get_system_state(const hypo_drive_system_handle_t* system,
                                   hypo_drive_system_t* state) {
-    if (!system || !state) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_get_system_state: system is NULL");
+        return false;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_get_system_state: state is NULL");
+        return false;
+    }
 
     memcpy(state->drives, system->drives, sizeof(state->drives));
     state->global_drive_gain = system->global_drive_gain;
@@ -588,7 +612,14 @@ bool hypo_drive_get_system_state(const hypo_drive_system_handle_t* system,
 float hypo_drive_satisfy(hypo_drive_system_handle_t* system,
                          hypo_drive_type_t drive_type,
                          float satisfaction_level) {
-    if (!system || drive_type >= HYPO_DRIVE_COUNT) return 0.0f;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_satisfy: system is NULL");
+        return 0.0f;
+    }
+    if (drive_type >= HYPO_DRIVE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_drive_satisfy: invalid drive_type");
+        return 0.0f;
+    }
 
     if (system->mutex) {
         nimcp_mutex_lock(system->mutex);

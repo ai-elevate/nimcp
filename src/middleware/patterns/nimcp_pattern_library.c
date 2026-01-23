@@ -219,11 +219,15 @@ pattern_library_t* pattern_library_create(const pattern_library_config_t* config
     }
 
     if (config->max_capacity == 0 || config->max_dimension == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pattern_library_create: max_capacity or max_dimension is 0");
         return NULL;
     }
 
     pattern_library_t* library = (pattern_library_t*)nimcp_calloc(1, sizeof(pattern_library_t));
-    if (!library) return NULL;
+    if (!library) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pattern_library_create: failed to allocate library");
+        return NULL;
+    }
 
     library->config = *config;
 
@@ -234,6 +238,7 @@ pattern_library_t* pattern_library_create(const pattern_library_config_t* config
     library->patterns = (pattern_node_t**)nimcp_calloc(config->max_capacity,
                                                  sizeof(pattern_node_t*));
     if (!library->patterns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pattern_library_create: failed to allocate patterns");
         pattern_library_destroy(library);
         return NULL;
     }

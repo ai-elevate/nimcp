@@ -137,7 +137,10 @@ ofc_bio_async_bridge_t* ofc_bio_async_bridge_create(
     const ofc_bio_async_config_t* config)
 {
     ofc_bio_async_bridge_t* bridge = nimcp_malloc(sizeof(*bridge));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ofc_bio_async_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     memset(bridge, 0, sizeof(*bridge));
 
@@ -149,8 +152,13 @@ ofc_bio_async_bridge_t* ofc_bio_async_bridge_create(
     }
 
     /* Create mutex */
-    if (bridge_base_init(&bridge->base, 0, "ofc_bio_async") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "ofc_bio_async") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "ofc_bio_async_bridge_create: failed to initialize bridge base");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "ofc_bio_async_bridge_create: mutex is NULL after init");
         nimcp_free(bridge);
         return NULL;
     }

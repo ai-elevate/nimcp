@@ -151,8 +151,10 @@ nimcp_security_coverage_t* nimcp_security_coverage_create(void)
 
 nimcp_result_t nimcp_security_coverage_init(nimcp_security_coverage_t* coverage)
 {
-    if (!coverage)
+    if (!coverage) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_security_coverage_init: coverage is NULL");
         return NIMCP_INVALID_PARAM;
+    }
 
     if (coverage->initialized)
         return NIMCP_INVALID_STATE;

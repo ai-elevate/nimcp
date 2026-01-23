@@ -226,6 +226,7 @@ NIMCP_EXPORT pr_visual_bridge_t* pr_visual_bridge_create(
 
     pr_visual_bridge_t* bridge = nimcp_calloc(1, sizeof(pr_visual_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_visual_bridge_create: failed to allocate bridge");
         set_error(NULL, PR_VISUAL_ERROR_ALLOCATION);
         return NULL;
     }
@@ -240,6 +241,7 @@ NIMCP_EXPORT pr_visual_bridge_t* pr_visual_bridge_create(
     /* Validate configuration */
     if (bridge->config.max_memories == 0 ||
         bridge->config.max_memories > PR_VISUAL_MAX_MEMORIES * 4) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pr_visual_bridge_create: invalid max_memories config");
         nimcp_free(bridge);
         set_error(NULL, PR_VISUAL_ERROR_INVALID_CONFIG);
         return NULL;
@@ -247,6 +249,7 @@ NIMCP_EXPORT pr_visual_bridge_t* pr_visual_bridge_create(
 
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "pr_visual") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "pr_visual_bridge_create: failed to initialize bridge base");
         nimcp_free(bridge);
         set_error(NULL, PR_VISUAL_ERROR_MUTEX);
         return NULL;
@@ -256,6 +259,7 @@ NIMCP_EXPORT pr_visual_bridge_t* pr_visual_bridge_create(
     bridge->memory_pool = nimcp_calloc(bridge->config.max_memories,
                                         sizeof(pr_memory_node_t*));
     if (!bridge->memory_pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_visual_bridge_create: failed to allocate memory pool");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         set_error(NULL, PR_VISUAL_ERROR_ALLOCATION);
@@ -271,6 +275,7 @@ NIMCP_EXPORT pr_visual_bridge_t* pr_visual_bridge_create(
 
     bridge->visual_entanglement = entangle_graph_create(&entangle_config);
     if (!bridge->visual_entanglement) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pr_visual_bridge_create: failed to create entanglement graph");
         nimcp_free(bridge->memory_pool);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);

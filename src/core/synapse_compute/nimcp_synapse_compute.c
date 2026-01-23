@@ -705,7 +705,10 @@ void synapse_learn_metaplastic(
  * @brief Initialize synapse compute state
  */
 int synapse_compute_state_init(synapse_compute_state_t* state, uint32_t extended_size) {
-    if (!state) return -1;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_compute_state_init: state is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     // Zero local memory
     memset(state->local_memory, 0, sizeof(state->local_memory));

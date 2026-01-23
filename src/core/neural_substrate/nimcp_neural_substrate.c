@@ -212,7 +212,10 @@ static void check_alerts(neural_substrate_t* substrate) {
  * ============================================================================ */
 
 int substrate_default_config(substrate_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_default_config: config is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     /* Initial values - normal healthy state */
     config->initial_atp = SUBSTRATE_NORMAL_ATP;
@@ -301,7 +304,10 @@ void substrate_destroy(neural_substrate_t* substrate) {
 }
 
 int substrate_reset(neural_substrate_t* substrate) {
-    if (!substrate) return -1;
+    if (!substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_reset: substrate is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(substrate->mutex);
 
@@ -334,7 +340,10 @@ int substrate_reset(neural_substrate_t* substrate) {
  * ============================================================================ */
 
 int substrate_update(neural_substrate_t* substrate, uint64_t delta_ms) {
-    if (!substrate) return -1;
+    if (!substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_update: substrate is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(substrate->mutex);
 

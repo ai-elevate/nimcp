@@ -79,6 +79,7 @@ bool init_glial_subsystem(brain_t brain)
     LOG_DEBUG("Initializing glial subsystem");
 
     if (!brain || !brain->network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_glial_subsystem: brain or network is NULL");
         LOG_ERROR("Invalid brain or network handle");
         return false;
     }
@@ -140,6 +141,7 @@ bool init_glial_subsystem(brain_t brain)
 bool init_multimodal_subsystems(brain_t brain)
 {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_multimodal_subsystems: brain is NULL");
         return false;
     }
 
@@ -392,6 +394,7 @@ bool init_multimodal_subsystems(brain_t brain)
 bool init_pink_noise_subsystem(brain_t brain)
 {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_pink_noise_subsystem: brain is NULL");
         return false;
     }
 
@@ -452,6 +455,7 @@ bool init_pink_noise_subsystem(brain_t brain)
 bool init_neuromodulator_system(brain_t brain)
 {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_neuromodulator_system: brain is NULL");
         return false;
     }
 

@@ -242,11 +242,13 @@ hypo_brainstem_bridge_t* hypo_brainstem_bridge_create(
     const hypo_brainstem_bridge_config_t* config) {
 
     if (!drives) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_brainstem_bridge_create: drives is NULL");
         return NULL;
     }
 
     hypo_brainstem_bridge_t* bridge = (hypo_brainstem_bridge_t*)calloc(1, sizeof(hypo_brainstem_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hypo_brainstem_bridge_create: failed to allocate bridge");
         return NULL;
     }
 

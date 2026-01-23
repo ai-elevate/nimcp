@@ -55,7 +55,10 @@ void bga_bridge_default_config(bga_bridge_config_t* config) {
 
 bga_bridge_t* bga_bridge_create(const bga_bridge_config_t* config) {
     bga_bridge_t* bridge = nimcp_calloc(1, sizeof(bga_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bga_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     /* Apply config */
     if (config) {
@@ -69,6 +72,7 @@ bga_bridge_t* bga_bridge_create(const bga_bridge_config_t* config) {
     bridge->modulations = nimcp_calloc(bridge->num_actions,
                                         sizeof(bga_action_modulation_t));
     if (!bridge->modulations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bga_bridge_create: failed to allocate modulations");
         nimcp_free(bridge);
         return NULL;
     }
@@ -94,7 +98,12 @@ bga_bridge_t* bga_bridge_create(const bga_bridge_config_t* config) {
     bridge->stn_boost = 0.0f;
 
     /* Create mutex */
-    if (bridge_base_init(&bridge->base, 0, "basal_ganglia_amygdala") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "basal_ganglia_amygdala") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "bga_bridge_create: failed to initialize bridge base");
+        nimcp_free(bridge->modulations);
+        nimcp_free(bridge);
+        return NULL;
+    }
 
     return bridge;
 }

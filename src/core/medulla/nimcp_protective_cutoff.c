@@ -151,6 +151,7 @@ static void init_capabilities(protective_cutoff_t* cutoff) {
 
 void protective_cutoff_default_config(protective_cutoff_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protective_cutoff_default_config: config is NULL");
         NIMCP_LOGGING_ERROR("Cannot initialize NULL config");
         return;
     }
@@ -405,11 +406,13 @@ int protective_cutoff_report_threat(
     float severity)
 {
     if (!cutoff) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protective_cutoff_report_threat: cutoff is NULL");
         NIMCP_LOGGING_ERROR("NULL cutoff context");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (type >= THREAT_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "protective_cutoff_report_threat: invalid threat type");
         NIMCP_LOGGING_ERROR("Invalid threat type: %d", type);
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -437,6 +440,7 @@ int protective_cutoff_report_threat(
 
 protection_level_t protective_cutoff_get_level(const protective_cutoff_t* cutoff) {
     if (!cutoff) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protective_cutoff_get_level: cutoff is NULL");
         NIMCP_LOGGING_ERROR("NULL cutoff context");
         return PROTECTION_EMERGENCY_SHUTDOWN;  // Fail-safe
     }

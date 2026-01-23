@@ -227,11 +227,13 @@ cortical_column_pool_t* cortical_column_pool_create(
 ) {
     // Guard: validate input
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortical_column_pool_create: config is NULL");
         COLUMN_LOG_ERROR("cortical_column_pool_create: NULL config");
         return NULL;
     }
 
     if (config->max_minicolumns == 0 || config->max_hypercolumns == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cortical_column_pool_create: max_minicolumns or max_hypercolumns is zero");
         COLUMN_LOG_ERROR("cortical_column_pool_create: Invalid pool sizes");
         return NULL;
     }
@@ -413,7 +415,13 @@ minicolumn_t* minicolumn_create(
     const minicolumn_config_t* config
 ) {
     // Guard: validate inputs
-    if (!pool || !pool->initialized) {
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "minicolumn_create: pool is NULL");
+        COLUMN_LOG_ERROR("minicolumn_create: Invalid pool");
+        return NULL;
+    }
+    if (!pool->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "minicolumn_create: pool not initialized");
         COLUMN_LOG_ERROR("minicolumn_create: Invalid pool");
         return NULL;
     }
@@ -564,7 +572,13 @@ hypercolumn_t* hypercolumn_create(
     const hypercolumn_config_t* config
 ) {
     // Guard: validate inputs
-    if (!pool || !pool->initialized) {
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypercolumn_create: pool is NULL");
+        COLUMN_LOG_ERROR("hypercolumn_create: Invalid pool");
+        return NULL;
+    }
+    if (!pool->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "hypercolumn_create: pool not initialized");
         COLUMN_LOG_ERROR("hypercolumn_create: Invalid pool");
         return NULL;
     }
@@ -728,12 +742,24 @@ float minicolumn_compute(
     uint32_t input_size
 ) {
     // Guard: validate inputs
-    if (!col || !col->initialized) {
+    if (!col) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "minicolumn_compute: col is NULL");
+        COLUMN_LOG_ERROR("minicolumn_compute: Invalid minicolumn");
+        return -1.0F;
+    }
+    if (!col->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "minicolumn_compute: minicolumn not initialized");
         COLUMN_LOG_ERROR("minicolumn_compute: Invalid minicolumn");
         return -1.0F;
     }
 
-    if (!input || input_size == 0) {
+    if (!input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "minicolumn_compute: input is NULL");
+        COLUMN_LOG_ERROR("minicolumn_compute: Invalid input");
+        return -1.0F;
+    }
+    if (input_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "minicolumn_compute: input_size is zero");
         COLUMN_LOG_ERROR("minicolumn_compute: Invalid input");
         return -1.0F;
     }
@@ -854,12 +880,24 @@ void hypercolumn_compute(
     }
 
     // Guard: validate inputs
-    if (!hcol || !hcol->initialized) {
+    if (!hcol) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypercolumn_compute: hcol is NULL");
+        COLUMN_LOG_ERROR("hypercolumn_compute: Invalid hypercolumn");
+        return;
+    }
+    if (!hcol->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "hypercolumn_compute: hypercolumn not initialized");
         COLUMN_LOG_ERROR("hypercolumn_compute: Invalid hypercolumn");
         return;
     }
 
-    if (!input || input_size == 0) {
+    if (!input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypercolumn_compute: input is NULL");
+        COLUMN_LOG_ERROR("hypercolumn_compute: Invalid input");
+        return;
+    }
+    if (input_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypercolumn_compute: input_size is zero");
         COLUMN_LOG_ERROR("hypercolumn_compute: Invalid input");
         return;
     }
@@ -907,7 +945,13 @@ void hypercolumn_compute(
  */
 uint32_t hypercolumn_get_winner(hypercolumn_t* hcol) {
     // Guard: validate input
-    if (!hcol || !hcol->initialized) {
+    if (!hcol) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypercolumn_get_winner: hcol is NULL");
+        COLUMN_LOG_ERROR("hypercolumn_get_winner: Invalid hypercolumn");
+        return UINT32_MAX;
+    }
+    if (!hcol->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "hypercolumn_get_winner: hypercolumn not initialized");
         COLUMN_LOG_ERROR("hypercolumn_get_winner: Invalid hypercolumn");
         return UINT32_MAX;
     }
@@ -930,17 +974,25 @@ void hypercolumn_get_distribution(
     uint32_t size
 ) {
     // Guard: validate inputs
-    if (!hcol || !hcol->initialized) {
+    if (!hcol) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypercolumn_get_distribution: hcol is NULL");
+        COLUMN_LOG_ERROR("hypercolumn_get_distribution: Invalid hypercolumn");
+        return;
+    }
+    if (!hcol->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "hypercolumn_get_distribution: hypercolumn not initialized");
         COLUMN_LOG_ERROR("hypercolumn_get_distribution: Invalid hypercolumn");
         return;
     }
 
     if (!out_distribution) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypercolumn_get_distribution: out_distribution is NULL");
         COLUMN_LOG_ERROR("hypercolumn_get_distribution: NULL output");
         return;
     }
 
     if (size < hcol->num_minicolumns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypercolumn_get_distribution: size too small");
         COLUMN_LOG_ERROR("hypercolumn_get_distribution: Output too small (%u < %u)",
             size, hcol->num_minicolumns);
         return;
@@ -962,7 +1014,13 @@ void hypercolumn_get_distribution(
  */
 void minicolumn_apply_lateral_inhibition(minicolumn_t* col, float inhibition) {
     // Guard: validate inputs
-    if (!col || !col->initialized) {
+    if (!col) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "minicolumn_apply_lateral_inhibition: col is NULL");
+        COLUMN_LOG_ERROR("minicolumn_apply_lateral_inhibition: Invalid minicolumn");
+        return;
+    }
+    if (!col->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "minicolumn_apply_lateral_inhibition: minicolumn not initialized");
         COLUMN_LOG_ERROR("minicolumn_apply_lateral_inhibition: Invalid minicolumn");
         return;
     }
@@ -986,7 +1044,13 @@ void hypercolumn_run_competition(
     float temperature
 ) {
     // Guard: validate input
-    if (!hcol || !hcol->initialized) {
+    if (!hcol) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypercolumn_run_competition: hcol is NULL");
+        COLUMN_LOG_ERROR("hypercolumn_run_competition: Invalid hypercolumn");
+        return;
+    }
+    if (!hcol->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "hypercolumn_run_competition: hypercolumn not initialized");
         COLUMN_LOG_ERROR("hypercolumn_run_competition: Invalid hypercolumn");
         return;
     }
@@ -1056,12 +1120,19 @@ void minicolumn_set_receptive_field(
     float radius
 ) {
     // Guard: validate inputs
-    if (!col || !col->initialized) {
+    if (!col) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "minicolumn_set_receptive_field: col is NULL");
+        COLUMN_LOG_ERROR("minicolumn_set_receptive_field: Invalid minicolumn");
+        return;
+    }
+    if (!col->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "minicolumn_set_receptive_field: minicolumn not initialized");
         COLUMN_LOG_ERROR("minicolumn_set_receptive_field: Invalid minicolumn");
         return;
     }
 
     if (radius <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "minicolumn_set_receptive_field: radius must be positive");
         COLUMN_LOG_ERROR("minicolumn_set_receptive_field: Invalid radius");
         return;
     }
@@ -1086,7 +1157,13 @@ float minicolumn_compute_receptive_weight(
     float x, float y, float z
 ) {
     // Guard: validate input
-    if (!col || !col->initialized) {
+    if (!col) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "minicolumn_compute_receptive_weight: col is NULL");
+        COLUMN_LOG_ERROR("minicolumn_compute_receptive_weight: Invalid minicolumn");
+        return -1.0F;
+    }
+    if (!col->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "minicolumn_compute_receptive_weight: minicolumn not initialized");
         COLUMN_LOG_ERROR("minicolumn_compute_receptive_weight: Invalid minicolumn");
         return -1.0F;
     }
@@ -1118,12 +1195,19 @@ float minicolumn_compute_receptive_weight(
  */
 void minicolumn_get_stats(minicolumn_t* col, minicolumn_stats_t* stats) {
     // Guard: validate inputs
-    if (!col || !col->initialized) {
+    if (!col) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "minicolumn_get_stats: col is NULL");
+        COLUMN_LOG_ERROR("minicolumn_get_stats: Invalid minicolumn");
+        return;
+    }
+    if (!col->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "minicolumn_get_stats: minicolumn not initialized");
         COLUMN_LOG_ERROR("minicolumn_get_stats: Invalid minicolumn");
         return;
     }
 
     if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "minicolumn_get_stats: stats is NULL");
         COLUMN_LOG_ERROR("minicolumn_get_stats: NULL stats");
         return;
     }
@@ -1150,12 +1234,19 @@ void minicolumn_get_stats(minicolumn_t* col, minicolumn_stats_t* stats) {
  */
 void hypercolumn_get_stats(hypercolumn_t* hcol, cc_hypercolumn_stats_t* stats) {
     // Guard: validate inputs
-    if (!hcol || !hcol->initialized) {
+    if (!hcol) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypercolumn_get_stats: hcol is NULL");
+        COLUMN_LOG_ERROR("hypercolumn_get_stats: Invalid hypercolumn");
+        return;
+    }
+    if (!hcol->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "hypercolumn_get_stats: hypercolumn not initialized");
         COLUMN_LOG_ERROR("hypercolumn_get_stats: Invalid hypercolumn");
         return;
     }
 
     if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypercolumn_get_stats: stats is NULL");
         COLUMN_LOG_ERROR("hypercolumn_get_stats: NULL stats");
         return;
     }

@@ -157,6 +157,7 @@ nimcp_training_context_t* nimcp_training_create(
     ctx->tracked_weights = nimcp_calloc(ctx->tracked_weights_capacity,
                                         sizeof(nimcp_training_weights_t*));
     if (!ctx->tracked_weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_training_create: failed to allocate weight tracking");
         nimcp_free(ctx);
         return NULL;
     }

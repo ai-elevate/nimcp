@@ -107,8 +107,20 @@ snn_cortical_bridge_t* snn_cortical_bridge_create(
     hypercolumn_t* hypercolumn
 ) {
     /* Guard clauses */
-    if (!config || !network || !pool || !hypercolumn) {
-        NIMCP_LOGGING_ERROR("Null parameter in snn_cortical_bridge_create");
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_bridge_create: config is NULL");
+        return NULL;
+    }
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_bridge_create: network is NULL");
+        return NULL;
+    }
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_bridge_create: pool is NULL");
+        return NULL;
+    }
+    if (!hypercolumn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_bridge_create: hypercolumn is NULL");
         return NULL;
     }
 

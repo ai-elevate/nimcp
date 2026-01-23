@@ -196,11 +196,13 @@ nimcp_regularization_ctx_t* nimcp_regularization_create(
     const nimcp_regularization_config_t* config
 ) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_regularization_create: config is NULL");
         LOG_MODULE_ERROR(LOG_MODULE, "Null configuration provided");
         return NULL;
     }
 
     if (nimcp_regularization_validate_config(config) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_regularization_create: invalid configuration");
         LOG_MODULE_ERROR(LOG_MODULE, "Invalid configuration");
         return NULL;
     }
@@ -211,6 +213,7 @@ nimcp_regularization_ctx_t* nimcp_regularization_create(
         1, sizeof(nimcp_regularization_ctx_t)
     );
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_regularization_create: failed to allocate context");
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to allocate context");
         return NULL;
     }

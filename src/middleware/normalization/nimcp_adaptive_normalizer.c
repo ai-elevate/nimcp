@@ -42,10 +42,16 @@ adaptive_normalizer_t* adaptive_normalizer_create(
     float initial_learning_rate,
     float adaptation_rate
 ) {
-    if (num_channels == 0) return NULL;
+    if (num_channels == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_normalizer_create: num_channels is 0");
+        return NULL;
+    }
 
     adaptive_normalizer_t* norm = nimcp_calloc(1, sizeof(adaptive_normalizer_t));
-    if (!norm) return NULL;
+    if (!norm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "adaptive_normalizer_create: failed to allocate normalizer");
+        return NULL;
+    }
 
     norm->num_channels = num_channels;
     norm->initial_learning_rate = initial_learning_rate;

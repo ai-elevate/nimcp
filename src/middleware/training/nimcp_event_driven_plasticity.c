@@ -551,11 +551,13 @@ edp_context_t* edp_create(const edp_config_t* config)
     edp_config_t local_config = config ? *config : edp_config_default();
 
     if (edp_validate_config(&local_config) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "edp_create: invalid configuration");
         return NULL;
     }
 
     edp_context_t* ctx = (edp_context_t*)calloc(1, sizeof(edp_context_t));
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "edp_create: failed to allocate EDP context");
         LOG_ERROR("Failed to allocate EDP context");
         return NULL;
     }

@@ -159,6 +159,7 @@ hetero_system_t* hetero_create(const hetero_config_t* config, size_t initial_cap
     /* Allocate system */
     hetero_system_t* system = nimcp_malloc(sizeof(hetero_system_t));
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hetero_create: failed to allocate heterosynaptic system");
         NIMCP_LOGGING_ERROR("Failed to allocate heterosynaptic system");
         return NULL;
     }
@@ -176,6 +177,7 @@ hetero_system_t* hetero_create(const hetero_config_t* config, size_t initial_cap
     if (initial_capacity > 0) {
         system->synapses = nimcp_malloc(initial_capacity * sizeof(hetero_synapse_t));
         if (!system->synapses) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hetero_create: failed to allocate synapse array");
             NIMCP_LOGGING_ERROR("Failed to allocate synapse array");
             nimcp_free(system);
             return NULL;

@@ -200,16 +200,23 @@ brain_oscillation_analyzer_t* brain_oscillation_create(
     uint32_t sampling_rate_hz)
 {
     // Guard: Validate inputs
-    if (!brain || window_size_ms == 0 || sampling_rate_hz == 0) {
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_create: brain is NULL");
+        return NULL;
+    }
+    if (window_size_ms == 0 || sampling_rate_hz == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_oscillation_create: window_size_ms or sampling_rate_hz is zero");
         return NULL;
     }
 
     // Validate parameters
     if (window_size_ms < 100 || window_size_ms > 10000) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_oscillation_create: window_size_ms out of range (100-10000)");
         return NULL;  // 100ms - 10s range
     }
 
     if (sampling_rate_hz < 10 || sampling_rate_hz > 10000) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brain_oscillation_create: sampling_rate_hz out of range (10-10000)");
         return NULL;  // 10 Hz - 10 kHz range
     }
 
@@ -327,7 +334,12 @@ bool brain_oscillation_record_value(
     float activity)
 {
     // Guard: Validate inputs
-    if (!analyzer || !analyzer->buffer_mutex) {
+    if (!analyzer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_record_value: analyzer is NULL");
+        return false;
+    }
+    if (!analyzer->buffer_mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_record_value: buffer_mutex is NULL");
         return false;
     }
 
@@ -409,7 +421,16 @@ bool brain_oscillation_get_wave_power(
     brain_wave_power_t* wave_power)
 {
     // Guard: Validate inputs
-    if (!analyzer || !wave_power || !analyzer->buffer_mutex) {
+    if (!analyzer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_get_wave_power: analyzer is NULL");
+        return false;
+    }
+    if (!wave_power) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_get_wave_power: wave_power is NULL");
+        return false;
+    }
+    if (!analyzer->buffer_mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_get_wave_power: buffer_mutex is NULL");
         return false;
     }
 
@@ -538,7 +559,16 @@ bool brain_oscillation_get_state(
     float* confidence)
 {
     // Guard: Validate inputs
-    if (!analyzer || !state || !confidence) {
+    if (!analyzer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_get_state: analyzer is NULL");
+        return false;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_get_state: state is NULL");
+        return false;
+    }
+    if (!confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_get_state: confidence is NULL");
         return false;
     }
 
@@ -608,7 +638,12 @@ bool brain_oscillation_analyze(
     }
 
     // Guard: Validate inputs
-    if (!analyzer || !results) {
+    if (!analyzer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_analyze: analyzer is NULL");
+        return false;
+    }
+    if (!results) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_analyze: results is NULL");
         return false;
     }
 
@@ -691,7 +726,16 @@ bool brain_oscillation_get_spectrum(
     uint32_t* num_bins)
 {
     // Guard: Validate inputs
-    if (!analyzer || !spectrum || !num_bins) {
+    if (!analyzer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_get_spectrum: analyzer is NULL");
+        return false;
+    }
+    if (!spectrum) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_get_spectrum: spectrum is NULL");
+        return false;
+    }
+    if (!num_bins) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_get_spectrum: num_bins is NULL");
         return false;
     }
 
@@ -715,7 +759,16 @@ bool brain_oscillation_get_activity_buffer(
     uint32_t* size)
 {
     // Guard: Validate inputs
-    if (!analyzer || !buffer || !size) {
+    if (!analyzer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_get_activity_buffer: analyzer is NULL");
+        return false;
+    }
+    if (!buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_get_activity_buffer: buffer is NULL");
+        return false;
+    }
+    if (!size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_get_activity_buffer: size is NULL");
         return false;
     }
 
@@ -1590,7 +1643,12 @@ bool brain_oscillation_connect_immune(
     brain_immune_system_t* immune_system)
 {
     // Guard: Validate inputs
-    if (!analyzer || !immune_system) {
+    if (!analyzer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_connect_immune: analyzer is NULL");
+        return false;
+    }
+    if (!immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_connect_immune: immune_system is NULL");
         return false;
     }
 
@@ -1710,7 +1768,12 @@ bool brain_oscillation_apply_immune_effects(
     const immune_oscillation_effects_t* effects)
 {
     // Guard: Validate inputs
-    if (!analyzer || !effects) {
+    if (!analyzer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_apply_immune_effects: analyzer is NULL");
+        return false;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_apply_immune_effects: effects is NULL");
         return false;
     }
 
@@ -1753,7 +1816,12 @@ bool brain_oscillation_detect_abnormality(
     oscillation_abnormality_t* abnormality)
 {
     // Guard: Validate inputs
-    if (!analyzer || !abnormality) {
+    if (!analyzer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_detect_abnormality: analyzer is NULL");
+        return false;
+    }
+    if (!abnormality) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_detect_abnormality: abnormality is NULL");
         return false;
     }
 
@@ -1842,7 +1910,12 @@ bool brain_oscillation_notify_immune_abnormality(
     const oscillation_abnormality_t* abnormality)
 {
     // Guard: Validate inputs
-    if (!analyzer || !abnormality) {
+    if (!analyzer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_notify_immune_abnormality: analyzer is NULL");
+        return false;
+    }
+    if (!abnormality) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_oscillation_notify_immune_abnormality: abnormality is NULL");
         return false;
     }
 

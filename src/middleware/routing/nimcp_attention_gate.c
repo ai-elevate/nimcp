@@ -187,11 +187,15 @@ attention_gate_config_t attention_gate_default_config(void) {
 
 attention_gate_t* attention_gate_create(const attention_gate_config_t* config) {
     if (!config || config->max_targets == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_gate_create: config is NULL or max_targets is 0");
         return NULL;
     }
 
     attention_gate_t* gate = (attention_gate_t*)nimcp_calloc(1, sizeof(attention_gate_t));
-    if (!gate) return NULL;
+    if (!gate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_gate_create: failed to allocate gate");
+        return NULL;
+    }
 
     gate->config = *config;
 
