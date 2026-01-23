@@ -118,6 +118,7 @@ sec_async_fep_bridge_t* sec_async_fep_create(
 ) {
     /* Validate required parameters */
     if (!security_async || !fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_async_fep_create: security_async or fep_system is NULL");
         NIMCP_LOGGING_ERROR("Security Async FEP bridge: NULL system pointers");
         return NULL;
     }
@@ -127,6 +128,7 @@ sec_async_fep_bridge_t* sec_async_fep_create(
         sizeof(sec_async_fep_bridge_t)
     );
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sec_async_fep_create: failed to allocate bridge");
         NIMCP_LOGGING_ERROR("Security Async FEP bridge: allocation failed");
         return NULL;
     }
@@ -148,6 +150,7 @@ sec_async_fep_bridge_t* sec_async_fep_create(
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "security_async_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "sec_async_fep_create: mutex creation failed");
         NIMCP_LOGGING_ERROR("Security Async FEP bridge: mutex creation failed");
         nimcp_free(bridge);
         return NULL;

@@ -74,12 +74,14 @@ snn_medulla_bridge_t* snn_medulla_bridge_create(
 ) {
     if (!snn) {
         NIMCP_LOGGING_WARN("Null SNN to snn_medulla_bridge_create");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_medulla_bridge_create: snn is NULL");
         return NULL;
     }
 
     snn_medulla_bridge_t* bridge = nimcp_calloc(1, sizeof(snn_medulla_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate SNN-medulla bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_medulla_bridge_create: failed to allocate bridge");
         return NULL;
     }
 

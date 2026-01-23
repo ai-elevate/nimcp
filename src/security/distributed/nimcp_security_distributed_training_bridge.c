@@ -209,6 +209,7 @@ security_distributed_training_bridge_t* security_distributed_training_bridge_cre
                         sizeof(internal_stats_t);
     security_distributed_training_bridge_t* bridge = nimcp_malloc(alloc_size);
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_distributed_training_bridge_create: failed to allocate bridge");
         NIMCP_LOGGING_ERROR("Failed to allocate security-distributed training bridge");
         return NULL;
     }
@@ -216,6 +217,7 @@ security_distributed_training_bridge_t* security_distributed_training_bridge_cre
 
     if (bridge_base_init(&bridge->base, BIO_MODULE_SECURITY,
                          SECURITY_DISTRIBUTED_MODULE_NAME) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "security_distributed_training_bridge_create: bridge_base_init failed");
         nimcp_free(bridge);
         return NULL;
     }

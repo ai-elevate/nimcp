@@ -158,11 +158,17 @@ dragonfly_wing_motor_t dragonfly_wing_motor_create(const wing_motor_config_t* co
     wing_motor_config_t cfg = config ? *config : wing_motor_default_config();
 
     if (!wing_motor_validate_config(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "dragonfly_wing_motor_create: invalid configuration");
         return NULL;
     }
 
     dragonfly_wing_motor_t motor = nimcp_calloc(1, sizeof(struct dragonfly_wing_motor_s));
-    if (!motor) return NULL;
+    if (!motor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "dragonfly_wing_motor_create: failed to allocate motor");
+        return NULL;
+    }
 
     motor->config = cfg;
     motor->mode = FLIGHT_MODE_HOVER;
@@ -182,6 +188,8 @@ dragonfly_wing_motor_t dragonfly_wing_motor_create(const wing_motor_config_t* co
 
     motor->mutex = nimcp_mutex_create(NULL);
     if (!motor->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "dragonfly_wing_motor_create: failed to create mutex");
         nimcp_free(motor);
         return NULL;
     }

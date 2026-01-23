@@ -2469,6 +2469,688 @@ TEST_F(ExceptionMacroComprehensiveTest, ImmuneConfigDefaults) {
 }
 
 //=============================================================================
+// SECTION 41: NIMCP_THROW_TO_IMMUNE with All Error Codes
+//=============================================================================
+
+/**
+ * WHAT: Test NIMCP_THROW_TO_IMMUNE with generic error codes
+ * WHY:  Verify immune presentation works for all error code ranges
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowToImmuneGenericErrors) {
+    nimcp_error_t generic_codes[] = {
+        NIMCP_ERROR_UNKNOWN,
+        NIMCP_ERROR_NOT_IMPLEMENTED,
+        NIMCP_ERROR_INVALID_PARAMETER,
+        NIMCP_ERROR_NULL_POINTER,
+        NIMCP_ERROR_OUT_OF_RANGE,
+        NIMCP_ERROR_INVALID_STATE,
+        NIMCP_ERROR_OPERATION_FAILED,
+        NIMCP_ERROR_NOT_INITIALIZED,
+        NIMCP_ERROR_ALREADY_EXISTS,
+        NIMCP_ERROR_NOT_FOUND,
+        NIMCP_ERROR_TIMEOUT,
+        NIMCP_ERROR_CANCELLED,
+        NIMCP_ERROR_PERMISSION_DENIED
+    };
+
+    for (auto code : generic_codes) {
+        reset_tracking();
+        NIMCP_THROW_TO_IMMUNE(code, "Generic error %d test", (int)code);
+        EXPECT_TRUE(g_exception_presented_to_immune)
+            << "Code " << code << " should be presented to immune";
+        EXPECT_EQ(g_last_error_code, code);
+        EXPECT_EQ(g_last_category, EXCEPTION_CATEGORY_GENERIC);
+    }
+}
+
+/**
+ * WHAT: Test NIMCP_THROW_TO_IMMUNE with memory error codes
+ * WHY:  Memory errors should have high severity and immune presentation
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowToImmuneMemoryErrors) {
+    nimcp_error_t memory_codes[] = {
+        NIMCP_ERROR_NO_MEMORY,
+        NIMCP_ERROR_BUFFER_TOO_SMALL,
+        NIMCP_ERROR_BUFFER_OVERFLOW,
+        NIMCP_ERROR_MEMORY_CORRUPTION,
+        NIMCP_ERROR_INVALID_ADDRESS,
+        NIMCP_ERROR_MEMORY_LEAK,
+        NIMCP_ERROR_DOUBLE_FREE
+    };
+
+    for (auto code : memory_codes) {
+        reset_tracking();
+        NIMCP_THROW_TO_IMMUNE(code, "Memory error %d test", (int)code);
+        EXPECT_TRUE(g_exception_presented_to_immune)
+            << "Memory code " << code << " should be presented to immune";
+        EXPECT_EQ(g_last_error_code, code);
+        EXPECT_EQ(g_last_category, EXCEPTION_CATEGORY_MEMORY);
+        EXPECT_GE((int)g_last_severity, (int)EXCEPTION_SEVERITY_ERROR);
+    }
+}
+
+/**
+ * WHAT: Test NIMCP_THROW_TO_IMMUNE with brain/network error codes
+ * WHY:  Brain errors need immune system for recovery
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowToImmuneBrainErrors) {
+    nimcp_error_t brain_codes[] = {
+        NIMCP_ERROR_BRAIN_CREATION,
+        NIMCP_ERROR_BRAIN_INVALID,
+        NIMCP_ERROR_NETWORK_CREATION,
+        NIMCP_ERROR_NETWORK_INVALID,
+        NIMCP_ERROR_DIMENSION_MISMATCH,
+        NIMCP_ERROR_WEIGHT_INIT,
+        NIMCP_ERROR_FORWARD_PASS,
+        NIMCP_ERROR_BACKWARD_PASS,
+        NIMCP_ERROR_LEARNING_FAILED,
+        NIMCP_ERROR_INFERENCE_FAILED
+    };
+
+    for (auto code : brain_codes) {
+        reset_tracking();
+        NIMCP_THROW_TO_IMMUNE(code, "Brain error %d test", (int)code);
+        EXPECT_TRUE(g_exception_presented_to_immune)
+            << "Brain code " << code << " should be presented to immune";
+        EXPECT_EQ(g_last_error_code, code);
+        EXPECT_EQ(g_last_category, EXCEPTION_CATEGORY_BRAIN);
+    }
+}
+
+/**
+ * WHAT: Test NIMCP_THROW_TO_IMMUNE with I/O error codes
+ * WHY:  I/O errors may need recovery actions
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowToImmuneIOErrors) {
+    nimcp_error_t io_codes[] = {
+        NIMCP_ERROR_FILE_NOT_FOUND,
+        NIMCP_ERROR_FILE_READ,
+        NIMCP_ERROR_FILE_WRITE,
+        NIMCP_ERROR_FILE_OPEN,
+        NIMCP_ERROR_FILE_CLOSE,
+        NIMCP_ERROR_FILE_CORRUPT,
+        NIMCP_ERROR_SERIALIZATION,
+        NIMCP_ERROR_DESERIALIZATION,
+        NIMCP_ERROR_NETWORK_IO,
+        NIMCP_ERROR_IO
+    };
+
+    for (auto code : io_codes) {
+        reset_tracking();
+        NIMCP_THROW_TO_IMMUNE(code, "I/O error %d test", (int)code);
+        EXPECT_TRUE(g_exception_presented_to_immune)
+            << "I/O code " << code << " should be presented to immune";
+        EXPECT_EQ(g_last_error_code, code);
+        EXPECT_EQ(g_last_category, EXCEPTION_CATEGORY_IO);
+    }
+}
+
+/**
+ * WHAT: Test NIMCP_THROW_TO_IMMUNE with threading error codes
+ * WHY:  Threading errors (deadlock, etc.) need urgent recovery
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowToImmuneThreadingErrors) {
+    nimcp_error_t thread_codes[] = {
+        NIMCP_ERROR_THREAD_CREATE,
+        NIMCP_ERROR_THREAD_JOIN,
+        NIMCP_ERROR_MUTEX_LOCK,
+        NIMCP_ERROR_MUTEX_UNLOCK,
+        NIMCP_ERROR_MUTEX_INIT,
+        NIMCP_ERROR_DEADLOCK,
+        NIMCP_ERROR_RACE_CONDITION,
+        NIMCP_ERROR_THREAD_SYNC
+    };
+
+    for (auto code : thread_codes) {
+        reset_tracking();
+        NIMCP_THROW_TO_IMMUNE(code, "Threading error %d test", (int)code);
+        EXPECT_TRUE(g_exception_presented_to_immune)
+            << "Threading code " << code << " should be presented to immune";
+        EXPECT_EQ(g_last_error_code, code);
+        EXPECT_EQ(g_last_category, EXCEPTION_CATEGORY_THREADING);
+    }
+}
+
+/**
+ * WHAT: Test NIMCP_THROW_TO_IMMUNE with signal error codes
+ * WHY:  Signal/crash errors are critical for recovery
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowToImmuneSignalErrors) {
+    nimcp_error_t signal_codes[] = {
+        NIMCP_ERROR_SIGNAL_RECEIVED,
+        NIMCP_ERROR_SIGSEGV,
+        NIMCP_ERROR_SIGABRT,
+        NIMCP_ERROR_SIGFPE,
+        NIMCP_ERROR_SIGBUS,
+        NIMCP_ERROR_SIGILL,
+        NIMCP_ERROR_CRASH_RECOVERY,
+        NIMCP_ERROR_CHECKPOINT_SAVE,
+        NIMCP_ERROR_CHECKPOINT_LOAD
+    };
+
+    for (auto code : signal_codes) {
+        reset_tracking();
+        NIMCP_THROW_TO_IMMUNE(code, "Signal error %d test", (int)code);
+        EXPECT_TRUE(g_exception_presented_to_immune)
+            << "Signal code " << code << " should be presented to immune";
+        EXPECT_EQ(g_last_error_code, code);
+        EXPECT_EQ(g_last_category, EXCEPTION_CATEGORY_SIGNAL);
+    }
+}
+
+/**
+ * WHAT: Test NIMCP_THROW_TO_IMMUNE with security error codes
+ * WHY:  Security threats need immediate immune response
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowToImmuneSecurityErrors) {
+    nimcp_error_t security_codes[] = {
+        NIMCP_ERROR_SECURITY_BASE,
+        NIMCP_ERROR_BBB_REJECTED,
+        NIMCP_ERROR_BBB_VALIDATION,
+        NIMCP_ERROR_SECURITY_THREAT,
+        NIMCP_ERROR_ACCESS_DENIED,
+        NIMCP_ERROR_SIGNATURE_INVALID,
+        NIMCP_ERROR_ENCRYPTION_FAILED,
+        NIMCP_ERROR_DECRYPTION_FAILED
+    };
+
+    for (auto code : security_codes) {
+        reset_tracking();
+        NIMCP_THROW_TO_IMMUNE(code, "Security error %d test", (int)code);
+        EXPECT_TRUE(g_exception_presented_to_immune)
+            << "Security code " << code << " should be presented to immune";
+        EXPECT_EQ(g_last_error_code, code);
+        EXPECT_EQ(g_last_category, EXCEPTION_CATEGORY_SECURITY);
+    }
+}
+
+/**
+ * WHAT: Test NIMCP_THROW_TO_IMMUNE with cognitive error codes
+ * WHY:  Cognitive errors need brain immune system integration
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowToImmuneCognitiveErrors) {
+    nimcp_error_t cognitive_codes[] = {
+        NIMCP_ERROR_WORKING_MEMORY,
+        NIMCP_ERROR_EMOTIONAL_TAGGING,
+        NIMCP_ERROR_EXECUTIVE_CONTROL,
+        NIMCP_ERROR_SLEEP_WAKE,
+        NIMCP_ERROR_MENTAL_HEALTH,
+        NIMCP_ERROR_THEORY_OF_MIND,
+        NIMCP_ERROR_EXPLANATIONS,
+        NIMCP_ERROR_META_LEARNING,
+        NIMCP_ERROR_PREDICTIVE
+    };
+
+    for (auto code : cognitive_codes) {
+        reset_tracking();
+        NIMCP_THROW_TO_IMMUNE(code, "Cognitive error %d test", (int)code);
+        EXPECT_TRUE(g_exception_presented_to_immune)
+            << "Cognitive code " << code << " should be presented to immune";
+        EXPECT_EQ(g_last_error_code, code);
+        EXPECT_EQ(g_last_category, EXCEPTION_CATEGORY_COGNITIVE);
+    }
+}
+
+/**
+ * WHAT: Test NIMCP_THROW_TO_IMMUNE with GPU error codes
+ * WHY:  GPU errors may need hardware-level recovery
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ThrowToImmuneGPUErrors) {
+    nimcp_error_t gpu_codes[] = {
+        NIMCP_ERROR_GPU,
+        NIMCP_ERROR_GPU_NOT_AVAILABLE,
+        NIMCP_ERROR_GPU_MEMORY,
+        NIMCP_ERROR_CUDA,
+        NIMCP_ERROR_KERNEL_LAUNCH,
+        NIMCP_ERROR_GPU_SYNC
+    };
+
+    for (auto code : gpu_codes) {
+        reset_tracking();
+        NIMCP_THROW_TO_IMMUNE(code, "GPU error %d test", (int)code);
+        EXPECT_TRUE(g_exception_presented_to_immune)
+            << "GPU code " << code << " should be presented to immune";
+        EXPECT_EQ(g_last_error_code, code);
+        EXPECT_EQ(g_last_category, EXCEPTION_CATEGORY_GPU);
+    }
+}
+
+//=============================================================================
+// SECTION 42: Nested Exception Scenarios
+//=============================================================================
+
+/**
+ * @brief Level 3 function that throws with immune presentation
+ */
+static nimcp_error_t nested_level3(bool fail) {
+    if (fail) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_ADDRESS,
+            "Nested level 3 failure");
+        return NIMCP_ERROR_INVALID_ADDRESS;
+    }
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Level 2 function that wraps level 3 exception
+ */
+static nimcp_error_t nested_level2(bool fail) {
+    nimcp_error_t result = nested_level3(fail);
+    if (result != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY_CORRUPTION,
+            "Nested level 2 wrapping level 3 error %d", (int)result);
+        return NIMCP_ERROR_MEMORY_CORRUPTION;
+    }
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * @brief Level 1 function that wraps level 2 exception
+ */
+static nimcp_error_t nested_level1(bool fail) {
+    nimcp_error_t result = nested_level2(fail);
+    if (result != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "Nested level 1 wrapping level 2 error %d", (int)result);
+        return NIMCP_ERROR_NO_MEMORY;
+    }
+    return NIMCP_SUCCESS;
+}
+
+/**
+ * WHAT: Test nested exception scenario dispatches all levels
+ * WHY:  Verify exception chain is preserved through nesting
+ */
+TEST_F(ExceptionMacroComprehensiveTest, NestedExceptionMultipleLevels) {
+    reset_tracking();
+
+    nimcp_error_t result = nested_level1(true);
+
+    EXPECT_EQ(result, NIMCP_ERROR_NO_MEMORY);
+    // Should have 3 handler calls (one per level)
+    EXPECT_EQ(g_handler_call_count, 3);
+
+    // Last exception should be NO_MEMORY from level 1
+    EXPECT_EQ(g_last_error_code, NIMCP_ERROR_NO_MEMORY);
+}
+
+/**
+ * WHAT: Test nested exceptions all present to immune
+ * WHY:  Each level's exception should reach immune system
+ */
+TEST_F(ExceptionMacroComprehensiveTest, NestedExceptionAllPresentToImmune) {
+    // We'll check that all 3 levels present to immune
+    reset_tracking();
+
+    nimcp_error_t result = nested_level1(true);
+
+    EXPECT_EQ(result, NIMCP_ERROR_NO_MEMORY);
+    // The last exception presented flag should be true
+    EXPECT_TRUE(g_exception_presented_to_immune);
+}
+
+/**
+ * WHAT: Test nested exception with cause chaining
+ * WHY:  Verify cause chain is properly established
+ */
+TEST_F(ExceptionMacroComprehensiveTest, NestedExceptionCauseChaining) {
+    // Create a proper cause chain manually
+    nimcp_exception_t* root_cause = nimcp_exception_create(
+        NIMCP_ERROR_INVALID_ADDRESS,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Root cause: invalid address access");
+    ASSERT_NE(root_cause, nullptr);
+
+    nimcp_exception_t* mid_cause = nimcp_exception_create(
+        NIMCP_ERROR_MEMORY_CORRUPTION,
+        EXCEPTION_SEVERITY_SEVERE,
+        __FILE__, __LINE__, __func__,
+        "Mid-level: memory corruption detected");
+    ASSERT_NE(mid_cause, nullptr);
+    nimcp_exception_set_cause(mid_cause, root_cause);
+
+    nimcp_exception_t* top_exception = nimcp_exception_create(
+        NIMCP_ERROR_NO_MEMORY,
+        EXCEPTION_SEVERITY_CRITICAL,
+        __FILE__, __LINE__, __func__,
+        "Top-level: allocation failed");
+    ASSERT_NE(top_exception, nullptr);
+    nimcp_exception_set_cause(top_exception, mid_cause);
+
+    // Verify cause chain
+    nimcp_exception_t* cause1 = nimcp_exception_get_cause(top_exception);
+    ASSERT_NE(cause1, nullptr);
+    EXPECT_EQ(cause1->code, NIMCP_ERROR_MEMORY_CORRUPTION);
+
+    nimcp_exception_t* cause2 = nimcp_exception_get_cause(cause1);
+    ASSERT_NE(cause2, nullptr);
+    EXPECT_EQ(cause2->code, NIMCP_ERROR_INVALID_ADDRESS);
+
+    nimcp_exception_t* cause3 = nimcp_exception_get_cause(cause2);
+    EXPECT_EQ(cause3, nullptr);  // No more causes
+
+    nimcp_exception_unref(top_exception);
+}
+
+/**
+ * WHAT: Test deeply nested exception (10 levels)
+ * WHY:  Verify system handles deep nesting without overflow
+ */
+TEST_F(ExceptionMacroComprehensiveTest, DeeplyNestedExceptionChain) {
+    const int DEPTH = 10;
+    nimcp_exception_t* chain[DEPTH];
+
+    // Build chain from bottom up
+    for (int i = 0; i < DEPTH; i++) {
+        chain[i] = nimcp_exception_create(
+            NIMCP_ERROR_OPERATION_FAILED + i,
+            EXCEPTION_SEVERITY_ERROR,
+            __FILE__, __LINE__, __func__,
+            "Nested exception at depth %d", i);
+        ASSERT_NE(chain[i], nullptr);
+
+        if (i > 0) {
+            nimcp_exception_set_cause(chain[i], chain[i-1]);
+        }
+    }
+
+    // Verify we can traverse the full chain
+    nimcp_exception_t* current = chain[DEPTH-1];
+    int count = 0;
+    while (current != nullptr) {
+        count++;
+        current = nimcp_exception_get_cause(current);
+    }
+    EXPECT_EQ(count, DEPTH);
+
+    // Only unref the top - cause chain is handled
+    nimcp_exception_unref(chain[DEPTH-1]);
+}
+
+//=============================================================================
+// SECTION 43: Exception Context Preservation
+//=============================================================================
+
+/**
+ * WHAT: Test context is preserved through exception dispatch
+ * WHY:  Context data should survive handler chain
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ContextPreservedThroughDispatch) {
+    nimcp_exception_t* ex = nimcp_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Context preservation test");
+    ASSERT_NE(ex, nullptr);
+
+    // Add multiple context entries
+    nimcp_exception_set_context(ex, "module", "test_module");
+    nimcp_exception_set_context(ex, "operation", "context_test");
+    nimcp_exception_set_context(ex, "iteration", "42");
+    nimcp_exception_set_context(ex, "file_path", "/tmp/test.dat");
+
+    // Dispatch
+    nimcp_exception_dispatch(ex);
+
+    // Verify context still intact after dispatch
+    EXPECT_STREQ(nimcp_exception_get_context(ex, "module"), "test_module");
+    EXPECT_STREQ(nimcp_exception_get_context(ex, "operation"), "context_test");
+    EXPECT_STREQ(nimcp_exception_get_context(ex, "iteration"), "42");
+    EXPECT_STREQ(nimcp_exception_get_context(ex, "file_path"), "/tmp/test.dat");
+
+    nimcp_exception_unref(ex);
+}
+
+/**
+ * WHAT: Test context modification during exception handling
+ * WHY:  Handlers may add context during processing
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ContextModificationDuringHandling) {
+    nimcp_exception_t* ex = nimcp_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Context modification test");
+    ASSERT_NE(ex, nullptr);
+
+    nimcp_exception_set_context(ex, "original", "value1");
+    EXPECT_EQ(nimcp_exception_context_count(ex), 1u);
+
+    // Add more context
+    nimcp_exception_set_context(ex, "added1", "value2");
+    nimcp_exception_set_context(ex, "added2", "value3");
+    EXPECT_EQ(nimcp_exception_context_count(ex), 3u);
+
+    // Overwrite existing
+    nimcp_exception_set_context(ex, "original", "modified");
+    EXPECT_EQ(nimcp_exception_context_count(ex), 3u);
+    EXPECT_STREQ(nimcp_exception_get_context(ex, "original"), "modified");
+
+    nimcp_exception_unref(ex);
+}
+
+/**
+ * WHAT: Test context capacity limits
+ * WHY:  Verify behavior at max context entries
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ContextCapacityLimits) {
+    nimcp_exception_t* ex = nimcp_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Context capacity test");
+    ASSERT_NE(ex, nullptr);
+
+    // Add entries up to limit
+    char key[64], value[128];
+    for (size_t i = 0; i < NIMCP_EXCEPTION_MAX_CONTEXT_ENTRIES; i++) {
+        snprintf(key, sizeof(key), "key_%zu", i);
+        snprintf(value, sizeof(value), "value_%zu", i);
+        nimcp_exception_set_context(ex, key, value);
+    }
+    EXPECT_EQ(nimcp_exception_context_count(ex), NIMCP_EXCEPTION_MAX_CONTEXT_ENTRIES);
+
+    // Verify all entries accessible
+    for (size_t i = 0; i < NIMCP_EXCEPTION_MAX_CONTEXT_ENTRIES; i++) {
+        snprintf(key, sizeof(key), "key_%zu", i);
+        snprintf(value, sizeof(value), "value_%zu", i);
+        EXPECT_STREQ(nimcp_exception_get_context(ex, key), value);
+    }
+
+    nimcp_exception_unref(ex);
+}
+
+/**
+ * WHAT: Test context with special characters
+ * WHY:  Context values may contain paths, URLs, etc.
+ */
+TEST_F(ExceptionMacroComprehensiveTest, ContextSpecialCharacters) {
+    nimcp_exception_t* ex = nimcp_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Context special chars test");
+    ASSERT_NE(ex, nullptr);
+
+    nimcp_exception_set_context(ex, "path", "/home/user/file with spaces.txt");
+    nimcp_exception_set_context(ex, "url", "https://example.com/path?param=value&other=123");
+    nimcp_exception_set_context(ex, "json", "{\"key\": \"value\", \"num\": 42}");
+
+    EXPECT_STREQ(nimcp_exception_get_context(ex, "path"), "/home/user/file with spaces.txt");
+    EXPECT_STREQ(nimcp_exception_get_context(ex, "url"), "https://example.com/path?param=value&other=123");
+    EXPECT_STREQ(nimcp_exception_get_context(ex, "json"), "{\"key\": \"value\", \"num\": 42}");
+
+    nimcp_exception_unref(ex);
+}
+
+//=============================================================================
+// SECTION 44: Memory Cleanup on Exception
+//=============================================================================
+
+/**
+ * WHAT: Test exception memory cleanup via unref
+ * WHY:  Verify no memory leaks from exception handling
+ */
+TEST_F(ExceptionMacroComprehensiveTest, MemoryCleanupViaUnref) {
+    // Create many exceptions and properly cleanup
+    for (int i = 0; i < 100; i++) {
+        nimcp_exception_t* ex = nimcp_exception_create(
+            NIMCP_ERROR_OPERATION_FAILED,
+            EXCEPTION_SEVERITY_ERROR,
+            __FILE__, __LINE__, __func__,
+            "Memory cleanup test %d", i);
+        ASSERT_NE(ex, nullptr);
+
+        nimcp_exception_set_context(ex, "iteration", std::to_string(i).c_str());
+        nimcp_exception_dispatch(ex);
+        nimcp_exception_unref(ex);
+    }
+    // If we get here without crash/ASAN error, cleanup is working
+    SUCCEED();
+}
+
+/**
+ * WHAT: Test exception cleanup with cause chain
+ * WHY:  Cause chain should be properly freed
+ */
+TEST_F(ExceptionMacroComprehensiveTest, MemoryCleanupWithCauseChain) {
+    for (int round = 0; round < 50; round++) {
+        nimcp_exception_t* cause = nimcp_exception_create(
+            NIMCP_ERROR_INVALID_PARAM,
+            EXCEPTION_SEVERITY_ERROR,
+            __FILE__, __LINE__, __func__,
+            "Cause exception %d", round);
+
+        nimcp_exception_t* ex = nimcp_exception_create(
+            NIMCP_ERROR_OPERATION_FAILED,
+            EXCEPTION_SEVERITY_ERROR,
+            __FILE__, __LINE__, __func__,
+            "Main exception %d", round);
+
+        ASSERT_NE(cause, nullptr);
+        ASSERT_NE(ex, nullptr);
+
+        nimcp_exception_set_cause(ex, cause);
+        nimcp_exception_dispatch(ex);
+        nimcp_exception_unref(ex);  // Should also cleanup cause
+    }
+    SUCCEED();
+}
+
+/**
+ * WHAT: Test exception cleanup with typed exceptions
+ * WHY:  Derived exception types should cleanup properly
+ */
+TEST_F(ExceptionMacroComprehensiveTest, MemoryCleanupTypedExceptions) {
+    // Memory exceptions
+    for (int i = 0; i < 20; i++) {
+        nimcp_memory_exception_t* mex = nimcp_memory_exception_create(
+            NIMCP_ERROR_NO_MEMORY,
+            EXCEPTION_SEVERITY_SEVERE,
+            __FILE__, __LINE__, __func__,
+            1024 * i,
+            "Memory exception %d", i);
+        ASSERT_NE(mex, nullptr);
+        nimcp_exception_dispatch((nimcp_exception_t*)mex);
+        nimcp_exception_unref((nimcp_exception_t*)mex);
+    }
+
+    // Brain exceptions
+    for (int i = 0; i < 20; i++) {
+        nimcp_brain_exception_t* bex = nimcp_brain_exception_create(
+            NIMCP_ERROR_LEARNING_FAILED,
+            EXCEPTION_SEVERITY_ERROR,
+            __FILE__, __LINE__, __func__,
+            i, "test_region",
+            "Brain exception %d", i);
+        ASSERT_NE(bex, nullptr);
+        nimcp_exception_dispatch((nimcp_exception_t*)bex);
+        nimcp_exception_unref((nimcp_exception_t*)bex);
+    }
+
+    // I/O exceptions
+    for (int i = 0; i < 20; i++) {
+        nimcp_io_exception_t* iex = nimcp_io_exception_create(
+            NIMCP_ERROR_FILE_READ,
+            EXCEPTION_SEVERITY_ERROR,
+            __FILE__, __LINE__, __func__,
+            "/test/path",
+            "IO exception %d", i);
+        ASSERT_NE(iex, nullptr);
+        nimcp_exception_dispatch((nimcp_exception_t*)iex);
+        nimcp_exception_unref((nimcp_exception_t*)iex);
+    }
+
+    SUCCEED();
+}
+
+/**
+ * WHAT: Test exception cleanup with aggregate exceptions
+ * WHY:  Aggregate exceptions with children must cleanup properly
+ */
+TEST_F(ExceptionMacroComprehensiveTest, MemoryCleanupAggregateException) {
+    for (int round = 0; round < 20; round++) {
+        nimcp_aggregate_exception_t* agg = nimcp_aggregate_exception_create(
+            NIMCP_ERROR_OPERATION_FAILED,
+            EXCEPTION_SEVERITY_ERROR,
+            __FILE__, __LINE__, __func__,
+            "Aggregate exception %d", round);
+        ASSERT_NE(agg, nullptr);
+
+        // Add child exceptions
+        for (int c = 0; c < 5; c++) {
+            nimcp_exception_t* child = nimcp_exception_create(
+                NIMCP_ERROR_INVALID_PARAM,
+                EXCEPTION_SEVERITY_WARNING,
+                __FILE__, __LINE__, __func__,
+                "Child %d of aggregate %d", c, round);
+            ASSERT_NE(child, nullptr);
+            nimcp_aggregate_exception_add(agg, child);
+        }
+
+        nimcp_exception_dispatch((nimcp_exception_t*)agg);
+        nimcp_exception_unref((nimcp_exception_t*)agg);  // Should cleanup children
+    }
+    SUCCEED();
+}
+
+/**
+ * WHAT: Test reference counting prevents premature cleanup
+ * WHY:  Multiple refs should keep exception alive
+ */
+TEST_F(ExceptionMacroComprehensiveTest, RefCountingPreventsEarlyCleanup) {
+    nimcp_exception_t* ex = nimcp_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Ref counting test");
+    ASSERT_NE(ex, nullptr);
+    EXPECT_EQ(ex->ref_count, 1);
+
+    // Add multiple references
+    nimcp_exception_ref(ex);
+    EXPECT_EQ(ex->ref_count, 2);
+    nimcp_exception_ref(ex);
+    EXPECT_EQ(ex->ref_count, 3);
+    nimcp_exception_ref(ex);
+    EXPECT_EQ(ex->ref_count, 4);
+
+    // Unref multiple times - exception should remain valid
+    nimcp_exception_unref(ex);
+    EXPECT_EQ(ex->ref_count, 3);
+    nimcp_exception_unref(ex);
+    EXPECT_EQ(ex->ref_count, 2);
+    nimcp_exception_unref(ex);
+    EXPECT_EQ(ex->ref_count, 1);
+
+    // Final unref - exception is freed
+    nimcp_exception_unref(ex);
+    // ex is now invalid - don't access
+    SUCCEED();
+}
+
+//=============================================================================
 // Main
 //=============================================================================
 

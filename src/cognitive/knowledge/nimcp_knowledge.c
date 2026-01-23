@@ -1085,17 +1085,22 @@ static void bio_broadcast_knowledge_update(knowledge_system_t system,
  */
 knowledge_system_t knowledge_system_create(const char* learner_name)
 {
-    if (!learner_name)
+    if (!learner_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_system_create: learner_name is NULL");
         return NULL;
+    }
 
     knowledge_system_t system = nimcp_calloc(1, sizeof(struct knowledge_system_struct));
-    if (!system)
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_system_create: failed to allocate system");
         return NULL;
+    }
 
     strncpy(system->learner_name, learner_name, sizeof(system->learner_name) - 1);
 
     system->repository = repository_create(INITIAL_CAPACITY);
     if (!system->repository) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_system_create: failed to create repository");
         nimcp_free(system);
         return NULL;
     }
@@ -1125,6 +1130,7 @@ knowledge_system_t knowledge_system_create(const char* learner_name)
     system->knowledge_brain = brain_create_lazy(learner_name, BRAIN_SIZE_SMALL,
                                                 BRAIN_TASK_CLASSIFICATION, 20, 10);
     if (!system->knowledge_brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_system_create: failed to create brain");
         fprintf(stderr, "[ERROR] knowledge_system_create: failed to create brain\n"); fflush(stderr);
         knowledge_system_destroy(system);
         return NULL;

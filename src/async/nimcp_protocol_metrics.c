@@ -124,7 +124,11 @@ static metric_entry_t* create_metric_entry(const char* name, metric_type_t type,
                                           const metric_label_t* labels,
                                           uint32_t label_count) {
     metric_entry_t* entry = (metric_entry_t*)nimcp_calloc(1, sizeof(metric_entry_t));
-    if (!entry) return NULL;
+    if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "create_metric_entry: failed to allocate metric entry");
+        return NULL;
+    }
 
     strncpy(entry->metric.name, name, sizeof(entry->metric.name) - 1);
     entry->metric.type = type;
@@ -181,6 +185,8 @@ protocol_metrics_t protocol_metrics_create(const dashboard_config_t* config) {
     protocol_metrics_t metrics = (protocol_metrics_t)nimcp_calloc(1,
                                     sizeof(struct protocol_metrics_struct));
     if (!metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "protocol_metrics_create: failed to allocate metrics structure");
         LOG_ERROR("Failed to allocate metrics structure");
         return NULL;
     }
@@ -193,6 +199,8 @@ protocol_metrics_t protocol_metrics_create(const dashboard_config_t* config) {
 
     /* Initialize mutex for thread safety */
     if (nimcp_platform_mutex_init(&metrics->mutex, false) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "protocol_metrics_create: failed to initialize mutex");
         LOG_ERROR("Failed to initialize metrics mutex");
         nimcp_free(metrics);
         return NULL;

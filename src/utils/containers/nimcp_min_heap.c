@@ -146,18 +146,21 @@ nimcp_min_heap_t* nimcp_min_heap_create(uint32_t capacity)
 {
     LOG_DEBUG("Entering nimcp_min_heap_create");
     if (capacity == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_min_heap_create: capacity is 0");
         LOG_ERROR("nimcp_min_heap_create failed: returning error");
         return NULL;
     }
 
     nimcp_min_heap_t* heap = (nimcp_min_heap_t*)nimcp_malloc(sizeof(nimcp_min_heap_t));
     if (!heap) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_min_heap_create: failed to allocate heap");
         LOG_ERROR("nimcp_min_heap_create failed: returning error");
         return NULL;
     }
 
     heap->elements = (nimcp_heap_element_t*)nimcp_malloc(capacity * sizeof(nimcp_heap_element_t));
     if (!heap->elements) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_min_heap_create: failed to allocate elements array");
         nimcp_free(heap);
         LOG_ERROR("nimcp_min_heap_create failed: returning error");
         return NULL;
@@ -167,6 +170,7 @@ nimcp_min_heap_t* nimcp_min_heap_create(uint32_t capacity)
     heap->max_vertex_id = capacity;
     heap->position_map = (uint32_t*)nimcp_malloc(capacity * sizeof(uint32_t));
     if (!heap->position_map) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_min_heap_create: failed to allocate position_map");
         nimcp_free(heap->elements);
         nimcp_free(heap);
         LOG_ERROR("nimcp_min_heap_create failed: returning error");

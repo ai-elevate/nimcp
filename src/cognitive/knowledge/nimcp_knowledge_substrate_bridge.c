@@ -47,10 +47,16 @@ knowledge_substrate_config_t knowledge_substrate_default_config(void) {
 }
 
 knowledge_substrate_bridge_t* knowledge_substrate_bridge_create(void* knowledge, neural_substrate_t* substrate, const knowledge_substrate_config_t* config) {
-    if (!substrate) return NULL;
+    if (!substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_substrate_bridge_create: substrate is NULL");
+        return NULL;
+    }
 
     knowledge_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(knowledge_substrate_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_substrate_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     bridge->knowledge = knowledge;
     bridge->substrate = substrate;

@@ -164,11 +164,15 @@ tsdn_population_t* tsdn_create(const tsdn_config_t* config) {
     }
 
     if (tsdn_config_validate(config) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "tsdn_create: invalid configuration");
         return NULL;
     }
 
     tsdn_population_t* pop = nimcp_calloc(1, sizeof(tsdn_population_t));
     if (!pop) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "tsdn_create: failed to allocate population");
         return NULL;
     }
 
@@ -193,6 +197,8 @@ tsdn_population_t* tsdn_create(const tsdn_config_t* config) {
         pop->elevation_firing_rate = nimcp_calloc(config->elevation_neurons, sizeof(float));
 
         if (!pop->elevation_preferred || !pop->elevation_firing_rate) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                "tsdn_create: failed to allocate elevation arrays");
             tsdn_destroy(pop);
             return NULL;
         }
@@ -214,6 +220,8 @@ tsdn_population_t* tsdn_create(const tsdn_config_t* config) {
     /* Create mutex for thread safety */
     pop->mutex = nimcp_mutex_create(NULL);
     if (!pop->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "tsdn_create: failed to create mutex");
         tsdn_destroy(pop);
         return NULL;
     }

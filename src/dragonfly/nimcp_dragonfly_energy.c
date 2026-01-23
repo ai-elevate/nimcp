@@ -204,11 +204,17 @@ dragonfly_energy_t dragonfly_energy_create(const energy_config_t* config) {
     energy_config_t cfg = config ? *config : energy_default_config();
 
     if (!energy_validate_config(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "dragonfly_energy_create: invalid configuration");
         return NULL;
     }
 
     dragonfly_energy_t energy = nimcp_calloc(1, sizeof(struct dragonfly_energy_s));
-    if (!energy) return NULL;
+    if (!energy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "dragonfly_energy_create: failed to allocate energy");
+        return NULL;
+    }
 
     energy->config = cfg;
     energy->creation_time_us = get_time_us();
@@ -227,6 +233,8 @@ dragonfly_energy_t dragonfly_energy_create(const energy_config_t* config) {
 
     energy->mutex = nimcp_mutex_create(NULL);
     if (!energy->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "dragonfly_energy_create: failed to create mutex");
         nimcp_free(energy);
         return NULL;
     }

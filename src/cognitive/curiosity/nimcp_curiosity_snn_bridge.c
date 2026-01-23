@@ -135,7 +135,10 @@ curiosity_snn_config_t curiosity_snn_config_default(void) {
 
 curiosity_snn_bridge_t* curiosity_snn_create(const curiosity_snn_config_t* config) {
     curiosity_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(curiosity_snn_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_snn_create: failed to allocate bridge");
+        return NULL;
+    }
 
     if (config) {
         bridge->config = *config;
@@ -146,12 +149,14 @@ curiosity_snn_bridge_t* curiosity_snn_create(const curiosity_snn_config_t* confi
     /* Validate config */
     if (bridge->config.num_dimensions == 0 ||
         bridge->config.num_dimensions > CURIOSITY_SNN_MAX_DIMENSIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "curiosity_snn_create: invalid num_dimensions");
         nimcp_free(bridge);
         return NULL;
     }
 
     /* Initialize base bridge */
     if (bridge_base_init(&bridge->base, 0, "curiosity_snn") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_snn_create: bridge_base_init failed");
         nimcp_free(bridge);
         return NULL;
     }
@@ -168,6 +173,7 @@ curiosity_snn_bridge_t* curiosity_snn_create(const curiosity_snn_config_t* confi
 
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_snn_create: failed to create SNN");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
@@ -181,6 +187,7 @@ curiosity_snn_bridge_t* curiosity_snn_create(const curiosity_snn_config_t* confi
 
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->drive_buffer || !bridge->prev_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_snn_create: failed to allocate buffers");
         curiosity_snn_destroy(bridge);
         return NULL;
     }

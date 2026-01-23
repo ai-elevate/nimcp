@@ -105,6 +105,7 @@ anomaly_detector_sleep_bridge_t anomaly_detector_sleep_bridge_create(
     sleep_system_t sleep_system)
 {
     if (!config || !sleep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "anomaly_detector_sleep_bridge_create: config or sleep_system is NULL");
         NIMCP_LOGGING_ERROR("Invalid parameters for anomaly detector sleep bridge creation");
         return NULL;
     }
@@ -112,6 +113,7 @@ anomaly_detector_sleep_bridge_t anomaly_detector_sleep_bridge_create(
     anomaly_detector_sleep_bridge_t bridge =
         (anomaly_detector_sleep_bridge_t)nimcp_malloc(sizeof(struct anomaly_detector_sleep_bridge_struct));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "anomaly_detector_sleep_bridge_create: failed to allocate bridge");
         NIMCP_LOGGING_ERROR("Failed to allocate anomaly detector sleep bridge");
         return NULL;
     }
@@ -122,6 +124,7 @@ anomaly_detector_sleep_bridge_t anomaly_detector_sleep_bridge_create(
 
     if (bridge_base_init(&bridge->base, 0, "anomaly_detector_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "anomaly_detector_sleep_bridge_create: mutex creation failed");
         NIMCP_LOGGING_ERROR("Failed to create mutex for anomaly detector sleep bridge");
         nimcp_free(bridge);
         return NULL;

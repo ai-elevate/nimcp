@@ -136,17 +136,25 @@ dragonfly_ocelli_t dragonfly_ocelli_create(const ocelli_config_t* config) {
     ocelli_config_t cfg = config ? *config : ocelli_default_config();
 
     if (!ocelli_validate_config(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "dragonfly_ocelli_create: invalid configuration");
         return NULL;
     }
 
     dragonfly_ocelli_t ocelli = nimcp_calloc(1, sizeof(struct dragonfly_ocelli_s));
-    if (!ocelli) return NULL;
+    if (!ocelli) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "dragonfly_ocelli_create: failed to allocate ocelli");
+        return NULL;
+    }
 
     ocelli->config = cfg;
     ocelli->creation_time_us = get_time_us();
 
     ocelli->mutex = nimcp_mutex_create(NULL);
     if (!ocelli->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "dragonfly_ocelli_create: failed to create mutex");
         nimcp_free(ocelli);
         return NULL;
     }

@@ -67,12 +67,14 @@ snn_bcm_bridge_t* snn_bcm_bridge_create(
 ) {
     if (!config || !network || !bcm_synapses || n_synapses == 0 || n_neurons == 0) {
         NIMCP_LOGGING_ERROR("Invalid parameters for SNN-BCM bridge creation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_bcm_bridge_create: config/network/bcm_synapses is NULL or n_synapses/n_neurons=0");
         return NULL;
     }
 
     snn_bcm_bridge_t* bridge = (snn_bcm_bridge_t*)nimcp_malloc(sizeof(snn_bcm_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate SNN-BCM bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_bcm_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -90,6 +92,7 @@ snn_bcm_bridge_t* snn_bcm_bridge_create(
     );
     if (!bridge->rate_history) {
         NIMCP_LOGGING_ERROR("Failed to allocate rate history");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_bcm_bridge_create: failed to allocate rate_history");
         nimcp_free(bridge);
         return NULL;
     }

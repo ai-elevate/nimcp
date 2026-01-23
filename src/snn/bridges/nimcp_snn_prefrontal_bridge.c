@@ -142,6 +142,7 @@ snn_prefrontal_bridge_t* snn_prefrontal_bridge_create(
     /* Guard clauses */
     if (!config || !network || !prefrontal_region) {
         NIMCP_LOGGING_ERROR("Null parameter in snn_prefrontal_bridge_create");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_bridge_create: config/network/prefrontal_region is NULL");
         return NULL;
     }
 
@@ -149,6 +150,7 @@ snn_prefrontal_bridge_t* snn_prefrontal_bridge_create(
     snn_prefrontal_bridge_t* bridge = nimcp_malloc(sizeof(snn_prefrontal_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate prefrontal bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_prefrontal_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -164,6 +166,7 @@ snn_prefrontal_bridge_t* snn_prefrontal_bridge_create(
     bridge->wm_items = nimcp_malloc(bridge->max_wm_items * sizeof(wm_item_t*));
     if (!bridge->wm_items) {
         NIMCP_LOGGING_ERROR("Failed to allocate WM storage");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_prefrontal_bridge_create: failed to allocate wm_items");
         nimcp_free(bridge);
         return NULL;
     }

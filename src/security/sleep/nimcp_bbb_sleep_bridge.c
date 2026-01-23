@@ -60,10 +60,16 @@ int bbb_sleep_default_config(bbb_sleep_config_t* config) {
 bbb_sleep_bridge_t bbb_sleep_bridge_create(
     const bbb_sleep_config_t* config, sleep_system_t sleep_system)
 {
-    if (!sleep_system) return NULL;
+    if (!sleep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb_sleep_bridge_create: sleep_system is NULL");
+        return NULL;
+    }
 
     struct bbb_sleep_bridge_struct* bridge = nimcp_malloc(sizeof(*bridge));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bbb_sleep_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
     memset(bridge, 0, sizeof(*bridge));
 
     if (config) bridge->config = *config;
@@ -76,7 +82,11 @@ bbb_sleep_bridge_t bbb_sleep_bridge_create(
     bridge->effects.glymphatic_active = false;
 
     if (bridge_base_init(&bridge->base, 0, "bbb_sleep") != 0) { nimcp_free(bridge); return NULL; }
-    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "bbb_sleep_bridge_create: mutex creation failed");
+        nimcp_free(bridge);
+        return NULL;
+    }
 
     bridge->callback_registered = sleep_register_state_callback(
         sleep_system, bbb_on_sleep_state_change, bridge);

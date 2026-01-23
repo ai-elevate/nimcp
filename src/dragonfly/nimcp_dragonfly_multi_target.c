@@ -315,11 +315,17 @@ dragonfly_multi_target_t dragonfly_multi_target_create(
     multi_target_config_t cfg = config ? *config : multi_target_default_config();
 
     if (!multi_target_validate_config(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "dragonfly_multi_target_create: invalid configuration");
         return NULL;
     }
 
     dragonfly_multi_target_t mt = nimcp_calloc(1, sizeof(struct dragonfly_multi_target_s));
-    if (!mt) return NULL;
+    if (!mt) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "dragonfly_multi_target_create: failed to allocate multi_target");
+        return NULL;
+    }
 
     mt->config = cfg;
     mt->creation_time_us = get_time_us();
@@ -328,6 +334,8 @@ dragonfly_multi_target_t dragonfly_multi_target_create(
 
     mt->mutex = nimcp_mutex_create(NULL);
     if (!mt->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "dragonfly_multi_target_create: failed to create mutex");
         nimcp_free(mt);
         return NULL;
     }

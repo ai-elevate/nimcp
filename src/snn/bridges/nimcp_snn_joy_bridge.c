@@ -43,12 +43,14 @@ snn_joy_bridge_t* snn_joy_bridge_create(
 ) {
     if (!config || !snn) {
         NIMCP_LOGGING_ERROR("Null parameters to snn_joy_bridge_create");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_joy_bridge_create: config/snn is NULL");
         return NULL;
     }
 
     snn_joy_bridge_t* bridge = nimcp_malloc(sizeof(snn_joy_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate SNN-joy bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_joy_bridge_create: failed to allocate bridge");
         return NULL;
     }
 

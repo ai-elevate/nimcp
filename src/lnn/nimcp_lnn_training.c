@@ -180,6 +180,7 @@ lnn_training_ctx_t* lnn_training_create(
 ) {
     if (!network) {
         NIMCP_LOGGING_ERROR("NULL network pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_training_create: network is NULL");
         return NULL;
     }
 
@@ -200,6 +201,7 @@ lnn_training_ctx_t* lnn_training_create(
     lnn_training_ctx_t* ctx = (lnn_training_ctx_t*)nimcp_malloc(sizeof(lnn_training_ctx_t));
     if (!ctx) {
         NIMCP_LOGGING_ERROR("Failed to allocate training context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_training_create: failed to allocate training context");
         return NULL;
     }
     memset(ctx, 0, sizeof(lnn_training_ctx_t));
@@ -234,6 +236,7 @@ lnn_training_ctx_t* lnn_training_create(
     ctx->optimizer = nimcp_optimizer_create(&opt_config, NULL, NULL);
     if (!ctx->optimizer) {
         NIMCP_LOGGING_ERROR("Failed to create optimizer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_training_create: failed to create optimizer");
         lnn_training_destroy(ctx);
         return NULL;
     }
@@ -250,6 +253,7 @@ lnn_training_ctx_t* lnn_training_create(
     ctx->gradient_manager = nimcp_gradient_manager_create(&grad_config);
     if (!ctx->gradient_manager) {
         NIMCP_LOGGING_ERROR("Failed to create gradient manager");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_training_create: failed to create gradient manager");
         lnn_training_destroy(ctx);
         return NULL;
     }
@@ -266,6 +270,7 @@ lnn_training_ctx_t* lnn_training_create(
     ctx->loss_context = nimcp_loss_create(&loss_config, NULL, NULL);
     if (!ctx->loss_context) {
         NIMCP_LOGGING_ERROR("Failed to create loss context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_training_create: failed to create loss context");
         lnn_training_destroy(ctx);
         return NULL;
     }

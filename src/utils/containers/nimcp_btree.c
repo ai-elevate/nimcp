@@ -95,20 +95,29 @@ btree_t* btree_create(btree_compare_func compare, btree_key_func key_func,
                       btree_free_func free_func)
 {
     if (!compare || !key_func) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "btree_create: compare and key_func cannot be NULL");
         return NULL;
     }
 
     btree_t* tree = nimcp_calloc(1, sizeof(btree_t));
-    if (!tree)
+    if (!tree) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "btree_create: failed to allocate btree structure");
         return NULL;
+    }
 
     tree->root = create_node(true);
     if (!tree->root) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "btree_create: failed to allocate root node");
         nimcp_free(tree);
         return NULL;
     }
 
     if (nimcp_platform_mutex_init(&tree->structural_lock, false) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "btree_create: failed to initialize structural_lock mutex");
         destroy_node(tree->root, NULL);
         nimcp_free(tree);
         return NULL;
@@ -599,12 +608,18 @@ size_t btree_count(const btree_t* tree)
 // Iterator implementation
 btree_iterator_t* btree_iterator_create(btree_t* tree)
 {
-    if (!tree)
+    if (!tree) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "btree_iterator_create: tree is NULL");
         return NULL;
+    }
 
     btree_iterator_t* iterator = nimcp_calloc(1, sizeof(btree_iterator_t));
-    if (!iterator)
+    if (!iterator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "btree_iterator_create: failed to allocate iterator");
         return NULL;
+    }
 
     iterator->tree = tree;
     iterator->stack_capacity = 32;  // Initial capacity
@@ -612,6 +627,8 @@ btree_iterator_t* btree_iterator_create(btree_t* tree)
     iterator->index_stack = nimcp_calloc(iterator->stack_capacity, sizeof(int));
 
     if (!iterator->stack || !iterator->index_stack) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "btree_iterator_create: failed to allocate stack arrays");
         nimcp_free(iterator->stack);
         nimcp_free(iterator->index_stack);
         nimcp_free(iterator);
@@ -619,6 +636,8 @@ btree_iterator_t* btree_iterator_create(btree_t* tree)
     }
 
     if (nimcp_platform_mutex_init(&iterator->lock, false) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "btree_iterator_create: failed to initialize mutex");
         nimcp_free(iterator->stack);
         nimcp_free(iterator->index_stack);
         nimcp_free(iterator);

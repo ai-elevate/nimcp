@@ -171,6 +171,7 @@ security_dist_fep_bridge_t* security_dist_fep_create(
     security_distributed_training_bridge_t* security_bridge
 ) {
     if (!fep_system || !security_bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_dist_fep_create: fep_system or security_bridge is NULL");
         NIMCP_LOGGING_ERROR("Security distributed FEP bridge: NULL system pointers");
         return NULL;
     }
@@ -178,6 +179,7 @@ security_dist_fep_bridge_t* security_dist_fep_create(
     /* Allocate bridge */
     security_dist_fep_bridge_t* bridge = nimcp_malloc(sizeof(security_dist_fep_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_dist_fep_create: failed to allocate bridge");
         NIMCP_LOGGING_ERROR("Security distributed FEP bridge: allocation failed");
         return NULL;
     }
@@ -187,6 +189,7 @@ security_dist_fep_bridge_t* security_dist_fep_create(
     /* Initialize base */
     if (bridge_base_init(&bridge->base, BIO_MODULE_SECURITY_DISTRIBUTED_FEP,
                          SECURITY_DISTRIBUTED_FEP_MODULE_NAME) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "security_dist_fep_create: bridge_base_init failed");
         nimcp_free(bridge);
         return NULL;
     }

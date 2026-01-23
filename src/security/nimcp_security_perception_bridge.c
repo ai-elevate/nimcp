@@ -230,6 +230,7 @@ security_perception_bridge_t* sec_percept_create(const sec_percept_config_t* con
     security_perception_bridge_t* bridge =
         (security_perception_bridge_t*)nimcp_malloc(sizeof(security_perception_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sec_percept_create: failed to allocate bridge");
         NIMCP_LOGGING_ERROR("Failed to allocate bridge");
         return NULL;
     }
@@ -251,6 +252,7 @@ security_perception_bridge_t* sec_percept_create(const sec_percept_config_t* con
     bridge->quarantine = (quarantined_input_t*)nimcp_malloc(
         bridge->quarantine_capacity * sizeof(quarantined_input_t));
     if (!bridge->quarantine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sec_percept_create: failed to allocate quarantine");
         NIMCP_LOGGING_ERROR("Failed to allocate quarantine");
         nimcp_free(bridge);
         return NULL;
@@ -262,6 +264,7 @@ security_perception_bridge_t* sec_percept_create(const sec_percept_config_t* con
     bridge->signatures = (attack_signature_t*)nimcp_malloc(
         bridge->signature_capacity * sizeof(attack_signature_t));
     if (!bridge->signatures) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sec_percept_create: failed to allocate signatures");
         NIMCP_LOGGING_ERROR("Failed to allocate signatures");
         nimcp_free(bridge->quarantine);
         nimcp_free(bridge);
@@ -272,6 +275,7 @@ security_perception_bridge_t* sec_percept_create(const sec_percept_config_t* con
     /* Create mutex */
     if (bridge_base_init(&bridge->base, 0, "security_perception") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "sec_percept_create: mutex creation failed");
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge->signatures);
         nimcp_free(bridge->quarantine);

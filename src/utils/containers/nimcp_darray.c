@@ -84,11 +84,15 @@ nimcp_darray_t* nimcp_darray_create_with_destructor(
     nimcp_darray_destructor_t destructor
 ) {
     if (element_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "nimcp_darray_create_with_destructor: element_size is 0");
         return NULL;
     }
 
     nimcp_darray_t* arr = (nimcp_darray_t*)nimcp_malloc(sizeof(nimcp_darray_t));
     if (!arr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "nimcp_darray_create_with_destructor: failed to allocate darray");
         return NULL;
     }
 
@@ -98,6 +102,8 @@ nimcp_darray_t* nimcp_darray_create_with_destructor(
 
     arr->data = nimcp_calloc(initial_capacity, element_size);
     if (!arr->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "nimcp_darray_create_with_destructor: failed to allocate data array");
         nimcp_free(arr);
         return NULL;
     }

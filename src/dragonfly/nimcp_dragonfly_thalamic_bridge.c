@@ -143,11 +143,17 @@ dragonfly_thalamic_bridge_t* dragonfly_thalamic_bridge_create(
     const dragonfly_thalamic_config_t* config
 ) {
     dragonfly_thalamic_bridge_t* bridge = calloc(1, sizeof(dragonfly_thalamic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "dragonfly_thalamic_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     /* Apply configuration */
     if (config) {
         if (dragonfly_thalamic_bridge_validate_config(config) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                "dragonfly_thalamic_bridge_create: invalid configuration");
             free(bridge);
             return NULL;
         }

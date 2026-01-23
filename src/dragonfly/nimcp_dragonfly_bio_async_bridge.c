@@ -106,10 +106,16 @@ dragonfly_bio_async_bridge_t* dragonfly_bio_async_bridge_create(
     const dragonfly_bio_async_config_t* config
 ) {
     dragonfly_bio_async_bridge_t* bridge = calloc(1, sizeof(dragonfly_bio_async_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "dragonfly_bio_async_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     if (config) {
         if (dragonfly_bio_async_bridge_validate_config(config) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                "dragonfly_bio_async_bridge_create: invalid configuration");
             free(bridge);
             return NULL;
         }

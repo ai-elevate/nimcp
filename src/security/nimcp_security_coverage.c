@@ -133,8 +133,10 @@ nimcp_security_coverage_t* nimcp_security_coverage_create(void)
     nimcp_security_coverage_t* coverage =
         (nimcp_security_coverage_t*)nimcp_calloc(1, sizeof(nimcp_security_coverage_t));
 
-    if (!coverage)
+    if (!coverage) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_security_coverage_create: failed to allocate coverage");
         return NULL;
+    }
 
     // Initialize dimension statistics
     for (int i = 0; i < NIMCP_COVERAGE_DIMENSION_COUNT; i++) {

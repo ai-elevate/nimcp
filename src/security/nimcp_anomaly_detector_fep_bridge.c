@@ -48,13 +48,13 @@ anomaly_fep_bridge_t* anomaly_fep_create(
     fep_system_t* fep_system
 ) {
     if (!detector || !fep_system) {
-        NIMCP_LOGGING_ERROR("Anomaly FEP bridge: NULL pointers");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "anomaly_fep_create: detector or fep_system is NULL");
         return NULL;
     }
 
     anomaly_fep_bridge_t* bridge = (anomaly_fep_bridge_t*)nimcp_malloc(sizeof(anomaly_fep_bridge_t));
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Anomaly FEP bridge: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "anomaly_fep_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -69,9 +69,13 @@ anomaly_fep_bridge_t* anomaly_fep_create(
     bridge->fep_system = fep_system;
     bridge->detector = detector;
 
-    if (bridge_base_init(&bridge->base, 0, "anomaly_detector_fep") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "anomaly_detector_fep") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "anomaly_fep_create: bridge_base_init failed");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
-        NIMCP_LOGGING_ERROR("Anomaly FEP bridge: mutex creation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "anomaly_fep_create: mutex creation failed");
         nimcp_free(bridge);
         return NULL;
     }

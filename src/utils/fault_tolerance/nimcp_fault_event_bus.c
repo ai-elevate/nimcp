@@ -411,7 +411,11 @@ static bool event_queue_is_full(event_queue_t* queue) {
  */
 fault_event_bus_t event_bus_create(const char* name, fault_event_delivery_mode_t delivery_mode) {
     event_bus_internal_t* bus = (event_bus_internal_t*)nimcp_calloc(1, sizeof(event_bus_internal_t));
-    if (!bus) return NULL;
+    if (!bus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "event_bus_create: failed to allocate event bus");
+        return NULL;
+    }
 
     // Set name
     if (name) {
@@ -435,6 +439,8 @@ fault_event_bus_t event_bus_create(const char* name, fault_event_delivery_mode_t
     if (delivery_mode == EVENT_DELIVERY_ASYNC) {
         bus->queue = event_queue_create(EVENT_BUS_QUEUE_SIZE);
         if (!bus->queue) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                "event_bus_create: failed to create event queue");
             nimcp_mutex_destroy(&bus->subscriber_mutex);
             nimcp_mutex_destroy(&bus->stats_mutex);
             nimcp_free(bus);

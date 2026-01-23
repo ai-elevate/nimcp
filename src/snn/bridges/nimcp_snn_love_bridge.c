@@ -42,12 +42,14 @@ snn_love_bridge_t* snn_love_bridge_create(
 ) {
     if (!config || !snn) {
         NIMCP_LOGGING_ERROR("Null parameters to snn_love_bridge_create");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_love_bridge_create: config/snn is NULL");
         return NULL;
     }
 
     snn_love_bridge_t* bridge = nimcp_malloc(sizeof(snn_love_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate SNN-love bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_love_bridge_create: failed to allocate bridge");
         return NULL;
     }
 

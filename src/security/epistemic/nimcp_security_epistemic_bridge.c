@@ -264,6 +264,7 @@ security_epist_bridge_t* security_epist_bridge_create(
 {
     security_epist_bridge_t* bridge = nimcp_malloc(sizeof(security_epist_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_epist_bridge_create: failed to allocate bridge");
         NIMCP_LOGGING_ERROR("Failed to allocate security-epistemic bridge");
         return NULL;
     }
@@ -271,6 +272,7 @@ security_epist_bridge_t* security_epist_bridge_create(
 
     if (bridge_base_init(&bridge->base, BIO_MODULE_SECURITY_EPISTEMIC,
                          "security_epistemic_bridge") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "security_epist_bridge_create: bridge_base_init failed");
         nimcp_free(bridge);
         return NULL;
     }
@@ -283,6 +285,7 @@ security_epist_bridge_t* security_epist_bridge_create(
 
     bridge->beliefs = nimcp_malloc(SEC_EPIST_MAX_BELIEFS * sizeof(security_epist_belief_t));
     if (!bridge->beliefs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_epist_bridge_create: failed to allocate beliefs array");
         NIMCP_LOGGING_ERROR("Failed to allocate beliefs array");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
@@ -293,6 +296,7 @@ security_epist_bridge_t* security_epist_bridge_create(
     bridge->confidence_history = nimcp_malloc(
         SEC_EPIST_CONFIDENCE_HISTORY * sizeof(float));
     if (!bridge->confidence_history) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_epist_bridge_create: failed to allocate confidence_history");
         NIMCP_LOGGING_ERROR("Failed to allocate confidence history");
         nimcp_free(bridge->beliefs);
         bridge_base_cleanup(&bridge->base);
@@ -305,6 +309,7 @@ security_epist_bridge_t* security_epist_bridge_create(
         bridge->audit_log = nimcp_malloc(
             SEC_EPIST_MAX_AUDIT_ENTRIES * sizeof(security_epist_audit_entry_t));
         if (!bridge->audit_log) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_epist_bridge_create: failed to allocate audit_log");
             NIMCP_LOGGING_ERROR("Failed to allocate audit log");
             nimcp_free(bridge->confidence_history);
             nimcp_free(bridge->beliefs);
@@ -318,6 +323,7 @@ security_epist_bridge_t* security_epist_bridge_create(
 
     security_epist_internal_t* internal = nimcp_malloc(sizeof(security_epist_internal_t));
     if (!internal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_epist_bridge_create: failed to allocate internal state");
         NIMCP_LOGGING_ERROR("Failed to allocate internal state");
         if (bridge->audit_log) nimcp_free(bridge->audit_log);
         nimcp_free(bridge->confidence_history);

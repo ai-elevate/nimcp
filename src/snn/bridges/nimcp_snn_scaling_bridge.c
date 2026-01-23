@@ -35,6 +35,7 @@ snn_scaling_bridge_t* snn_scaling_bridge_create(
 ) {
     if (!config || !network || !scaling_states || n_neurons == 0 || n_synapses == 0) {
         NIMCP_LOGGING_ERROR("Invalid parameters for SNN-Scaling bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_scaling_bridge_create: config/network/scaling_states is NULL or n_neurons/n_synapses=0");
         return NULL;
     }
 
@@ -42,6 +43,7 @@ snn_scaling_bridge_t* snn_scaling_bridge_create(
         nimcp_malloc(sizeof(snn_scaling_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate SNN-Scaling bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_scaling_bridge_create: failed to allocate bridge");
         return NULL;
     }
 

@@ -72,15 +72,29 @@ nimcp_ring_buffer_t* nimcp_ring_buffer_create_with_destructor(
     size_t capacity,
     nimcp_ring_buffer_destructor_t destructor) {
 
-    if (element_size == 0) return NULL;
+    if (element_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "nimcp_ring_buffer_create_with_destructor: element_size is 0");
+        return NULL;
+    }
     if (capacity == 0) capacity = NIMCP_RING_BUFFER_DEFAULT_CAPACITY;
-    if (capacity > NIMCP_RING_BUFFER_MAX_CAPACITY) return NULL;
+    if (capacity > NIMCP_RING_BUFFER_MAX_CAPACITY) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "nimcp_ring_buffer_create_with_destructor: capacity exceeds maximum");
+        return NULL;
+    }
 
     nimcp_ring_buffer_t* rb = (nimcp_ring_buffer_t*)calloc(1, sizeof(nimcp_ring_buffer_t));
-    if (!rb) return NULL;
+    if (!rb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "nimcp_ring_buffer_create_with_destructor: failed to allocate ring buffer");
+        return NULL;
+    }
 
     rb->data = calloc(capacity, element_size);
     if (!rb->data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "nimcp_ring_buffer_create_with_destructor: failed to allocate data array");
         free(rb);
         return NULL;
     }

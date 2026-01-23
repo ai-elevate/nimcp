@@ -302,6 +302,7 @@ introspection_context_t introspection_context_create(brain_t brain,
 {
     /* WHAT: Validate inputs */
     if (brain == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection_context_create: brain is NULL");
         return NULL;
     }
 
@@ -309,6 +310,7 @@ introspection_context_t introspection_context_create(brain_t brain,
     introspection_context_t context =
         (introspection_context_t) nimcp_calloc(1, sizeof(struct introspection_context_struct));
     if (context == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "introspection_context_create: failed to allocate context");
         return NULL;
     }
 
@@ -368,6 +370,7 @@ introspection_context_t introspection_context_create(brain_t brain,
         context->pattern_registry =
             (pattern_registry_t*) nimcp_calloc(1, sizeof(pattern_registry_t));
         if (context->pattern_registry == NULL) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "introspection_context_create: failed to allocate pattern_registry");
             nimcp_free(context);
             return NULL;
         }
@@ -385,6 +388,7 @@ introspection_context_t introspection_context_create(brain_t brain,
 
     nimcp_result_t result = nimcp_queue_create(&queue_config, &context->activity_queue);
     if (result != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "introspection_context_create: failed to create activity_queue");
         if (context->pattern_registry) {
             nimcp_mutex_destroy(&context->pattern_registry->lock);
             nimcp_free(context->pattern_registry);

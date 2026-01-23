@@ -561,6 +561,7 @@ neural_network_t neural_network_create(const network_config_t* config)
 {
     // Guard clause: Validate configuration
     if (!validate_network_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neural_network_create: invalid config");
         return NULL;
     }
     /**
@@ -571,8 +572,10 @@ neural_network_t neural_network_create(const network_config_t* config)
     neural_network_t network = (neural_network_t) nimcp_malloc(sizeof(struct neural_network_struct));
 
     // Guard clause: Check network allocation
-    if (!network)
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neural_network_create: failed to allocate network");
         return NULL;
+    }
 
     // Initialize network state (zeros all fields including neurons pointer)
     memset(network, 0, sizeof(struct neural_network_struct));
@@ -592,6 +595,7 @@ neural_network_t neural_network_create(const network_config_t* config)
 
     // Guard clause: Check neurons allocation
     if (!network->neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neural_network_create: failed to allocate neurons");
         nimcp_free(network);
         return NULL;
     }
@@ -607,6 +611,7 @@ neural_network_t neural_network_create(const network_config_t* config)
         uint32_t* layer_sizes_copy = (uint32_t*) nimcp_malloc(config->num_layers * sizeof(uint32_t));
         // Guard clause: Check layer_sizes allocation
         if (!layer_sizes_copy) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neural_network_create: failed to allocate layer_sizes");
             nimcp_free(network->neurons);
             nimcp_free(network);
             return NULL;

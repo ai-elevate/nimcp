@@ -313,11 +313,17 @@ dragonfly_collision_t dragonfly_collision_create(const collision_config_t* confi
     collision_config_t cfg = config ? *config : collision_default_config();
 
     if (!collision_validate_config(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "dragonfly_collision_create: invalid configuration");
         return NULL;
     }
 
     dragonfly_collision_t collision = nimcp_calloc(1, sizeof(struct dragonfly_collision_s));
-    if (!collision) return NULL;
+    if (!collision) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "dragonfly_collision_create: failed to allocate collision");
+        return NULL;
+    }
 
     collision->config = cfg;
     collision->creation_time_us = get_time_us();
@@ -331,6 +337,8 @@ dragonfly_collision_t dragonfly_collision_create(const collision_config_t* confi
 
     collision->mutex = nimcp_mutex_create(NULL);
     if (!collision->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "dragonfly_collision_create: failed to create mutex");
         nimcp_free(collision);
         return NULL;
     }

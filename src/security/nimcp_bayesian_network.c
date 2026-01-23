@@ -258,13 +258,13 @@ nimcp_bayesian_network_t nimcp_bn_create(uint32_t num_nodes) {
     LOG_MODULE_DEBUG("security.bayesian", "Creating Bayesian network with %u nodes", num_nodes);
 
     if (num_nodes == 0 || num_nodes > 1000) {
-        LOG_MODULE_ERROR("security.bayesian", "Invalid number of nodes: %u (must be 1-1000)", num_nodes);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_bn_create: invalid number of nodes %u", num_nodes);
         return NULL;
     }
 
     nimcp_bayesian_network_t bn = (nimcp_bayesian_network_t)calloc(1, sizeof(struct nimcp_bayesian_network_internal));
     if (!bn) {
-        LOG_MODULE_ERROR("security.bayesian", "Failed to allocate Bayesian network structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_bn_create: failed to allocate network structure");
         return NULL;
     }
 
@@ -273,13 +273,14 @@ nimcp_bayesian_network_t nimcp_bn_create(uint32_t num_nodes) {
 
     bn->nodes = (bn_node_t*)calloc(num_nodes, sizeof(bn_node_t));
     if (!bn->nodes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_bn_create: failed to allocate nodes array");
         free(bn);
         return NULL;
     }
 
     bn->topo_order = (uint32_t*)malloc(num_nodes * sizeof(uint32_t));
     if (!bn->topo_order) {
-        LOG_MODULE_ERROR("security.bayesian", "Failed to allocate topological order array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_bn_create: failed to allocate topo_order array");
         free(bn->nodes);
         free(bn);
         return NULL;
@@ -294,7 +295,7 @@ nimcp_bayesian_network_t nimcp_bn_create(uint32_t num_nodes) {
         bn->nodes[i].count_table = (float*)calloc(MAX_STATES, sizeof(float));
 
         if (!bn->nodes[i].cpt || !bn->nodes[i].count_table) {
-            LOG_MODULE_ERROR("security.bayesian", "Failed to allocate CPT for node %u", i);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_bn_create: failed to allocate CPT for node %u", i);
             nimcp_bn_destroy(bn);
             return NULL;
         }

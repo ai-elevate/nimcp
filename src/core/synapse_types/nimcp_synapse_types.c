@@ -50,7 +50,10 @@
  * - E_rev = 0 mV: Non-selective cation channel (Na+/K+)
  */
 void synapse_init_ampa(ampa_state_t* state) {
-    if (!state) return;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_init_ampa: state is NULL");
+        return;
+    }
 
     state->conductance = 0.0F;
     state->g_max = 1.0F;           // 1.0 nS
@@ -121,7 +124,10 @@ float synapse_compute_ampa(
  * - [Mg2+] = 1.0 mM: Physiological extracellular concentration
  */
 void synapse_init_nmda(nmda_state_t* state) {
-    if (!state) return;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_init_nmda: state is NULL");
+        return;
+    }
 
     state->conductance = 0.0F;
     state->g_max = 0.3F;           // 0.3 nS
@@ -210,7 +216,10 @@ float synapse_compute_nmda(
  * - E_rev = -70 mV: Chloride reversal potential
  */
 void synapse_init_gaba_a(gaba_a_state_t* state) {
-    if (!state) return;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_init_gaba_a: state is NULL");
+        return;
+    }
 
     state->conductance = 0.0F;
     state->g_max = 2.0F;           // 2.0 nS
@@ -270,7 +279,10 @@ float synapse_compute_gaba_a(
  * - E_rev = -95 mV: Potassium reversal potential
  */
 void synapse_init_gaba_b(gaba_b_state_t* state) {
-    if (!state) return;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_init_gaba_b: state is NULL");
+        return;
+    }
 
     state->conductance = 0.0F;
     state->g_max = 0.5F;           // 0.5 nS
@@ -329,7 +341,10 @@ float synapse_compute_gaba_b(
  * - baseline = 0.5: Tonic dopamine level in healthy brain
  */
 void synapse_init_dopamine(dopamine_state_t* state) {
-    if (!state) return;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_init_dopamine: state is NULL");
+        return;
+    }
 
     state->d1_level = 0.0F;
     state->d2_level = 0.0F;

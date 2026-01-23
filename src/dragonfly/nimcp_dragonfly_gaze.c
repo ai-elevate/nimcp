@@ -248,11 +248,17 @@ dragonfly_gaze_t dragonfly_gaze_create(const gaze_config_t* config) {
     gaze_config_t cfg = config ? *config : gaze_default_config();
 
     if (!gaze_validate_config(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "dragonfly_gaze_create: invalid configuration");
         return NULL;
     }
 
     dragonfly_gaze_t gaze = nimcp_calloc(1, sizeof(struct dragonfly_gaze_s));
-    if (!gaze) return NULL;
+    if (!gaze) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "dragonfly_gaze_create: failed to allocate gaze");
+        return NULL;
+    }
 
     gaze->config = cfg;
     gaze->creation_time_us = get_time_us();
@@ -265,6 +271,8 @@ dragonfly_gaze_t dragonfly_gaze_create(const gaze_config_t* config) {
 
     gaze->mutex = nimcp_mutex_create(NULL);
     if (!gaze->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "dragonfly_gaze_create: failed to create mutex");
         nimcp_free(gaze);
         return NULL;
     }

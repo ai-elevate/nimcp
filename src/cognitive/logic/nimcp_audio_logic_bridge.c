@@ -125,7 +125,10 @@ audio_logic_bridge_t* audio_logic_bridge_create(
     const audio_logic_config_t* config
 ) {
     audio_logic_bridge_t* bridge = nimcp_calloc(1, sizeof(audio_logic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "audio_logic_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     bridge->audio = audio;
     bridge->logic = logic;

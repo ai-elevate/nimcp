@@ -214,7 +214,11 @@ dragonfly_parietal_bridge_t* dragonfly_parietal_bridge_create(
     const parietal_bridge_config_t* config
 ) {
     dragonfly_parietal_bridge_t* bridge = calloc(1, sizeof(dragonfly_parietal_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "dragonfly_parietal_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     /* Store connected systems */
     bridge->dragonfly = dragonfly;
@@ -224,6 +228,8 @@ dragonfly_parietal_bridge_t* dragonfly_parietal_bridge_create(
     /* Apply configuration */
     if (config) {
         if (!parietal_bridge_validate_config(config)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                "dragonfly_parietal_bridge_create: invalid configuration");
             free(bridge);
             return NULL;
         }
@@ -234,6 +240,8 @@ dragonfly_parietal_bridge_t* dragonfly_parietal_bridge_create(
 
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "dragonfly_parietal") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "dragonfly_parietal_bridge_create: failed to initialize base bridge");
         free(bridge);
         return NULL;
     }

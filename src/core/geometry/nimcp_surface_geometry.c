@@ -55,7 +55,10 @@ struct surface_geometry_ctx_struct {
 
 int surface_geometry_default_config(surface_geometry_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_geometry_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -100,7 +103,10 @@ surface_geometry_ctx_t* surface_geometry_create(
     const surface_geometry_config_t* config)
 {
     surface_geometry_ctx_t* ctx = nimcp_malloc(sizeof(*ctx));
-    if (!ctx) return NULL;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "surface_geometry_create: failed to allocate context");
+        return NULL;
+    }
 
     memset(ctx, 0, sizeof(*ctx));
 
@@ -114,10 +120,12 @@ surface_geometry_ctx_t* surface_geometry_create(
     /* Create mutex */
     ctx->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!ctx->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "surface_geometry_create: failed to allocate mutex");
         nimcp_free(ctx);
         return NULL;
     }
     if (nimcp_mutex_init(ctx->mutex, NULL) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "surface_geometry_create: failed to init mutex");
         nimcp_free(ctx);
         return NULL;
     }
@@ -128,6 +136,7 @@ surface_geometry_ctx_t* surface_geometry_create(
         SURFACE_MAX_BRANCH_POINTS
     );
     if (!ctx->manifold) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "surface_geometry_create: failed to create manifold");
         nimcp_mutex_free(ctx->mutex);
         nimcp_free(ctx);
         return NULL;
@@ -157,7 +166,10 @@ void surface_geometry_destroy(surface_geometry_ctx_t* ctx)
 
 int surface_geometry_reset(surface_geometry_ctx_t* ctx)
 {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_geometry_reset: ctx is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(ctx->mutex);
 
@@ -177,7 +189,10 @@ int surface_geometry_get_config(
     const surface_geometry_ctx_t* ctx,
     surface_geometry_config_t* config)
 {
-    if (!ctx || !config) return -1;
+    if (!ctx || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_geometry_get_config: ctx or config is NULL");
+        return -1;
+    }
 
     memcpy(config, &ctx->config, sizeof(*config));
     return 0;
@@ -187,7 +202,10 @@ int surface_geometry_set_config(
     surface_geometry_ctx_t* ctx,
     const surface_geometry_config_t* config)
 {
-    if (!ctx || !config) return -1;
+    if (!ctx || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_geometry_set_config: ctx or config is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(ctx->mutex);
     memcpy(&ctx->config, config, sizeof(*config));
@@ -205,10 +223,14 @@ int surface_determine_regime(
     float rho_threshold,
     surface_regime_t* regime)
 {
-    if (!regime) return -1;
+    if (!regime) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_determine_regime: regime is NULL");
+        return -1;
+    }
 
     if (rho < 0.0f || rho_threshold < 0.0f) {
-        return -1;  /* Invalid parameters */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_determine_regime: negative rho or threshold");
+        return -1;
     }
 
     if (rho < rho_threshold) {
@@ -224,10 +246,14 @@ int surface_predict_branch_type(
     float chi,
     surface_branch_type_t* branch_type)
 {
-    if (!branch_type) return -1;
+    if (!branch_type) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_predict_branch_type: branch_type is NULL");
+        return -1;
+    }
 
     if (chi < 0.0f) {
-        return -1;  /* Invalid chi */
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "surface_predict_branch_type: negative chi");
+        return -1;
     }
 
     /* Paper prediction: trifurcations emerge at chi >= 0.83 */
@@ -244,7 +270,10 @@ int surface_compute_optimal_angle(
     const surface_geometry_params_t* params,
     float* optimal_angle)
 {
-    if (!params || !optimal_angle) return -1;
+    if (!params || !optimal_angle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surface_compute_optimal_angle: params or optimal_angle is NULL");
+        return -1;
+    }
 
     float rho = params->rho;
     float rho_th = params->rho_threshold;

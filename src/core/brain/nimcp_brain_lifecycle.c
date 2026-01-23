@@ -167,7 +167,7 @@ static network_config_t build_base_network_config(uint32_t num_inputs, uint32_t 
 
     config.layer_sizes = nimcp_calloc(3, sizeof(uint32_t));
     if (!config.layer_sizes) {
-        set_error("Failed to allocate layer_sizes array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "build_base_network_config: failed to allocate layer_sizes");
         /* Caller MUST check config.layer_sizes before use */
         return config;
     }
@@ -335,28 +335,28 @@ static bool validate_creation_params(const char* task_name, uint32_t num_inputs,
                                      uint32_t num_outputs)
 {
     if (!task_name) {
-        set_error("task_name cannot be NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validate_creation_params: task_name is NULL");
         return false;
     }
     // Validate task_name is not empty
     if (task_name[0] == '\0') {
-        set_error("task_name cannot be empty string");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_creation_params: task_name is empty");
         return false;
     }
     if (num_inputs == 0) {
-        set_error("num_inputs must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_creation_params: num_inputs must be > 0");
         return false;
     }
     if (num_inputs > 10000) {
-        set_error("num_inputs must be <= 10000");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_creation_params: num_inputs > 10000");
         return false;
     }
     if (num_outputs == 0) {
-        set_error("num_outputs must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_creation_params: num_outputs must be > 0");
         return false;
     }
     if (num_outputs > 10000) {
-        set_error("num_outputs must be <= 10000");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "validate_creation_params: num_outputs > 10000");
         return false;
     }
     return true;
@@ -374,7 +374,7 @@ brain_t allocate_brain(void)
 {
     brain_t brain = nimcp_calloc(1, sizeof(struct brain_struct));
     if (!brain) {
-        set_error("Failed to allocate brain structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "allocate_brain: failed to allocate brain structure");
         return NULL;
     }
 
@@ -383,7 +383,7 @@ brain_t allocate_brain(void)
     brain->input_size = 0;
 
     if (nimcp_platform_mutex_init(&brain->cache_mutex, false) != 0) {
-        set_error("Failed to initialize cache mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "allocate_brain: failed to initialize cache mutex");
         nimcp_free(brain);
         return NULL;
     }
@@ -452,7 +452,7 @@ adaptive_network_t create_brain_network(uint32_t num_inputs, uint32_t num_output
 bool init_output_labels(brain_t brain, uint32_t num_outputs)
 {
     if (!brain) {
-        set_error("NULL brain pointer in init_output_labels");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_output_labels: brain is NULL");
         return false;
     }
     if (num_outputs == 0) {
@@ -462,7 +462,7 @@ bool init_output_labels(brain_t brain, uint32_t num_outputs)
     }
     brain->output_labels = nimcp_calloc(num_outputs, sizeof(char*));
     if (!brain->output_labels) {
-        set_error("Failed to allocate output labels");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "init_output_labels: failed to allocate output labels");
         return false;
     }
     brain->num_output_labels = 0;
@@ -476,6 +476,7 @@ bool init_output_labels(brain_t brain, uint32_t num_outputs)
 bool init_attention_subsystem(brain_t brain)
 {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "init_attention_subsystem: brain is NULL");
         return false;
     }
 
@@ -492,7 +493,7 @@ bool init_attention_subsystem(brain_t brain)
 
     brain->multihead_attention = multihead_attention_create(&attn_config);
     if (!brain->multihead_attention) {
-        set_error("Failed to create multihead attention system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "init_attention_subsystem: failed to create attention");
         return false;
     }
 

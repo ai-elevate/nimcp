@@ -521,7 +521,7 @@ nimcp_pattern_db_t nimcp_pattern_db_create(const nimcp_pattern_db_config_t* conf
 
     nimcp_pattern_db_t db = calloc(1, sizeof(struct nimcp_pattern_db_impl));
     if (!db) {
-        LOG_MODULE_ERROR("pattern_db", "Failed to allocate pattern database");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_pattern_db_create: failed to allocate database");
         return NULL;
     }
 
@@ -540,6 +540,7 @@ nimcp_pattern_db_t nimcp_pattern_db_create(const nimcp_pattern_db_config_t* conf
 
     db->patterns = calloc(capacity, sizeof(pattern_slot_t));
     if (!db->patterns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_pattern_db_create: failed to allocate patterns array");
         free(db);
         return NULL;
     }
@@ -553,6 +554,7 @@ nimcp_pattern_db_t nimcp_pattern_db_create(const nimcp_pattern_db_config_t* conf
 
     // Initialize synchronization
     if (pthread_rwlock_init(&db->write_lock, NULL) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_pattern_db_create: failed to init rwlock");
         free(db->patterns);
         free(db);
         return NULL;

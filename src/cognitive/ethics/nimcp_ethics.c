@@ -378,11 +378,13 @@ static void bio_broadcast_ethics_response(ethics_engine_t engine,
 ethics_engine_t ethics_engine_create(const ethics_config_t* config)
 {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ethics_engine_create: config is NULL");
         return NULL;
     }
 
     ethics_engine_t engine = nimcp_calloc(1, sizeof(struct ethics_engine_struct));
     if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ethics_engine_create: failed to allocate engine");
         return NULL;
     }
 
@@ -390,6 +392,7 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
     init_buffer_pool(&engine->buffer_pool);
     engine->policy_table = create_policy_hash_table();
     if (!engine->policy_table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ethics_engine_create: failed to create policy_table");
         nimcp_free(engine);
         return NULL;
     }
@@ -398,6 +401,7 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
     // Create neural networks
     engine->golden_rule_evaluator = create_golden_rule_network(config->action_feature_size);
     if (!engine->golden_rule_evaluator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ethics_engine_create: failed to create golden_rule_evaluator");
         hash_table_destroy(engine->policy_table);
         nimcp_free(engine);
         return NULL;
@@ -405,6 +409,7 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
 
     engine->empathy_net = create_empathy_network();
     if (!engine->empathy_net) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ethics_engine_create: failed to create empathy_net");
         brain_destroy(engine->golden_rule_evaluator);
         hash_table_destroy(engine->policy_table);
         nimcp_free(engine);
@@ -413,6 +418,7 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
 
     // Allocate storage
     if (!allocate_policy_storage(engine)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ethics_engine_create: failed to allocate policy_storage");
         empathy_network_destroy(engine->empathy_net);
         brain_destroy(engine->golden_rule_evaluator);
         hash_table_destroy(engine->policy_table);
@@ -420,6 +426,7 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
         return NULL;
     }
     if (!allocate_violation_storage(engine)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ethics_engine_create: failed to allocate violation_storage");
         nimcp_free(engine->policies);
         empathy_network_destroy(engine->empathy_net);
         brain_destroy(engine->golden_rule_evaluator);
@@ -430,6 +437,7 @@ ethics_engine_t ethics_engine_create(const ethics_config_t* config)
 
     // Initialize incident logging (NIMCP 2.5.1)
     if (!ethics_init_incident_logging(engine)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "ethics_engine_create: failed to init incident_logging");
         nimcp_free(engine->violations);
         nimcp_free(engine->policies);
         empathy_network_destroy(engine->empathy_net);

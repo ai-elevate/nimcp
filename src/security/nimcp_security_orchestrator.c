@@ -385,6 +385,7 @@ security_orchestrator_t security_orch_create(const security_orch_config_t* confi
 {
     security_orchestrator_t orch = nimcp_calloc(1, sizeof(*orch));
     if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_orch_create: failed to allocate orchestrator");
         return NULL;
     }
 
@@ -399,6 +400,7 @@ security_orchestrator_t security_orch_create(const security_orch_config_t* confi
     mutex_attr_t attr = { .type = MUTEX_TYPE_RECURSIVE };
     orch->mutex = nimcp_mutex_create(&attr);
     if (!orch->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_orch_create: failed to create mutex");
         nimcp_free(orch);
         return NULL;
     }
@@ -410,6 +412,7 @@ security_orchestrator_t security_orch_create(const security_orch_config_t* confi
             sizeof(security_event_queue_entry_t)
         );
         if (!orch->event_queue) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_orch_create: failed to allocate event queue");
             nimcp_mutex_free(orch->mutex);
             nimcp_free(orch);
             return NULL;

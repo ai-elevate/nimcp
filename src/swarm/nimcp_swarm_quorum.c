@@ -267,7 +267,7 @@ nimcp_swarm_quorum_t* nimcp_swarm_quorum_create(
         1, sizeof(nimcp_swarm_quorum_t)
     );
     if (!quorum) {
-        LOG_ERROR("Failed to allocate quorum system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_swarm_quorum_create: failed to allocate quorum system");
         return NULL;
     }
 
@@ -302,7 +302,7 @@ nimcp_swarm_quorum_t* nimcp_swarm_quorum_create(
         sizeof(nimcp_drone_commitment_t)
     );
     if (!quorum->commitments) {
-        LOG_ERROR("Failed to allocate commitment array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_swarm_quorum_create: failed to allocate commitment array");
         nimcp_free(quorum);
         return NULL;
     }
@@ -314,7 +314,7 @@ nimcp_swarm_quorum_t* nimcp_swarm_quorum_create(
         sizeof(nimcp_quorum_decision_t)
     );
     if (!quorum->decisions) {
-        LOG_ERROR("Failed to allocate decision array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_swarm_quorum_create: failed to allocate decision array");
         nimcp_free(quorum->commitments);
         nimcp_free(quorum);
         return NULL;
@@ -323,7 +323,7 @@ nimcp_swarm_quorum_t* nimcp_swarm_quorum_create(
     /* Create mutex */
     quorum->mutex = nimcp_platform_mutex_create();
     if (!quorum->mutex) {
-        LOG_ERROR("Failed to create mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_swarm_quorum_create: failed to create mutex");
         nimcp_free(quorum->decisions);
         nimcp_free(quorum->commitments);
         nimcp_free(quorum);

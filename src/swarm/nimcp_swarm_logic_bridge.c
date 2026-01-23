@@ -363,7 +363,7 @@ swarm_logic_bridge_t* swarm_logic_bridge_create(const swarm_logic_bridge_config_
     // Allocate bridge
     swarm_logic_bridge_t* bridge = (swarm_logic_bridge_t*)nimcp_calloc(1, sizeof(swarm_logic_bridge_t));
     if (!bridge) {
-        LOG_ERROR("Failed to allocate logic bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_logic_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -379,7 +379,7 @@ swarm_logic_bridge_t* swarm_logic_bridge_create(const swarm_logic_bridge_config_
     bridge->rules = (swarm_logic_rule_t*)nimcp_calloc(bridge->rule_capacity,
                                                        sizeof(swarm_logic_rule_t));
     if (!bridge->rules) {
-        LOG_ERROR("Failed to allocate rules array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_logic_bridge_create: failed to allocate rules array");
         nimcp_free(bridge);
         return NULL;
     }
@@ -389,7 +389,7 @@ swarm_logic_bridge_t* swarm_logic_bridge_create(const swarm_logic_bridge_config_
     bridge->cache = (cache_entry_t*)nimcp_calloc(bridge->cache_size,
                                                   sizeof(cache_entry_t));
     if (!bridge->cache) {
-        LOG_ERROR("Failed to allocate cache");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_logic_bridge_create: failed to allocate cache");
         nimcp_free(bridge->rules);
         nimcp_free(bridge);
         return NULL;
@@ -398,7 +398,7 @@ swarm_logic_bridge_t* swarm_logic_bridge_create(const swarm_logic_bridge_config_
     // Create mutex
     if (bridge_base_init(&bridge->base, 0, "swarm_logic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
-        LOG_ERROR("Failed to create mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_logic_bridge_create: failed to create mutex");
         nimcp_free(bridge->cache);
         nimcp_free(bridge->rules);
         nimcp_free(bridge);
@@ -418,7 +418,7 @@ swarm_logic_bridge_t* swarm_logic_bridge_create(const swarm_logic_bridge_config_
 
     bridge->logic_network = neural_logic_create(&logic_config);
     if (!bridge->logic_network) {
-        LOG_ERROR("Failed to create neural logic network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_logic_bridge_create: failed to create neural logic network");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge->cache);
         nimcp_free(bridge->rules);

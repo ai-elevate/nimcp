@@ -95,7 +95,10 @@ static void destroy_pathway(striatum_pathway_t* pathway) {
 //=============================================================================
 
 void striatum_default_config(striatum_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "striatum_default_config: config is NULL");
+        return;
+    }
 
     config->neurons_per_pathway = STRIATUM_DEFAULT_NEURONS;
     config->num_actions = 8;
@@ -116,7 +119,7 @@ striatum_t* striatum_create(const striatum_config_t* config) {
 
     striatum_t* striatum = nimcp_malloc(sizeof(striatum_t));
     if (!striatum) {
-        NIMCP_LOGGING_ERROR("Failed to allocate striatum");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "striatum_create: failed to allocate striatum");
         return NULL;
     }
     memset(striatum, 0, sizeof(striatum_t));
@@ -128,7 +131,7 @@ striatum_t* striatum_create(const striatum_config_t* config) {
     if (init_pathway(&striatum->direct, MSN_TYPE_D1,
                      cfg.neurons_per_pathway, cfg.num_actions,
                      cfg.d1_dopamine_gain, cfg.baseline_firing) != 0) {
-        NIMCP_LOGGING_ERROR("Failed to initialize D1 pathway");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "striatum_create: failed to initialize D1 pathway");
         nimcp_free(striatum);
         return NULL;
     }
@@ -137,7 +140,7 @@ striatum_t* striatum_create(const striatum_config_t* config) {
     if (init_pathway(&striatum->indirect, MSN_TYPE_D2,
                      cfg.neurons_per_pathway, cfg.num_actions,
                      cfg.d2_dopamine_gain, cfg.baseline_firing) != 0) {
-        NIMCP_LOGGING_ERROR("Failed to initialize D2 pathway");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "striatum_create: failed to initialize D2 pathway");
         destroy_pathway(&striatum->direct);
         nimcp_free(striatum);
         return NULL;
@@ -165,7 +168,7 @@ striatum_t* striatum_create(const striatum_config_t* config) {
     /* Initialize mutex */
     striatum->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!striatum->mutex) {
-        NIMCP_LOGGING_ERROR("Failed to allocate striatum mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "striatum_create: failed to allocate mutex");
         destroy_pathway(&striatum->direct);
         destroy_pathway(&striatum->indirect);
         if (striatum->inhibition_matrix) nimcp_free(striatum->inhibition_matrix);

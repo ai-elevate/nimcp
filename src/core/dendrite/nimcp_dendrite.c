@@ -121,14 +121,14 @@ static float calculate_attenuation(dendrite_t* dendrite, uint32_t segment_id);
 dendrite_t* dendrite_create(dendrite_config_t* config) {
     // Guard: NULL config
     if (!config) {
-        LOG_ERROR(LOG_MODULE, "dendrite_create: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_create: config is NULL");
         return NULL;
     }
 
     // Allocate dendrite
     dendrite_t* dendrite = (dendrite_t*)nimcp_calloc(1, sizeof(dendrite_t));
     if (!dendrite) {
-        LOG_ERROR(LOG_MODULE, "dendrite_create: Failed to allocate dendrite");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendrite_create: failed to allocate dendrite");
         return NULL;
     }
 
@@ -236,14 +236,13 @@ bool dendrite_create_segments(
 ) {
     // Guard: NULL inputs
     if (!dendrite || !segment_configs || num_segments == 0) {
-        LOG_ERROR(LOG_MODULE, "dendrite_create_segments: Invalid inputs");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendrite_create_segments: invalid inputs (NULL or zero segments)");
         return false;
     }
 
     // Guard: Already has segments
     if (dendrite->segments) {
-        LOG_ERROR(LOG_MODULE, "dendrite_create_segments: Dendrite %u already has segments",
-                  dendrite->id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "dendrite_create_segments: dendrite already has segments");
         return false;
     }
 
@@ -253,7 +252,7 @@ bool dendrite_create_segments(
         sizeof(dendritic_segment_t)
     );
     if (!dendrite->segments) {
-        LOG_ERROR(LOG_MODULE, "dendrite_create_segments: Failed to allocate segments");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendrite_create_segments: failed to allocate segments");
         return false;
     }
 
@@ -338,14 +337,13 @@ uint32_t dendrite_add_branch(
 ) {
     // Guard: NULL dendrite
     if (!dendrite) {
-        LOG_ERROR(LOG_MODULE, "dendrite_add_branch: NULL dendrite");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_add_branch: dendrite is NULL");
         return UINT32_MAX;
     }
 
     // Guard: Invalid parent
     if (parent_segment_id >= dendrite->num_segments) {
-        LOG_ERROR(LOG_MODULE, "dendrite_add_branch: Invalid parent segment %u",
-                  parent_segment_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendrite_add_branch: invalid parent segment id");
         return UINT32_MAX;
     }
 
@@ -353,8 +351,7 @@ uint32_t dendrite_add_branch(
 
     // Guard: Parent has too many children
     if (parent->num_children >= NIMCP_DENDRITE_MAX_CHILDREN) {
-        LOG_ERROR(LOG_MODULE, "dendrite_add_branch: Parent segment %u has max children",
-                  parent_segment_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "dendrite_add_branch: parent has max children");
         return UINT32_MAX;
     }
 
@@ -368,7 +365,7 @@ uint32_t dendrite_add_branch(
         new_count * sizeof(dendritic_segment_t)
     );
     if (!new_segments) {
-        LOG_ERROR(LOG_MODULE, "dendrite_add_branch: Failed to reallocate segments");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendrite_add_branch: failed to reallocate segments");
         return UINT32_MAX;
     }
     dendrite->segments = new_segments;
@@ -426,7 +423,7 @@ uint32_t dendrite_add_spine(
 ) {
     // Guard: NULL dendrite
     if (!dendrite) {
-        LOG_ERROR(LOG_MODULE, "dendrite_add_spine: NULL dendrite");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_add_spine: dendrite is NULL");
         return UINT32_MAX;
     }
 

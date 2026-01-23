@@ -73,9 +73,13 @@ static bool matches_query(const nimcp_audit_event_t* event, const nimcp_audit_qu
 
 nimcp_audit_log_t* nimcp_audit_create(void) {
     nimcp_audit_log_t* audit = calloc(1, sizeof(nimcp_audit_log_t));
-    if (!audit) return NULL;
+    if (!audit) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_audit_create: failed to allocate audit log");
+        return NULL;
+    }
 
     if (nimcp_mutex_init(&audit->lock, NULL) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_audit_create: failed to init mutex");
         free(audit);
         return NULL;
     }
@@ -87,7 +91,10 @@ nimcp_result_t nimcp_audit_init(
     nimcp_audit_log_t* audit,
     const nimcp_audit_config_t* config
 ) {
-    if (!audit || !config) return NIMCP_INVALID_PARAM;
+    if (!audit || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nimcp_audit_init: audit or config is NULL");
+        return NIMCP_INVALID_PARAM;
+    }
     if (audit->initialized) return NIMCP_INVALID_STATE;
 
     nimcp_mutex_lock(&audit->lock);
@@ -106,6 +113,7 @@ nimcp_result_t nimcp_audit_init(
     audit->capacity = audit->config.max_memory_entries;
     audit->events = calloc(audit->capacity, sizeof(nimcp_audit_event_t));
     if (!audit->events) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_audit_init: failed to allocate events buffer");
         nimcp_mutex_unlock(&audit->lock);
         return NIMCP_NO_MEMORY;
     }
@@ -115,6 +123,7 @@ nimcp_result_t nimcp_audit_init(
         audit->config.log_file_path) {
         audit->log_file = fopen(audit->config.log_file_path, "a");
         if (!audit->log_file) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_IO, "nimcp_audit_init: failed to open log file");
             free(audit->events);
             audit->events = NULL;
             nimcp_mutex_unlock(&audit->lock);

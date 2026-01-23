@@ -119,17 +119,25 @@ dragonfly_interceptor_t* dragonfly_interceptor_create(const intercept_config_t* 
     intercept_config_t cfg = config ? *config : intercept_default_config();
 
     if (!intercept_validate_config(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "dragonfly_interceptor_create: invalid configuration");
         return NULL;
     }
 
     dragonfly_interceptor_t* inter = nimcp_calloc(1, sizeof(dragonfly_interceptor_t));
-    if (!inter) return NULL;
+    if (!inter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "dragonfly_interceptor_create: failed to allocate interceptor");
+        return NULL;
+    }
 
     inter->config = cfg;
     inter->creation_time_us = get_time_us();
 
     inter->mutex = nimcp_mutex_create(NULL);
     if (!inter->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "dragonfly_interceptor_create: failed to create mutex");
         nimcp_free(inter);
         return NULL;
     }

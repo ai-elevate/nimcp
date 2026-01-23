@@ -46,13 +46,13 @@ rate_fep_bridge_t* rate_fep_create(
     fep_system_t* fep_system
 ) {
     if (!limiter || !fep_system) {
-        NIMCP_LOGGING_ERROR("Rate FEP bridge: NULL pointers");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rate_fep_create: limiter or fep_system is NULL");
         return NULL;
     }
 
     rate_fep_bridge_t* bridge = (rate_fep_bridge_t*)nimcp_malloc(sizeof(rate_fep_bridge_t));
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Rate FEP bridge: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "rate_fep_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -67,9 +67,13 @@ rate_fep_bridge_t* rate_fep_create(
     bridge->fep_system = fep_system;
     bridge->limiter = limiter;
 
-    if (bridge_base_init(&bridge->base, 0, "rate_limiter_fep") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "rate_limiter_fep") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "rate_fep_create: failed to init bridge base");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
-        NIMCP_LOGGING_ERROR("Rate FEP bridge: mutex creation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rate_fep_create: mutex creation failed");
         nimcp_free(bridge);
         return NULL;
     }

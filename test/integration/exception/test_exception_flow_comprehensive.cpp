@@ -2678,6 +2678,457 @@ TEST_F(ExceptionFlowTest, FilterByCategoryAndSeverity) {
 }
 
 //=============================================================================
+// 20. Exception Flow Through Async Bridges
+//=============================================================================
+
+/**
+ * @brief Simulated async bridge operation that throws exceptions
+ */
+static nimcp_error_t async_bridge_operation(int bridge_id, bool should_fail) {
+    if (should_fail) {
+        nimcp_exception_t* ex = nimcp_exception_create(
+            NIMCP_ERROR_OPERATION_FAILED,
+            EXCEPTION_SEVERITY_ERROR,
+            __FILE__, __LINE__, __func__,
+            "Async bridge %d operation failed", bridge_id);
+        if (ex) {
+            nimcp_exception_set_context(ex, "bridge_id", std::to_string(bridge_id).c_str());
+            nimcp_exception_set_context(ex, "async", "true");
+            nimcp_exception_present_to_immune(ex, NULL);
+            nimcp_exception_dispatch(ex);
+            nimcp_exception_unref(ex);
+        }
+        return NIMCP_ERROR_OPERATION_FAILED;
+    }
+    return NIMCP_SUCCESS;
+}
+
+TEST_F(ExceptionFlowTest, AsyncBridgeExceptionPropagation) {
+    // WHAT: Test exception propagation through async bridge operations
+    // WHY:  Async bridges must properly propagate exceptions to handlers
+    // HOW:  Simulate async bridge failure and verify exception reaches handlers
+
+    register_tracking_handler("async_bridge_test", 100);
+
+    // Simulate multiple async bridge operations
+    std::vector<std::thread> bridge_threads;
+    std::atomic<int> failures{0};
+
+    for (int i = 0; i < 5; i++) {
+        bridge_threads.emplace_back([&, i]() {
+            nimcp_error_t result = async_bridge_operation(i, i % 2 == 0);
+            if (result != NIMCP_SUCCESS) {
+                failures++;
+            }
+        });
+    }
+
+    for (auto& t : bridge_threads) {
+        t.join();
+    }
+
+    // Every other bridge should have failed (0, 2, 4)
+    EXPECT_EQ(failures.load(), 3);
+    // Handler should have been called for each failure
+    EXPECT_GE(handler_call_count.load(), 3);
+}
+
+TEST_F(ExceptionFlowTest, AsyncBridgeConcurrentExceptions) {
+    // WHAT: Test concurrent exception handling in multiple async bridges
+    // WHY:  Ensure thread-safety of exception system under concurrent access
+    // HOW:  Launch many concurrent bridge operations that throw
+
+    register_tracking_handler("concurrent_bridge_test", 100);
+
+    const int NUM_BRIDGES = 20;
+    const int ITERATIONS = 10;
+    std::atomic<int> total_exceptions{0};
+
+    std::vector<std::thread> threads;
+    for (int b = 0; b < NUM_BRIDGES; b++) {
+        threads.emplace_back([&, b]() {
+            for (int i = 0; i < ITERATIONS; i++) {
+                nimcp_exception_t* ex = nimcp_exception_create(
+                    NIMCP_ERROR_THREAD_SYNC,
+                    EXCEPTION_SEVERITY_WARNING,
+                    __FILE__, __LINE__, __func__,
+                    "Bridge %d iteration %d sync error", b, i);
+                if (ex) {
+                    nimcp_exception_dispatch(ex);
+                    nimcp_exception_unref(ex);
+                    total_exceptions++;
+                }
+            }
+        });
+    }
+
+    for (auto& t : threads) {
+        t.join();
+    }
+
+    EXPECT_EQ(total_exceptions.load(), NUM_BRIDGES * ITERATIONS);
+    EXPECT_EQ(handler_call_count.load(), total_exceptions.load());
+}
+
+TEST_F(ExceptionFlowTest, AsyncBridgeExceptionWithTimeout) {
+    // WHAT: Test exception handling with timeout in async bridge
+    // WHY:  Bridges may throw timeout exceptions during async operations
+    // HOW:  Simulate timeout scenario and verify exception handling
+
+    register_tracking_handler("timeout_bridge_test", 100);
+
+    std::atomic<bool> timed_out{false};
+
+    std::thread bridge_thread([&]() {
+        // Simulate operation that times out
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+
+        nimcp_exception_t* ex = nimcp_exception_create(
+            NIMCP_ERROR_TIMEOUT,
+            EXCEPTION_SEVERITY_WARNING,
+            __FILE__, __LINE__, __func__,
+            "Bridge operation timed out after 10ms");
+        if (ex) {
+            nimcp_exception_set_context(ex, "timeout_ms", "10");
+            nimcp_exception_dispatch(ex);
+            nimcp_exception_unref(ex);
+            timed_out = true;
+        }
+    });
+
+    bridge_thread.join();
+
+    EXPECT_TRUE(timed_out.load());
+    EXPECT_EQ(handler_call_count.load(), 1);
+    EXPECT_EQ(last_exception_code.load(), NIMCP_ERROR_TIMEOUT);
+}
+
+//=============================================================================
+// 21. Exception Flow Through Swarm Modules
+//=============================================================================
+
+/**
+ * @brief Simulated swarm agent operation with exception handling
+ */
+static nimcp_error_t swarm_agent_operation(int agent_id, bool should_fail) {
+    if (should_fail) {
+        nimcp_exception_t* ex = nimcp_exception_create(
+            NIMCP_ERROR_OPERATION_FAILED,
+            EXCEPTION_SEVERITY_ERROR,
+            __FILE__, __LINE__, __func__,
+            "Swarm agent %d operation failed", agent_id);
+        if (ex) {
+            nimcp_exception_set_context(ex, "agent_id", std::to_string(agent_id).c_str());
+            nimcp_exception_set_context(ex, "swarm_type", "collective");
+            nimcp_exception_present_to_immune(ex, NULL);
+            nimcp_exception_dispatch(ex);
+            nimcp_exception_unref(ex);
+        }
+        return NIMCP_ERROR_OPERATION_FAILED;
+    }
+    return NIMCP_SUCCESS;
+}
+
+TEST_F(ExceptionFlowTest, SwarmAgentExceptionPropagation) {
+    // WHAT: Test exception flow through swarm agent operations
+    // WHY:  Swarm modules must handle exceptions from individual agents
+    // HOW:  Simulate multiple agent failures and verify exception handling
+
+    register_tracking_handler("swarm_agent_test", 100);
+
+    const int NUM_AGENTS = 10;
+    std::atomic<int> agent_failures{0};
+    std::vector<std::thread> agent_threads;
+
+    for (int i = 0; i < NUM_AGENTS; i++) {
+        agent_threads.emplace_back([&, i]() {
+            // Agents 3, 6, 9 will fail
+            nimcp_error_t result = swarm_agent_operation(i, i % 3 == 0 && i > 0);
+            if (result != NIMCP_SUCCESS) {
+                agent_failures++;
+            }
+        });
+    }
+
+    for (auto& t : agent_threads) {
+        t.join();
+    }
+
+    EXPECT_EQ(agent_failures.load(), 3);  // Agents 3, 6, 9
+    EXPECT_GE(handler_call_count.load(), 3);
+}
+
+TEST_F(ExceptionFlowTest, SwarmCollectiveExceptionAggregation) {
+    // WHAT: Test aggregation of exceptions from multiple swarm agents
+    // WHY:  Swarm operations may need to collect and report multiple failures
+    // HOW:  Create aggregate exception from multiple agent failures
+
+    register_tracking_handler("swarm_aggregate_test", 100);
+
+    // Create aggregate exception for swarm failures
+    nimcp_aggregate_exception_t* agg = nimcp_aggregate_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_SEVERE,
+        __FILE__, __LINE__, __func__,
+        "Swarm collective operation failed with multiple agent errors");
+    ASSERT_NE(agg, nullptr);
+
+    // Add individual agent exceptions
+    for (int i = 0; i < 5; i++) {
+        nimcp_exception_t* agent_ex = nimcp_exception_create(
+            NIMCP_ERROR_OPERATION_FAILED,
+            EXCEPTION_SEVERITY_WARNING,
+            __FILE__, __LINE__, __func__,
+            "Agent %d failed in swarm operation", i);
+        ASSERT_NE(agent_ex, nullptr);
+        nimcp_exception_set_context(agent_ex, "agent_id", std::to_string(i).c_str());
+        nimcp_aggregate_exception_add(agg, agent_ex);
+    }
+
+    EXPECT_EQ(nimcp_aggregate_exception_count(agg), 5u);
+
+    // Dispatch aggregate
+    nimcp_exception_dispatch((nimcp_exception_t*)agg);
+
+    EXPECT_EQ(handler_call_count.load(), 1);  // Single aggregate dispatch
+    EXPECT_EQ(last_exception_code.load(), NIMCP_ERROR_OPERATION_FAILED);
+
+    nimcp_exception_unref((nimcp_exception_t*)agg);
+}
+
+TEST_F(ExceptionFlowTest, SwarmConsensusExceptionHandling) {
+    // WHAT: Test exception handling during swarm consensus operations
+    // WHY:  Consensus failures are critical for swarm decision making
+    // HOW:  Simulate consensus failure and verify exception chain
+
+    register_tracking_handler("consensus_test", 100);
+
+    // Simulate consensus failure
+    nimcp_exception_t* consensus_ex = nimcp_exception_create(
+        NIMCP_ERROR_THREAD_SYNC,
+        EXCEPTION_SEVERITY_SEVERE,
+        __FILE__, __LINE__, __func__,
+        "Swarm consensus failed: quorum not reached");
+    ASSERT_NE(consensus_ex, nullptr);
+
+    nimcp_exception_set_context(consensus_ex, "required_quorum", "7");
+    nimcp_exception_set_context(consensus_ex, "achieved_votes", "4");
+    nimcp_exception_set_context(consensus_ex, "total_agents", "10");
+
+    // Create cause chain - individual agent communication failures
+    nimcp_exception_t* comm_failure = nimcp_exception_create(
+        NIMCP_ERROR_NETWORK_IO,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Agent communication timeout during consensus round");
+    ASSERT_NE(comm_failure, nullptr);
+
+    nimcp_exception_set_cause(consensus_ex, comm_failure);
+    nimcp_exception_present_to_immune(consensus_ex, NULL);
+    nimcp_exception_dispatch(consensus_ex);
+
+    EXPECT_EQ(handler_call_count.load(), 1);
+    EXPECT_EQ(last_exception_code.load(), NIMCP_ERROR_THREAD_SYNC);
+
+    // Verify cause chain
+    nimcp_exception_t* cause = nimcp_exception_get_cause(consensus_ex);
+    ASSERT_NE(cause, nullptr);
+    EXPECT_EQ(cause->code, NIMCP_ERROR_NETWORK_IO);
+
+    nimcp_exception_unref(consensus_ex);
+}
+
+//=============================================================================
+// 22. Exception Flow Through Cognitive Modules
+//=============================================================================
+
+/**
+ * @brief Simulated cognitive module operation
+ */
+static nimcp_error_t cognitive_module_operation(
+    const char* module_name, int operation_id, bool should_fail) {
+    if (should_fail) {
+        nimcp_exception_t* ex = nimcp_exception_create(
+            NIMCP_ERROR_WORKING_MEMORY,
+            EXCEPTION_SEVERITY_ERROR,
+            __FILE__, __LINE__, __func__,
+            "Cognitive %s module operation %d failed", module_name, operation_id);
+        if (ex) {
+            nimcp_exception_set_context(ex, "module", module_name);
+            nimcp_exception_set_context(ex, "operation_id",
+                std::to_string(operation_id).c_str());
+            nimcp_exception_present_to_immune(ex, NULL);
+            nimcp_exception_dispatch(ex);
+            nimcp_exception_unref(ex);
+        }
+        return NIMCP_ERROR_WORKING_MEMORY;
+    }
+    return NIMCP_SUCCESS;
+}
+
+TEST_F(ExceptionFlowTest, CognitiveModuleExceptionPropagation) {
+    // WHAT: Test exception propagation through cognitive modules
+    // WHY:  Cognitive modules must properly report and handle errors
+    // HOW:  Simulate failures in different cognitive modules
+
+    register_tracking_handler("cognitive_test", 100);
+
+    const char* modules[] = {
+        "working_memory", "attention", "executive", "salience", "episodic"
+    };
+
+    for (int i = 0; i < 5; i++) {
+        handler_call_count = 0;
+        last_exception_code = NIMCP_SUCCESS;
+
+        nimcp_error_t result = cognitive_module_operation(modules[i], i, true);
+
+        EXPECT_EQ(result, NIMCP_ERROR_WORKING_MEMORY);
+        EXPECT_EQ(handler_call_count.load(), 1);
+        EXPECT_EQ(last_exception_code.load(), NIMCP_ERROR_WORKING_MEMORY);
+    }
+}
+
+TEST_F(ExceptionFlowTest, CognitiveChainExceptionFlow) {
+    // WHAT: Test exception flow through cognitive processing chain
+    // WHY:  Cognitive operations often chain through multiple modules
+    // HOW:  Simulate a processing chain with exception at different stages
+
+    register_tracking_handler("cognitive_chain_test", 100);
+
+    // Simulate: Input -> Attention -> Working Memory -> Executive -> Output
+    // Failure at Working Memory stage
+
+    // Stage 1: Attention (success)
+    nimcp_error_t result = cognitive_module_operation("attention", 1, false);
+    EXPECT_EQ(result, NIMCP_SUCCESS);
+
+    // Stage 2: Working Memory (failure)
+    result = cognitive_module_operation("working_memory", 2, true);
+    EXPECT_EQ(result, NIMCP_ERROR_WORKING_MEMORY);
+
+    // Exception should have been dispatched
+    EXPECT_EQ(handler_call_count.load(), 1);
+    EXPECT_EQ(last_exception_code.load(), NIMCP_ERROR_WORKING_MEMORY);
+}
+
+TEST_F(ExceptionFlowTest, CognitiveExceptionWithEmotionalTagging) {
+    // WHAT: Test cognitive exception with emotional context
+    // WHY:  Cognitive errors may have emotional significance for learning
+    // HOW:  Create cognitive exception with emotional tagging context
+
+    register_tracking_handler("emotional_test", 100);
+
+    nimcp_exception_t* ex = nimcp_exception_create(
+        NIMCP_ERROR_EMOTIONAL_TAGGING,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Emotional tagging failed for memory encoding");
+    ASSERT_NE(ex, nullptr);
+
+    nimcp_exception_set_context(ex, "emotion_type", "fear");
+    nimcp_exception_set_context(ex, "valence", "-0.8");
+    nimcp_exception_set_context(ex, "arousal", "0.9");
+    nimcp_exception_set_context(ex, "memory_id", "mem_12345");
+
+    nimcp_exception_present_to_immune(ex, NULL);
+    nimcp_exception_dispatch(ex);
+
+    EXPECT_EQ(handler_call_count.load(), 1);
+    EXPECT_EQ(last_exception_code.load(), NIMCP_ERROR_EMOTIONAL_TAGGING);
+    EXPECT_EQ(last_category.load(), EXCEPTION_CATEGORY_COGNITIVE);
+
+    // Verify context preservation
+    EXPECT_STREQ(nimcp_exception_get_context(ex, "emotion_type"), "fear");
+    EXPECT_STREQ(nimcp_exception_get_context(ex, "valence"), "-0.8");
+
+    nimcp_exception_unref(ex);
+}
+
+TEST_F(ExceptionFlowTest, CognitiveExecutiveControlException) {
+    // WHAT: Test executive control exception handling
+    // WHY:  Executive control failures affect high-level cognitive operations
+    // HOW:  Simulate executive control failure with proper context
+
+    register_tracking_handler("executive_test", 100);
+
+    nimcp_exception_t* ex = nimcp_exception_create(
+        NIMCP_ERROR_EXECUTIVE_CONTROL,
+        EXCEPTION_SEVERITY_SEVERE,
+        __FILE__, __LINE__, __func__,
+        "Executive control failure: goal conflict detected");
+    ASSERT_NE(ex, nullptr);
+
+    nimcp_exception_set_context(ex, "active_goals", "3");
+    nimcp_exception_set_context(ex, "conflicting_goals", "goal_A,goal_B");
+    nimcp_exception_set_context(ex, "resolution_strategy", "priority_based");
+
+    nimcp_exception_present_to_immune(ex, NULL);
+    nimcp_exception_dispatch(ex);
+
+    EXPECT_EQ(handler_call_count.load(), 1);
+    EXPECT_EQ(last_exception_code.load(), NIMCP_ERROR_EXECUTIVE_CONTROL);
+    EXPECT_GE(last_severity.load(), EXCEPTION_SEVERITY_SEVERE);
+
+    nimcp_exception_unref(ex);
+}
+
+TEST_F(ExceptionFlowTest, CognitivePredictiveProcessingException) {
+    // WHAT: Test predictive processing exception
+    // WHY:  Predictive coding failures need special handling
+    // HOW:  Create exception for prediction error scenario
+
+    register_tracking_handler("predictive_test", 100);
+
+    nimcp_exception_t* ex = nimcp_exception_create(
+        NIMCP_ERROR_PREDICTIVE,
+        EXCEPTION_SEVERITY_WARNING,
+        __FILE__, __LINE__, __func__,
+        "Prediction error exceeded threshold");
+    ASSERT_NE(ex, nullptr);
+
+    nimcp_exception_set_context(ex, "prediction_error", "0.85");
+    nimcp_exception_set_context(ex, "threshold", "0.5");
+    nimcp_exception_set_context(ex, "model_id", "pred_model_7");
+    nimcp_exception_set_context(ex, "layer", "sensory");
+
+    nimcp_exception_dispatch(ex);
+
+    EXPECT_EQ(handler_call_count.load(), 1);
+    EXPECT_EQ(last_exception_code.load(), NIMCP_ERROR_PREDICTIVE);
+    EXPECT_EQ(last_category.load(), EXCEPTION_CATEGORY_COGNITIVE);
+
+    nimcp_exception_unref(ex);
+}
+
+TEST_F(ExceptionFlowTest, CognitiveMetaLearningException) {
+    // WHAT: Test meta-learning exception handling
+    // WHY:  Meta-learning failures affect adaptation capabilities
+    // HOW:  Simulate meta-learning failure scenario
+
+    register_tracking_handler("metalearning_test", 100);
+
+    nimcp_exception_t* ex = nimcp_exception_create(
+        NIMCP_ERROR_META_LEARNING,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Meta-learning adaptation failed");
+    ASSERT_NE(ex, nullptr);
+
+    nimcp_exception_set_context(ex, "learning_rate_delta", "-0.001");
+    nimcp_exception_set_context(ex, "adaptation_cycles", "100");
+    nimcp_exception_set_context(ex, "convergence_status", "diverging");
+
+    nimcp_exception_present_to_immune(ex, NULL);
+    nimcp_exception_dispatch(ex);
+
+    EXPECT_EQ(handler_call_count.load(), 1);
+    EXPECT_EQ(last_exception_code.load(), NIMCP_ERROR_META_LEARNING);
+
+    nimcp_exception_unref(ex);
+}
+
+//=============================================================================
 // Main Entry Point
 //=============================================================================
 

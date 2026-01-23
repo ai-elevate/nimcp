@@ -110,6 +110,7 @@ NimcpGraph* nimcp_graph_create(void)
     LOG_DEBUG("Entering nimcp_graph_create");
     NimcpGraph* graph = (NimcpGraph*) nimcp_malloc(sizeof(NimcpGraph));
     if (!graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_graph_create: failed to allocate graph");
         LOG_ERROR("nimcp_graph_create failed: returning error");
         return NULL;
     }
@@ -121,6 +122,7 @@ NimcpGraph* nimcp_graph_create(void)
 
     // Initialize mutex for thread safety (Monitor Pattern)
     if (nimcp_mutex_init(&graph->lock, NULL) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_graph_create: failed to initialize mutex");
         nimcp_free(graph);
         LOG_ERROR("nimcp_graph_create failed: returning error");
         return NULL;
@@ -129,6 +131,7 @@ NimcpGraph* nimcp_graph_create(void)
     // Allocate vertex array (zero-initialized for clean state)
     graph->vertices = (NimcpVertex*) nimcp_calloc(NIMCP_MAX_VERTICES, sizeof(NimcpVertex));
     if (!graph->vertices) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_graph_create: failed to allocate vertices array");
         nimcp_mutex_destroy(&graph->lock);
         nimcp_free(graph);
         LOG_ERROR("nimcp_graph_create failed: returning error");
@@ -138,6 +141,7 @@ NimcpGraph* nimcp_graph_create(void)
     // Allocate component tracking array
     graph->components = (uint32_t*) nimcp_malloc(NIMCP_MAX_VERTICES * sizeof(uint32_t));
     if (!graph->components) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_graph_create: failed to allocate components array");
         nimcp_free(graph->vertices);
         nimcp_mutex_destroy(&graph->lock);
         nimcp_free(graph);

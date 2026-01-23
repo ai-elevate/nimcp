@@ -41,6 +41,7 @@ snn_homeostatic_bridge_t* snn_homeostatic_bridge_create(
 ) {
     if (!config || !network || !controller || n_neurons == 0) {
         NIMCP_LOGGING_ERROR("Invalid parameters for SNN-Homeostatic bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_homeostatic_bridge_create: config/network/controller is NULL or n_neurons=0");
         return NULL;
     }
 
@@ -48,6 +49,7 @@ snn_homeostatic_bridge_t* snn_homeostatic_bridge_create(
         nimcp_malloc(sizeof(snn_homeostatic_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate SNN-Homeostatic bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_homeostatic_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -62,6 +64,7 @@ snn_homeostatic_bridge_t* snn_homeostatic_bridge_create(
         nimcp_malloc(sizeof(neuron_homeostatic_state_t) * n_neurons);
     if (!bridge->neuron_states) {
         NIMCP_LOGGING_ERROR("Failed to allocate neuron states");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_homeostatic_bridge_create: failed to allocate neuron_states");
         nimcp_free(bridge);
         return NULL;
     }

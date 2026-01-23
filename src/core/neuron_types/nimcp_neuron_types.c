@@ -104,7 +104,10 @@ static void rotate_coords(float x, float y, float theta_rad,
 
 float compute_lif_neuron(const lif_params_t* params, float input,
                          float state, float dt) {
-    if (!params) return state;
+    if (!params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_lif_neuron: params is NULL");
+        return state;
+    }
 
     /**
      * WHAT: Leaky Integrate-and-Fire neuron dynamics
@@ -136,6 +139,7 @@ void compute_izhikevich_neuron(const izh_params_t* params, float input,
                                float v, float u, float dt,
                                float* out_v, float* out_u) {
     if (!params || !out_v || !out_u) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compute_izhikevich_neuron: NULL param");
         if (out_v) *out_v = v;
         if (out_u) *out_u = u;
         return;

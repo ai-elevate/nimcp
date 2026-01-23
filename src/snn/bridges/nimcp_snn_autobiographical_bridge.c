@@ -83,6 +83,7 @@ snn_autobiographical_bridge_t* snn_autobiographical_bridge_create(
     /* Guard: Validate inputs */
     if (!config || !snn) {
         NIMCP_LOGGING_ERROR("Null parameters to snn_autobiographical_bridge_create");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_bridge_create: config/snn is NULL");
         return NULL;
     }
 
@@ -90,6 +91,7 @@ snn_autobiographical_bridge_t* snn_autobiographical_bridge_create(
     snn_autobiographical_bridge_t* bridge = nimcp_malloc(sizeof(snn_autobiographical_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate SNN-autobiographical bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_autobiographical_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -103,6 +105,7 @@ snn_autobiographical_bridge_t* snn_autobiographical_bridge_create(
     bridge->memories = nimcp_malloc(sizeof(snn_episodic_memory_t) * bridge->memory_capacity);
     if (!bridge->memories) {
         NIMCP_LOGGING_ERROR("Failed to allocate memory storage");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_autobiographical_bridge_create: failed to allocate memories");
         nimcp_free(bridge);
         return NULL;
     }

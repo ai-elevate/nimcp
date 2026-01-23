@@ -135,7 +135,10 @@ security_bio_bridge_t* security_bio_bridge_create(
     const security_bio_bridge_config_t* config
 ) {
     security_bio_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_bio_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     if (config) {
         bridge->config = *config;
@@ -147,6 +150,7 @@ security_bio_bridge_t* security_bio_bridge_create(
     bridge->subscriptions = nimcp_calloc(bridge->subscription_capacity,
                                          sizeof(security_bio_subscription_t));
     if (!bridge->subscriptions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_bio_bridge_create: failed to allocate subscriptions");
         nimcp_free(bridge);
         return NULL;
     }

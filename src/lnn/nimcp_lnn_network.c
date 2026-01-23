@@ -70,6 +70,7 @@ lnn_network_t* lnn_network_create(const lnn_config_t* config) {
     // Guard: Validate inputs
     if (!config) {
         NIMCP_LOGGING_ERROR("lnn_network_create: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_network_create: config is NULL");
         return NULL;
     }
 
@@ -82,6 +83,7 @@ lnn_network_t* lnn_network_create(const lnn_config_t* config) {
     lnn_network_t* network = (lnn_network_t*)nimcp_calloc(1, sizeof(lnn_network_t));
     if (!network) {
         NIMCP_LOGGING_ERROR("lnn_network_create: Failed to allocate network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_network_create: failed to allocate network");
         return NULL;
     }
 
@@ -98,6 +100,7 @@ lnn_network_t* lnn_network_create(const lnn_config_t* config) {
     network->config = (lnn_config_t*)nimcp_calloc(1, sizeof(lnn_config_t));
     if (!network->config) {
         NIMCP_LOGGING_ERROR("lnn_network_create: Failed to allocate config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_network_create: failed to allocate config");
         nimcp_free(network);
         return NULL;
     }
@@ -109,6 +112,7 @@ lnn_network_t* lnn_network_create(const lnn_config_t* config) {
             config->n_layers, sizeof(lnn_layer_config_t));
         if (!network->config->layer_configs) {
             NIMCP_LOGGING_ERROR("lnn_network_create: Failed to allocate layer configs");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_network_create: failed to allocate layer configs");
             nimcp_free(network->config);
             nimcp_free(network);
             return NULL;
@@ -121,6 +125,7 @@ lnn_network_t* lnn_network_create(const lnn_config_t* config) {
     network->layers = (lnn_layer_t**)nimcp_calloc(network->n_layers, sizeof(lnn_layer_t*));
     if (!network->layers) {
         NIMCP_LOGGING_ERROR("lnn_network_create: Failed to allocate layer array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_network_create: failed to allocate layer array");
         nimcp_free(network->config);
         nimcp_free(network);
         return NULL;

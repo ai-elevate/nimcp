@@ -472,12 +472,14 @@ static void* timer_thread_func(void* arg) {
 
 nimcp_security_consensus_t nimcp_consensus_create(const nimcp_consensus_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_consensus_create: config is NULL");
         LOG_ERROR("NULL config provided");
         return NULL;
     }
 
     nimcp_security_consensus_t c = calloc(1, sizeof(struct nimcp_security_consensus));
     if (!c) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_consensus_create: failed to allocate consensus");
         LOG_ERROR("Failed to allocate consensus");
         return NULL;
     }

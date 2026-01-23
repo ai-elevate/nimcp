@@ -409,6 +409,7 @@ lnn_batch_parallel_ctx_t* lnn_batch_parallel_create(
     /* Guard: Null inputs */
     if (!network || !config) {
         NIMCP_LOGGING_ERROR("Null network or config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_batch_parallel_create: network/config is NULL");
         return NULL;
     }
 
@@ -423,6 +424,7 @@ lnn_batch_parallel_ctx_t* lnn_batch_parallel_create(
         sizeof(lnn_batch_parallel_ctx_t));
     if (!ctx) {
         NIMCP_LOGGING_ERROR("Failed to allocate batch parallel context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_batch_parallel_create: failed to allocate context");
         return NULL;
     }
 
@@ -439,6 +441,7 @@ lnn_batch_parallel_ctx_t* lnn_batch_parallel_create(
     ctx->mutex = lnn_mutex_create();
     if (!ctx->mutex) {
         NIMCP_LOGGING_ERROR("Failed to create context mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_batch_parallel_create: failed to create mutex");
         nimcp_free(ctx);
         return NULL;
     }
@@ -450,6 +453,7 @@ lnn_batch_parallel_ctx_t* lnn_batch_parallel_create(
         sizeof(lnn_network_t*) * ctx->n_threads);
     if (!ctx->thread_networks) {
         NIMCP_LOGGING_ERROR("Failed to allocate thread networks");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_batch_parallel_create: failed to allocate thread networks");
         nimcp_mutex_free(ctx->mutex);
         nimcp_free(ctx);
         return NULL;

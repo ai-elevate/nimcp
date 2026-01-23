@@ -386,11 +386,17 @@ dragonfly_predictor_t* dragonfly_predictor_create(const prediction_config_t* con
     prediction_config_t cfg = config ? *config : prediction_default_config();
 
     if (!prediction_validate_config(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "dragonfly_predictor_create: invalid configuration");
         return NULL;
     }
 
     dragonfly_predictor_t* pred = nimcp_calloc(1, sizeof(dragonfly_predictor_t));
-    if (!pred) return NULL;
+    if (!pred) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "dragonfly_predictor_create: failed to allocate predictor");
+        return NULL;
+    }
 
     pred->config = cfg;
     pred->num_models = cfg.num_models;
@@ -405,6 +411,8 @@ dragonfly_predictor_t* dragonfly_predictor_create(const prediction_config_t* con
 
     pred->mutex = nimcp_mutex_create(NULL);
     if (!pred->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "dragonfly_predictor_create: failed to create mutex");
         nimcp_free(pred);
         return NULL;
     }

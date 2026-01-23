@@ -44,9 +44,17 @@ knowledge_thalamic_config_t knowledge_thalamic_default_config(void) {
 
 knowledge_thalamic_bridge_t* knowledge_thalamic_bridge_create(void* knowledge, thalamic_router_t* router, const knowledge_thalamic_config_t* config) {
     knowledge_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(knowledge_thalamic_bridge_t));
-    if (!bridge) return NULL;
-    if (bridge_base_init(&bridge->base, 0, "knowledge_thalamic") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_thalamic_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
+    if (bridge_base_init(&bridge->base, 0, "knowledge_thalamic") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_thalamic_bridge_create: bridge_base_init failed");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_thalamic_bridge_create: mutex creation failed");
         nimcp_free(bridge);
         return NULL;
     }

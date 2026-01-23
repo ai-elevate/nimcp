@@ -164,6 +164,7 @@ lnn_wiring_t* lnn_wiring_create_full(uint32_t n_neurons) {
     lnn_wiring_t* wiring = (lnn_wiring_t*)nimcp_calloc(1, sizeof(lnn_wiring_t));
     if (!wiring) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_full: Failed to allocate wiring");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_full: failed to allocate wiring");
         return NULL;
     }
 
@@ -180,6 +181,7 @@ lnn_wiring_t* lnn_wiring_create_full(uint32_t n_neurons) {
 
     if (!wiring->row_ptr || !wiring->col_idx) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_full: Failed to allocate CSR arrays");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_full: failed to allocate CSR arrays");
         lnn_wiring_destroy(wiring);
         return NULL;
     }
@@ -206,6 +208,7 @@ lnn_wiring_t* lnn_wiring_create_random(uint32_t n_neurons, float sparsity, uint6
     // Guard clauses
     if (n_neurons == 0) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_random: n_neurons must be > 0");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "lnn_wiring_create_random: n_neurons=0");
         return NULL;
     }
     if (sparsity < 0.0f || sparsity >= 1.0f) {
@@ -220,6 +223,7 @@ lnn_wiring_t* lnn_wiring_create_random(uint32_t n_neurons, float sparsity, uint6
     lnn_wiring_t* wiring = (lnn_wiring_t*)nimcp_calloc(1, sizeof(lnn_wiring_t));
     if (!wiring) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_random: Failed to allocate wiring");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_random: failed to allocate wiring");
         return NULL;
     }
 
@@ -233,6 +237,7 @@ lnn_wiring_t* lnn_wiring_create_random(uint32_t n_neurons, float sparsity, uint6
     uint32_t* temp_edges = (uint32_t*)nimcp_malloc(max_edges * sizeof(uint32_t));
     if (!temp_edges) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_random: Failed to allocate temp edges");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_random: failed to allocate temp edges");
         nimcp_free(wiring);
         return NULL;
     }
@@ -241,6 +246,7 @@ lnn_wiring_t* lnn_wiring_create_random(uint32_t n_neurons, float sparsity, uint6
     wiring->row_ptr = (uint32_t*)nimcp_calloc(n_neurons + 1, sizeof(uint32_t));
     if (!wiring->row_ptr) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_random: Failed to allocate row_ptr");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_random: failed to allocate row_ptr");
         nimcp_free(temp_edges);
         nimcp_free(wiring);
         return NULL;
@@ -265,6 +271,7 @@ lnn_wiring_t* lnn_wiring_create_random(uint32_t n_neurons, float sparsity, uint6
     wiring->col_idx = (uint32_t*)nimcp_malloc(edge_count * sizeof(uint32_t));
     if (!wiring->col_idx) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_random: Failed to allocate col_idx");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_random: failed to allocate col_idx");
         nimcp_free(temp_edges);
         lnn_wiring_destroy(wiring);
         return NULL;
@@ -309,6 +316,7 @@ lnn_wiring_t* lnn_wiring_create_small_world(uint32_t n_neurons, uint32_t k, floa
     lnn_wiring_t* wiring = (lnn_wiring_t*)nimcp_calloc(1, sizeof(lnn_wiring_t));
     if (!wiring) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_small_world: Failed to allocate wiring");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_small_world: failed to allocate wiring");
         return NULL;
     }
 
@@ -325,6 +333,7 @@ lnn_wiring_t* lnn_wiring_create_small_world(uint32_t n_neurons, uint32_t k, floa
 
     if (!wiring->row_ptr || !wiring->col_idx) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_small_world: Failed to allocate CSR arrays");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_small_world: failed to allocate CSR arrays");
         lnn_wiring_destroy(wiring);
         return NULL;
     }
@@ -403,6 +412,7 @@ lnn_wiring_t* lnn_wiring_create_scale_free(uint32_t n_neurons, uint32_t m, uint6
     lnn_wiring_t* wiring = (lnn_wiring_t*)nimcp_calloc(1, sizeof(lnn_wiring_t));
     if (!wiring) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_scale_free: Failed to allocate wiring");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_scale_free: failed to allocate wiring");
         return NULL;
     }
 
@@ -419,6 +429,7 @@ lnn_wiring_t* lnn_wiring_create_scale_free(uint32_t n_neurons, uint32_t m, uint6
 
     if (!temp_row_ptr || !temp_col_idx || !degrees) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_scale_free: Failed to allocate temp arrays");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_scale_free: failed to allocate temp arrays");
         nimcp_free(temp_row_ptr);
         nimcp_free(temp_col_idx);
         nimcp_free(degrees);
@@ -453,6 +464,7 @@ lnn_wiring_t* lnn_wiring_create_scale_free(uint32_t n_neurons, uint32_t m, uint6
         bool* selected = (bool*)nimcp_calloc(i, sizeof(bool));
         if (!selected) {
             NIMCP_LOGGING_ERROR("lnn_wiring_create_scale_free: Failed to allocate selection array");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_scale_free: failed to allocate selection array");
             nimcp_free(temp_row_ptr);
             nimcp_free(temp_col_idx);
             nimcp_free(degrees);
@@ -488,6 +500,7 @@ lnn_wiring_t* lnn_wiring_create_scale_free(uint32_t n_neurons, uint32_t m, uint6
 
     if (!wiring->row_ptr || !wiring->col_idx) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_scale_free: Failed to allocate final CSR arrays");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_scale_free: failed to allocate final CSR arrays");
         nimcp_free(temp_row_ptr);
         nimcp_free(temp_col_idx);
         nimcp_free(degrees);
@@ -530,6 +543,7 @@ lnn_wiring_t* lnn_wiring_create_ncp(uint32_t n_sensory, uint32_t n_inter,
     lnn_wiring_t* wiring = (lnn_wiring_t*)nimcp_calloc(1, sizeof(lnn_wiring_t));
     if (!wiring) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_ncp: Failed to allocate wiring");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_ncp: failed to allocate wiring");
         return NULL;
     }
 
@@ -558,6 +572,7 @@ lnn_wiring_t* lnn_wiring_create_ncp(uint32_t n_sensory, uint32_t n_inter,
 
     if (!temp_row_ptr || !temp_col_idx) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_ncp: Failed to allocate temp arrays");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_ncp: failed to allocate temp arrays");
         nimcp_free(temp_row_ptr);
         nimcp_free(temp_col_idx);
         nimcp_free(wiring);
@@ -614,6 +629,7 @@ lnn_wiring_t* lnn_wiring_create_ncp(uint32_t n_sensory, uint32_t n_inter,
 
     if (!wiring->row_ptr || !wiring->col_idx) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_ncp: Failed to allocate final CSR arrays");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_ncp: failed to allocate final CSR arrays");
         nimcp_free(temp_row_ptr);
         nimcp_free(temp_col_idx);
         lnn_wiring_destroy(wiring);
@@ -655,6 +671,7 @@ lnn_wiring_t* lnn_wiring_create_from_adjacency(const uint8_t* adj, uint32_t n_ne
     lnn_wiring_t* wiring = (lnn_wiring_t*)nimcp_calloc(1, sizeof(lnn_wiring_t));
     if (!wiring) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_from_adjacency: Failed to allocate wiring");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_from_adjacency: failed to allocate wiring");
         return NULL;
     }
 
@@ -679,6 +696,7 @@ lnn_wiring_t* lnn_wiring_create_from_adjacency(const uint8_t* adj, uint32_t n_ne
 
     if (!wiring->row_ptr || !wiring->col_idx) {
         NIMCP_LOGGING_ERROR("lnn_wiring_create_from_adjacency: Failed to allocate CSR arrays");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_wiring_create_from_adjacency: failed to allocate CSR arrays");
         lnn_wiring_destroy(wiring);
         return NULL;
     }

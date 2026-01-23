@@ -250,7 +250,7 @@ static int security_level_wiring_handler_callback(
 nimcp_security_state_t nimcp_security_state_create(const nimcp_security_state_config_t* config) {
     nimcp_security_state_t state = calloc(1, sizeof(struct nimcp_security_state));
     if (!state) {
-        LOG_ERROR("Failed to allocate security state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_security_state_create: failed to allocate state");
         return NULL;
     }
 
@@ -276,7 +276,7 @@ nimcp_security_state_t nimcp_security_state_create(const nimcp_security_state_co
     /* Allocate component hash table */
     state->component_table = calloc(state->component_table_size, sizeof(nimcp_component_level_t*));
     if (!state->component_table) {
-        LOG_ERROR("Failed to allocate component table");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_security_state_create: failed to allocate component table");
         free(state);
         return NULL;
     }
@@ -284,7 +284,7 @@ nimcp_security_state_t nimcp_security_state_create(const nimcp_security_state_co
     /* Allocate audit trail */
     state->audit_trail = calloc(state->audit_size, sizeof(nimcp_security_audit_entry_t));
     if (!state->audit_trail) {
-        LOG_ERROR("Failed to allocate audit trail");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_security_state_create: failed to allocate audit trail");
         free(state->component_table);
         free(state);
         return NULL;
@@ -292,7 +292,7 @@ nimcp_security_state_t nimcp_security_state_create(const nimcp_security_state_co
 
     /* Initialize mutex */
     if (pthread_mutex_init(&state->mutex, NULL) != 0) {
-        LOG_ERROR("Failed to initialize mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "nimcp_security_state_create: failed to init mutex");
         free(state->audit_trail);
         free(state->component_table);
         free(state);

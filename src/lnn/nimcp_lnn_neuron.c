@@ -223,6 +223,7 @@ lnn_neuron_t* lnn_neuron_create(const lnn_neuron_config_t* config,
     /* Guard: validate inputs */
     if (!config) {
         NIMCP_LOGGING_ERROR("Neuron config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_neuron_create: config is NULL");
         return NULL;
     }
     if (n_inputs == 0) {
@@ -234,6 +235,7 @@ lnn_neuron_t* lnn_neuron_create(const lnn_neuron_config_t* config,
     lnn_neuron_t* neuron = (lnn_neuron_t*)nimcp_calloc(1, sizeof(lnn_neuron_t));
     if (!neuron) {
         NIMCP_LOGGING_ERROR("Failed to allocate neuron");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_neuron_create: failed to allocate neuron");
         return NULL;
     }
 
@@ -245,6 +247,7 @@ lnn_neuron_t* lnn_neuron_create(const lnn_neuron_config_t* config,
     neuron->w_in = (float*)nimcp_calloc(n_inputs, sizeof(float));
     if (!neuron->w_in) {
         NIMCP_LOGGING_ERROR("Failed to allocate input weights");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_neuron_create: failed to allocate input weights");
         lnn_neuron_destroy(neuron);
         return NULL;
     }
@@ -254,6 +257,7 @@ lnn_neuron_t* lnn_neuron_create(const lnn_neuron_config_t* config,
         neuron->w_rec = (float*)nimcp_calloc(n_recurrent, sizeof(float));
         if (!neuron->w_rec) {
             NIMCP_LOGGING_ERROR("Failed to allocate recurrent weights");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_neuron_create: failed to allocate recurrent weights");
             lnn_neuron_destroy(neuron);
             return NULL;
         }
@@ -264,6 +268,7 @@ lnn_neuron_t* lnn_neuron_create(const lnn_neuron_config_t* config,
     neuron->w_tau = (float*)nimcp_calloc(n_tau, sizeof(float));
     if (!neuron->w_tau) {
         NIMCP_LOGGING_ERROR("Failed to allocate tau weights");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_neuron_create: failed to allocate tau weights");
         lnn_neuron_destroy(neuron);
         return NULL;
     }
@@ -275,6 +280,7 @@ lnn_neuron_t* lnn_neuron_create(const lnn_neuron_config_t* config,
 
     if (!neuron->grad_w_in || (!neuron->grad_w_rec && n_recurrent > 0) || !neuron->grad_w_tau) {
         NIMCP_LOGGING_ERROR("Failed to allocate gradient arrays");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "lnn_neuron_create: failed to allocate gradient arrays");
         lnn_neuron_destroy(neuron);
         return NULL;
     }

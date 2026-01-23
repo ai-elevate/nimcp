@@ -434,7 +434,10 @@ static bool event_queue_is_full(event_queue_t* queue) {
  */
 event_bus_t event_bus_create(const char* name, event_delivery_mode_t delivery_mode) {
     event_bus_internal_t* bus = (event_bus_internal_t*)nimcp_calloc(1, sizeof(event_bus_internal_t));
-    if (!bus) return NULL;
+    if (!bus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_bus_create: failed to allocate event bus");
+        return NULL;
+    }
 
     // Set name
     if (name) {
@@ -458,6 +461,7 @@ event_bus_t event_bus_create(const char* name, event_delivery_mode_t delivery_mo
     if (delivery_mode == EVENT_DELIVERY_ASYNC) {
         bus->queue = event_queue_create(EVENT_BUS_QUEUE_SIZE);
         if (!bus->queue) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "event_bus_create: failed to create event queue");
             nimcp_mutex_destroy(&bus->subscriber_mutex);
             nimcp_mutex_destroy(&bus->stats_mutex);
             nimcp_free(bus);
@@ -539,7 +543,10 @@ static void* event_bus_worker_thread(void* arg) {
  * @brief Start event bus
  */
 bool event_bus_start(event_bus_t bus) {
-    if (!bus) return false;
+    if (!bus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_start: bus is NULL");
+        return false;
+    }
 
     event_bus_internal_t* internal = (event_bus_internal_t*)bus;
 
@@ -560,6 +567,7 @@ bool event_bus_start(event_bus_t bus) {
                                      event_bus_worker_thread, internal,
                                      NULL);
     if (result != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_THREAD_CREATE, "event_bus_start: failed to create worker thread");
         snprintf(internal->last_error, sizeof(internal->last_error),
                 "Failed to create worker thread: %s", strerror(result));
         return false;
@@ -579,7 +587,10 @@ bool event_bus_start(event_bus_t bus) {
  * THREAD SAFETY: Uses condition signal to immediately wake blocked worker thread
  */
 bool event_bus_stop(event_bus_t bus, bool drain_queue) {
-    if (!bus) return false;
+    if (!bus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_stop: bus is NULL");
+        return false;
+    }
 
     event_bus_internal_t* internal = (event_bus_internal_t*)bus;
 
@@ -644,7 +655,10 @@ event_subscription_handle_t event_bus_subscribe_priority(
     brain_event_callback_t callback,
     void* context
 ) {
-    if (!bus || !callback) return INVALID_SUBSCRIPTION_HANDLE;
+    if (!bus || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus_subscribe_priority: bus or callback is NULL");
+        return INVALID_SUBSCRIPTION_HANDLE;
+    }
 
     event_bus_internal_t* internal = (event_bus_internal_t*)bus;
 
@@ -652,6 +666,7 @@ event_subscription_handle_t event_bus_subscribe_priority(
 
     // Check global subscriber limit
     if (internal->subscriber_count >= EVENT_BUS_MAX_SUBSCRIBERS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OUT_OF_RANGE, "event_bus_subscribe_priority: subscriber limit reached");
         nimcp_mutex_unlock(&internal->subscriber_mutex);
         snprintf(internal->last_error, sizeof(internal->last_error),
                 "Subscriber limit reached (%u/%u)",
@@ -681,6 +696,7 @@ event_subscription_handle_t event_bus_subscribe_priority(
     // Create subscriber while still holding lock (allocation is fast)
     subscriber_t* sub = (subscriber_t*)nimcp_calloc(1, sizeof(subscriber_t));
     if (!sub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "event_bus_subscribe_priority: failed to allocate subscriber");
         nimcp_mutex_unlock(&internal->subscriber_mutex);
         return INVALID_SUBSCRIPTION_HANDLE;
     }

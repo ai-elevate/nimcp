@@ -222,7 +222,7 @@ swarm_consciousness_enhanced_ctx_t* swarm_consciousness_enhanced_create(
     swarm_consciousness_enhanced_ctx_t* ctx = (swarm_consciousness_enhanced_ctx_t*)
         nimcp_calloc(1, sizeof(swarm_consciousness_enhanced_ctx_t));
     if (!ctx) {
-        LOG_ERROR("Failed to allocate enhanced consciousness context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_consciousness_enhanced_create: failed to allocate context");
         return NULL;
     }
 
@@ -232,7 +232,7 @@ swarm_consciousness_enhanced_ctx_t* swarm_consciousness_enhanced_create(
 
     // Initialize mutex
     if (pthread_mutex_init(&ctx->lock, NULL) != 0) {
-        LOG_ERROR("Failed to initialize mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_consciousness_enhanced_create: failed to initialize mutex");
         nimcp_free(ctx);
         return NULL;
     }

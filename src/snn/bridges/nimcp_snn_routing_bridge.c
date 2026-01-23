@@ -50,10 +50,12 @@ snn_routing_bridge_t* snn_routing_bridge_create(
     /* Guard clauses */
     if (!network) {
         NIMCP_LOGGING_ERROR("SNN network is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_routing_bridge_create: network is NULL");
         return NULL;
     }
     if (!router) {
         NIMCP_LOGGING_ERROR("Thalamic router is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_routing_bridge_create: router is NULL");
         return NULL;
     }
 
@@ -62,6 +64,7 @@ snn_routing_bridge_t* snn_routing_bridge_create(
         sizeof(snn_routing_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate SNN routing bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_routing_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -94,6 +97,7 @@ snn_routing_bridge_t* snn_routing_bridge_create(
     bridge->route_map = (uint32_t*)nimcp_malloc(max_pops * sizeof(uint32_t));
     if (!bridge->route_map) {
         NIMCP_LOGGING_ERROR("Failed to allocate route map");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_routing_bridge_create: failed to allocate route_map");
         snn_routing_bridge_destroy(bridge);
         return NULL;
     }
@@ -103,6 +107,7 @@ snn_routing_bridge_t* snn_routing_bridge_create(
     bridge->attention_weights = (float*)nimcp_malloc(max_pops * sizeof(float));
     if (!bridge->attention_weights) {
         NIMCP_LOGGING_ERROR("Failed to allocate attention weights");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_routing_bridge_create: failed to allocate attention_weights");
         snn_routing_bridge_destroy(bridge);
         return NULL;
     }
@@ -114,6 +119,7 @@ snn_routing_bridge_t* snn_routing_bridge_create(
     bridge->last_spike_time_us = (uint64_t*)nimcp_malloc(max_neurons * sizeof(uint64_t));
     if (!bridge->last_spike_time_us) {
         NIMCP_LOGGING_ERROR("Failed to allocate burst detection state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_routing_bridge_create: failed to allocate last_spike_time_us");
         snn_routing_bridge_destroy(bridge);
         return NULL;
     }
@@ -122,6 +128,7 @@ snn_routing_bridge_t* snn_routing_bridge_create(
     bridge->in_burst_mode = (bool*)nimcp_malloc(max_neurons * sizeof(bool));
     if (!bridge->in_burst_mode) {
         NIMCP_LOGGING_ERROR("Failed to allocate burst mode flags");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_routing_bridge_create: failed to allocate in_burst_mode");
         snn_routing_bridge_destroy(bridge);
         return NULL;
     }

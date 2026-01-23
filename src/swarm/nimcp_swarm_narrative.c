@@ -106,7 +106,7 @@ swarm_narrative_t* swarm_narrative_create(const swarm_narrative_config_t* config
      */
 
     if (!config) {
-        LOG_ERROR("NULL configuration provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm_narrative_create: config is NULL");
         return NULL;
     }
 
@@ -115,7 +115,7 @@ swarm_narrative_t* swarm_narrative_create(const swarm_narrative_config_t* config
 
     swarm_narrative_t* sn = (swarm_narrative_t*)nimcp_malloc(sizeof(swarm_narrative_t));
     if (!sn) {
-        LOG_ERROR("Failed to allocate narrative system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_narrative_create: failed to allocate narrative system");
         return NULL;
     }
 
@@ -134,14 +134,14 @@ swarm_narrative_t* swarm_narrative_create(const swarm_narrative_config_t* config
 
     sn->narratives = hash_table_create(&ht_config);
     if (!sn->narratives) {
-        LOG_ERROR("Failed to create narratives hash table");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_narrative_create: failed to create narratives hash table");
         nimcp_free(sn);
         return NULL;
     }
 
     sn->pending_narratives = hash_table_create(&ht_config);
     if (!sn->pending_narratives) {
-        LOG_ERROR("Failed to create pending narratives hash table");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_narrative_create: failed to create pending hash table");
         hash_table_destroy(sn->narratives);
         nimcp_free(sn);
         return NULL;
@@ -155,7 +155,7 @@ swarm_narrative_t* swarm_narrative_create(const swarm_narrative_config_t* config
     /* Create mutex */
     sn->mutex = nimcp_platform_mutex_create();
     if (!sn->mutex) {
-        LOG_ERROR("Failed to create mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_narrative_create: failed to create mutex");
         hash_table_destroy(sn->pending_narratives);
         hash_table_destroy(sn->narratives);
         nimcp_free(sn);

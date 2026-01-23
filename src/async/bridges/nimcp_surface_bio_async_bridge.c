@@ -101,6 +101,8 @@ surface_bio_async_bridge_t* surface_bio_async_bridge_create(
     bridge->subscriptions = nimcp_malloc(
         bridge->max_subscriptions * sizeof(surface_bio_subscription_t));
     if (!bridge->subscriptions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "surface_bio_async_bridge_create: failed to allocate subscriptions");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;

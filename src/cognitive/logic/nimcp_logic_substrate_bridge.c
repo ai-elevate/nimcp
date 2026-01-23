@@ -41,10 +41,16 @@ logic_substrate_config_t logic_substrate_default_config(void) {
 }
 
 logic_substrate_bridge_t* logic_substrate_bridge_create(void* logic, neural_substrate_t* substrate, const logic_substrate_config_t* config) {
-    if (!substrate) return NULL;
+    if (!substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "logic_substrate_bridge_create: substrate is NULL");
+        return NULL;
+    }
 
     logic_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(logic_substrate_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "logic_substrate_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     bridge->logic = logic;
     bridge->substrate = substrate;

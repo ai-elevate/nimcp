@@ -156,10 +156,16 @@ epistemic_plasticity_config_t epistemic_plasticity_config_default(void) {
 epistemic_plasticity_bridge_t* epistemic_plasticity_create(
     const epistemic_plasticity_config_t* config
 ) {
-    if (!config) return NULL;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_plasticity_create: config is NULL");
+        return NULL;
+    }
 
     epistemic_plasticity_bridge_t* bridge = calloc(1, sizeof(epistemic_plasticity_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "epistemic_plasticity_create: failed to allocate bridge");
+        return NULL;
+    }
 
     bridge->config = *config;
     bridge->state = EPISTEMIC_PLASTICITY_STATE_IDLE;
@@ -169,6 +175,7 @@ epistemic_plasticity_bridge_t* epistemic_plasticity_create(
     // Allocate synapses
     bridge->synapses = calloc(bridge->max_synapses, sizeof(epistemic_plasticity_synapse_t));
     if (!bridge->synapses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "epistemic_plasticity_create: failed to allocate synapses");
         free(bridge);
         return NULL;
     }
@@ -176,6 +183,7 @@ epistemic_plasticity_bridge_t* epistemic_plasticity_create(
     // Allocate sources
     bridge->sources = calloc(bridge->max_sources, sizeof(epistemic_source_learning_t));
     if (!bridge->sources) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "epistemic_plasticity_create: failed to allocate sources");
         free(bridge->synapses);
         free(bridge);
         return NULL;

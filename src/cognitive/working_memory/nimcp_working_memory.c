@@ -604,6 +604,7 @@ working_memory_t* working_memory_create_custom(
 {
     // Guard: NULL config
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "working_memory_create_custom: config is NULL");
         set_error("NULL config");
         LOG_ERROR("NULL config provided to working_memory_create_custom");
         return NULL;
@@ -611,6 +612,7 @@ working_memory_t* working_memory_create_custom(
 
     // Guard: Invalid capacity
     if (config->capacity < MIN_CAPACITY || config->capacity > MAX_CAPACITY) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_create_custom: invalid capacity");
         set_error("Invalid capacity (must be 1-32)");
         LOG_ERROR("Invalid capacity: %u (must be %d-%d)", config->capacity, MIN_CAPACITY, MAX_CAPACITY);
         return NULL;
@@ -618,6 +620,7 @@ working_memory_t* working_memory_create_custom(
 
     // Guard: Invalid decay tau
     if (config->decay_tau_ms <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "working_memory_create_custom: invalid decay_tau_ms");
         set_error("Invalid decay_tau_ms (must be > 0)");
         LOG_ERROR("Invalid decay_tau_ms: %.2f (must be > 0)", config->decay_tau_ms);
         return NULL;
@@ -629,6 +632,7 @@ working_memory_t* working_memory_create_custom(
     // Allocate main structure
     working_memory_t* wm = nimcp_calloc(1, sizeof(working_memory_t));
     if (!wm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "working_memory_create_custom: failed to allocate wm");
         set_error("Failed to allocate working_memory_t");
         LOG_ERROR("Failed to allocate working_memory_t (%zu bytes)", sizeof(working_memory_t));
         return NULL;
@@ -647,6 +651,7 @@ working_memory_t* working_memory_create_custom(
     if (!wm->items || !wm->item_sizes || !wm->salience ||
         !wm->timestamps || !wm->attention_refreshed ||
         !wm->emotions || !wm->has_emotion) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "working_memory_create_custom: failed to allocate arrays");
         set_error("Failed to allocate arrays");
         working_memory_destroy(wm);
         return NULL;
@@ -668,6 +673,7 @@ working_memory_t* working_memory_create_custom(
 
     // Initialize mutex for thread safety
     if (nimcp_platform_mutex_init(&wm->mutex, false) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "working_memory_create_custom: failed to init mutex");
         set_error("Failed to initialize mutex");
         working_memory_destroy(wm);
         return NULL;

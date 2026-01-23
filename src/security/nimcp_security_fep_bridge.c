@@ -24,20 +24,28 @@ int security_fep_default_config(security_fep_config_t* config) {
 security_fep_bridge_t* security_fep_create(const security_fep_config_t* config,
     fep_system_t* fep_system) {
     if (!fep_system) {
-        NIMCP_LOGGING_ERROR("Security FEP bridge: NULL FEP system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_fep_create: fep_system is NULL");
         return NULL;
     }
 
     security_fep_bridge_t* bridge = (security_fep_bridge_t*)nimcp_malloc(sizeof(security_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_fep_create: failed to allocate bridge");
+        return NULL;
+    }
 
     memset(bridge, 0, sizeof(security_fep_bridge_t));
     if (config) bridge->config = *config;
     else security_fep_default_config(&bridge->config);
 
     bridge->fep_system = fep_system;
-    if (bridge_base_init(&bridge->base, 0, "security_fep") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "security_fep") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "security_fep_create: failed to init bridge base");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_fep_create: mutex creation failed");
         nimcp_free(bridge);
         return NULL;
     }

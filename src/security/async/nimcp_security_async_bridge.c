@@ -118,7 +118,7 @@ security_async_bridge_t* security_async_bridge_create(
     /* Allocate bridge structure */
     security_async_bridge_t* bridge = nimcp_malloc(sizeof(security_async_bridge_t));
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate security-async bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_async_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -127,7 +127,7 @@ security_async_bridge_t* security_async_bridge_create(
     /* Initialize base bridge */
     if (bridge_base_init(&bridge->base, SECURITY_ASYNC_MODULE_ID,
                          SECURITY_ASYNC_MODULE_NAME) != 0) {
-        NIMCP_LOGGING_ERROR("Failed to initialize bridge base");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "security_async_bridge_create: failed to init bridge base");
         nimcp_free(bridge);
         return NULL;
     }
@@ -140,7 +140,7 @@ security_async_bridge_t* security_async_bridge_create(
     bridge->event_queue = nimcp_malloc(
         bridge->event_queue_capacity * sizeof(security_async_event_t));
     if (!bridge->event_queue) {
-        NIMCP_LOGGING_ERROR("Failed to allocate event queue");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_async_bridge_create: failed to allocate event queue");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
@@ -153,7 +153,7 @@ security_async_bridge_t* security_async_bridge_create(
     bridge->intel_cache.entries = nimcp_malloc(
         bridge->intel_cache.capacity * sizeof(threat_intel_entry_t));
     if (!bridge->intel_cache.entries) {
-        NIMCP_LOGGING_ERROR("Failed to allocate threat intel cache");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_async_bridge_create: failed to allocate intel cache");
         nimcp_free(bridge->event_queue);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);

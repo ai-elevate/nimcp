@@ -166,10 +166,16 @@ epistemic_snn_config_t epistemic_snn_config_default(void) {
 }
 
 epistemic_snn_bridge_t* epistemic_snn_create(const epistemic_snn_config_t* config) {
-    if (!config) return NULL;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "epistemic_snn_create: config is NULL");
+        return NULL;
+    }
 
     epistemic_snn_bridge_t* bridge = calloc(1, sizeof(epistemic_snn_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "epistemic_snn_create: failed to allocate bridge");
+        return NULL;
+    }
 
     bridge->config = *config;
     bridge->state = EPISTEMIC_SNN_STATE_IDLE;
@@ -187,6 +193,7 @@ epistemic_snn_bridge_t* epistemic_snn_create(const epistemic_snn_config_t* confi
 
     if (!bridge->evidence_neurons || !bridge->reliability_neurons ||
         !bridge->bias_neurons || !bridge->output_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "epistemic_snn_create: failed to allocate neurons");
         epistemic_snn_destroy(bridge);
         return NULL;
     }
@@ -209,6 +216,7 @@ epistemic_snn_bridge_t* epistemic_snn_create(const epistemic_snn_config_t* confi
     if (config->enable_source_tracking) {
         bridge->sources = calloc(config->max_sources, sizeof(source_tracking_t));
         if (!bridge->sources) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "epistemic_snn_create: failed to allocate sources");
             epistemic_snn_destroy(bridge);
             return NULL;
         }
@@ -217,6 +225,7 @@ epistemic_snn_bridge_t* epistemic_snn_create(const epistemic_snn_config_t* confi
     // Allocate bias magnitudes array
     bridge->bias_magnitudes = calloc(16, sizeof(float));
     if (!bridge->bias_magnitudes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "epistemic_snn_create: failed to allocate bias_magnitudes");
         epistemic_snn_destroy(bridge);
         return NULL;
     }

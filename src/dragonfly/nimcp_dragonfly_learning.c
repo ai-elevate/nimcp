@@ -338,11 +338,17 @@ dragonfly_learning_t dragonfly_learning_create(const learning_config_t* config) 
     learning_config_t cfg = config ? *config : learning_default_config();
 
     if (!learning_validate_config(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "dragonfly_learning_create: invalid configuration");
         return NULL;
     }
 
     dragonfly_learning_t learning = nimcp_calloc(1, sizeof(struct dragonfly_learning_s));
-    if (!learning) return NULL;
+    if (!learning) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "dragonfly_learning_create: failed to allocate learning");
+        return NULL;
+    }
 
     learning->config = cfg;
     learning->creation_time_us = get_time_us();
@@ -356,6 +362,8 @@ dragonfly_learning_t dragonfly_learning_create(const learning_config_t* config) 
 
     learning->mutex = nimcp_mutex_create(NULL);
     if (!learning->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "dragonfly_learning_create: failed to create mutex");
         nimcp_free(learning);
         return NULL;
     }

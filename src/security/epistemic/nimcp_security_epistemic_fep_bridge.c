@@ -350,6 +350,7 @@ sec_epist_fep_bridge_t* sec_epist_fep_create(
      */
 
     if (!epist_bridge || !fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_epist_fep_create: epist_bridge or fep_system is NULL");
         NIMCP_LOGGING_ERROR("sec_epist_fep_create: NULL pointer for required system");
         return NULL;
     }
@@ -357,6 +358,7 @@ sec_epist_fep_bridge_t* sec_epist_fep_create(
     /* Allocate bridge */
     sec_epist_fep_bridge_t* bridge = nimcp_malloc(sizeof(sec_epist_fep_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sec_epist_fep_create: failed to allocate bridge");
         NIMCP_LOGGING_ERROR("sec_epist_fep_create: failed to allocate bridge");
         return NULL;
     }
@@ -366,6 +368,7 @@ sec_epist_fep_bridge_t* sec_epist_fep_create(
     /* Initialize base */
     if (bridge_base_init(&bridge->base, BIO_MODULE_SECURITY_EPISTEMIC_FEP,
                          "security_epistemic_fep") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "sec_epist_fep_create: bridge_base_init failed");
         NIMCP_LOGGING_ERROR("sec_epist_fep_create: failed to initialize base");
         nimcp_free(bridge);
         return NULL;

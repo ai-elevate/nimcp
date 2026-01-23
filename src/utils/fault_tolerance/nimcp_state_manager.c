@@ -98,6 +98,8 @@ static int compare_by_priority(const void* a, const void* b) {
 nimcp_state_manager_t* nimcp_state_manager_create(void) {
     nimcp_state_manager_t* manager = nimcp_calloc(1, sizeof(nimcp_state_manager_t));
     if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "nimcp_state_manager_create: failed to allocate state manager");
         LOG_ERROR(LOG_MODULE, "Failed to allocate state manager");
         return NULL;
     }
@@ -109,6 +111,8 @@ nimcp_state_manager_t* nimcp_state_manager_create(void) {
     /* Create mutex */
     manager->mutex = nimcp_mutex_create(NULL);
     if (!manager->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "nimcp_state_manager_create: failed to create mutex");
         LOG_ERROR(LOG_MODULE, "Failed to create state manager mutex");
         nimcp_free(manager);
         return NULL;

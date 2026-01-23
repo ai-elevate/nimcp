@@ -235,6 +235,7 @@ security_kg_bridge_t* security_kg_bridge_create(
     /* Allocate bridge structure */
     security_kg_bridge_t* bridge = nimcp_malloc(sizeof(security_kg_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_kg_bridge_create: failed to allocate bridge");
         NIMCP_LOGGING_ERROR("Failed to allocate security_kg_bridge");
         return NULL;
     }
@@ -245,6 +246,7 @@ security_kg_bridge_t* security_kg_bridge_create(
     /* Initialize base bridge */
     if (bridge_base_init(&bridge->base, BIO_MODULE_SEC_KG,
                          SEC_KG_MODULE_NAME) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "security_kg_bridge_create: bridge_base_init failed");
         nimcp_free(bridge);
         return NULL;
     }

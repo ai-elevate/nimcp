@@ -88,12 +88,14 @@ snn_audio_bridge_t* snn_audio_bridge_create(
     /* Guard: Validate inputs */
     if (!config || !snn || !audio_cortex) {
         NIMCP_LOGGING_ERROR("Null parameters to snn_audio_bridge_create");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_audio_bridge_create: config/snn/audio_cortex is NULL");
         return NULL;
     }
 
     /* Validate sample rate */
     if (config->sample_rate < 8000 || config->sample_rate > 96000) {
         NIMCP_LOGGING_ERROR("Invalid sample rate: %u", config->sample_rate);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_audio_bridge_create: invalid sample_rate");
         return NULL;
     }
 
@@ -101,6 +103,7 @@ snn_audio_bridge_t* snn_audio_bridge_create(
     snn_audio_bridge_t* bridge = nimcp_malloc(sizeof(snn_audio_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate SNN-audio bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_audio_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -127,6 +130,7 @@ snn_audio_bridge_t* snn_audio_bridge_create(
         !bridge->spike_input_buffer || !bridge->spike_output_buffer ||
         !bridge->spike_mask) {
         NIMCP_LOGGING_ERROR("Failed to allocate audio bridge buffers");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_audio_bridge_create: failed to allocate buffers");
         snn_audio_bridge_destroy(bridge);
         return NULL;
     }
@@ -140,6 +144,7 @@ snn_audio_bridge_t* snn_audio_bridge_create(
         if (!bridge->onset_strength || !bridge->prev_spectrum ||
             !bridge->onset_detected) {
             NIMCP_LOGGING_ERROR("Failed to allocate onset detection buffers");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_audio_bridge_create: failed to allocate onset buffers");
             snn_audio_bridge_destroy(bridge);
             return NULL;
         }
@@ -151,6 +156,7 @@ snn_audio_bridge_t* snn_audio_bridge_create(
         bridge->attention_gains = nimcp_malloc(num_neurons * sizeof(float));
         if (!bridge->attention_gains) {
             NIMCP_LOGGING_ERROR("Failed to allocate audio attention gains");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_audio_bridge_create: failed to allocate attention_gains");
             snn_audio_bridge_destroy(bridge);
             return NULL;
         }

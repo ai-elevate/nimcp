@@ -135,7 +135,10 @@ knowledge_snn_config_t knowledge_snn_config_default(void) {
 
 knowledge_snn_bridge_t* knowledge_snn_create(const knowledge_snn_config_t* config) {
     knowledge_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(knowledge_snn_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_snn_create: failed to allocate bridge");
+        return NULL;
+    }
 
     if (config) {
         bridge->config = *config;
@@ -146,12 +149,14 @@ knowledge_snn_bridge_t* knowledge_snn_create(const knowledge_snn_config_t* confi
     /* Validate config */
     if (bridge->config.num_dimensions == 0 ||
         bridge->config.num_dimensions > KNOWLEDGE_SNN_MAX_DIMENSIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "knowledge_snn_create: invalid num_dimensions");
         nimcp_free(bridge);
         return NULL;
     }
 
     /* Initialize bridge base */
     if (bridge_base_init(&bridge->base, 0, "knowledge_snn") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_snn_create: bridge_base_init failed");
         nimcp_free(bridge);
         return NULL;
     }
@@ -168,6 +173,7 @@ knowledge_snn_bridge_t* knowledge_snn_create(const knowledge_snn_config_t* confi
 
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_snn_create: failed to create SNN network");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
@@ -181,6 +187,7 @@ knowledge_snn_bridge_t* knowledge_snn_create(const knowledge_snn_config_t* confi
 
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->retrieval_buffer || !bridge->prev_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_snn_create: failed to allocate buffers");
         knowledge_snn_destroy(bridge);
         return NULL;
     }

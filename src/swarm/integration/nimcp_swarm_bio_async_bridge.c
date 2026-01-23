@@ -277,7 +277,7 @@ void swarm_bio_bridge_default_config(swarm_bio_bridge_config_t* config) {
 swarm_bio_bridge_t* swarm_bio_bridge_create(const swarm_bio_bridge_config_t* config) {
     swarm_bio_bridge_t* bridge = (swarm_bio_bridge_t*)nimcp_malloc(sizeof(swarm_bio_bridge_t));
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate swarm_bio_bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_bio_bridge_create: failed to allocate swarm_bio_bridge");
         return NULL;
     }
     memset(bridge, 0, sizeof(swarm_bio_bridge_t));
@@ -308,6 +308,7 @@ swarm_bio_bridge_t* swarm_bio_bridge_create(const swarm_bio_bridge_config_t* con
         bridge->config.max_agents * sizeof(swarm_agent_info_t)
     );
     if (!bridge->agents) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_bio_bridge_create: failed to allocate agents array");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
@@ -317,6 +318,7 @@ swarm_bio_bridge_t* swarm_bio_bridge_create(const swarm_bio_bridge_config_t* con
     /* Allocate consensus vote array */
     bridge->consensus_votes = (uint32_t*)nimcp_malloc(bridge->config.max_agents * sizeof(uint32_t));
     if (!bridge->consensus_votes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "swarm_bio_bridge_create: failed to allocate consensus_votes array");
         nimcp_free(bridge->agents);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);

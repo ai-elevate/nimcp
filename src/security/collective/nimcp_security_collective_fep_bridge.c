@@ -120,6 +120,7 @@ security_collective_fep_bridge_t* security_collective_fep_create(
     /* HOW:  Allocate, initialize base, connect systems */
 
     if (!security_bridge || !fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "security_collective_fep_create: security_bridge or fep_system is NULL");
         NIMCP_LOGGING_ERROR("Security collective FEP: NULL system pointers");
         return NULL;
     }
@@ -127,6 +128,7 @@ security_collective_fep_bridge_t* security_collective_fep_create(
     security_collective_fep_bridge_t* bridge =
         (security_collective_fep_bridge_t*)nimcp_malloc(sizeof(security_collective_fep_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_collective_fep_create: failed to allocate bridge");
         NIMCP_LOGGING_ERROR("Security collective FEP: allocation failed");
         return NULL;
     }
@@ -136,6 +138,7 @@ security_collective_fep_bridge_t* security_collective_fep_create(
     /* Initialize base bridge */
     if (bridge_base_init(&bridge->base, BIO_MODULE_SECURITY_COLLECTIVE_FEP,
                          "security_collective_fep") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "security_collective_fep_create: bridge_base_init failed");
         NIMCP_LOGGING_ERROR("Security collective FEP: base init failed");
         nimcp_free(bridge);
         return NULL;

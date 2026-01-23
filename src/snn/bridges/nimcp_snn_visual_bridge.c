@@ -83,6 +83,7 @@ snn_visual_bridge_t* snn_visual_bridge_create(
     /* Guard: Validate inputs */
     if (!config || !snn || !visual_cortex) {
         NIMCP_LOGGING_ERROR("Null parameters to snn_visual_bridge_create");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_create: config/snn/visual_cortex is NULL");
         return NULL;
     }
 
@@ -90,6 +91,7 @@ snn_visual_bridge_t* snn_visual_bridge_create(
     snn_visual_bridge_t* bridge = nimcp_malloc(sizeof(snn_visual_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate SNN-visual bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_visual_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -117,6 +119,7 @@ snn_visual_bridge_t* snn_visual_bridge_create(
     if (!bridge->frame_buffer || !bridge->spike_input_buffer ||
         !bridge->spike_output_buffer || !bridge->spike_mask) {
         NIMCP_LOGGING_ERROR("Failed to allocate visual bridge buffers");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_visual_bridge_create: failed to allocate buffers");
         snn_visual_bridge_destroy(bridge);
         return NULL;
     }
@@ -126,6 +129,7 @@ snn_visual_bridge_t* snn_visual_bridge_create(
         bridge->downsample_buffer = nimcp_malloc(num_pixels);
         if (!bridge->downsample_buffer) {
             NIMCP_LOGGING_ERROR("Failed to allocate downsample buffer");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_visual_bridge_create: failed to allocate downsample buffer");
             snn_visual_bridge_destroy(bridge);
             return NULL;
         }
@@ -136,6 +140,7 @@ snn_visual_bridge_t* snn_visual_bridge_create(
         bridge->attention_gains = nimcp_malloc(num_neurons * sizeof(float));
         if (!bridge->attention_gains) {
             NIMCP_LOGGING_ERROR("Failed to allocate attention gains buffer");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_visual_bridge_create: failed to allocate attention gains");
             snn_visual_bridge_destroy(bridge);
             return NULL;
         }

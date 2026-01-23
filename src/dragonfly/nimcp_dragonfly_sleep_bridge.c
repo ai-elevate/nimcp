@@ -135,11 +135,17 @@ dragonfly_sleep_bridge_t dragonfly_sleep_bridge_create(
     dragonfly_sleep_config_t cfg = config ? *config : dragonfly_sleep_default_config();
 
     if (!dragonfly_sleep_validate_config(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "dragonfly_sleep_bridge_create: invalid configuration");
         return NULL;
     }
 
     dragonfly_sleep_bridge_t bridge = nimcp_calloc(1, sizeof(struct dragonfly_sleep_bridge_s));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "dragonfly_sleep_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     bridge->config = cfg;
     bridge->state.is_hunting_allowed = true;
@@ -151,8 +157,15 @@ dragonfly_sleep_bridge_t dragonfly_sleep_bridge_create(
         bridge->memory.strategy_scores[i] = 0.5f;
     }
 
-    if (bridge_base_init(&bridge->base, 0, "dragonfly_sleep") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "dragonfly_sleep") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "dragonfly_sleep_bridge_create: failed to initialize base bridge");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "dragonfly_sleep_bridge_create: base bridge mutex is NULL");
         nimcp_free(bridge);
         return NULL;
     }

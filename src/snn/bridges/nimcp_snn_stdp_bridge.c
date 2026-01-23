@@ -64,6 +64,7 @@ snn_stdp_bridge_t* snn_stdp_bridge_create(
     /* Guard clauses */
     if (!config || !network || !stdp_synapses || n_synapses == 0) {
         NIMCP_LOGGING_ERROR("Invalid parameters for SNN-STDP bridge creation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_stdp_bridge_create: config/network/synapses is NULL or n_synapses=0");
         return NULL;
     }
 
@@ -71,6 +72,7 @@ snn_stdp_bridge_t* snn_stdp_bridge_create(
     snn_stdp_bridge_t* bridge = (snn_stdp_bridge_t*)nimcp_malloc(sizeof(snn_stdp_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate SNN-STDP bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_stdp_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -89,6 +91,7 @@ snn_stdp_bridge_t* snn_stdp_bridge_create(
     );
     if (!bridge->weight_changes) {
         NIMCP_LOGGING_ERROR("Failed to allocate weight change buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_stdp_bridge_create: failed to allocate weight_changes");
         nimcp_free(bridge);
         return NULL;
     }

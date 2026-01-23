@@ -2551,6 +2551,532 @@ TEST_F(ExceptionE2EComprehensiveTest, CompleteExceptionPipelineIntegration) {
 }
 
 /* ============================================================================
+ * Test 26: Full System Recovery After Exceptions
+ * ============================================================================ */
+
+TEST_F(ExceptionE2EComprehensiveTest, FullSystemRecoveryAfterCriticalException) {
+    printf("=== Test 26: Full System Recovery After Critical Exception ===\n");
+
+    reset_all_tracking();
+
+    // Register tracking handler
+    auto* track_reg = RegisterHandler(tracking_exception_handler, "recovery_tracker");
+    ASSERT_NE(track_reg, nullptr);
+
+    printf("  Phase 1: Simulate critical system failure\n");
+
+    // Simulate a critical exception that requires full system recovery
+    nimcp_exception_t* critical_ex = nimcp_exception_create(
+        NIMCP_ERROR_MEMORY_CORRUPTION,
+        EXCEPTION_SEVERITY_CRITICAL,
+        __FILE__, __LINE__, __func__,
+        "Critical memory corruption detected in neural network weights");
+    ASSERT_NE(critical_ex, nullptr);
+
+    nimcp_exception_set_context(critical_ex, "affected_module", "brain_core");
+    nimcp_exception_set_context(critical_ex, "corruption_type", "weight_nan");
+    nimcp_exception_set_context(critical_ex, "affected_neurons", "1024");
+
+    printf("    Critical exception created: MEMORY_CORRUPTION\n");
+
+    // Present to immune system for recovery
+    nimcp_exception_present_to_immune(critical_ex, NULL);
+    nimcp_exception_dispatch(critical_ex);
+
+    printf("    Exception dispatched and presented to immune\n");
+    printf("    Handler invocations: %d\n", g_handler_invocations.load());
+
+    printf("  Phase 2: Verify system remains operational\n");
+
+    // System should still be functional after critical exception
+    nimcp_exception_t* health_check = nimcp_exception_create(
+        NIMCP_ERROR_UNKNOWN,
+        EXCEPTION_SEVERITY_DEBUG,
+        __FILE__, __LINE__, __func__,
+        "Post-recovery health check");
+    ASSERT_NE(health_check, nullptr);
+
+    nimcp_exception_dispatch(health_check);
+    nimcp_exception_unref(health_check);
+
+    printf("    Post-recovery health check passed\n");
+
+    printf("  Phase 3: Verify handler chain integrity\n");
+
+    // Handler chain should still be working
+    int pre_count = g_handler_invocations.load();
+    for (int i = 0; i < 10; i++) {
+        nimcp_exception_t* test_ex = nimcp_exception_create(
+            NIMCP_ERROR_OPERATION_FAILED,
+            EXCEPTION_SEVERITY_WARNING,
+            __FILE__, __LINE__, __func__,
+            "Handler chain integrity test %d", i);
+        nimcp_exception_dispatch(test_ex);
+        nimcp_exception_unref(test_ex);
+    }
+
+    int post_count = g_handler_invocations.load();
+    EXPECT_EQ(post_count - pre_count, 10);
+    printf("    Handler chain processed %d additional exceptions\n", post_count - pre_count);
+
+    printf("  Phase 4: Verify context and state preservation\n");
+
+    // Create exception with full context
+    nimcp_exception_t* context_ex = nimcp_exception_create(
+        NIMCP_ERROR_LEARNING_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Learning divergence after recovery");
+    ASSERT_NE(context_ex, nullptr);
+
+    nimcp_exception_set_context(context_ex, "learning_rate", "0.001");
+    nimcp_exception_set_context(context_ex, "epoch", "50");
+    nimcp_exception_set_context(context_ex, "batch_size", "32");
+
+    // Verify context is preserved
+    EXPECT_STREQ(nimcp_exception_get_context(context_ex, "learning_rate"), "0.001");
+    EXPECT_STREQ(nimcp_exception_get_context(context_ex, "epoch"), "50");
+    EXPECT_STREQ(nimcp_exception_get_context(context_ex, "batch_size"), "32");
+
+    nimcp_exception_dispatch(context_ex);
+    nimcp_exception_unref(context_ex);
+
+    printf("    Context preservation verified\n");
+
+    nimcp_exception_unref(critical_ex);
+
+    printf("Test 26 PASSED: Full system recovery after critical exception\n\n");
+}
+
+TEST_F(ExceptionE2EComprehensiveTest, SystemRecoveryAfterMultipleCriticalFailures) {
+    printf("=== Test 27: System Recovery After Multiple Critical Failures ===\n");
+
+    reset_all_tracking();
+
+    auto* track_reg = RegisterHandler(tracking_exception_handler, "multi_recovery_tracker");
+    ASSERT_NE(track_reg, nullptr);
+
+    printf("  Phase 1: Inject multiple critical failures\n");
+
+    // Simulate multiple critical failures in sequence
+    const char* failure_types[] = {
+        "Memory corruption",
+        "Neural network divergence",
+        "Thread deadlock",
+        "I/O failure",
+        "Security breach"
+    };
+
+    nimcp_error_t failure_codes[] = {
+        NIMCP_ERROR_MEMORY_CORRUPTION,
+        NIMCP_ERROR_LEARNING_FAILED,
+        NIMCP_ERROR_DEADLOCK,
+        NIMCP_ERROR_FILE_CORRUPT,
+        NIMCP_ERROR_SECURITY_THREAT
+    };
+
+    for (int i = 0; i < 5; i++) {
+        nimcp_exception_t* failure = nimcp_exception_create(
+            failure_codes[i],
+            EXCEPTION_SEVERITY_CRITICAL,
+            __FILE__, __LINE__, __func__,
+            "Critical failure %d: %s", i, failure_types[i]);
+        ASSERT_NE(failure, nullptr);
+
+        nimcp_exception_set_context(failure, "failure_id", std::to_string(i).c_str());
+        nimcp_exception_set_context(failure, "failure_type", failure_types[i]);
+
+        nimcp_exception_present_to_immune(failure, NULL);
+        nimcp_exception_dispatch(failure);
+        nimcp_exception_unref(failure);
+
+        printf("    Injected failure %d: %s\n", i, failure_types[i]);
+    }
+
+    printf("    Total handler invocations: %d\n", g_handler_invocations.load());
+
+    printf("  Phase 2: Verify system stability after multiple failures\n");
+
+    // Create and dispatch many normal exceptions
+    int stable_count = 0;
+    for (int i = 0; i < 50; i++) {
+        nimcp_exception_t* normal = nimcp_exception_create(
+            NIMCP_ERROR_OPERATION_FAILED,
+            EXCEPTION_SEVERITY_WARNING,
+            __FILE__, __LINE__, __func__,
+            "Normal operation %d after recovery", i);
+        if (normal) {
+            nimcp_exception_dispatch(normal);
+            nimcp_exception_unref(normal);
+            stable_count++;
+        }
+    }
+
+    EXPECT_EQ(stable_count, 50);
+    printf("    System processed %d normal operations after critical failures\n", stable_count);
+
+    printf("  Phase 3: Verify immune system learned from failures\n");
+
+    nimcp_exception_immune_stats_t stats;
+    nimcp_exception_immune_get_stats(&stats);
+
+    printf("    Exceptions presented: %lu\n", (unsigned long)stats.exceptions_presented);
+    printf("    Recoveries attempted: %lu\n", (unsigned long)stats.recoveries_attempted);
+    printf("    Average response time: %.2f us\n", stats.avg_response_time_us);
+
+    EXPECT_GE(stats.exceptions_presented, 5u);
+
+    printf("Test 27 PASSED: System recovery after multiple critical failures\n\n");
+}
+
+/* ============================================================================
+ * Test 28: Cascading Failure Prevention
+ * ============================================================================ */
+
+/**
+ * @brief Struct to hold cascade tracking data
+ */
+struct CascadeTrackingData {
+    std::atomic<int>* cascade_depth;
+    std::atomic<int>* max_cascade_depth;
+};
+
+/**
+ * @brief Static handler function for cascade limiting
+ */
+static bool cascade_limiting_handler_func(nimcp_exception_t* ex, void* user_data) {
+    auto* data = static_cast<CascadeTrackingData*>(user_data);
+    int current_depth = data->cascade_depth->fetch_add(1);
+
+    // Update max depth
+    int expected = data->max_cascade_depth->load();
+    while (current_depth > expected) {
+        if (data->max_cascade_depth->compare_exchange_weak(expected, current_depth)) {
+            break;
+        }
+    }
+
+    // Simulate cascade by potentially creating new exceptions
+    // But limit to prevent infinite cascade
+    if (current_depth < 5 && ex->severity >= EXCEPTION_SEVERITY_ERROR) {
+        nimcp_exception_t* cascade = nimcp_exception_create(
+            NIMCP_ERROR_OPERATION_FAILED,
+            EXCEPTION_SEVERITY_WARNING,
+            __FILE__, __LINE__, __func__,
+            "Cascade exception at depth %d", current_depth);
+        if (cascade) {
+            nimcp_exception_dispatch(cascade);
+            nimcp_exception_unref(cascade);
+        }
+    }
+
+    data->cascade_depth->fetch_sub(1);  // Reduce depth on exit
+    return false;
+}
+
+TEST_F(ExceptionE2EComprehensiveTest, CascadingFailurePrevention) {
+    printf("=== Test 28: Cascading Failure Prevention ===\n");
+
+    reset_all_tracking();
+
+    // Track cascade depth
+    std::atomic<int> cascade_depth{0};
+    std::atomic<int> max_cascade_depth{0};
+
+    CascadeTrackingData tracking_data;
+    tracking_data.cascade_depth = &cascade_depth;
+    tracking_data.max_cascade_depth = &max_cascade_depth;
+
+    nimcp_handler_options_t opts;
+    nimcp_handler_default_options(&opts);
+    opts.name = "cascade_limiter";
+    opts.handler = cascade_limiting_handler_func;
+    opts.user_data = &tracking_data;
+    opts.priority = NIMCP_HANDLER_PRIORITY_HIGH;
+
+    nimcp_handler_registration_t* reg = nimcp_handler_register(&opts);
+    ASSERT_NE(reg, nullptr);
+    handler_regs.push_back(reg);
+
+    printf("  Phase 1: Trigger potential cascade with critical error\n");
+
+    nimcp_exception_t* trigger = nimcp_exception_create(
+        NIMCP_ERROR_NO_MEMORY,
+        EXCEPTION_SEVERITY_CRITICAL,
+        __FILE__, __LINE__, __func__,
+        "Cascade trigger exception");
+    ASSERT_NE(trigger, nullptr);
+
+    nimcp_exception_dispatch(trigger);
+    nimcp_exception_unref(trigger);
+
+    printf("    Cascade triggered\n");
+    printf("    Maximum cascade depth reached: %d\n", max_cascade_depth.load());
+
+    printf("  Phase 2: Verify cascade was contained\n");
+
+    // Cascade should have been limited
+    EXPECT_LE(max_cascade_depth.load(), 5);
+    printf("    Cascade successfully contained (max depth <= 5)\n");
+
+    printf("  Phase 3: Verify system remains functional after cascade\n");
+
+    // Reset tracking
+    cascade_depth = 0;
+    max_cascade_depth = 0;
+
+    // Normal operations should work
+    for (int i = 0; i < 20; i++) {
+        nimcp_exception_t* normal = nimcp_exception_create(
+            NIMCP_ERROR_UNKNOWN,
+            EXCEPTION_SEVERITY_DEBUG,  // Low severity won't trigger cascade
+            __FILE__, __LINE__, __func__,
+            "Post-cascade normal operation %d", i);
+        nimcp_exception_dispatch(normal);
+        nimcp_exception_unref(normal);
+    }
+
+    // Should not have any deep cascades from debug-level exceptions
+    EXPECT_LE(max_cascade_depth.load(), 1);
+    printf("    System stable after cascade containment\n");
+
+    printf("Test 28 PASSED: Cascading failure prevention\n\n");
+}
+
+TEST_F(ExceptionE2EComprehensiveTest, CascadeIsolationAcrossModules) {
+    printf("=== Test 29: Cascade Isolation Across Modules ===\n");
+
+    reset_all_tracking();
+
+    auto* track_reg = RegisterHandler(tracking_exception_handler, "isolation_tracker");
+    ASSERT_NE(track_reg, nullptr);
+
+    printf("  Phase 1: Simulate cascade in one module\n");
+
+    // Create aggregate to collect module failures
+    nimcp_aggregate_exception_t* module_failures = nimcp_aggregate_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_SEVERE,
+        __FILE__, __LINE__, __func__,
+        "Module cascade aggregate");
+    ASSERT_NE(module_failures, nullptr);
+
+    // Simulate cascade in "memory" module
+    const char* memory_operations[] = {"allocate", "deallocate", "compact", "gc"};
+    for (int i = 0; i < 4; i++) {
+        nimcp_memory_exception_t* mem_ex = nimcp_memory_exception_create(
+            NIMCP_ERROR_NO_MEMORY,
+            EXCEPTION_SEVERITY_ERROR,
+            __FILE__, __LINE__, __func__,
+            1024 * (i + 1),
+            "Memory cascade: %s failed", memory_operations[i]);
+        ASSERT_NE(mem_ex, nullptr);
+        nimcp_aggregate_exception_add(module_failures, (nimcp_exception_t*)mem_ex);
+    }
+
+    printf("    Created memory module cascade (4 failures)\n");
+
+    printf("  Phase 2: Verify other modules still functional\n");
+
+    // "Brain" module should still work
+    nimcp_brain_exception_t* brain_ex = nimcp_brain_exception_create(
+        NIMCP_ERROR_LEARNING_FAILED,
+        EXCEPTION_SEVERITY_WARNING,
+        __FILE__, __LINE__, __func__,
+        1, "prefrontal",
+        "Brain module independent test");
+    ASSERT_NE(brain_ex, nullptr);
+
+    nimcp_exception_dispatch((nimcp_exception_t*)brain_ex);
+    nimcp_exception_unref((nimcp_exception_t*)brain_ex);
+    printf("    Brain module functioning independently\n");
+
+    // "I/O" module should still work
+    nimcp_io_exception_t* io_ex = nimcp_io_exception_create(
+        NIMCP_ERROR_FILE_READ,
+        EXCEPTION_SEVERITY_WARNING,
+        __FILE__, __LINE__, __func__,
+        "/test/path",
+        "IO module independent test");
+    ASSERT_NE(io_ex, nullptr);
+
+    nimcp_exception_dispatch((nimcp_exception_t*)io_ex);
+    nimcp_exception_unref((nimcp_exception_t*)io_ex);
+    printf("    I/O module functioning independently\n");
+
+    printf("  Phase 3: Dispatch aggregate and verify containment\n");
+
+    int pre_dispatch = g_handler_invocations.load();
+    nimcp_exception_dispatch((nimcp_exception_t*)module_failures);
+    int post_dispatch = g_handler_invocations.load();
+
+    printf("    Aggregate dispatch triggered %d handler calls\n", post_dispatch - pre_dispatch);
+    EXPECT_GE(post_dispatch - pre_dispatch, 1);
+
+    nimcp_exception_unref((nimcp_exception_t*)module_failures);
+
+    printf("  Phase 4: Confirm system stability\n");
+
+    // All modules should still be accessible
+    nimcp_exception_t* final_check = nimcp_exception_create(
+        NIMCP_ERROR_UNKNOWN,
+        EXCEPTION_SEVERITY_DEBUG,
+        __FILE__, __LINE__, __func__,
+        "Final stability check");
+    ASSERT_NE(final_check, nullptr);
+
+    nimcp_exception_dispatch(final_check);
+    nimcp_exception_unref(final_check);
+
+    printf("    System stable after module cascade isolation\n");
+
+    printf("Test 29 PASSED: Cascade isolation across modules\n\n");
+}
+
+/* ============================================================================
+ * Test 30: Full E2E Recovery Scenario
+ * ============================================================================ */
+
+TEST_F(ExceptionE2EComprehensiveTest, FullE2ERecoveryScenario) {
+    printf("=== Test 30: Full E2E Recovery Scenario ===\n");
+
+    reset_all_tracking();
+
+    // Setup comprehensive handler chain
+    auto* track_reg = RegisterHandler(tracking_exception_handler, "e2e_tracker",
+                                       NIMCP_HANDLER_PRIORITY_NORMAL);
+    ASSERT_NE(track_reg, nullptr);
+
+    // Register recovery callbacks
+    std::atomic<int> gc_recoveries{0};
+    auto gc_recovery = [](nimcp_exception_t* ex,
+                          nimcp_exception_recovery_action_t action,
+                          void* user_data) -> int {
+        auto* counter = static_cast<std::atomic<int>*>(user_data);
+        counter->fetch_add(1);
+        return 0;  // Success
+    };
+    nimcp_register_recovery_callback(EXCEPTION_RECOVERY_GC, gc_recovery, &gc_recoveries);
+
+    std::atomic<int> retry_recoveries{0};
+    auto retry_recovery = [](nimcp_exception_t* ex,
+                             nimcp_exception_recovery_action_t action,
+                             void* user_data) -> int {
+        auto* counter = static_cast<std::atomic<int>*>(user_data);
+        counter->fetch_add(1);
+        return 0;
+    };
+    nimcp_register_recovery_callback(EXCEPTION_RECOVERY_RETRY, retry_recovery, &retry_recoveries);
+
+    printf("  Phase 1: Initial system state\n");
+
+    nimcp_exception_immune_stats_t initial_stats;
+    nimcp_exception_immune_get_stats(&initial_stats);
+    printf("    Initial exceptions presented: %lu\n",
+           (unsigned long)initial_stats.exceptions_presented);
+
+    printf("  Phase 2: Simulate complex multi-module failure scenario\n");
+
+    // Step 1: Memory pressure triggers memory exception
+    nimcp_memory_exception_t* mem_ex = nimcp_memory_exception_create(
+        NIMCP_ERROR_NO_MEMORY,
+        EXCEPTION_SEVERITY_SEVERE,
+        __FILE__, __LINE__, __func__,
+        50 * 1024 * 1024,  // 50MB requested
+        "Memory pressure during batch processing");
+    ASSERT_NE(mem_ex, nullptr);
+    mem_ex->available_size = 10 * 1024 * 1024;  // Only 10MB available
+    mem_ex->is_heap = true;
+    nimcp_exception_set_context(&mem_ex->base, "batch_id", "42");
+    nimcp_exception_set_context(&mem_ex->base, "operation", "weight_update");
+
+    nimcp_exception_present_to_immune((nimcp_exception_t*)mem_ex, NULL);
+    nimcp_execute_recovery((nimcp_exception_t*)mem_ex, EXCEPTION_RECOVERY_GC);
+    nimcp_exception_dispatch((nimcp_exception_t*)mem_ex);
+
+    printf("    Memory exception processed with GC recovery\n");
+
+    // Step 2: Brain module encounters learning divergence
+    nimcp_brain_exception_t* brain_ex = nimcp_brain_exception_create(
+        NIMCP_ERROR_LEARNING_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        1, "hippocampus",
+        "Learning divergence - gradient explosion");
+    ASSERT_NE(brain_ex, nullptr);
+    brain_ex->has_nan_weights = true;
+    brain_ex->learning_diverged = true;
+    brain_ex->gradient_norm = 1e10f;
+    nimcp_exception_set_context(&brain_ex->base, "learning_rate", "0.1");
+    nimcp_exception_set_context(&brain_ex->base, "epoch", "100");
+
+    nimcp_exception_present_to_immune((nimcp_exception_t*)brain_ex, NULL);
+    nimcp_execute_recovery((nimcp_exception_t*)brain_ex, EXCEPTION_RECOVERY_RETRY);
+    nimcp_exception_dispatch((nimcp_exception_t*)brain_ex);
+
+    printf("    Brain exception processed with retry recovery\n");
+
+    // Step 3: I/O error during checkpoint save
+    nimcp_io_exception_t* io_ex = nimcp_io_exception_create(
+        NIMCP_ERROR_FILE_WRITE,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "/data/checkpoint_100.bin",
+        "Checkpoint save failed - disk full");
+    ASSERT_NE(io_ex, nullptr);
+    io_ex->errno_value = 28;  // ENOSPC
+    io_ex->bytes_transferred = 1024 * 1024;
+    io_ex->bytes_expected = 10 * 1024 * 1024;
+
+    nimcp_exception_present_to_immune((nimcp_exception_t*)io_ex, NULL);
+    nimcp_exception_dispatch((nimcp_exception_t*)io_ex);
+
+    printf("    I/O exception processed\n");
+
+    printf("  Phase 3: Verify recovery actions executed\n");
+
+    EXPECT_GE(gc_recoveries.load(), 1);
+    EXPECT_GE(retry_recoveries.load(), 1);
+    printf("    GC recoveries: %d\n", gc_recoveries.load());
+    printf("    Retry recoveries: %d\n", retry_recoveries.load());
+
+    printf("  Phase 4: Verify system health after recovery\n");
+
+    // System should be fully functional
+    for (int i = 0; i < 20; i++) {
+        nimcp_exception_t* health = nimcp_exception_create(
+            NIMCP_ERROR_UNKNOWN,
+            EXCEPTION_SEVERITY_DEBUG,
+            __FILE__, __LINE__, __func__,
+            "Post-recovery health check %d", i);
+        nimcp_exception_dispatch(health);
+        nimcp_exception_unref(health);
+    }
+
+    printf("    System health verified (20 operations completed)\n");
+
+    printf("  Phase 5: Final statistics\n");
+
+    nimcp_exception_immune_stats_t final_stats;
+    nimcp_exception_immune_get_stats(&final_stats);
+
+    printf("    Final exceptions presented: %lu\n",
+           (unsigned long)final_stats.exceptions_presented);
+    printf("    Total recoveries attempted: %lu\n",
+           (unsigned long)final_stats.recoveries_attempted);
+    printf("    Handler invocations: %d\n", g_handler_invocations.load());
+
+    // Cleanup
+    nimcp_exception_unref((nimcp_exception_t*)mem_ex);
+    nimcp_exception_unref((nimcp_exception_t*)brain_ex);
+    nimcp_exception_unref((nimcp_exception_t*)io_ex);
+
+    EXPECT_GE(final_stats.exceptions_presented, initial_stats.exceptions_presented + 3);
+
+    printf("Test 30 PASSED: Full E2E recovery scenario\n\n");
+}
+
+/* ============================================================================
  * Main Function
  * ============================================================================ */
 

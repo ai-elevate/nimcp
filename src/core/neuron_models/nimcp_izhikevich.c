@@ -271,6 +271,7 @@ static void izhikevich_derivatives(const float* state, float t, void* params, fl
 static void izhikevich_init(neuron_model_state_t state, const void* params) {
     // Guard: Validate state
     if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "izhikevich_init: state is NULL");
         return;
     }
 
@@ -337,6 +338,7 @@ static void izhikevich_update(neuron_model_state_t state, float dt, float input_
 
     // Guard: Validate state
     if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "izhikevich_update: state is NULL");
         return;
     }
 
@@ -387,6 +389,7 @@ static void izhikevich_update(neuron_model_state_t state, float dt, float input_
 static bool izhikevich_check_spike(const neuron_model_state_t state) {
     // Guard: Validate state
     if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "izhikevich_check_spike: state is NULL");
         return false;
     }
 

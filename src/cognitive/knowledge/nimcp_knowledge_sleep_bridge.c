@@ -99,11 +99,17 @@ knowledge_sleep_bridge_t knowledge_sleep_bridge_create(
     const knowledge_sleep_config_t* config,
     sleep_system_t sleep)
 {
-    if (!sleep) return NULL;
+    if (!sleep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "knowledge_sleep_bridge_create: sleep is NULL");
+        return NULL;
+    }
 
     struct knowledge_sleep_bridge_struct* bridge =
         (struct knowledge_sleep_bridge_struct*)nimcp_malloc(sizeof(struct knowledge_sleep_bridge_struct));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_sleep_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     memset(bridge, 0, sizeof(struct knowledge_sleep_bridge_struct));
 
@@ -117,8 +123,16 @@ knowledge_sleep_bridge_t knowledge_sleep_bridge_create(
     bridge->effects.association_strength_factor = 0.2f;
     bridge->effects.consolidation_active = false;
 
-    if (bridge_base_init(&bridge->base, 0, "knowledge_sleep") != 0) { nimcp_free(bridge); return NULL; }
-    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "knowledge_sleep") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_sleep_bridge_create: bridge_base_init failed");
+        nimcp_free(bridge);
+        return NULL;
+    }
+    if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_sleep_bridge_create: mutex creation failed");
+        nimcp_free(bridge);
+        return NULL;
+    }
 
     /* Register callback for automatic state updates */
     bridge->callback_registered = sleep_register_state_callback(

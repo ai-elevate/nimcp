@@ -77,12 +77,14 @@ snn_training_bridge_t* snn_training_bridge_create(
 ) {
     if (!config || !snn || !training_ctx) {
         NIMCP_LOGGING_ERROR("Invalid parameters for training bridge creation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_bridge_create: config/snn/training_ctx is NULL");
         return NULL;
     }
 
     snn_training_bridge_t* bridge = nimcp_calloc(1, sizeof(snn_training_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate training bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_training_bridge_create: failed to allocate bridge");
         return NULL;
     }
 

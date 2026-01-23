@@ -426,7 +426,10 @@ nimcp_continuous_monitor_t* nimcp_monitor_create(
     nimcp_continuous_monitor_t* monitor =
         (nimcp_continuous_monitor_t*)nimcp_calloc(1, sizeof(nimcp_continuous_monitor_t));
 
-    NIMCP_API_CHECK_ALLOC(monitor, "Failed to allocate continuous monitor");
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_monitor_create: failed to allocate monitor");
+        return NULL;
+    }
 
     monitor->coverage = coverage;
     monitor->state = NIMCP_MONITOR_STATE_STOPPED;

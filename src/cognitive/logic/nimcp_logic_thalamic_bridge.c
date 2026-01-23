@@ -31,7 +31,10 @@ logic_thalamic_config_t logic_thalamic_default_config(void) {
 
 logic_thalamic_bridge_t* logic_thalamic_bridge_create(void* logic, thalamic_router_t* router, const logic_thalamic_config_t* config) {
     logic_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(logic_thalamic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "logic_thalamic_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
     bridge->logic = logic;
     bridge->router = router;
     bridge->config = config ? *config : logic_thalamic_default_config();

@@ -2019,6 +2019,584 @@ TEST_F(ExceptionAPIRegressionTest, RecoveryStrategy_SuggestedRecovery) {
 }
 
 /* ============================================================================
+ * SECTION 29: API Stability After Exceptions
+ * ============================================================================ */
+
+TEST_F(ExceptionAPIRegressionTest, APIStability_ExceptionSystemRemainsUsable) {
+    // WHAT: Test that exception system remains usable after exceptions
+    // WHY:  API must remain stable and functional after error conditions
+    // HOW:  Throw exceptions and verify system still works correctly
+
+    // Throw many exceptions
+    for (int i = 0; i < 100; i++) {
+        nimcp_exception_t* ex = nimcp_exception_create(
+            NIMCP_ERROR_OPERATION_FAILED,
+            EXCEPTION_SEVERITY_ERROR,
+            __FILE__, __LINE__, __func__,
+            "API stability test exception %d", i);
+        ASSERT_NE(ex, nullptr);
+        nimcp_exception_dispatch(ex);
+        nimcp_exception_unref(ex);
+    }
+
+    // System should still be fully functional
+    nimcp_exception_t* final_ex = nimcp_exception_create(
+        NIMCP_ERROR_UNKNOWN,
+        EXCEPTION_SEVERITY_DEBUG,
+        __FILE__, __LINE__, __func__,
+        "Final test exception");
+    ASSERT_NE(final_ex, nullptr);
+    EXPECT_EQ(final_ex->code, NIMCP_ERROR_UNKNOWN);
+    EXPECT_EQ(final_ex->severity, EXCEPTION_SEVERITY_DEBUG);
+    nimcp_exception_unref(final_ex);
+}
+
+TEST_F(ExceptionAPIRegressionTest, APIStability_HandlerChainAfterExceptions) {
+    // WHAT: Test handler chain remains functional after many exceptions
+    // WHY:  Handler chain is critical infrastructure
+    // HOW:  Register handlers, throw exceptions, verify handlers still work
+
+    std::atomic<int> handler_count{0};
+    auto test_handler = [](nimcp_exception_t* ex, void* user_data) -> bool {
+        auto* counter = static_cast<std::atomic<int>*>(user_data);
+        counter->fetch_add(1);
+        return false;
+    };
+
+    nimcp_handler_options_t opts;
+    nimcp_handler_default_options(&opts);
+    opts.name = "stability_handler";
+    opts.handler = test_handler;
+    opts.user_data = &handler_count;
+
+    nimcp_handler_registration_t* reg = nimcp_handler_register(&opts);
+    ASSERT_NE(reg, nullptr);
+
+    // Throw many exceptions
+    for (int i = 0; i < 50; i++) {
+        nimcp_exception_t* ex = nimcp_exception_create(
+            NIMCP_ERROR_INVALID_PARAM + (i % 10),
+            EXCEPTION_SEVERITY_WARNING,
+            __FILE__, __LINE__, __func__,
+            "Handler chain stability test %d", i);
+        nimcp_exception_dispatch(ex);
+        nimcp_exception_unref(ex);
+    }
+
+    EXPECT_EQ(handler_count.load(), 50);
+
+    // Handler should still work
+    handler_count = 0;
+    nimcp_exception_t* final_ex = nimcp_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Final handler test");
+    nimcp_exception_dispatch(final_ex);
+    nimcp_exception_unref(final_ex);
+
+    EXPECT_EQ(handler_count.load(), 1);
+
+    nimcp_handler_unregister(reg);
+}
+
+TEST_F(ExceptionAPIRegressionTest, APIStability_ContextAPIAfterExceptions) {
+    // WHAT: Test context API remains stable after exceptions
+    // WHY:  Context management must work reliably
+    // HOW:  Use context API extensively, verify consistent behavior
+
+    for (int round = 0; round < 20; round++) {
+        nimcp_exception_t* ex = nimcp_exception_create(
+            NIMCP_ERROR_OPERATION_FAILED,
+            EXCEPTION_SEVERITY_ERROR,
+            __FILE__, __LINE__, __func__,
+            "Context API stability round %d", round);
+        ASSERT_NE(ex, nullptr);
+
+        // Add many context entries
+        for (int i = 0; i < NIMCP_EXCEPTION_MAX_CONTEXT_ENTRIES; i++) {
+            char key[64], value[128];
+            snprintf(key, sizeof(key), "key_%d", i);
+            snprintf(value, sizeof(value), "value_%d_round_%d", i, round);
+            nimcp_exception_set_context(ex, key, value);
+        }
+
+        EXPECT_EQ(nimcp_exception_context_count(ex), NIMCP_EXCEPTION_MAX_CONTEXT_ENTRIES);
+
+        // Verify all context entries
+        for (int i = 0; i < (int)NIMCP_EXCEPTION_MAX_CONTEXT_ENTRIES; i++) {
+            char key[64], expected_value[128];
+            snprintf(key, sizeof(key), "key_%d", i);
+            snprintf(expected_value, sizeof(expected_value), "value_%d_round_%d", i, round);
+            EXPECT_STREQ(nimcp_exception_get_context(ex, key), expected_value);
+        }
+
+        nimcp_exception_dispatch(ex);
+        nimcp_exception_unref(ex);
+    }
+}
+
+TEST_F(ExceptionAPIRegressionTest, APIStability_TypedExceptionsAfterErrors) {
+    // WHAT: Test typed exception APIs work after previous exceptions
+    // WHY:  All exception types must remain functional
+    // HOW:  Create various typed exceptions after error conditions
+
+    // First, throw some errors to "stress" the system
+    for (int i = 0; i < 30; i++) {
+        nimcp_exception_t* ex = nimcp_exception_create(
+            NIMCP_ERROR_NO_MEMORY,
+            EXCEPTION_SEVERITY_SEVERE,
+            __FILE__, __LINE__, __func__,
+            "Pre-stress test %d", i);
+        nimcp_exception_dispatch(ex);
+        nimcp_exception_unref(ex);
+    }
+
+    // Now verify all typed exception APIs work correctly
+    // Memory exception
+    nimcp_memory_exception_t* mex = nimcp_memory_exception_create(
+        NIMCP_ERROR_NO_MEMORY,
+        EXCEPTION_SEVERITY_SEVERE,
+        __FILE__, __LINE__, __func__,
+        1024 * 1024,
+        "Memory exception after stress");
+    ASSERT_NE(mex, nullptr);
+    EXPECT_EQ(mex->base.type, EXCEPTION_TYPE_MEMORY);
+    EXPECT_EQ(mex->requested_size, 1024u * 1024u);
+    nimcp_exception_unref((nimcp_exception_t*)mex);
+
+    // Brain exception
+    nimcp_brain_exception_t* bex = nimcp_brain_exception_create(
+        NIMCP_ERROR_LEARNING_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        42, "hippocampus",
+        "Brain exception after stress");
+    ASSERT_NE(bex, nullptr);
+    EXPECT_EQ(bex->base.type, EXCEPTION_TYPE_BRAIN);
+    EXPECT_EQ(bex->brain_id, 42u);
+    nimcp_exception_unref((nimcp_exception_t*)bex);
+
+    // I/O exception
+    nimcp_io_exception_t* iex = nimcp_io_exception_create(
+        NIMCP_ERROR_FILE_READ,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "/test/path",
+        "IO exception after stress");
+    ASSERT_NE(iex, nullptr);
+    EXPECT_EQ(iex->base.type, EXCEPTION_TYPE_IO);
+    EXPECT_STREQ(iex->path, "/test/path");
+    nimcp_exception_unref((nimcp_exception_t*)iex);
+
+    // Threading exception
+    nimcp_threading_exception_t* tex = nimcp_threading_exception_create(
+        NIMCP_ERROR_DEADLOCK,
+        EXCEPTION_SEVERITY_CRITICAL,
+        __FILE__, __LINE__, __func__,
+        12345,
+        "Threading exception after stress");
+    ASSERT_NE(tex, nullptr);
+    EXPECT_EQ(tex->base.type, EXCEPTION_TYPE_THREADING);
+    EXPECT_EQ(tex->thread_id, 12345u);
+    nimcp_exception_unref((nimcp_exception_t*)tex);
+}
+
+TEST_F(ExceptionAPIRegressionTest, APIStability_AggregateExceptionsAfterErrors) {
+    // WHAT: Test aggregate exception API stability
+    // WHY:  Aggregate exceptions are complex and must remain stable
+    // HOW:  Create and manipulate aggregates after error conditions
+
+    // Pre-stress
+    for (int i = 0; i < 20; i++) {
+        nimcp_exception_t* ex = nimcp_exception_create(
+            NIMCP_ERROR_OPERATION_FAILED,
+            EXCEPTION_SEVERITY_ERROR,
+            __FILE__, __LINE__, __func__,
+            "Aggregate pre-stress %d", i);
+        nimcp_exception_dispatch(ex);
+        nimcp_exception_unref(ex);
+    }
+
+    // Create aggregate
+    nimcp_aggregate_exception_t* agg = nimcp_aggregate_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_SEVERE,
+        __FILE__, __LINE__, __func__,
+        "Aggregate after stress test");
+    ASSERT_NE(agg, nullptr);
+    EXPECT_EQ(agg->base.type, EXCEPTION_TYPE_AGGREGATE);
+
+    // Add children
+    for (int i = 0; i < NIMCP_EXCEPTION_MAX_CHILDREN; i++) {
+        nimcp_exception_t* child = nimcp_exception_create(
+            NIMCP_ERROR_INVALID_PARAM,
+            EXCEPTION_SEVERITY_WARNING,
+            __FILE__, __LINE__, __func__,
+            "Child %d of aggregate", i);
+        ASSERT_NE(child, nullptr);
+        nimcp_aggregate_exception_add(agg, child);
+    }
+
+    EXPECT_EQ(nimcp_aggregate_exception_count(agg), (size_t)NIMCP_EXCEPTION_MAX_CHILDREN);
+
+    // Iterate children
+    for (size_t i = 0; i < nimcp_aggregate_exception_count(agg); i++) {
+        nimcp_exception_t* child = nimcp_aggregate_exception_get(agg, i);
+        ASSERT_NE(child, nullptr);
+        EXPECT_EQ(child->code, NIMCP_ERROR_INVALID_PARAM);
+    }
+
+    nimcp_exception_unref((nimcp_exception_t*)agg);
+}
+
+/* ============================================================================
+ * SECTION 30: Module State Recovery Tests
+ * ============================================================================ */
+
+TEST_F(ExceptionAPIRegressionTest, ModuleStateRecovery_ExceptionSystemReinitialization) {
+    // WHAT: Test exception system can be properly re-initialized
+    // WHY:  Recovery may require system restart
+    // HOW:  Shutdown and reinitialize exception system
+
+    // Throw some exceptions first
+    for (int i = 0; i < 10; i++) {
+        nimcp_exception_t* ex = nimcp_exception_create(
+            NIMCP_ERROR_OPERATION_FAILED,
+            EXCEPTION_SEVERITY_ERROR,
+            __FILE__, __LINE__, __func__,
+            "Pre-reinit test %d", i);
+        nimcp_exception_dispatch(ex);
+        nimcp_exception_unref(ex);
+    }
+
+    // Shutdown
+    nimcp_exception_clear_current();
+    nimcp_exception_system_shutdown();
+
+    // Reinitialize
+    int result = nimcp_exception_system_init();
+    EXPECT_EQ(result, 0);
+
+    // System should work normally
+    nimcp_exception_t* ex = nimcp_exception_create(
+        NIMCP_ERROR_UNKNOWN,
+        EXCEPTION_SEVERITY_DEBUG,
+        __FILE__, __LINE__, __func__,
+        "Post-reinit test");
+    ASSERT_NE(ex, nullptr);
+    EXPECT_EQ(ex->code, NIMCP_ERROR_UNKNOWN);
+    nimcp_exception_unref(ex);
+}
+
+TEST_F(ExceptionAPIRegressionTest, ModuleStateRecovery_HandlerReregistration) {
+    // WHAT: Test handlers can be re-registered after recovery
+    // WHY:  Recovery may require handler chain rebuild
+    // HOW:  Register, unregister, re-register handlers
+
+    std::atomic<int> call_count{0};
+    auto handler = [](nimcp_exception_t* ex, void* user_data) -> bool {
+        auto* counter = static_cast<std::atomic<int>*>(user_data);
+        counter->fetch_add(1);
+        return false;
+    };
+
+    // Register first handler
+    nimcp_handler_options_t opts1;
+    nimcp_handler_default_options(&opts1);
+    opts1.name = "recovery_handler_1";
+    opts1.handler = handler;
+    opts1.user_data = &call_count;
+    opts1.priority = 100;
+
+    nimcp_handler_registration_t* reg1 = nimcp_handler_register(&opts1);
+    ASSERT_NE(reg1, nullptr);
+
+    // Throw exception
+    nimcp_exception_t* ex1 = nimcp_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "First throw");
+    nimcp_exception_dispatch(ex1);
+    nimcp_exception_unref(ex1);
+    EXPECT_EQ(call_count.load(), 1);
+
+    // Unregister
+    nimcp_handler_unregister(reg1);
+
+    // Re-register with different name
+    nimcp_handler_options_t opts2;
+    nimcp_handler_default_options(&opts2);
+    opts2.name = "recovery_handler_2";
+    opts2.handler = handler;
+    opts2.user_data = &call_count;
+    opts2.priority = 100;
+
+    nimcp_handler_registration_t* reg2 = nimcp_handler_register(&opts2);
+    ASSERT_NE(reg2, nullptr);
+
+    // Throw again
+    nimcp_exception_t* ex2 = nimcp_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Second throw after re-register");
+    nimcp_exception_dispatch(ex2);
+    nimcp_exception_unref(ex2);
+    EXPECT_EQ(call_count.load(), 2);
+
+    nimcp_handler_unregister(reg2);
+}
+
+TEST_F(ExceptionAPIRegressionTest, ModuleStateRecovery_ThreadLocalStateCleared) {
+    // WHAT: Test thread-local exception state is properly cleared
+    // WHY:  Recovery requires clean state
+    // HOW:  Set and clear thread-local exception state
+
+    // Set current exception
+    nimcp_exception_t* ex = nimcp_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Thread local test");
+    ASSERT_NE(ex, nullptr);
+
+    nimcp_exception_set_current(ex);
+    EXPECT_NE(nimcp_exception_get_current(), nullptr);
+
+    // Clear
+    nimcp_exception_clear_current();
+    EXPECT_EQ(nimcp_exception_get_current(), nullptr);
+
+    // Set again to verify state is clean
+    nimcp_exception_t* ex2 = nimcp_exception_create(
+        NIMCP_ERROR_TIMEOUT,
+        EXCEPTION_SEVERITY_WARNING,
+        __FILE__, __LINE__, __func__,
+        "Thread local test 2");
+    ASSERT_NE(ex2, nullptr);
+
+    nimcp_exception_set_current(ex2);
+    nimcp_exception_t* current = nimcp_exception_get_current();
+    ASSERT_NE(current, nullptr);
+    EXPECT_EQ(current->code, NIMCP_ERROR_TIMEOUT);
+
+    nimcp_exception_clear_current();
+}
+
+TEST_F(ExceptionAPIRegressionTest, ModuleStateRecovery_RecoveryCallbackReregistration) {
+    // WHAT: Test recovery callbacks can be re-registered
+    // WHY:  Recovery callbacks may need to be updated after recovery
+    // HOW:  Register, trigger, re-register recovery callbacks
+
+    std::atomic<int> callback_count{0};
+    auto recovery_cb = [](nimcp_exception_t* ex,
+                          nimcp_exception_recovery_action_t action,
+                          void* user_data) -> int {
+        auto* counter = static_cast<std::atomic<int>*>(user_data);
+        counter->fetch_add(1);
+        return 0;  // Success
+    };
+
+    // Register recovery callback
+    nimcp_register_recovery_callback(EXCEPTION_RECOVERY_RETRY, recovery_cb, &callback_count);
+
+    // Create exception and attempt recovery
+    nimcp_exception_t* ex = nimcp_exception_create(
+        NIMCP_ERROR_OPERATION_FAILED,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Recovery callback test");
+    ASSERT_NE(ex, nullptr);
+
+    int result = nimcp_execute_recovery(ex, EXCEPTION_RECOVERY_RETRY);
+    EXPECT_EQ(result, 0);
+    EXPECT_GE(callback_count.load(), 1);
+
+    nimcp_exception_unref(ex);
+
+    // Re-register with different callback
+    std::atomic<int> new_callback_count{0};
+    nimcp_register_recovery_callback(EXCEPTION_RECOVERY_RETRY, recovery_cb, &new_callback_count);
+
+    nimcp_exception_t* ex2 = nimcp_exception_create(
+        NIMCP_ERROR_TIMEOUT,
+        EXCEPTION_SEVERITY_ERROR,
+        __FILE__, __LINE__, __func__,
+        "Recovery callback test 2");
+    ASSERT_NE(ex2, nullptr);
+
+    result = nimcp_execute_recovery(ex2, EXCEPTION_RECOVERY_RETRY);
+    EXPECT_EQ(result, 0);
+    EXPECT_GE(new_callback_count.load(), 1);
+
+    nimcp_exception_unref(ex2);
+}
+
+TEST_F(ExceptionAPIRegressionTest, ModuleStateRecovery_StatsResetAfterRecovery) {
+    // WHAT: Test stats tracking works correctly after recovery
+    // WHY:  Stats must accurately reflect post-recovery state
+    // HOW:  Check stats before and after simulated recovery
+
+    // Get initial stats
+    nimcp_exception_immune_stats_t initial_stats;
+    nimcp_exception_immune_get_stats(&initial_stats);
+
+    // Throw some exceptions to accumulate stats
+    for (int i = 0; i < 10; i++) {
+        nimcp_exception_t* ex = nimcp_exception_create(
+            NIMCP_ERROR_OPERATION_FAILED,
+            EXCEPTION_SEVERITY_SEVERE,
+            __FILE__, __LINE__, __func__,
+            "Stats test %d", i);
+        nimcp_exception_present_to_immune(ex, NULL);
+        nimcp_exception_dispatch(ex);
+        nimcp_exception_unref(ex);
+    }
+
+    // Get updated stats
+    nimcp_exception_immune_stats_t updated_stats;
+    nimcp_exception_immune_get_stats(&updated_stats);
+
+    // Stats should show activity
+    EXPECT_GE(updated_stats.exceptions_presented,
+              initial_stats.exceptions_presented);
+}
+
+TEST_F(ExceptionAPIRegressionTest, ModuleStateRecovery_MultipleRecoveryAttempts) {
+    // WHAT: Test system handles multiple recovery attempts gracefully
+    // WHY:  Real recovery may require multiple attempts
+    // HOW:  Attempt recovery multiple times for same exception type
+
+    std::atomic<int> attempt_count{0};
+    auto recovery_cb = [](nimcp_exception_t* ex,
+                          nimcp_exception_recovery_action_t action,
+                          void* user_data) -> int {
+        auto* counter = static_cast<std::atomic<int>*>(user_data);
+        int attempts = counter->fetch_add(1) + 1;
+        // Succeed on 3rd attempt
+        return (attempts >= 3) ? 0 : -1;
+    };
+
+    nimcp_register_recovery_callback(EXCEPTION_RECOVERY_GC, recovery_cb, &attempt_count);
+
+    nimcp_exception_t* ex = nimcp_exception_create(
+        NIMCP_ERROR_NO_MEMORY,
+        EXCEPTION_SEVERITY_SEVERE,
+        __FILE__, __LINE__, __func__,
+        "Multiple recovery attempt test");
+    ASSERT_NE(ex, nullptr);
+
+    // First attempt - should fail
+    int result = nimcp_execute_recovery(ex, EXCEPTION_RECOVERY_GC);
+    EXPECT_NE(result, 0);
+
+    // Second attempt - should fail
+    result = nimcp_execute_recovery(ex, EXCEPTION_RECOVERY_GC);
+    EXPECT_NE(result, 0);
+
+    // Third attempt - should succeed
+    result = nimcp_execute_recovery(ex, EXCEPTION_RECOVERY_GC);
+    EXPECT_EQ(result, 0);
+
+    EXPECT_EQ(attempt_count.load(), 3);
+
+    nimcp_exception_unref(ex);
+}
+
+/* ============================================================================
+ * SECTION 31: Concurrent Access Stability Tests
+ * ============================================================================ */
+
+TEST_F(ExceptionAPIRegressionTest, ConcurrentAccess_SimultaneousExceptionCreation) {
+    // WHAT: Test concurrent exception creation is thread-safe
+    // WHY:  Multiple threads may create exceptions simultaneously
+    // HOW:  Launch threads that create exceptions concurrently
+
+    const int NUM_THREADS = 10;
+    const int EXCEPTIONS_PER_THREAD = 50;
+    std::atomic<int> created_count{0};
+    std::atomic<int> failed_count{0};
+
+    std::vector<std::thread> threads;
+    for (int t = 0; t < NUM_THREADS; t++) {
+        threads.emplace_back([&, t]() {
+            for (int i = 0; i < EXCEPTIONS_PER_THREAD; i++) {
+                nimcp_exception_t* ex = nimcp_exception_create(
+                    NIMCP_ERROR_OPERATION_FAILED,
+                    EXCEPTION_SEVERITY_WARNING,
+                    __FILE__, __LINE__, __func__,
+                    "Thread %d exception %d", t, i);
+                if (ex) {
+                    created_count++;
+                    nimcp_exception_unref(ex);
+                } else {
+                    failed_count++;
+                }
+            }
+        });
+    }
+
+    for (auto& t : threads) {
+        t.join();
+    }
+
+    EXPECT_EQ(created_count.load(), NUM_THREADS * EXCEPTIONS_PER_THREAD);
+    EXPECT_EQ(failed_count.load(), 0);
+}
+
+TEST_F(ExceptionAPIRegressionTest, ConcurrentAccess_SimultaneousHandlerCalls) {
+    // WHAT: Test concurrent handler calls are thread-safe
+    // WHY:  Handler chain must handle concurrent access
+    // HOW:  Register handler and dispatch from multiple threads
+
+    std::atomic<int> handler_calls{0};
+    auto handler = [](nimcp_exception_t* ex, void* user_data) -> bool {
+        auto* counter = static_cast<std::atomic<int>*>(user_data);
+        counter->fetch_add(1);
+        return false;
+    };
+
+    nimcp_handler_options_t opts;
+    nimcp_handler_default_options(&opts);
+    opts.name = "concurrent_handler";
+    opts.handler = handler;
+    opts.user_data = &handler_calls;
+
+    nimcp_handler_registration_t* reg = nimcp_handler_register(&opts);
+    ASSERT_NE(reg, nullptr);
+
+    const int NUM_THREADS = 8;
+    const int DISPATCHES_PER_THREAD = 25;
+    std::vector<std::thread> threads;
+
+    for (int t = 0; t < NUM_THREADS; t++) {
+        threads.emplace_back([&, t]() {
+            for (int i = 0; i < DISPATCHES_PER_THREAD; i++) {
+                nimcp_exception_t* ex = nimcp_exception_create(
+                    NIMCP_ERROR_THREAD_SYNC,
+                    EXCEPTION_SEVERITY_WARNING,
+                    __FILE__, __LINE__, __func__,
+                    "Concurrent dispatch %d-%d", t, i);
+                if (ex) {
+                    nimcp_exception_dispatch(ex);
+                    nimcp_exception_unref(ex);
+                }
+            }
+        });
+    }
+
+    for (auto& t : threads) {
+        t.join();
+    }
+
+    EXPECT_EQ(handler_calls.load(), NUM_THREADS * DISPATCHES_PER_THREAD);
+
+    nimcp_handler_unregister(reg);
+}
+
+/* ============================================================================
  * Main
  * ============================================================================ */
 

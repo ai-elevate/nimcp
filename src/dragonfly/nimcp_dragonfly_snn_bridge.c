@@ -171,11 +171,17 @@ dragonfly_snn_bridge_t* dragonfly_snn_bridge_create(
     const dragonfly_snn_config_t* config
 ) {
     dragonfly_snn_bridge_t* bridge = calloc(1, sizeof(*bridge));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "dragonfly_snn_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     /* Apply configuration */
     if (config) {
         if (dragonfly_snn_bridge_validate_config(config) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                "dragonfly_snn_bridge_create: invalid configuration");
             free(bridge);
             return NULL;
         }
@@ -206,6 +212,8 @@ dragonfly_snn_bridge_t* dragonfly_snn_bridge_create(
 
     if (!bridge->weights || !bridge->biases || !bridge->weight_gradients ||
         !bridge->bias_gradients || !bridge->eligibility_traces) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "dragonfly_snn_bridge_create: failed to allocate weight arrays");
         dragonfly_snn_bridge_destroy(bridge);
         return NULL;
     }

@@ -636,7 +636,7 @@ collective_workspace_t* collective_workspace_create(
 ) {
     // BBB validation
     if (!bbb_check_pointer(config, "collective_workspace_create")) {
-        LOG_ERROR("NULL configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collective_workspace_create: config is NULL");
         return NULL;
     }
 
@@ -653,7 +653,7 @@ collective_workspace_t* collective_workspace_create(
     collective_workspace_t* workspace =
         (collective_workspace_t*)nimcp_calloc(1, sizeof(collective_workspace_t));
     if (!workspace) {
-        LOG_ERROR("Failed to allocate workspace");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "collective_workspace_create: failed to allocate workspace");
         bbb_audit_log(BBB_AUDIT_ERROR, MODULE_NAME, "create_failed",
                      "Memory allocation failed");
         return NULL;
@@ -678,7 +678,7 @@ collective_workspace_t* collective_workspace_create(
 
     // Initialize mutex
     if (pthread_mutex_init(&workspace->mutex, NULL) != 0) {
-        LOG_ERROR("Failed to initialize mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "collective_workspace_create: failed to initialize mutex");
         bbb_audit_log(BBB_AUDIT_ERROR, MODULE_NAME, "create_failed",
                      "Mutex initialization failed");
         nimcp_free(workspace);

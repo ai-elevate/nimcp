@@ -102,6 +102,7 @@ sec_hippo_fep_bridge_t* sec_hippo_fep_create(
 ) {
     /* Validate required parameters */
     if (!security_hippo || !fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sec_hippo_fep_create: security_hippo or fep_system is NULL");
         NIMCP_LOGGING_ERROR("Security Hippocampus FEP bridge: NULL system pointers");
         return NULL;
     }
@@ -111,6 +112,7 @@ sec_hippo_fep_bridge_t* sec_hippo_fep_create(
         sizeof(sec_hippo_fep_bridge_t)
     );
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "sec_hippo_fep_create: failed to allocate bridge");
         NIMCP_LOGGING_ERROR("Security Hippocampus FEP bridge: allocation failed");
         return NULL;
     }
@@ -132,6 +134,7 @@ sec_hippo_fep_bridge_t* sec_hippo_fep_create(
     /* Initialize base bridge infrastructure */
     if (bridge_base_init(&bridge->base, 0, "security_hippocampus_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "sec_hippo_fep_create: mutex creation failed");
         NIMCP_LOGGING_ERROR("Security Hippocampus FEP bridge: mutex creation failed");
         nimcp_free(bridge);
         return NULL;

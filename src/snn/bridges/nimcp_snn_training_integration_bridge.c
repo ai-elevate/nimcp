@@ -234,6 +234,7 @@ snn_training_integration_bridge_t* snn_training_integration_create(
     snn_training_integration_bridge_t* bridge = nimcp_malloc(sizeof(*bridge));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate SNN training integration bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_training_integration_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -247,9 +248,14 @@ snn_training_integration_bridge_t* snn_training_integration_create(
     }
 
     /* Initialize mutex */
-    if (bridge_base_init(&bridge->base, 0, "snn_training_integration") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "snn_training_integration") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_training_integration_create: bridge_base_init failed");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for SNN training integration bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_training_integration_create: mutex creation failed");
         nimcp_free(bridge);
         return NULL;
     }

@@ -380,17 +380,25 @@ dragonfly_prey_classifier_t dragonfly_prey_classifier_create(
     prey_classifier_config_t cfg = config ? *config : prey_classifier_default_config();
 
     if (!prey_classifier_validate_config(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "dragonfly_prey_classifier_create: invalid configuration");
         return NULL;
     }
 
     dragonfly_prey_classifier_t classifier = nimcp_calloc(1, sizeof(struct dragonfly_prey_classifier_s));
-    if (!classifier) return NULL;
+    if (!classifier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "dragonfly_prey_classifier_create: failed to allocate classifier");
+        return NULL;
+    }
 
     classifier->config = cfg;
     classifier->creation_time_us = get_time_us();
 
     classifier->mutex = nimcp_mutex_create(NULL);
     if (!classifier->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "dragonfly_prey_classifier_create: failed to create mutex");
         nimcp_free(classifier);
         return NULL;
     }

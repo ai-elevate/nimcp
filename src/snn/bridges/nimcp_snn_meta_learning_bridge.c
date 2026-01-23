@@ -40,12 +40,14 @@ snn_meta_learning_bridge_t* snn_meta_learning_bridge_create(
 ) {
     if (!config || !snn) {
         NIMCP_LOGGING_ERROR("Null parameters to snn_meta_learning_bridge_create");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_meta_learning_bridge_create: config/snn is NULL");
         return NULL;
     }
 
     snn_meta_learning_bridge_t* bridge = nimcp_malloc(sizeof(snn_meta_learning_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate SNN-meta_learning bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_meta_learning_bridge_create: failed to allocate bridge");
         return NULL;
     }
 

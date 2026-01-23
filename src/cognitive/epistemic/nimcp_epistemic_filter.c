@@ -244,6 +244,7 @@ static float detect_bandwagon_effect(
 epistemic_filter_t epistemic_filter_create(float skepticism_level) {
     epistemic_filter_t filter = nimcp_calloc(1, sizeof(struct epistemic_filter_struct));
     if (!filter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "epistemic_filter_create: failed to allocate filter");
         return NULL;
     }
 

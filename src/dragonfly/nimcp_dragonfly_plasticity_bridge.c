@@ -142,11 +142,17 @@ dragonfly_plasticity_bridge_t dragonfly_plasticity_bridge_create(
     dragonfly_plasticity_config_t cfg = config ? *config : dragonfly_plasticity_default_config();
 
     if (!dragonfly_plasticity_validate_config(&cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "dragonfly_plasticity_bridge_create: invalid configuration");
         return NULL;
     }
 
     dragonfly_plasticity_bridge_t bridge = nimcp_calloc(1, sizeof(struct dragonfly_plasticity_bridge_s));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "dragonfly_plasticity_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     bridge->config = cfg;
     bridge->creation_time_us = get_time_us();
@@ -176,8 +182,15 @@ dragonfly_plasticity_bridge_t dragonfly_plasticity_bridge_create(
     bridge->state.intercept_state.pursuit_aggressiveness = 0.7f;
     bridge->state.intercept_state.abort_threshold = 0.3f;
 
-    if (bridge_base_init(&bridge->base, 0, "dragonfly_plasticity") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "dragonfly_plasticity") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "dragonfly_plasticity_bridge_create: failed to initialize base bridge");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "dragonfly_plasticity_bridge_create: base bridge mutex is NULL");
         nimcp_free(bridge);
         return NULL;
     }

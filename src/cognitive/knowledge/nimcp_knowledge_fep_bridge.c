@@ -28,12 +28,23 @@ int knowledge_fep_bridge_default_config(knowledge_fep_config_t* config) {
 
 knowledge_fep_bridge_t* knowledge_fep_bridge_create(const knowledge_fep_config_t* config) {
     knowledge_fep_bridge_t* bridge = (knowledge_fep_bridge_t*)nimcp_malloc(sizeof(knowledge_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_fep_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
     memset(bridge, 0, sizeof(knowledge_fep_bridge_t));
     if (config) bridge->config = *config;
     else knowledge_fep_bridge_default_config(&bridge->config);
-    if (bridge_base_init(&bridge->base, 0, "knowledge_fep") != 0) { nimcp_free(bridge); return NULL; }
-    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "knowledge_fep") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_fep_bridge_create: bridge_base_init failed");
+        nimcp_free(bridge);
+        return NULL;
+    }
+    if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_fep_bridge_create: mutex creation failed");
+        nimcp_free(bridge);
+        return NULL;
+    }
     bridge->state.current_semantic_prior = 0.5f;
     NIMCP_LOGGING_INFO(LOG_MODULE_KNOWLEDGE_FEP " Bridge created");
     return bridge;

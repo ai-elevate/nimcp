@@ -325,7 +325,7 @@ gossip_beliefs_t* gossip_beliefs_create(const gossip_beliefs_config_t* config)
      */
 
     if (!config) {
-        LOG_ERROR("NULL configuration provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gossip_beliefs_create: config is NULL");
         return NULL;
     }
 
@@ -334,7 +334,7 @@ gossip_beliefs_t* gossip_beliefs_create(const gossip_beliefs_config_t* config)
 
     gossip_beliefs_t* gb = (gossip_beliefs_t*)nimcp_malloc(sizeof(gossip_beliefs_t));
     if (!gb) {
-        LOG_ERROR("Failed to allocate gossip beliefs system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gossip_beliefs_create: failed to allocate gossip_beliefs_t");
         return NULL;
     }
 
@@ -353,14 +353,14 @@ gossip_beliefs_t* gossip_beliefs_create(const gossip_beliefs_config_t* config)
 
     gb->agents = hash_table_create(&ht_config);
     if (!gb->agents) {
-        LOG_ERROR("Failed to create agents hash table");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gossip_beliefs_create: failed to create agents hash table");
         nimcp_free(gb);
         return NULL;
     }
 
     gb->all_beliefs = hash_table_create(&ht_config);
     if (!gb->all_beliefs) {
-        LOG_ERROR("Failed to create beliefs hash table");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gossip_beliefs_create: failed to create beliefs hash table");
         hash_table_destroy(gb->agents);
         nimcp_free(gb);
         return NULL;
@@ -374,7 +374,7 @@ gossip_beliefs_t* gossip_beliefs_create(const gossip_beliefs_config_t* config)
     /* Create mutex */
     gb->mutex = nimcp_platform_mutex_create();
     if (!gb->mutex) {
-        LOG_ERROR("Failed to create mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "gossip_beliefs_create: failed to create mutex");
         hash_table_destroy(gb->all_beliefs);
         hash_table_destroy(gb->agents);
         nimcp_free(gb);

@@ -846,11 +846,13 @@ curiosity_engine_t curiosity_engine_create(brain_t parent_brain, const char* lea
 {
     // Allow NULL parent_brain for standalone testing
     if (!learner_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "curiosity_engine_create: learner_name is NULL");
         return NULL;
     }
 
     curiosity_engine_t engine = nimcp_calloc(1, sizeof(struct curiosity_engine_struct));
     if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_engine_create: failed to allocate engine");
         return NULL;
     }
 
@@ -865,6 +867,7 @@ curiosity_engine_t curiosity_engine_create(brain_t parent_brain, const char* lea
                                      .thread_safe = false};
     engine->concept_hash_table = hash_table_create(&ht_config);
     if (!engine->concept_hash_table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_engine_create: failed to create hash_table");
         nimcp_free(engine);
         return NULL;
     }
@@ -874,6 +877,7 @@ curiosity_engine_t curiosity_engine_create(brain_t parent_brain, const char* lea
     engine->questions_capacity = 10000;
     engine->questions = nimcp_calloc(engine->questions_capacity, sizeof(question_history_t));
     if (!engine->questions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_engine_create: failed to allocate questions");
         nimcp_free(engine);
         return NULL;
     }
@@ -882,6 +886,7 @@ curiosity_engine_t curiosity_engine_create(brain_t parent_brain, const char* lea
     engine->sources_capacity = 10;
     engine->sources = nimcp_calloc(engine->sources_capacity, sizeof(knowledge_source_t));
     if (!engine->sources) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "curiosity_engine_create: failed to allocate sources");
         nimcp_free(engine->questions);
         nimcp_free(engine);
         return NULL;

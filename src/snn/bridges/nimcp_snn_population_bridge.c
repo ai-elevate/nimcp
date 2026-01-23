@@ -55,6 +55,7 @@ snn_population_bridge_t* snn_population_bridge_create(
     /* Guard clauses */
     if (!network) {
         NIMCP_LOGGING_ERROR("SNN network is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_bridge_create: network is NULL");
         return NULL;
     }
 
@@ -63,6 +64,7 @@ snn_population_bridge_t* snn_population_bridge_create(
         sizeof(snn_population_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate SNN population bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_population_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -86,6 +88,7 @@ snn_population_bridge_t* snn_population_bridge_create(
     bridge->encoder = population_coding_create(&pop_config);
     if (!bridge->encoder) {
         NIMCP_LOGGING_ERROR("Failed to create population coding encoder");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_population_bridge_create: failed to create encoder");
         snn_population_bridge_destroy(bridge);
         return NULL;
     }
@@ -112,6 +115,7 @@ snn_population_bridge_t* snn_population_bridge_create(
         total_neurons * sizeof(tuning_curve_t));
     if (!bridge->tuning_curves) {
         NIMCP_LOGGING_ERROR("Failed to allocate tuning curves");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_population_bridge_create: failed to allocate tuning_curves");
         snn_population_bridge_destroy(bridge);
         return NULL;
     }
@@ -122,6 +126,7 @@ snn_population_bridge_t* snn_population_bridge_create(
         network->n_populations * sizeof(vector3d_t));
     if (!bridge->current_vectors) {
         NIMCP_LOGGING_ERROR("Failed to allocate current vectors");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_population_bridge_create: failed to allocate current_vectors");
         snn_population_bridge_destroy(bridge);
         return NULL;
     }
@@ -131,6 +136,7 @@ snn_population_bridge_t* snn_population_bridge_create(
     bridge->firing_rates = (float*)nimcp_malloc(total_neurons * sizeof(float));
     if (!bridge->firing_rates) {
         NIMCP_LOGGING_ERROR("Failed to allocate firing rates");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_population_bridge_create: failed to allocate firing_rates");
         snn_population_bridge_destroy(bridge);
         return NULL;
     }
@@ -142,6 +148,7 @@ snn_population_bridge_t* snn_population_bridge_create(
             network->n_populations * sizeof(synchrony_result_t));
         if (!bridge->synchrony_results) {
             NIMCP_LOGGING_ERROR("Failed to allocate synchrony results");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_population_bridge_create: failed to allocate synchrony_results");
             snn_population_bridge_destroy(bridge);
             return NULL;
         }

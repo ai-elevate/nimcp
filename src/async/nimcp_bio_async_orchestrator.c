@@ -101,6 +101,8 @@ bio_async_orchestrator_t* bio_orchestrator_create(const bio_orchestrator_config_
     bio_async_orchestrator_t* orch = (bio_async_orchestrator_t*)nimcp_calloc(
         1, sizeof(bio_async_orchestrator_t));
     if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "bio_orchestrator_create: failed to allocate orchestrator");
         NIMCP_LOGGING_ERROR("Failed to allocate orchestrator");
         return NULL;
     }
@@ -117,6 +119,8 @@ bio_async_orchestrator_t* bio_orchestrator_create(const bio_orchestrator_config_
     orch->modules = (bio_module_entry_t*)nimcp_calloc(
         orch->module_capacity, sizeof(bio_module_entry_t));
     if (!orch->modules) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "bio_orchestrator_create: failed to allocate module array");
         NIMCP_LOGGING_ERROR("Failed to allocate module array");
         nimcp_free(orch);
         return NULL;
@@ -125,6 +129,8 @@ bio_async_orchestrator_t* bio_orchestrator_create(const bio_orchestrator_config_
     /* Create mutex */
     orch->mutex = nimcp_platform_mutex_create();
     if (!orch->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "bio_orchestrator_create: failed to create mutex");
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(orch->modules);
         nimcp_free(orch);

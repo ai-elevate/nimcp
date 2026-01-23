@@ -92,11 +92,17 @@ dragonfly_cnn_bridge_t* dragonfly_cnn_bridge_create(
     const dragonfly_cnn_config_t* config
 ) {
     dragonfly_cnn_bridge_t* bridge = calloc(1, sizeof(*bridge));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "dragonfly_cnn_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     /* Apply configuration */
     if (config) {
         if (dragonfly_cnn_bridge_validate_config(config) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                "dragonfly_cnn_bridge_create: invalid configuration");
             free(bridge);
             return NULL;
         }
@@ -116,6 +122,8 @@ dragonfly_cnn_bridge_t* dragonfly_cnn_bridge_create(
     bridge->feature_buffer_size = DRAGONFLY_CNN_FEATURE_DIM;
     bridge->feature_buffer = calloc(bridge->feature_buffer_size, sizeof(float));
     if (!bridge->feature_buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "dragonfly_cnn_bridge_create: failed to allocate feature buffer");
         free(bridge);
         return NULL;
     }

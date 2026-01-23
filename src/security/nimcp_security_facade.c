@@ -322,6 +322,7 @@ security_facade_t security_facade_create(const security_facade_config_t* config)
     /* Allocate facade structure */
     facade = (security_facade_t)nimcp_malloc(sizeof(struct security_facade_struct));
     if (!facade) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_facade_create: failed to allocate facade");
         NIMCP_LOG_ERROR(SEC_FACADE_MODULE_NAME, "Failed to allocate facade structure");
         return NULL;
     }
@@ -337,6 +338,7 @@ security_facade_t security_facade_create(const security_facade_config_t* config)
     };
     facade->mutex = nimcp_mutex_create(&mutex_attr);
     if (!facade->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "security_facade_create: mutex creation failed");
         NIMCP_LOG_ERROR(SEC_FACADE_MODULE_NAME, "Failed to create mutex");
         nimcp_free(facade);
         return NULL;
@@ -354,6 +356,7 @@ security_facade_t security_facade_create(const security_facade_config_t* config)
     /* Create security orchestrator */
     facade->orchestrator = security_orch_create(&config->orch_config);
     if (!facade->orchestrator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "security_facade_create: orchestrator creation failed");
         NIMCP_LOG_ERROR(SEC_FACADE_MODULE_NAME, "Failed to create security orchestrator");
         nimcp_mutex_free(facade->mutex);
         nimcp_free(facade);

@@ -42,12 +42,14 @@ snn_emotional_tagging_bridge_t* snn_emotional_tagging_bridge_create(
 ) {
     if (!config || !snn) {
         NIMCP_LOGGING_ERROR("Null parameters to snn_emotional_tagging_bridge_create");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotional_tagging_bridge_create: config/snn is NULL");
         return NULL;
     }
 
     snn_emotional_tagging_bridge_t* bridge = nimcp_malloc(sizeof(snn_emotional_tagging_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate SNN-emotional-tagging bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_emotional_tagging_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -60,6 +62,7 @@ snn_emotional_tagging_bridge_t* snn_emotional_tagging_bridge_create(
     bridge->tags = nimcp_malloc(sizeof(snn_emotional_tag_t) * bridge->max_tags);
     if (!bridge->tags) {
         NIMCP_LOGGING_ERROR("Failed to allocate tag array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_emotional_tagging_bridge_create: failed to allocate tags");
         nimcp_free(bridge);
         return NULL;
     }

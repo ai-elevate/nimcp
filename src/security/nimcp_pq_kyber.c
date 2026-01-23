@@ -174,7 +174,7 @@ static nimcp_error_t get_kyber_params(nimcp_kyber_variant_t variant,
 nimcp_error_t nimcp_kyber_keygen(nimcp_kyber_variant_t variant,
                                   nimcp_kyber_keypair_t* keypair) {
     if (!keypair) {
-        LOG_ERROR("nimcp_kyber_keygen: NULL keypair");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_kyber_keygen: keypair is NULL");
         return NIMCP_ERROR_INVALID;
     }
 
@@ -199,9 +199,9 @@ nimcp_error_t nimcp_kyber_keygen(nimcp_kyber_variant_t variant,
     uint8_t* secret_key = (uint8_t*)malloc(secret_key_len);
 
     if (!public_key || !secret_key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_kyber_keygen: failed to allocate keys");
         free(public_key);
         free(secret_key);
-        LOG_ERROR("nimcp_kyber_keygen: Memory allocation failed");
         return NIMCP_ERROR_MEMORY;
     }
 

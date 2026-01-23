@@ -132,7 +132,10 @@ knowledge_plasticity_bridge_t* knowledge_plasticity_create(
     const knowledge_plasticity_config_t* config
 ) {
     knowledge_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(knowledge_plasticity_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_plasticity_create: failed to allocate bridge");
+        return NULL;
+    }
 
     if (config) {
         bridge->config = *config;
@@ -142,6 +145,7 @@ knowledge_plasticity_bridge_t* knowledge_plasticity_create(
 
     /* Initialize bridge base */
     if (bridge_base_init(&bridge->base, 0, "knowledge_plasticity") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_plasticity_create: bridge_base_init failed");
         nimcp_free(bridge);
         return NULL;
     }
@@ -150,6 +154,7 @@ knowledge_plasticity_bridge_t* knowledge_plasticity_create(
     bridge->max_synapses = bridge->config.max_synapses;
     bridge->synapses = nimcp_calloc(bridge->max_synapses, sizeof(synapse_entry_t));
     if (!bridge->synapses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "knowledge_plasticity_create: failed to allocate synapses");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;

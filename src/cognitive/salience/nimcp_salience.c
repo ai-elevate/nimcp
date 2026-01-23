@@ -1146,17 +1146,20 @@ salience_evaluator_t salience_evaluator_create(brain_t brain, const salience_con
 {
     // Guard clauses
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "salience_evaluator_create: brain is NULL");
         salience_set_error("NULL brain");
         return NULL;
     }
 
     if (!validate_salience_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "salience_evaluator_create: invalid config");
         return NULL;
     }
 
     // Allocate evaluator
     salience_evaluator_t eval = nimcp_calloc(1, sizeof(struct salience_evaluator_struct));
     if (!eval) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "salience_evaluator_create: failed to allocate eval");
         salience_set_error("Failed to allocate evaluator");
         return NULL;
     }
@@ -1203,6 +1206,7 @@ salience_evaluator_t salience_evaluator_create(brain_t brain, const salience_con
     if (config->enable_novelty && config->history_size > 0) {
         eval->history = history_buffer_create(config->history_size);
         if (!eval->history) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "salience_evaluator_create: failed to create history");
             salience_set_error("Failed to create history buffer");
             nimcp_free(eval);
             return NULL;
@@ -1215,6 +1219,7 @@ salience_evaluator_t salience_evaluator_create(brain_t brain, const salience_con
         uint32_t num_features = brain_get_num_inputs(brain);
         eval->predictor = predictor_create(num_features);
         if (!eval->predictor) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "salience_evaluator_create: failed to create predictor");
             salience_set_error("Failed to create predictor");
             if (eval->history)
                 history_buffer_destroy(eval->history);
@@ -1247,6 +1252,7 @@ salience_evaluator_t salience_evaluator_create(brain_t brain, const salience_con
      */
     eval->thread_pool = nimcp_pool_create(4);
     if (!eval->thread_pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "salience_evaluator_create: failed to create thread_pool");
         salience_set_error("Failed to create thread pool");
         if (eval->history)
             history_buffer_destroy(eval->history);

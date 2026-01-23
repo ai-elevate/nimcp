@@ -307,6 +307,7 @@ sec_hippo_bridge_t* security_hippocampus_bridge_create(const sec_hippo_config_t*
     /* Allocate bridge */
     sec_hippo_bridge_t* bridge = nimcp_malloc(sizeof(sec_hippo_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_hippocampus_bridge_create: failed to allocate bridge");
         NIMCP_LOGGING_ERROR("Failed to allocate security-hippocampus bridge");
         return NULL;
     }
@@ -315,6 +316,7 @@ sec_hippo_bridge_t* security_hippocampus_bridge_create(const sec_hippo_config_t*
     /* Initialize base */
     if (bridge_base_init(&bridge->base, BIO_MODULE_SECURITY_HIPPOCAMPUS,
                          "security_hippocampus_bridge") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "security_hippocampus_bridge_create: bridge_base_init failed");
         nimcp_free(bridge);
         return NULL;
     }
@@ -330,6 +332,7 @@ sec_hippo_bridge_t* security_hippocampus_bridge_create(const sec_hippo_config_t*
     bridge->replay_sequences = nimcp_malloc(
         SEC_HIPPO_MAX_REPLAY_SEQUENCES * sizeof(sec_hippo_replay_sequence_t));
     if (!bridge->replay_sequences) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_hippocampus_bridge_create: failed to allocate replay_sequences");
         NIMCP_LOGGING_ERROR("Failed to allocate replay sequences");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
@@ -342,6 +345,7 @@ sec_hippo_bridge_t* security_hippocampus_bridge_create(const sec_hippo_config_t*
     bridge->consolidation_events = nimcp_malloc(
         SEC_HIPPO_MAX_CONSOLIDATION_EVENTS * sizeof(sec_hippo_consolidation_event_t));
     if (!bridge->consolidation_events) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_hippocampus_bridge_create: failed to allocate consolidation_events");
         NIMCP_LOGGING_ERROR("Failed to allocate consolidation events");
         nimcp_free(bridge->replay_sequences);
         bridge_base_cleanup(&bridge->base);
@@ -356,6 +360,7 @@ sec_hippo_bridge_t* security_hippocampus_bridge_create(const sec_hippo_config_t*
         bridge->audit_log = nimcp_malloc(
             SEC_HIPPO_MAX_AUDIT_ENTRIES * sizeof(sec_hippo_audit_entry_t));
         if (!bridge->audit_log) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_hippocampus_bridge_create: failed to allocate audit_log");
             NIMCP_LOGGING_ERROR("Failed to allocate audit log");
             nimcp_free(bridge->consolidation_events);
             nimcp_free(bridge->replay_sequences);
@@ -370,6 +375,7 @@ sec_hippo_bridge_t* security_hippocampus_bridge_create(const sec_hippo_config_t*
     /* Allocate internal state */
     sec_hippo_internal_t* internal = nimcp_malloc(sizeof(sec_hippo_internal_t));
     if (!internal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_hippocampus_bridge_create: failed to allocate internal state");
         NIMCP_LOGGING_ERROR("Failed to allocate internal state");
         if (bridge->audit_log) nimcp_free(bridge->audit_log);
         nimcp_free(bridge->consolidation_events);

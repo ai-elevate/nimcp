@@ -102,7 +102,7 @@ network_builder_config_t network_builder_default(void) {
 neural_network_t network_builder_build(const network_builder_config_t* config) {
     // Guard: NULL config
     if (!config) {
-        LOG_ERROR(LOG_MODULE, "network_builder_build: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network_builder_build: config is NULL");
         return NULL;
     }
 
@@ -113,7 +113,7 @@ neural_network_t network_builder_build(const network_builder_config_t* config) {
 
     // Guard: Invalid neuron count
     if (config->num_neurons < 1) {
-        LOG_ERROR(LOG_MODULE, "network_builder_build: num_neurons must be >= 1");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "network_builder_build: num_neurons must be >= 1");
         return NULL;
     }
 
@@ -149,7 +149,7 @@ neural_network_t network_builder_build(const network_builder_config_t* config) {
 
     neural_network_t network = neural_network_create(&net_config);
     if (!network) {
-        LOG_ERROR(LOG_MODULE, "Failed to create neural network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "network_builder_build: failed to create neural network");
         return NULL;
     }
 
@@ -163,8 +163,7 @@ neural_network_t network_builder_build(const network_builder_config_t* config) {
         bool success = topology_generate(network, &config->topology_config, &stats);
 
         if (!success) {
-            LOG_ERROR(LOG_MODULE, "Topology generation failed: %s",
-                    topology_get_last_error());
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "network_builder_build: topology generation failed");
             neural_network_destroy(network);
             return NULL;
         }

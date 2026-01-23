@@ -150,7 +150,7 @@ security_collective_bridge_t* security_collective_bridge_create(
 ) {
     security_collective_bridge_t* bridge = nimcp_malloc(sizeof(security_collective_bridge_t));
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate security_collective_bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_collective_bridge_create: failed to allocate bridge");
         return NULL;
     }
     memset(bridge, 0, sizeof(security_collective_bridge_t));
@@ -165,6 +165,7 @@ security_collective_bridge_t* security_collective_bridge_create(
     /* Initialize base bridge */
     if (bridge_base_init(&bridge->base, SECURITY_COLLECTIVE_MODULE_ID,
                          "security_collective_bridge") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "security_collective_bridge_create: failed to init bridge base");
         nimcp_free(bridge);
         return NULL;
     }
@@ -173,6 +174,7 @@ security_collective_bridge_t* security_collective_bridge_create(
     bridge->agent_byzantine_status = nimcp_malloc(
         sizeof(byzantine_detection_result_t) * DEFAULT_AGENT_CAPACITY);
     if (!bridge->agent_byzantine_status) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_collective_bridge_create: failed to allocate byzantine status");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
@@ -183,6 +185,7 @@ security_collective_bridge_t* security_collective_bridge_create(
     bridge->agent_trust_scores = nimcp_malloc(
         sizeof(agent_trust_result_t) * DEFAULT_AGENT_CAPACITY);
     if (!bridge->agent_trust_scores) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "security_collective_bridge_create: failed to allocate trust scores");
         nimcp_free(bridge->agent_byzantine_status);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);

@@ -189,6 +189,8 @@ wiring_diagram_t* wiring_diagram_create(const char* base_path) {
     wiring_diagram_t* wd = (wiring_diagram_t*)nimcp_calloc(
         1, sizeof(wiring_diagram_t));
     if (!wd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "wiring_diagram_create: failed to allocate wiring diagram");
         NIMCP_LOGGING_ERROR("Failed to allocate wiring diagram");
         return NULL;
     }
@@ -204,6 +206,8 @@ wiring_diagram_t* wiring_diagram_create(const char* base_path) {
     /* Create mutex */
     wd->mutex = nimcp_platform_mutex_create();
     if (!wd->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "wiring_diagram_create: failed to create mutex");
         NIMCP_LOGGING_ERROR("Failed to create wiring diagram mutex");
         nimcp_free(wd);
         return NULL;
@@ -214,6 +218,8 @@ wiring_diagram_t* wiring_diagram_create(const char* base_path) {
     wd->module_configs = (wiring_module_config_t**)nimcp_calloc(
         wd->module_capacity, sizeof(wiring_module_config_t*));
     if (!wd->module_configs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "wiring_diagram_create: failed to allocate module config array");
         NIMCP_LOGGING_ERROR("Failed to allocate module config array");
         nimcp_platform_mutex_destroy(wd->mutex);
         nimcp_free(wd);
