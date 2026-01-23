@@ -81,6 +81,7 @@ typedef struct hypothalamus_adapter hypothalamus_adapter_t;
 
 /* Thread synchronization */
 #include "utils/thread/nimcp_thread.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -269,6 +270,7 @@ typedef struct {
  * WHY:  Manage neuroendocrine-social coupling
  */
 typedef struct mirror_hypo_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     mirror_hypo_config_t config;
     mirror_hypo_state_t state;
     mirror_hypo_stats_t stats;
@@ -276,9 +278,6 @@ typedef struct mirror_hypo_bridge {
     /* References to integrated systems */
     mirror_neurons_t mirror_system;
     hypothalamus_adapter_t* hypothalamus;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 
     /* Active state */
     bool enabled;

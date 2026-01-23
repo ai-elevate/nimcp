@@ -134,13 +134,8 @@ mirror_hypo_bridge_t* mirror_hypo_create(
     bridge->state.last_observation_time = now;
     bridge->state.last_imitation_time = now;
 
-    /* Create mutex */
-    bridge->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (!bridge->mutex) {
-        nimcp_free(bridge);
-        return NULL;
-    }
-    if (nimcp_mutex_init(bridge->mutex, NULL) != NIMCP_SUCCESS) {
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, BIO_MODULE_MIRROR_HYPOTHALAMUS_BRIDGE, "mirror_hypothalamus") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -160,9 +155,7 @@ void mirror_hypo_destroy(mirror_hypo_bridge_t* bridge) {
      * HOW:  Destroy mutex, free struct */
     if (!bridge) return;
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Mirror-hypothalamus bridge destroyed");
@@ -174,13 +167,13 @@ int mirror_hypo_enable(mirror_hypo_bridge_t* bridge) {
      * HOW:  Set flag, reset timers */
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->enabled = true;
     uint64_t now = get_current_time_us();
     bridge->last_update_time = now;
     bridge->state.last_observation_time = now;
     bridge->state.last_imitation_time = now;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Mirror-hypothalamus bridge enabled");
     return 0;
@@ -192,13 +185,13 @@ int mirror_hypo_disable(mirror_hypo_bridge_t* bridge) {
      * HOW:  Clear flag, reset modulation */
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->enabled = false;
     bridge->state.stress_suppression = 0.0f;
     bridge->state.circadian_threshold_mod = 0.0f;
     bridge->state.drive_suppression = 0.0f;
     bridge->state.current_effect = HYPO_EFFECT_NONE;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Mirror-hypothalamus bridge disabled");
     return 0;
@@ -210,7 +203,7 @@ int mirror_hypo_reset(mirror_hypo_bridge_t* bridge) {
      * HOW:  Zero state, reset counters */
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset state */
     memset(&bridge->state, 0, sizeof(bridge->state));
@@ -222,7 +215,7 @@ int mirror_hypo_reset(mirror_hypo_bridge_t* bridge) {
     bridge->state.social_phase = CIRCADIAN_SOCIAL_HIGH;
     bridge->last_update_time = now;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Mirror-hypothalamus bridge reset");
     return 0;
@@ -238,7 +231,7 @@ int mirror_hypo_apply_modulation(mirror_hypo_bridge_t* bridge) {
      * HOW:  Sample hypothalamus, compute effects, apply */
     if (!bridge || !bridge->enabled) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Sample hypothalamus state */
     bridge->state.cortisol_level = hypothalamus_get_cortisol(bridge->hypothalamus);
@@ -258,14 +251,14 @@ int mirror_hypo_apply_modulation(mirror_hypo_bridge_t* bridge) {
         bridge->state.sympathetic_tone = autonomic.sympathetic_tone;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Compute and apply modulation effects */
     float stress_supp = mirror_hypo_compute_stress_suppression(bridge);
     float circadian_mod = mirror_hypo_compute_circadian_modifier(bridge);
     float drive_supp = mirror_hypo_compute_drive_suppression(bridge);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state.stress_suppression = stress_supp;
     bridge->state.circadian_threshold_mod = circadian_mod;
@@ -288,7 +281,7 @@ int mirror_hypo_apply_modulation(mirror_hypo_bridge_t* bridge) {
         bridge->state.current_effect = HYPO_EFFECT_NONE;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Apply to mirror neuron resonance system if available */
     motor_resonance_t resonance = mirror_neurons_get_resonance(bridge->mirror_system);
@@ -419,11 +412,11 @@ int mirror_hypo_trigger_isolation_stress(mirror_hypo_bridge_t* bridge) {
     float stress_level = bridge->config.isolation_stress_level;
     float cortisol_delta = hypothalamus_apply_stress(bridge->hypothalamus, stress_level);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.last_feedback = MIRROR_FEEDBACK_ISOLATION;
     bridge->state.last_isolation_trigger = get_current_time_us();
     bridge->stats.isolation_stress_triggers++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Isolation stress triggered: cortisol delta=%.3f", cortisol_delta);
     return 0;
@@ -441,11 +434,11 @@ int mirror_hypo_trigger_empathic_arousal(mirror_hypo_bridge_t* bridge, float aro
     float stress_level = arousal_level * bridge->config.empathic_arousal_gain;
     hypothalamus_apply_stress(bridge->hypothalamus, stress_level);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.last_feedback = MIRROR_FEEDBACK_AROUSAL;
     bridge->state.last_arousal_trigger = get_current_time_us();
     bridge->stats.empathic_arousal_triggers++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Empathic arousal triggered: level=%.2f", arousal_level);
     return 0;
@@ -461,12 +454,12 @@ int mirror_hypo_send_reward_signal(mirror_hypo_bridge_t* bridge) {
     float reward_level = -bridge->config.imitation_reward_signal * 0.5f;
     hypothalamus_apply_stress(bridge->hypothalamus, reward_level);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.last_feedback = MIRROR_FEEDBACK_REWARD;
     bridge->state.last_reward_trigger = get_current_time_us();
     bridge->stats.imitation_reward_signals++;
     bridge->state.failed_imitation_count = 0;  /* Reset failures on success */
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Imitation reward signal sent");
     return 0;
@@ -480,9 +473,9 @@ int mirror_hypo_trigger_rejection_stress(mirror_hypo_bridge_t* bridge) {
 
     const uint32_t REJECTION_THRESHOLD = 5;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     uint32_t failures = bridge->state.failed_imitation_count;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     if (failures < REJECTION_THRESHOLD) {
         return 0;  /* Not enough failures yet */
@@ -492,11 +485,11 @@ int mirror_hypo_trigger_rejection_stress(mirror_hypo_bridge_t* bridge) {
     float stress_level = bridge->config.isolation_stress_level * 0.7f;
     hypothalamus_apply_stress(bridge->hypothalamus, stress_level);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.last_feedback = MIRROR_FEEDBACK_REJECTION;
     bridge->state.failed_imitation_count = 0;  /* Reset counter */
     bridge->stats.rejection_stress_triggers++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Rejection stress triggered: failures=%u", REJECTION_THRESHOLD);
     return 0;
@@ -513,13 +506,13 @@ int mirror_hypo_update(mirror_hypo_bridge_t* bridge, uint64_t current_time) {
     if (!bridge || !bridge->enabled) return -1;
 
     /* Check if update interval elapsed */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     uint64_t elapsed_ms = (current_time - bridge->last_update_time) / 1000;
     if (elapsed_ms < bridge->config.update_interval_ms) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;  /* Too soon */
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Apply hypothalamus -> mirror modulation */
     mirror_hypo_apply_modulation(bridge);
@@ -530,9 +523,9 @@ int mirror_hypo_update(mirror_hypo_bridge_t* bridge, uint64_t current_time) {
     }
 
     /* Check for empathic arousal trigger */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float resonance = bridge->state.empathic_resonance_level;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     if (resonance > 0.7f) {
         mirror_hypo_trigger_empathic_arousal(bridge, resonance);
@@ -542,7 +535,7 @@ int mirror_hypo_update(mirror_hypo_bridge_t* bridge, uint64_t current_time) {
     mirror_hypo_trigger_rejection_stress(bridge);
 
     /* Update timing stats */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->last_update_time = current_time;
     bridge->stats.total_updates++;
 
@@ -555,7 +548,7 @@ int mirror_hypo_update(mirror_hypo_bridge_t* bridge, uint64_t current_time) {
         (1.0f - alpha) * bridge->stats.avg_circadian_threshold_mod +
         alpha * bridge->state.circadian_threshold_mod;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -566,9 +559,9 @@ int mirror_hypo_get_stats(const mirror_hypo_bridge_t* bridge, mirror_hypo_stats_
      * HOW:  Copy accumulated metrics */
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(((mirror_hypo_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((mirror_hypo_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(((mirror_hypo_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((mirror_hypo_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -579,9 +572,9 @@ int mirror_hypo_get_state(const mirror_hypo_bridge_t* bridge, mirror_hypo_state_
      * HOW:  Copy state struct */
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(((mirror_hypo_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((mirror_hypo_bridge_t*)bridge)->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock(((mirror_hypo_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((mirror_hypo_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -625,9 +618,9 @@ void mirror_hypo_notify_observation(mirror_hypo_bridge_t* bridge, uint64_t times
      * HOW:  Set last observation time */
     if (!bridge || !bridge->enabled) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.last_observation_time = timestamp_us;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 void mirror_hypo_notify_imitation_success(mirror_hypo_bridge_t* bridge, uint64_t timestamp_us) {
@@ -636,9 +629,9 @@ void mirror_hypo_notify_imitation_success(mirror_hypo_bridge_t* bridge, uint64_t
      * HOW:  Update timestamp, send reward */
     if (!bridge || !bridge->enabled) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.last_imitation_time = timestamp_us;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     mirror_hypo_send_reward_signal(bridge);
 }
@@ -649,9 +642,9 @@ void mirror_hypo_notify_imitation_failure(mirror_hypo_bridge_t* bridge) {
      * HOW:  Increment counter */
     if (!bridge || !bridge->enabled) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.failed_imitation_count++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 void mirror_hypo_notify_empathic_resonance(mirror_hypo_bridge_t* bridge, float resonance_level) {
@@ -660,9 +653,9 @@ void mirror_hypo_notify_empathic_resonance(mirror_hypo_bridge_t* bridge, float r
      * HOW:  Store level for update check */
     if (!bridge || !bridge->enabled) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.empathic_resonance_level = clamp_f(resonance_level, 0.0f, 1.0f);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 /* ============================================================================
