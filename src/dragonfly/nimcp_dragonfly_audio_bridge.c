@@ -9,6 +9,7 @@
  */
 
 #include "dragonfly/nimcp_dragonfly_audio_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "dragonfly/nimcp_dragonfly_visual_bridge.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -48,6 +49,8 @@ typedef struct {
  * @brief Audio bridge internal state
  */
 struct dragonfly_audio_bridge_s {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Connected systems */
     dragonfly_system_t* dragonfly;
     audio_cortex_t* audio_cortex;
@@ -57,7 +60,6 @@ struct dragonfly_audio_bridge_s {
 
     /* State */
     bool initialized;
-    nimcp_mutex_t* mutex;
 
     /* Latest result */
     audio_detection_result_t latest_result;
@@ -182,11 +184,8 @@ dragonfly_audio_bridge_t* dragonfly_audio_bridge_create(
         bridge->config = audio_bridge_default_config();
     }
 
-    /* Create mutex */
-    mutex_attr_t attr = {0};
-    attr.type = MUTEX_TYPE_NORMAL;
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "dragonfly_audio") != 0) {
         free(bridge);
         return NULL;
     }
@@ -202,17 +201,14 @@ dragonfly_audio_bridge_t* dragonfly_audio_bridge_create(
 void dragonfly_audio_bridge_destroy(dragonfly_audio_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
-
+    bridge_base_cleanup(&bridge->base);
     free(bridge);
 }
 
 int dragonfly_audio_bridge_reset(dragonfly_audio_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     memset(&bridge->latest_result, 0, sizeof(audio_detection_result_t));
     memset(bridge->source_history, 0, sizeof(bridge->source_history));
@@ -226,7 +222,7 @@ int dragonfly_audio_bridge_reset(dragonfly_audio_bridge_t* bridge) {
     bridge->smoothed_azimuth = 0;
     bridge->smoothed_elevation = 0;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -387,7 +383,7 @@ int dragonfly_audio_bridge_process_frame(
     if (num_samples == 0 || num_channels == 0 || sample_rate == 0) return -1;
 
     uint64_t start_us = get_time_us();
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* For stereo input, compute cross-correlation for ITD */
     if (num_channels == 2) {
@@ -495,7 +491,7 @@ int dragonfly_audio_bridge_process_frame(
     bridge->stats.avg_process_time_us = (float)bridge->process_time_sum / bridge->stats.frames_processed;
     bridge->stats.avg_sources_per_frame = (float)bridge->stats.sources_detected / bridge->stats.frames_processed;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -512,7 +508,7 @@ int dragonfly_audio_bridge_process_spectrum(
     if (!left_spectrum || !right_spectrum || num_bins == 0) return -1;
 
     uint64_t start_us = get_time_us();
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Find dominant frequency bin */
     uint32_t peak_bin = 0;
@@ -604,7 +600,7 @@ int dragonfly_audio_bridge_process_spectrum(
     }
 
     bridge->stats.frames_processed++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -614,7 +610,7 @@ int dragonfly_audio_bridge_inject_source(
 ) {
     if (!bridge || !bridge->initialized || !source) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     audio_source_t src = *source;
     if (src.timestamp_us == 0) {
@@ -638,7 +634,7 @@ int dragonfly_audio_bridge_inject_source(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -648,9 +644,9 @@ int dragonfly_audio_bridge_get_result(
 ) {
     if (!bridge || !bridge->initialized || !result) return -1;
 
-    nimcp_mutex_lock(((dragonfly_audio_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((dragonfly_audio_bridge_t*)bridge)->base.mutex);
     *result = bridge->latest_result;
-    nimcp_mutex_unlock(((dragonfly_audio_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((dragonfly_audio_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -670,7 +666,7 @@ int dragonfly_audio_bridge_correlate_visual(
 
     const visual_motion_result_t* visual = (const visual_motion_result_t*)visual_result_ptr;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     int num_found = 0;
     uint64_t now = get_time_us();
@@ -723,7 +719,7 @@ int dragonfly_audio_bridge_correlate_visual(
             (float)bridge->stats.correlations_found / bridge->stats.frames_processed;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return num_found;
 }
 
@@ -734,10 +730,10 @@ int dragonfly_audio_bridge_get_attention_cue(
 ) {
     if (!bridge || !bridge->initialized || !cue_direction || !cue_priority) return -1;
 
-    nimcp_mutex_lock(((dragonfly_audio_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((dragonfly_audio_bridge_t*)bridge)->base.mutex);
 
     if (bridge->latest_result.num_sources == 0) {
-        nimcp_mutex_unlock(((dragonfly_audio_bridge_t*)bridge)->mutex);
+        nimcp_mutex_unlock(((dragonfly_audio_bridge_t*)bridge)->base.mutex);
         return 1;  /* No cue available */
     }
 
@@ -760,7 +756,7 @@ int dragonfly_audio_bridge_get_attention_cue(
     *cue_priority = max_priority + bridge->config.cue_priority_boost;
     if (*cue_priority > 1.0f) *cue_priority = 1.0f;
 
-    nimcp_mutex_unlock(((dragonfly_audio_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((dragonfly_audio_bridge_t*)bridge)->base.mutex);
     return 0;
 }
 
@@ -812,9 +808,9 @@ int dragonfly_audio_bridge_get_stats(
 ) {
     if (!bridge || !bridge->initialized || !stats) return -1;
 
-    nimcp_mutex_lock(((dragonfly_audio_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((dragonfly_audio_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(((dragonfly_audio_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((dragonfly_audio_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -822,10 +818,10 @@ int dragonfly_audio_bridge_get_stats(
 int dragonfly_audio_bridge_reset_stats(dragonfly_audio_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(audio_bridge_stats_t));
     bridge->process_time_sum = 0;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -841,9 +837,9 @@ int dragonfly_audio_bridge_set_config(
     if (!bridge || !bridge->initialized || !config) return -1;
     if (!audio_bridge_validate_config(config)) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->config = *config;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -854,9 +850,9 @@ int dragonfly_audio_bridge_get_config(
 ) {
     if (!bridge || !bridge->initialized || !config) return -1;
 
-    nimcp_mutex_lock(((dragonfly_audio_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((dragonfly_audio_bridge_t*)bridge)->base.mutex);
     *config = bridge->config;
-    nimcp_mutex_unlock(((dragonfly_audio_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((dragonfly_audio_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }

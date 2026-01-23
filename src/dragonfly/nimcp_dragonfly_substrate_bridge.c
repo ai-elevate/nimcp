@@ -3,6 +3,7 @@
  * @brief Implementation of Dragonfly-to-Neural Substrate Bridge
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "dragonfly/nimcp_dragonfly_substrate_bridge.h"
 #include "dragonfly/nimcp_dragonfly.h"
 #include "core/neural_substrate/nimcp_neural_substrate.h"
@@ -16,6 +17,7 @@
 //=============================================================================
 
 struct dragonfly_substrate_bridge_s {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     bool initialized;
 
     /* Connected systems */

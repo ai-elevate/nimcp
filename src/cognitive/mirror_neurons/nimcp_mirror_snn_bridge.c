@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/mirror_neurons/nimcp_mirror_snn_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
 #include "core/synapse_types/nimcp_synapse_types.h"
 #include "async/nimcp_bio_async.h"
@@ -28,6 +29,8 @@
 //=============================================================================
 
 struct mirror_snn_bridge {
+    bridge_base_t base;                  /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     mirror_snn_config_t config;
 
@@ -66,9 +69,6 @@ struct mirror_snn_bridge {
 
     /* Statistics */
     mirror_snn_stats_t stats;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 
     /* Timing */
     uint64_t last_update_us;
@@ -272,11 +272,9 @@ mirror_snn_bridge_t* mirror_snn_create(const mirror_snn_config_t* config) {
             bridge->hidden_pop, SNN_TOPO_RANDOM, 0.1f, SYNAPSE_AMPA, 0.3f, 0.1f);
     }
 
-    /* Create mutex */
-    mutex_attr_t attr = { .type = MUTEX_TYPE_NORMAL };
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
-        NIMCP_LOG_ERROR(LOG_MODULE, "Failed to create mutex");
+    /* Initialize bridge base infrastructure (includes mutex) */
+    if (bridge_base_init(&bridge->base, 0, "mirror_snn") != 0) {
+        NIMCP_LOG_ERROR(LOG_MODULE, "Failed to initialize bridge base");
         snn_network_destroy(bridge->snn);
         nimcp_free(bridge);
         return NULL;
@@ -317,10 +315,8 @@ mirror_snn_bridge_t* mirror_snn_create_with_network(
     bridge->snn = snn;
     bridge->owns_snn = false;  /* Do NOT destroy on cleanup */
 
-    /* Create mutex */
-    mutex_attr_t attr = { .type = MUTEX_TYPE_NORMAL };
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
+    /* Initialize bridge base infrastructure (includes mutex) */
+    if (bridge_base_init(&bridge->base, 0, "mirror_snn") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -348,9 +344,8 @@ void mirror_snn_destroy(mirror_snn_bridge_t* bridge) {
         snn_network_destroy(bridge->snn);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
     NIMCP_LOG_INFO(LOG_MODULE, "Destroyed mirror-SNN bridge");
@@ -364,12 +359,12 @@ int mirror_snn_connect_bio_async(mirror_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (bridge->bio_async_connected) return 0;  /* Already connected */
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Connect SNN to bio-async */
     int ret = snn_network_connect_bio_async(bridge->snn);
     if (ret != SNN_SUCCESS) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         NIMCP_LOG_ERROR(LOG_MODULE, "Failed to connect SNN to bio-async");
         return ret;
     }
@@ -383,7 +378,7 @@ int mirror_snn_connect_bio_async(mirror_snn_bridge_t* bridge) {
         handle_population_activity, bridge);
 
     bridge->bio_async_connected = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOG_INFO(LOG_MODULE, "Connected to bio-async");
     return 0;
@@ -392,10 +387,10 @@ int mirror_snn_connect_bio_async(mirror_snn_bridge_t* bridge) {
 int mirror_snn_disconnect_bio_async(mirror_snn_bridge_t* bridge) {
     if (!bridge || !bridge->bio_async_connected) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     snn_network_disconnect_bio_async(bridge->snn);
     bridge->bio_async_connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOG_INFO(LOG_MODULE, "Disconnected from bio-async");
     return 0;
@@ -417,7 +412,7 @@ int mirror_snn_process_messages(mirror_snn_bridge_t* bridge, int timeout_ms) {
 int mirror_snn_connect_immune(mirror_snn_bridge_t* bridge, void* immune_system) {
     if (!bridge || !immune_system) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     int ret = snn_network_connect_immune(bridge->snn, immune_system);
     if (ret == SNN_SUCCESS) {
@@ -425,17 +420,17 @@ int mirror_snn_connect_immune(mirror_snn_bridge_t* bridge, void* immune_system) 
         bridge->immune_connected = true;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return ret;
 }
 
 int mirror_snn_disconnect_immune(mirror_snn_bridge_t* bridge) {
     if (!bridge || !bridge->immune_connected) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->immune_system = NULL;
     bridge->immune_connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -458,7 +453,7 @@ int mirror_snn_encode_observation(
 ) {
     if (!bridge || !features || feature_dim == 0) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = MIRROR_SNN_STATE_ENCODING;
 
     /* Scale features by observation strength */
@@ -476,7 +471,7 @@ int mirror_snn_encode_observation(
     int ret = snn_network_set_inputs(bridge->snn, scaled, bridge->config.input_dim);
     if (ret != SNN_SUCCESS) {
         bridge->state = MIRROR_SNN_STATE_IDLE;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -489,7 +484,7 @@ int mirror_snn_encode_observation(
     /* Update statistics */
     bridge->stats.total_observations++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return (int)dim;
 }
 
@@ -502,7 +497,7 @@ int mirror_snn_encode_execution(
 ) {
     if (!bridge || !motor_command || command_dim == 0) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = MIRROR_SNN_STATE_ENCODING;
 
     /* Scale motor command */
@@ -524,7 +519,7 @@ int mirror_snn_encode_execution(
         bridge->actions[action_id].status = MIRROR_SNN_ACTION_EXECUTING;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return ret == SNN_SUCCESS ? (int)dim : -1;
 }
 
@@ -543,7 +538,7 @@ int mirror_snn_set_input_tensor(
 int mirror_snn_simulate(mirror_snn_bridge_t* bridge, float duration_ms) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = MIRROR_SNN_STATE_SIMULATING;
 
     uint64_t start = get_time_us();
@@ -557,7 +552,7 @@ int mirror_snn_simulate(mirror_snn_bridge_t* bridge, float duration_ms) {
         0.99f * bridge->stats.avg_simulation_time_us + 0.01f * (float)elapsed;
 
     bridge->state = MIRROR_SNN_STATE_DECODING;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return spikes;
 }
@@ -569,13 +564,13 @@ int mirror_snn_get_recognized_action(
 ) {
     if (!bridge || !action_id || !confidence) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get SNN outputs */
     float outputs[MIRROR_SNN_OUTPUT_DIM];
     int ret = snn_network_get_outputs(bridge->snn, outputs, bridge->config.output_dim);
     if (ret != SNN_SUCCESS) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return ret;
     }
 
@@ -592,7 +587,7 @@ int mirror_snn_get_recognized_action(
     /* Apply confidence gain and threshold */
     best_conf *= bridge->config.confidence_gain;
     if (best_conf < bridge->config.decoding_threshold) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;  /* No confident recognition */
     }
 
@@ -616,7 +611,7 @@ int mirror_snn_get_recognized_action(
     bridge->stats.total_recognitions++;
     bridge->state = MIRROR_SNN_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -709,14 +704,14 @@ int mirror_snn_set_training(mirror_snn_bridge_t* bridge, bool enable) {
 int mirror_snn_apply_stdp(mirror_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = MIRROR_SNN_STATE_TRAINING;
 
     int updates = snn_network_apply_stdp(bridge->snn);
     bridge->stats.training_iterations++;
 
     bridge->state = MIRROR_SNN_STATE_IDLE;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return updates;
 }
@@ -724,14 +719,14 @@ int mirror_snn_apply_stdp(mirror_snn_bridge_t* bridge) {
 int mirror_snn_apply_reward(mirror_snn_bridge_t* bridge, float reward) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = MIRROR_SNN_STATE_TRAINING;
 
     int updates = snn_network_apply_rstdp(bridge->snn, reward);
     bridge->stats.training_iterations++;
 
     bridge->state = MIRROR_SNN_STATE_IDLE;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return updates;
 }
@@ -768,10 +763,10 @@ int mirror_snn_register_spike_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->spike_callback = callback;
     bridge->spike_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -781,10 +776,10 @@ int mirror_snn_register_recognition_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->recognition_callback = callback;
     bridge->recognition_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -794,10 +789,10 @@ int mirror_snn_register_training_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->training_callback = callback;
     bridge->training_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -807,10 +802,10 @@ int mirror_snn_register_health_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->health_callback = callback;
     bridge->health_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -824,7 +819,7 @@ int mirror_snn_get_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(((mirror_snn_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((mirror_snn_bridge_t*)bridge)->base.mutex);
 
     state->state = bridge->state;
     state->snn_health = snn_network_check_health(bridge->snn);
@@ -849,7 +844,7 @@ int mirror_snn_get_state(
     state->training_active = bridge->config.enable_training;
     state->weight_updates = (uint32_t)bridge->stats.stdp_events;
 
-    nimcp_mutex_unlock(((mirror_snn_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((mirror_snn_bridge_t*)bridge)->base.mutex);
     return 0;
 }
 
@@ -860,9 +855,9 @@ int mirror_snn_get_action_state(
 ) {
     if (!bridge || !state || action_id >= MIRROR_SNN_MAX_ACTIONS) return -1;
 
-    nimcp_mutex_lock(((mirror_snn_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((mirror_snn_bridge_t*)bridge)->base.mutex);
     *state = bridge->actions[action_id];
-    nimcp_mutex_unlock(((mirror_snn_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((mirror_snn_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -873,7 +868,7 @@ int mirror_snn_get_stats(
 ) {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(((mirror_snn_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((mirror_snn_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
 
     /* Get bio-async stats */
@@ -886,15 +881,15 @@ int mirror_snn_get_stats(
         );
     }
 
-    nimcp_mutex_unlock(((mirror_snn_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((mirror_snn_bridge_t*)bridge)->base.mutex);
     return 0;
 }
 
 void mirror_snn_reset_stats(mirror_snn_bridge_t* bridge) {
     if (!bridge) return;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 snn_state_health_t mirror_snn_check_health(const mirror_snn_bridge_t* bridge) {
@@ -909,14 +904,14 @@ snn_state_health_t mirror_snn_check_health(const mirror_snn_bridge_t* bridge) {
 int mirror_snn_update(mirror_snn_bridge_t* bridge, float dt_ms) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now = get_time_us();
     float elapsed_ms = (float)(now - bridge->last_update_us) / 1000.0f;
 
     /* Rate limiting */
     if (elapsed_ms < bridge->config.update_interval_ms) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -947,7 +942,7 @@ int mirror_snn_update(mirror_snn_bridge_t* bridge, float dt_ms) {
     }
 
     bridge->last_update_us = now;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -955,7 +950,7 @@ int mirror_snn_update(mirror_snn_bridge_t* bridge, float dt_ms) {
 int mirror_snn_reset(mirror_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     snn_network_reset(bridge->snn);
 
@@ -965,7 +960,7 @@ int mirror_snn_reset(mirror_snn_bridge_t* bridge) {
 
     bridge->state = MIRROR_SNN_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

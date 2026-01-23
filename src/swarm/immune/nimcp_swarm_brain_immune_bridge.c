@@ -85,7 +85,7 @@ swarm_brain_immune_bridge_t* swarm_brain_immune_bridge_create(
     bridge->immune_system = immune_system;
     bridge->swarm_brain = swarm_brain;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "swarm_brain_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for swarm brain immune bridge");
         nimcp_free(bridge);
@@ -111,7 +111,7 @@ void swarm_brain_immune_bridge_destroy(swarm_brain_immune_bridge_t* bridge)
     if (!bridge) return;
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

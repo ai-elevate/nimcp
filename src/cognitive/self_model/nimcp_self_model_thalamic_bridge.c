@@ -3,6 +3,7 @@
  * @brief Self-Model-Thalamic Bridge Implementation
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/self_model/nimcp_self_model_thalamic_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/logging/nimcp_logging.h"
@@ -12,6 +13,7 @@
 #include <string.h>
 
 struct self_model_thalamic_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* self_model;
     thalamic_router_t* router;
     self_model_thalamic_config_t config;

@@ -2,6 +2,7 @@
 // nimcp_physics_snn_bridge.c - Physics Layer to SNN/Plasticity Bridge
 //=============================================================================
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "physics/bridges/nimcp_physics_snn_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -22,6 +23,7 @@
 //=============================================================================
 
 struct physics_snn_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     physics_snn_config_t config;
 
     /** Spike buffer (circular) */

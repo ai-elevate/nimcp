@@ -3,6 +3,7 @@
  * @brief Epistemic-Neural Substrate Bridge Implementation
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/epistemic/nimcp_epistemic_substrate_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
@@ -12,6 +13,7 @@
 #include <string.h>
 
 struct epistemic_substrate_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* epistemic;
     neural_substrate_t* substrate;
     epistemic_substrate_config_t config;

@@ -45,7 +45,7 @@ grief_thalamic_config_t grief_thalamic_default_config(void) {
 grief_thalamic_bridge_t* grief_thalamic_bridge_create(void* grief, thalamic_router_t* router, const grief_thalamic_config_t* config) {
     grief_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(grief_thalamic_bridge_t));
     if (!bridge) return NULL;
-    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (bridge_base_init(&bridge->base, 0, "grief_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -61,7 +61,7 @@ grief_thalamic_bridge_t* grief_thalamic_bridge_create(void* grief, thalamic_rout
 void grief_thalamic_bridge_destroy(grief_thalamic_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
 }

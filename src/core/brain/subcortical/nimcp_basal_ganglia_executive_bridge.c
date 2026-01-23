@@ -4,6 +4,7 @@
  */
 
 #include "core/brain/subcortical/nimcp_basal_ganglia_executive_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
@@ -77,7 +78,7 @@ bge_bridge_t* bge_bridge_create(const bge_bridge_config_t* config) {
     bridge->inhibited_action = 0;
 
     /* Create mutex */
-    bridge->mutex = nimcp_mutex_create(NULL);
+    if (bridge_base_init(&bridge->base, 0, "basal_ganglia_executive") != 0) { nimcp_free(bridge); return NULL; }
 
     return bridge;
 }
@@ -85,7 +86,7 @@ bge_bridge_t* bge_bridge_create(const bge_bridge_config_t* config) {
 void bge_bridge_destroy(bge_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->mutex) nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

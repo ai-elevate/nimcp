@@ -5,6 +5,7 @@
  * @date 2026-01-11
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/vta/nimcp_vta_plasticity_bridge.h"
 #include "core/brain/regions/vta/nimcp_vta_adapter.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -13,6 +14,7 @@
 #include <math.h>
 
 struct nimcp_vta_plasticity_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     nimcp_vta_plasticity_config_t config;
     nimcp_vta_adapter_t vta_adapter;
     void* plasticity_coordinator;

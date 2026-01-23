@@ -106,7 +106,7 @@ snn_bcm_bridge_t* snn_bcm_bridge_create(
         bridge->rate_history[i].spike_count = 0;
     }
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "snn_bcm") != 0) { nimcp_free(bridge); return NULL; }
 
     bridge->connected = true;
     bridge->last_update_time_ms = 0.0f;
@@ -141,7 +141,7 @@ void snn_bcm_bridge_destroy(snn_bcm_bridge_t* bridge) {
     }
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

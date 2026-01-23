@@ -70,7 +70,7 @@ emotion_recognition_fep_bridge_t* emotion_recognition_fep_create(
     }
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "emotion_recognition_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
@@ -96,7 +96,7 @@ void emotion_recognition_fep_destroy(emotion_recognition_fep_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

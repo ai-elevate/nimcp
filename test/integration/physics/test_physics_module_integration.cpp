@@ -525,7 +525,7 @@ TEST_F(CrossModuleIntegrationTest, SharedExceptionHandler) {
               GRAPH_THEORY_OK);
     EXPECT_EQ(info_geom_bridge_register_exception(info_bridge_, shared_handler), 0);
     EXPECT_EQ(dynsys_bridge_register_exception_handler(dynsys_bridge_,
-              (nimcp_exception_handler_t)shared_handler), 0);
+              (dynsys_exception_handler_t)shared_handler), 0);
 }
 
 TEST_F(CrossModuleIntegrationTest, SharedBioAsyncChannel) {

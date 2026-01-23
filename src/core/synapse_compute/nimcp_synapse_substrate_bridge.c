@@ -301,7 +301,7 @@ synapse_substrate_bridge_t* synapse_substrate_bridge_create(
     bridge->stats.min_transmission_efficiency = 1.0f;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "synapse_substrate") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Mutex allocation failed");
         synapse_substrate_bridge_destroy(bridge);
@@ -317,7 +317,7 @@ void synapse_substrate_bridge_destroy(synapse_substrate_bridge_t* bridge) {
     if (!bridge) return;
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

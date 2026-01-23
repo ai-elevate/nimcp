@@ -358,3 +358,33 @@ set_tests_properties(integration_exception_test_exception_cross_module_flow
     LABELS "integration;exception;cross_module;flow;swarm;brain;training;perception;memory;bio_async"
     TIMEOUT 300
 )
+
+# =============================================================================
+# Exception Flow Comprehensive Integration Tests
+# =============================================================================
+
+add_executable(integration_exception_test_exception_flow_comprehensive
+    test_exception_flow_comprehensive.cpp
+)
+
+target_link_libraries(integration_exception_test_exception_flow_comprehensive
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_compile_features(integration_exception_test_exception_flow_comprehensive PRIVATE cxx_std_17)
+
+add_test(
+    NAME integration_exception_test_exception_flow_comprehensive
+    COMMAND integration_exception_test_exception_flow_comprehensive
+)
+
+set_tests_properties(integration_exception_test_exception_flow_comprehensive
+    PROPERTIES
+    LABELS "integration;exception;flow;comprehensive;propagation;recovery;cleanup;callback;cross_module"
+    TIMEOUT 300
+)

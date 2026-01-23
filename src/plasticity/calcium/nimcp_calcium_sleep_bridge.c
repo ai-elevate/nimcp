@@ -143,7 +143,7 @@ calcium_sleep_bridge_t calcium_sleep_bridge_create(
     bridge->effects.threshold_ltp_shift = 0.0f;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "calcium_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         LOG_ERROR("Calcium-sleep bridge mutex creation failed");
@@ -186,7 +186,7 @@ void calcium_sleep_bridge_destroy(calcium_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

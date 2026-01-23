@@ -14,6 +14,7 @@
  * @version 1.0.0
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/memory/core/nimcp_pr_snn_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -87,6 +88,7 @@ static void set_error(const char* msg) {
  * - RNG state
  */
 struct pr_snn_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /* Configuration */
     pr_snn_bridge_config_t config;
     pr_snn_burst_params_t burst_params;
@@ -337,7 +339,7 @@ NIMCP_EXPORT pr_snn_bridge_t pr_snn_bridge_create(const pr_snn_bridge_config_t* 
     }
 
     /* Initialize mutex */
-    PR_MUTEX_INIT(bridge->mutex);
+    PR_MUTEX_INIT(bridge->base.mutex);
     bridge->mutex_initialized = true;
 
     /* Initialize RNG with time-based seed */
@@ -363,7 +365,7 @@ NIMCP_EXPORT void pr_snn_bridge_destroy(pr_snn_bridge_t bridge) {
 
     /* Destroy mutex */
     if (bridge->mutex_initialized) {
-        PR_MUTEX_DESTROY(bridge->mutex);
+        PR_MUTEX_DESTROY(bridge->base.mutex);
     }
 
     /* Free bridge */
@@ -374,12 +376,12 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_bridge_reset(pr_snn_bridge_t bridge) {
     if (!bridge) return PR_SNN_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_SNN_ERROR_INVALID_STATE;
 
-    PR_MUTEX_LOCK(bridge->mutex);
+    PR_MUTEX_LOCK(bridge->base.mutex);
 
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     bridge->stats.last_reset_time_ms = get_time_ms();
 
-    PR_MUTEX_UNLOCK(bridge->mutex);
+    PR_MUTEX_UNLOCK(bridge->base.mutex);
 
     return PR_SNN_SUCCESS;
 }
@@ -412,9 +414,9 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_bridge_set_config(
         return PR_SNN_ERROR_INVALID_CONFIG;
     }
 
-    PR_MUTEX_LOCK(bridge->mutex);
+    PR_MUTEX_LOCK(bridge->base.mutex);
     bridge->config = *config;
-    PR_MUTEX_UNLOCK(bridge->mutex);
+    PR_MUTEX_UNLOCK(bridge->base.mutex);
 
     return PR_SNN_SUCCESS;
 }
@@ -721,7 +723,7 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_rate(
 
     /* Update statistics */
     if (bridge->config.track_statistics) {
-        PR_MUTEX_LOCK(bridge->mutex);
+        PR_MUTEX_LOCK(bridge->base.mutex);
         bridge->stats.total_encodings++;
         bridge->stats.avg_spike_count =
             (bridge->stats.avg_spike_count * (bridge->stats.total_encodings - 1) +
@@ -738,7 +740,7 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_rate(
         bridge->last_encode_stats.spikes_generated = pattern->num_spikes;
         bridge->last_encode_stats.encoding_time_us = (float)(get_time_us() - start_time);
         bridge->last_encode_stats.mean_firing_rate_hz = rate_hz;
-        PR_MUTEX_UNLOCK(bridge->mutex);
+        PR_MUTEX_UNLOCK(bridge->base.mutex);
     }
 
     return PR_SNN_SUCCESS;
@@ -828,13 +830,13 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_burst(
 
     /* Update statistics */
     if (bridge->config.track_statistics) {
-        PR_MUTEX_LOCK(bridge->mutex);
+        PR_MUTEX_LOCK(bridge->base.mutex);
         bridge->stats.total_encodings++;
         bridge->last_encode_stats.input_value = value;
         bridge->last_encode_stats.encoding = PR_SNN_ENCODE_BURST;
         bridge->last_encode_stats.spikes_generated = pattern->num_spikes;
         bridge->last_encode_stats.encoding_time_us = (float)(get_time_us() - start_time);
-        PR_MUTEX_UNLOCK(bridge->mutex);
+        PR_MUTEX_UNLOCK(bridge->base.mutex);
     }
 
     return PR_SNN_SUCCESS;
@@ -907,13 +909,13 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_population(
 
     /* Update statistics */
     if (bridge->config.track_statistics) {
-        PR_MUTEX_LOCK(bridge->mutex);
+        PR_MUTEX_LOCK(bridge->base.mutex);
         bridge->stats.total_encodings++;
         bridge->last_encode_stats.input_value = value;
         bridge->last_encode_stats.encoding = PR_SNN_ENCODE_POPULATION;
         bridge->last_encode_stats.spikes_generated = pattern->num_spikes;
         bridge->last_encode_stats.encoding_time_us = (float)(get_time_us() - start_time);
-        PR_MUTEX_UNLOCK(bridge->mutex);
+        PR_MUTEX_UNLOCK(bridge->base.mutex);
     }
 
     return PR_SNN_SUCCESS;
@@ -969,7 +971,7 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_latency(
 
     /* Update statistics */
     if (bridge->config.track_statistics) {
-        PR_MUTEX_LOCK(bridge->mutex);
+        PR_MUTEX_LOCK(bridge->base.mutex);
         bridge->stats.total_encodings++;
         bridge->last_encode_stats.input_value = value;
         bridge->last_encode_stats.encoding = PR_SNN_ENCODE_LATENCY;
@@ -977,7 +979,7 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_latency(
         bridge->last_encode_stats.encoding_time_us = (float)(get_time_us() - start_time);
         bridge->last_encode_stats.first_spike_time_ms =
             pattern->num_spikes > 0 ? pattern->spike_times[0] : -1.0f;
-        PR_MUTEX_UNLOCK(bridge->mutex);
+        PR_MUTEX_UNLOCK(bridge->base.mutex);
     }
 
     return PR_SNN_SUCCESS;
@@ -1151,12 +1153,12 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_quaternion(
 
     /* Update statistics */
     if (bridge->config.track_statistics) {
-        PR_MUTEX_LOCK(bridge->mutex);
+        PR_MUTEX_LOCK(bridge->base.mutex);
         bridge->stats.total_encodings++;
         bridge->stats.avg_encoding_time_us =
             (bridge->stats.avg_encoding_time_us * (bridge->stats.total_encodings - 1) +
              (get_time_us() - start_time)) / bridge->stats.total_encodings;
-        PR_MUTEX_UNLOCK(bridge->mutex);
+        PR_MUTEX_UNLOCK(bridge->base.mutex);
     }
 
     err = PR_SNN_SUCCESS;
@@ -1641,7 +1643,7 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_decode_to_quaternion(
 
     /* Update statistics */
     if (bridge->config.track_statistics) {
-        PR_MUTEX_LOCK(bridge->mutex);
+        PR_MUTEX_LOCK(bridge->base.mutex);
         bridge->stats.total_decodings++;
         bridge->stats.avg_reconstruction_error =
             (bridge->stats.avg_reconstruction_error * (bridge->stats.total_decodings - 1) +
@@ -1649,7 +1651,7 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_decode_to_quaternion(
         bridge->stats.avg_decoding_time_us =
             (bridge->stats.avg_decoding_time_us * (bridge->stats.total_decodings - 1) +
              (get_time_us() - start_time)) / bridge->stats.total_decodings;
-        PR_MUTEX_UNLOCK(bridge->mutex);
+        PR_MUTEX_UNLOCK(bridge->base.mutex);
     }
 
     return PR_SNN_SUCCESS;
@@ -1709,9 +1711,9 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_node(
     pr_snn_error_t err = pr_snn_encode_quaternion(bridge, state, pattern);
 
     if (err == PR_SNN_SUCCESS && bridge->config.track_statistics) {
-        PR_MUTEX_LOCK(bridge->mutex);
+        PR_MUTEX_LOCK(bridge->base.mutex);
         bridge->stats.total_node_encodings++;
-        PR_MUTEX_UNLOCK(bridge->mutex);
+        PR_MUTEX_UNLOCK(bridge->base.mutex);
     }
 
     return err;
@@ -1811,9 +1813,9 @@ NIMCP_EXPORT pr_snn_error_t pr_snn_encode_entanglement(
     pr_spike_pattern_sort(pattern2);
 
     if (bridge->config.track_statistics) {
-        PR_MUTEX_LOCK(bridge->mutex);
+        PR_MUTEX_LOCK(bridge->base.mutex);
         bridge->stats.total_entangle_ops++;
-        PR_MUTEX_UNLOCK(bridge->mutex);
+        PR_MUTEX_UNLOCK(bridge->base.mutex);
     }
 
     return PR_SNN_SUCCESS;

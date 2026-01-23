@@ -45,7 +45,7 @@ joy_thalamic_config_t joy_thalamic_default_config(void) {
 joy_thalamic_bridge_t* joy_thalamic_bridge_create(void* joy, thalamic_router_t* router, const joy_thalamic_config_t* config) {
     joy_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(joy_thalamic_bridge_t));
     if (!bridge) return NULL;
-    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (bridge_base_init(&bridge->base, 0, "joy_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -61,7 +61,7 @@ joy_thalamic_bridge_t* joy_thalamic_bridge_create(void* joy, thalamic_router_t* 
 void joy_thalamic_bridge_destroy(joy_thalamic_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
 }

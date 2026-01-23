@@ -11,6 +11,7 @@
  */
 
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/logging/nimcp_logging.h"
@@ -34,6 +35,8 @@
  * @brief Internal bridge state
  */
 struct hypo_immune_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* External references */
     hypo_drive_system_handle_t* drives;
     brain_immune_system_t* immune;
@@ -80,8 +83,6 @@ struct hypo_immune_bridge {
     /* Statistics */
     hypo_immune_bridge_stats_t stats;
 
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 };
 
 /*=============================================================================
@@ -204,8 +205,8 @@ hypo_immune_bridge_t* hypo_immune_bridge_create(
     /* Create mutex */
     mutex_attr_t attr;
     attr.type = MUTEX_TYPE_RECURSIVE;
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_mutex_create(&attr);
+    if (!bridge->base.mutex) {
         nimcp_log(LOG_LEVEL_ERROR, "hypo_immune_bridge_create: mutex creation failed");
         nimcp_free(bridge);
         return NULL;
@@ -225,8 +226,8 @@ void hypo_immune_bridge_destroy(hypo_immune_bridge_t* bridge) {
         hypo_immune_bridge_unregister_bio(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);
@@ -243,7 +244,7 @@ int hypo_immune_bridge_update_cytokines(
 {
     if (!bridge || !cytokines) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->cytokines = *cytokines;
     bridge->cytokines.last_update_us = nimcp_time_get_us();
@@ -252,14 +253,14 @@ int hypo_immune_bridge_update_cytokines(
     /* Update sickness state based on new cytokine levels */
     update_sickness_from_cytokines(bridge);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int hypo_immune_bridge_apply_cytokine_effects(hypo_immune_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     const hypo_cytokine_state_t* cyt = &bridge->cytokines;
 
@@ -311,7 +312,7 @@ int hypo_immune_bridge_apply_cytokine_effects(hypo_immune_bridge_t* bridge) {
         /* This would be applied via drive system direct modulation */
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -326,9 +327,9 @@ int hypo_immune_bridge_get_sickness_state(
 {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(((hypo_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((hypo_immune_bridge_t*)bridge)->base.mutex);
     *state = bridge->sickness;
-    nimcp_mutex_unlock(((hypo_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((hypo_immune_bridge_t*)bridge)->base.mutex);
     return 0;
 }
 
@@ -339,7 +340,7 @@ int hypo_immune_bridge_get_sickness_state(
 int hypo_immune_bridge_update_hpa(hypo_immune_bridge_t* bridge, float stress_input) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now = nimcp_time_get_us();
     float dt = (bridge->hpa.last_update_us > 0) ?
@@ -391,7 +392,7 @@ int hypo_immune_bridge_update_hpa(hypo_immune_bridge_t* bridge, float stress_inp
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -411,16 +412,16 @@ int hypo_immune_bridge_get_hpa_state(
 {
     if (!bridge || !hpa) return -1;
 
-    nimcp_mutex_lock(((hypo_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((hypo_immune_bridge_t*)bridge)->base.mutex);
     *hpa = bridge->hpa;
-    nimcp_mutex_unlock(((hypo_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((hypo_immune_bridge_t*)bridge)->base.mutex);
     return 0;
 }
 
 int hypo_immune_bridge_apply_cortisol_effects(hypo_immune_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float suppression = hypo_immune_bridge_get_immune_suppression(bridge);
 
@@ -434,7 +435,7 @@ int hypo_immune_bridge_apply_cortisol_effects(hypo_immune_bridge_t* bridge) {
         hypo_immune_bridge_broadcast_cortisol(bridge);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -449,7 +450,7 @@ int hypo_immune_bridge_update_circadian(
     if (!bridge) return -1;
     if (!bridge->config.circadian_enabled) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Normalize phase to [0, 2π] */
     while (scn_phase < 0.0f) scn_phase += 2.0f * 3.14159265f;
@@ -472,7 +473,7 @@ int hypo_immune_bridge_update_circadian(
     bridge->circadian_modulation = 1.0f + bridge->config.circadian_amplitude *
         cosf(scn_phase - 0.5f * 3.14159265f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -497,7 +498,7 @@ hypo_sickness_level_t hypo_immune_bridge_compute_sickness_level(
 {
     if (!bridge) return SICKNESS_NONE;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float inflammation = bridge->sickness.inflammation_level;
     hypo_sickness_level_t level;
@@ -526,7 +527,7 @@ hypo_sickness_level_t hypo_immune_bridge_compute_sickness_level(
         bridge->sickness.level = level;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return level;
 }
 
@@ -552,7 +553,7 @@ int hypo_immune_bridge_enter_safety_mode(
     if (!bridge) return -1;
     if (!bridge->config.use_as_safety_mode) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->in_safety_mode = true;
     bridge->safety_mode_level = fminf(threat_level, 1.0f);
@@ -573,14 +574,14 @@ int hypo_immune_bridge_enter_safety_mode(
 
     nimcp_log(LOG_LEVEL_WARN, "hypo_immune_bridge: entered safety mode (threat=%.2f)", threat_level);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int hypo_immune_bridge_exit_safety_mode(hypo_immune_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->in_safety_mode = false;
     bridge->safety_mode_level = 0.0f;
@@ -594,7 +595,7 @@ int hypo_immune_bridge_exit_safety_mode(hypo_immune_bridge_t* bridge) {
 
     nimcp_log(LOG_LEVEL_INFO, "hypo_immune_bridge: exited safety mode");
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -729,18 +730,18 @@ int hypo_immune_bridge_get_stats(
 {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(((hypo_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((hypo_immune_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(((hypo_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((hypo_immune_bridge_t*)bridge)->base.mutex);
     return 0;
 }
 
 void hypo_immune_bridge_reset_stats(hypo_immune_bridge_t* bridge) {
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 /*=============================================================================
@@ -817,7 +818,7 @@ static nimcp_error_t immune_handle_cytokine_update(
         float concentration;
     }* cytokine_msg = msg;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update appropriate cytokine level */
     switch (cytokine_msg->cytokine_type) {
@@ -845,7 +846,7 @@ static nimcp_error_t immune_handle_cytokine_update(
 
     update_sickness_from_cytokines(bridge);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -864,7 +865,7 @@ static nimcp_error_t immune_handle_inflammation(
         uint32_t region_id;
     }* inflam_msg = msg;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update inflammation level directly */
     bridge->sickness.inflammation_level = fmaxf(bridge->sickness.inflammation_level,
@@ -874,7 +875,7 @@ static nimcp_error_t immune_handle_inflammation(
     /* Recompute sickness level */
     hypo_immune_bridge_compute_sickness_level(bridge);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -914,7 +915,7 @@ int hypo_immune_connect(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->orchestrator = orch;
     bridge->immune = immune;
@@ -933,7 +934,7 @@ int hypo_immune_connect(
         hypo_immune_bridge_register_bio(bridge, false);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -941,7 +942,7 @@ int hypo_immune_update(hypo_immune_bridge_t* bridge, uint64_t delta_ms)
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dt = (float)delta_ms / 1000.0f;
     uint64_t now = nimcp_time_get_us();
@@ -998,7 +999,7 @@ int hypo_immune_update(hypo_immune_bridge_t* bridge, uint64_t delta_ms)
 
     bridge->last_update_us = now;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -1008,7 +1009,7 @@ int hypo_immune_receive_cytokines(
 {
     if (!bridge || !cytokines) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Convert simplified cytokines to internal format */
     bridge->cytokines.il1_beta = cytokines->il1_beta;
@@ -1024,7 +1025,7 @@ int hypo_immune_receive_cytokines(
     /* Update derived state */
     update_sickness_from_cytokines(bridge);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -1033,7 +1034,7 @@ int hypo_immune_send_cortisol(hypo_immune_bridge_t* bridge, float cortisol)
     if (!bridge) return -1;
     if (cortisol < 0.0f || cortisol > 1.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update internal cortisol level */
     bridge->hpa.cortisol_level = cortisol;
@@ -1049,7 +1050,7 @@ int hypo_immune_send_cortisol(hypo_immune_bridge_t* bridge, float cortisol)
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -1063,7 +1064,7 @@ int hypo_immune_get_state(
 {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(((hypo_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((hypo_immune_bridge_t*)bridge)->base.mutex);
 
     memset(state, 0, sizeof(*state));
 
@@ -1100,7 +1101,7 @@ int hypo_immune_get_state(
     /* Timing */
     state->last_update_us = bridge->last_update_us;
 
-    nimcp_mutex_unlock(((hypo_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((hypo_immune_bridge_t*)bridge)->base.mutex);
     return 0;
 }
 
@@ -1133,7 +1134,7 @@ int hypo_immune_modulate_immune_response(
     if (!bridge) return -1;
     if (suppression < 0.0f || suppression > 1.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* If immune system connected, apply suppression */
     if (bridge->immune) {
@@ -1163,7 +1164,7 @@ int hypo_immune_modulate_immune_response(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -1171,10 +1172,10 @@ int hypo_immune_trigger_acute_phase(hypo_immune_bridge_t* bridge)
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->acute_phase_active) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;  /* Already active */
     }
 
@@ -1199,7 +1200,7 @@ int hypo_immune_trigger_acute_phase(hypo_immune_bridge_t* bridge)
 
     nimcp_log(LOG_LEVEL_INFO, "hypo_immune_bridge: acute phase response triggered");
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -1207,10 +1208,10 @@ int hypo_immune_end_acute_phase(hypo_immune_bridge_t* bridge)
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->acute_phase_active) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;  /* Not active */
     }
 
@@ -1236,7 +1237,7 @@ int hypo_immune_end_acute_phase(hypo_immune_bridge_t* bridge)
 
     nimcp_log(LOG_LEVEL_INFO, "hypo_immune_bridge: acute phase response ended");
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -1252,7 +1253,7 @@ int hypo_immune_update_sleep(
     if (!bridge) return -1;
     if (sleep_quality < 0.0f || sleep_quality > 1.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->sleep_quality = sleep_quality;
     bridge->is_sleeping = is_sleeping;
@@ -1281,7 +1282,7 @@ int hypo_immune_update_sleep(
     /* Update derived state */
     update_sickness_from_cytokines(bridge);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

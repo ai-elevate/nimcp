@@ -38,6 +38,7 @@
  * @version 1.0.0
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/memory/core/nimcp_pr_kg_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
@@ -103,6 +104,7 @@ typedef struct kg_hash_entry {
  * @brief Internal bridge structure
  */
 struct pr_kg_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /* Configuration */
     pr_kg_bridge_config_t config;
 
@@ -474,7 +476,7 @@ pr_kg_bridge_t pr_kg_bridge_create(const pr_kg_bridge_config_t* config) {
     }
 
     /* Initialize mutex */
-    MUTEX_INIT(bridge->mutex);
+    MUTEX_INIT(bridge->base.mutex);
 
     /* Set state flags */
     bridge->initialized = true;
@@ -493,7 +495,7 @@ void pr_kg_bridge_destroy(pr_kg_bridge_t bridge) {
         return;
     }
 
-    MUTEX_LOCK(bridge->mutex);
+    MUTEX_LOCK(bridge->base.mutex);
 
     /* Clear hash tables */
     hash_clear_all(bridge);
@@ -508,8 +510,8 @@ void pr_kg_bridge_destroy(pr_kg_bridge_t bridge) {
     bridge->initialized = false;
     bridge->connected = false;
 
-    MUTEX_UNLOCK(bridge->mutex);
-    MUTEX_DESTROY(bridge->mutex);
+    MUTEX_UNLOCK(bridge->base.mutex);
+    MUTEX_DESTROY(bridge->base.mutex);
 
     free(bridge);
 }
@@ -525,7 +527,7 @@ int pr_kg_bridge_connect(pr_kg_bridge_t bridge, brain_kg_t* brain_kg) {
         return -1;
     }
 
-    MUTEX_LOCK(bridge->mutex);
+    MUTEX_LOCK(bridge->base.mutex);
 
     /* Clear existing mappings */
     hash_clear_all(bridge);
@@ -543,7 +545,7 @@ int pr_kg_bridge_connect(pr_kg_bridge_t bridge, brain_kg_t* brain_kg) {
     /* Update stats */
     bridge->stats.active_mappings = 0;
 
-    MUTEX_UNLOCK(bridge->mutex);
+    MUTEX_UNLOCK(bridge->base.mutex);
 
     clear_error();
     return 0;
@@ -583,12 +585,12 @@ brain_kg_node_id_t pr_kg_register_memory_full(
         return BRAIN_KG_INVALID_NODE;
     }
 
-    MUTEX_LOCK(bridge->mutex);
+    MUTEX_LOCK(bridge->base.mutex);
 
     /* Check if already registered */
     uint32_t existing = hash_find_pr(bridge, pr_node_id);
     if (existing != HASH_INVALID) {
-        MUTEX_UNLOCK(bridge->mutex);
+        MUTEX_UNLOCK(bridge->base.mutex);
         set_error("PR node %lu already registered", (unsigned long)pr_node_id);
         return bridge->mappings[existing].kg_node_id;
     }
@@ -617,7 +619,7 @@ brain_kg_node_id_t pr_kg_register_memory_full(
     );
 
     if (kg_id == BRAIN_KG_INVALID_NODE) {
-        MUTEX_UNLOCK(bridge->mutex);
+        MUTEX_UNLOCK(bridge->base.mutex);
         set_error("Failed to create KG node for PR memory %lu",
                   (unsigned long)pr_node_id);
         return BRAIN_KG_INVALID_NODE;
@@ -649,7 +651,7 @@ brain_kg_node_id_t pr_kg_register_memory_full(
     if (map_idx == HASH_INVALID) {
         /* Failed to allocate, remove KG node */
         brain_kg_remove_node(bridge->brain_kg, kg_id);
-        MUTEX_UNLOCK(bridge->mutex);
+        MUTEX_UNLOCK(bridge->base.mutex);
         return BRAIN_KG_INVALID_NODE;
     }
 
@@ -669,7 +671,7 @@ brain_kg_node_id_t pr_kg_register_memory_full(
         /* Hash insertion failed, cleanup */
         bridge->mappings[map_idx].state = PR_KG_MAPPING_STATE_INVALID;
         brain_kg_remove_node(bridge->brain_kg, kg_id);
-        MUTEX_UNLOCK(bridge->mutex);
+        MUTEX_UNLOCK(bridge->base.mutex);
         return BRAIN_KG_INVALID_NODE;
     }
 
@@ -680,7 +682,7 @@ brain_kg_node_id_t pr_kg_register_memory_full(
         bridge->stats.last_sync_time_ms = now;
     }
 
-    MUTEX_UNLOCK(bridge->mutex);
+    MUTEX_UNLOCK(bridge->base.mutex);
     clear_error();
     return kg_id;
 }
@@ -691,12 +693,12 @@ int pr_kg_unregister_memory(pr_kg_bridge_t bridge, uint64_t pr_node_id) {
         return -1;
     }
 
-    MUTEX_LOCK(bridge->mutex);
+    MUTEX_LOCK(bridge->base.mutex);
 
     /* Find mapping */
     uint32_t map_idx = hash_find_pr(bridge, pr_node_id);
     if (map_idx == HASH_INVALID) {
-        MUTEX_UNLOCK(bridge->mutex);
+        MUTEX_UNLOCK(bridge->base.mutex);
         set_error("PR node %lu not found", (unsigned long)pr_node_id);
         return -1;
     }
@@ -725,7 +727,7 @@ int pr_kg_unregister_memory(pr_kg_bridge_t bridge, uint64_t pr_node_id) {
         }
     }
 
-    MUTEX_UNLOCK(bridge->mutex);
+    MUTEX_UNLOCK(bridge->base.mutex);
     clear_error();
     return 0;
 }
@@ -741,12 +743,12 @@ int pr_kg_sync_memory(
         return -1;
     }
 
-    MUTEX_LOCK(bridge->mutex);
+    MUTEX_LOCK(bridge->base.mutex);
 
     /* Find mapping */
     uint32_t map_idx = hash_find_pr(bridge, pr_node_id);
     if (map_idx == HASH_INVALID) {
-        MUTEX_UNLOCK(bridge->mutex);
+        MUTEX_UNLOCK(bridge->base.mutex);
         set_error("PR node %lu not found", (unsigned long)pr_node_id);
         return -1;
     }
@@ -764,7 +766,7 @@ int pr_kg_sync_memory(
     if (result < 0) {
         mapping->state = PR_KG_MAPPING_STATE_ERROR;
         bridge->stats.error_count++;
-        MUTEX_UNLOCK(bridge->mutex);
+        MUTEX_UNLOCK(bridge->base.mutex);
         set_error("Failed to update KG node for PR memory %lu",
                   (unsigned long)pr_node_id);
         return -1;
@@ -782,7 +784,7 @@ int pr_kg_sync_memory(
         bridge->stats.last_sync_time_ms = now;
     }
 
-    MUTEX_UNLOCK(bridge->mutex);
+    MUTEX_UNLOCK(bridge->base.mutex);
     clear_error();
     return 0;
 }
@@ -799,14 +801,14 @@ brain_kg_edge_id_t pr_kg_sync_entanglement(
         return BRAIN_KG_INVALID_NODE;
     }
 
-    MUTEX_LOCK(bridge->mutex);
+    MUTEX_LOCK(bridge->base.mutex);
 
     /* Find mappings for both nodes */
     uint32_t from_idx = hash_find_pr(bridge, from_pr_id);
     uint32_t to_idx = hash_find_pr(bridge, to_pr_id);
 
     if (from_idx == HASH_INVALID || to_idx == HASH_INVALID) {
-        MUTEX_UNLOCK(bridge->mutex);
+        MUTEX_UNLOCK(bridge->base.mutex);
         set_error("One or both PR nodes not registered (from=%lu, to=%lu)",
                   (unsigned long)from_pr_id, (unsigned long)to_pr_id);
         return BRAIN_KG_INVALID_NODE;
@@ -847,7 +849,7 @@ brain_kg_edge_id_t pr_kg_sync_entanglement(
             bridge->stats.last_sync_time_ms = get_time_ms();
         }
 
-        MUTEX_UNLOCK(bridge->mutex);
+        MUTEX_UNLOCK(bridge->base.mutex);
         clear_error();
         return existing;
     }
@@ -864,7 +866,7 @@ brain_kg_edge_id_t pr_kg_sync_entanglement(
 
     if (edge_id == BRAIN_KG_INVALID_NODE) {
         bridge->stats.error_count++;
-        MUTEX_UNLOCK(bridge->mutex);
+        MUTEX_UNLOCK(bridge->base.mutex);
         set_error("Failed to create KG edge from %lu to %lu",
                   (unsigned long)from_pr_id, (unsigned long)to_pr_id);
         return BRAIN_KG_INVALID_NODE;
@@ -876,7 +878,7 @@ brain_kg_edge_id_t pr_kg_sync_entanglement(
         bridge->stats.last_sync_time_ms = get_time_ms();
     }
 
-    MUTEX_UNLOCK(bridge->mutex);
+    MUTEX_UNLOCK(bridge->base.mutex);
     clear_error();
     return edge_id;
 }
@@ -891,14 +893,14 @@ int pr_kg_remove_entanglement(
         return -1;
     }
 
-    MUTEX_LOCK(bridge->mutex);
+    MUTEX_LOCK(bridge->base.mutex);
 
     /* Find mappings */
     uint32_t from_idx = hash_find_pr(bridge, from_pr_id);
     uint32_t to_idx = hash_find_pr(bridge, to_pr_id);
 
     if (from_idx == HASH_INVALID || to_idx == HASH_INVALID) {
-        MUTEX_UNLOCK(bridge->mutex);
+        MUTEX_UNLOCK(bridge->base.mutex);
         set_error("One or both PR nodes not registered");
         return -1;
     }
@@ -911,7 +913,7 @@ int pr_kg_remove_entanglement(
                                                      from_kg, to_kg);
 
     if (edge_id == BRAIN_KG_INVALID_NODE) {
-        MUTEX_UNLOCK(bridge->mutex);
+        MUTEX_UNLOCK(bridge->base.mutex);
         set_error("Edge not found between PR nodes %lu and %lu",
                   (unsigned long)from_pr_id, (unsigned long)to_pr_id);
         return -1;
@@ -919,7 +921,7 @@ int pr_kg_remove_entanglement(
 
     int result = brain_kg_remove_edge(bridge->brain_kg, edge_id);
 
-    MUTEX_UNLOCK(bridge->mutex);
+    MUTEX_UNLOCK(bridge->base.mutex);
 
     if (result < 0) {
         set_error("Failed to remove KG edge");
@@ -950,7 +952,7 @@ int pr_kg_query_by_module(
         return -1;
     }
 
-    MUTEX_LOCK(bridge->mutex);
+    MUTEX_LOCK(bridge->base.mutex);
 
     result->count = 0;
     uint32_t limit = (max_results < result->capacity) ? max_results : result->capacity;
@@ -968,7 +970,7 @@ int pr_kg_query_by_module(
         bridge->stats.total_queries++;
     }
 
-    MUTEX_UNLOCK(bridge->mutex);
+    MUTEX_UNLOCK(bridge->base.mutex);
     clear_error();
     return (int)result->count;
 }
@@ -984,7 +986,7 @@ int pr_kg_query_by_path(
         return -1;
     }
 
-    MUTEX_LOCK(bridge->mutex);
+    MUTEX_LOCK(bridge->base.mutex);
 
     uint32_t found = 0;
 
@@ -1000,7 +1002,7 @@ int pr_kg_query_by_path(
         bridge->stats.total_queries++;
     }
 
-    MUTEX_UNLOCK(bridge->mutex);
+    MUTEX_UNLOCK(bridge->base.mutex);
     clear_error();
     return (int)found;
 }
@@ -1015,13 +1017,13 @@ int pr_kg_get_context(
         return -1;
     }
 
-    MUTEX_LOCK(bridge->mutex);
+    MUTEX_LOCK(bridge->base.mutex);
 
     /* Get KG node info */
     const brain_kg_node_t* kg_node = brain_kg_get_node(bridge->brain_kg,
                                                         kg_node_id);
     if (!kg_node) {
-        MUTEX_UNLOCK(bridge->mutex);
+        MUTEX_UNLOCK(bridge->base.mutex);
         set_error("KG node %u not found", kg_node_id);
         return -1;
     }
@@ -1082,7 +1084,7 @@ int pr_kg_get_context(
         bridge->stats.total_queries++;
     }
 
-    MUTEX_UNLOCK(bridge->mutex);
+    MUTEX_UNLOCK(bridge->base.mutex);
     clear_error();
     return 0;
 }
@@ -1111,7 +1113,7 @@ int pr_kg_query_by_kg_node(
         return -1;
     }
 
-    MUTEX_LOCK(bridge->mutex);
+    MUTEX_LOCK(bridge->base.mutex);
 
     uint32_t found = 0;
 
@@ -1151,7 +1153,7 @@ int pr_kg_query_by_kg_node(
         bridge->stats.total_queries++;
     }
 
-    MUTEX_UNLOCK(bridge->mutex);
+    MUTEX_UNLOCK(bridge->base.mutex);
     clear_error();
     return (int)found;
 }
@@ -1165,7 +1167,7 @@ brain_kg_node_id_t pr_kg_get_kg_node(pr_kg_bridge_t bridge, uint64_t pr_node_id)
         return BRAIN_KG_INVALID_NODE;
     }
 
-    MUTEX_LOCK(bridge->mutex);
+    MUTEX_LOCK(bridge->base.mutex);
 
     uint32_t map_idx = hash_find_pr(bridge, pr_node_id);
     brain_kg_node_id_t result = BRAIN_KG_INVALID_NODE;
@@ -1174,7 +1176,7 @@ brain_kg_node_id_t pr_kg_get_kg_node(pr_kg_bridge_t bridge, uint64_t pr_node_id)
         result = bridge->mappings[map_idx].kg_node_id;
     }
 
-    MUTEX_UNLOCK(bridge->mutex);
+    MUTEX_UNLOCK(bridge->base.mutex);
     return result;
 }
 
@@ -1183,7 +1185,7 @@ uint64_t pr_kg_get_pr_node(pr_kg_bridge_t bridge, brain_kg_node_id_t kg_node_id)
         return PR_KG_INVALID_PR_ID;
     }
 
-    MUTEX_LOCK(bridge->mutex);
+    MUTEX_LOCK(bridge->base.mutex);
 
     uint32_t map_idx = hash_find_kg(bridge, kg_node_id);
     uint64_t result = PR_KG_INVALID_PR_ID;
@@ -1192,7 +1194,7 @@ uint64_t pr_kg_get_pr_node(pr_kg_bridge_t bridge, brain_kg_node_id_t kg_node_id)
         result = bridge->mappings[map_idx].pr_node_id;
     }
 
-    MUTEX_UNLOCK(bridge->mutex);
+    MUTEX_UNLOCK(bridge->base.mutex);
     return result;
 }
 
@@ -1206,18 +1208,18 @@ int pr_kg_get_mapping(
         return -1;
     }
 
-    MUTEX_LOCK(bridge->mutex);
+    MUTEX_LOCK(bridge->base.mutex);
 
     uint32_t map_idx = hash_find_pr(bridge, pr_node_id);
     if (map_idx == HASH_INVALID) {
-        MUTEX_UNLOCK(bridge->mutex);
+        MUTEX_UNLOCK(bridge->base.mutex);
         set_error("PR node %lu not found", (unsigned long)pr_node_id);
         return -1;
     }
 
     *mapping = bridge->mappings[map_idx];
 
-    MUTEX_UNLOCK(bridge->mutex);
+    MUTEX_UNLOCK(bridge->base.mutex);
     clear_error();
     return 0;
 }
@@ -1232,7 +1234,7 @@ int pr_kg_list_mappings(
         return -1;
     }
 
-    MUTEX_LOCK(bridge->mutex);
+    MUTEX_LOCK(bridge->base.mutex);
 
     result->count = 0;
     uint32_t limit = (max_results < result->capacity) ? max_results : result->capacity;
@@ -1243,7 +1245,7 @@ int pr_kg_list_mappings(
         }
     }
 
-    MUTEX_UNLOCK(bridge->mutex);
+    MUTEX_UNLOCK(bridge->base.mutex);
     clear_error();
     return (int)result->count;
 }
@@ -1301,7 +1303,7 @@ int pr_kg_batch_sync(pr_kg_bridge_t bridge) {
         return -1;
     }
 
-    MUTEX_LOCK(bridge->mutex);
+    MUTEX_LOCK(bridge->base.mutex);
 
     int sync_count = 0;
     uint64_t now = get_time_ms();
@@ -1329,7 +1331,7 @@ int pr_kg_batch_sync(pr_kg_bridge_t bridge) {
         bridge->stats.last_sync_time_ms = now;
     }
 
-    MUTEX_UNLOCK(bridge->mutex);
+    MUTEX_UNLOCK(bridge->base.mutex);
     clear_error();
     return sync_count;
 }
@@ -1340,7 +1342,7 @@ int pr_kg_cleanup_stale(pr_kg_bridge_t bridge, uint64_t threshold_ms) {
         return -1;
     }
 
-    MUTEX_LOCK(bridge->mutex);
+    MUTEX_LOCK(bridge->base.mutex);
 
     if (threshold_ms == 0) {
         threshold_ms = bridge->config.stale_threshold_ms;
@@ -1375,7 +1377,7 @@ int pr_kg_cleanup_stale(pr_kg_bridge_t bridge, uint64_t threshold_ms) {
         bridge->stats.active_mappings -= removed_count;
     }
 
-    MUTEX_UNLOCK(bridge->mutex);
+    MUTEX_UNLOCK(bridge->base.mutex);
     clear_error();
     return removed_count;
 }
@@ -1386,18 +1388,18 @@ int pr_kg_mark_dirty(pr_kg_bridge_t bridge, uint64_t pr_node_id) {
         return -1;
     }
 
-    MUTEX_LOCK(bridge->mutex);
+    MUTEX_LOCK(bridge->base.mutex);
 
     uint32_t map_idx = hash_find_pr(bridge, pr_node_id);
     if (map_idx == HASH_INVALID) {
-        MUTEX_UNLOCK(bridge->mutex);
+        MUTEX_UNLOCK(bridge->base.mutex);
         set_error("PR node not found");
         return -1;
     }
 
     bridge->mappings[map_idx].state = PR_KG_MAPPING_STATE_DIRTY;
 
-    MUTEX_UNLOCK(bridge->mutex);
+    MUTEX_UNLOCK(bridge->base.mutex);
     clear_error();
     return 0;
 }
@@ -1415,13 +1417,13 @@ prime_signature_t* pr_kg_signature_from_node(
         return NULL;
     }
 
-    MUTEX_LOCK(bridge->mutex);
+    MUTEX_LOCK(bridge->base.mutex);
 
     /* Get KG node */
     const brain_kg_node_t* kg_node = brain_kg_get_node(bridge->brain_kg,
                                                         kg_node_id);
     if (!kg_node) {
-        MUTEX_UNLOCK(bridge->mutex);
+        MUTEX_UNLOCK(bridge->base.mutex);
         set_error("KG node not found");
         return NULL;
     }
@@ -1429,7 +1431,7 @@ prime_signature_t* pr_kg_signature_from_node(
     /* Create empty signature */
     prime_signature_t* sig = prime_sig_create();
     if (!sig) {
-        MUTEX_UNLOCK(bridge->mutex);
+        MUTEX_UNLOCK(bridge->base.mutex);
         set_error("Failed to create signature");
         return NULL;
     }
@@ -1454,7 +1456,7 @@ prime_signature_t* pr_kg_signature_from_node(
         }
     }
 
-    MUTEX_UNLOCK(bridge->mutex);
+    MUTEX_UNLOCK(bridge->base.mutex);
     clear_error();
     return sig;
 }
@@ -1497,7 +1499,7 @@ int pr_kg_find_similar_by_signature(
         return -1;
     }
 
-    MUTEX_LOCK(bridge->mutex);
+    MUTEX_LOCK(bridge->base.mutex);
 
     uint32_t found = 0;
 
@@ -1542,7 +1544,7 @@ int pr_kg_find_similar_by_signature(
         bridge->stats.total_queries++;
     }
 
-    MUTEX_UNLOCK(bridge->mutex);
+    MUTEX_UNLOCK(bridge->base.mutex);
     clear_error();
     return (int)found;
 }
@@ -1557,9 +1559,9 @@ int pr_kg_get_stats(pr_kg_bridge_t bridge, pr_kg_bridge_stats_t* stats) {
         return -1;
     }
 
-    MUTEX_LOCK(bridge->mutex);
+    MUTEX_LOCK(bridge->base.mutex);
     *stats = bridge->stats;
-    MUTEX_UNLOCK(bridge->mutex);
+    MUTEX_UNLOCK(bridge->base.mutex);
 
     return 0;
 }
@@ -1569,14 +1571,14 @@ void pr_kg_reset_stats(pr_kg_bridge_t bridge) {
         return;
     }
 
-    MUTEX_LOCK(bridge->mutex);
+    MUTEX_LOCK(bridge->base.mutex);
 
     /* Preserve active_mappings count */
     uint64_t active = bridge->stats.active_mappings;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     bridge->stats.active_mappings = active;
 
-    MUTEX_UNLOCK(bridge->mutex);
+    MUTEX_UNLOCK(bridge->base.mutex);
 }
 
 size_t pr_kg_generate_summary(pr_kg_bridge_t bridge, char* buf, size_t size) {
@@ -1584,7 +1586,7 @@ size_t pr_kg_generate_summary(pr_kg_bridge_t bridge, char* buf, size_t size) {
         return 0;
     }
 
-    MUTEX_LOCK(bridge->mutex);
+    MUTEX_LOCK(bridge->base.mutex);
 
     pr_kg_bridge_stats_t* s = &bridge->stats;
 
@@ -1618,7 +1620,7 @@ size_t pr_kg_generate_summary(pr_kg_bridge_t bridge, char* buf, size_t size) {
         bridge->config.edge_weight_scale
     );
 
-    MUTEX_UNLOCK(bridge->mutex);
+    MUTEX_UNLOCK(bridge->base.mutex);
 
     return (written > 0) ? (size_t)written : 0;
 }
@@ -1636,7 +1638,7 @@ void pr_kg_print_state(pr_kg_bridge_t bridge) {
     /* Print mapping details */
     printf("\nMappings:\n");
 
-    MUTEX_LOCK(bridge->mutex);
+    MUTEX_LOCK(bridge->base.mutex);
 
     int printed = 0;
     for (uint32_t i = 0; i < bridge->mapping_capacity && printed < 10; i++) {
@@ -1658,7 +1660,7 @@ void pr_kg_print_state(pr_kg_bridge_t bridge) {
                (unsigned long)(bridge->stats.active_mappings - 10));
     }
 
-    MUTEX_UNLOCK(bridge->mutex);
+    MUTEX_UNLOCK(bridge->base.mutex);
 }
 
 const char* pr_kg_get_last_error(void) {

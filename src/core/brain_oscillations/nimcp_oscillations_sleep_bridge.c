@@ -117,7 +117,7 @@ oscillations_sleep_bridge_t oscillations_sleep_bridge_create(
     bridge->effects.spindle_activity = 0.0f;
     bridge->effects.ripple_activity = 0.0f;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "oscillations_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
 
     /* Register callback for automatic state updates */
@@ -155,7 +155,7 @@ void oscillations_sleep_bridge_destroy(oscillations_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->base.mutex) nimcp_mutex_free(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

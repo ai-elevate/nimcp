@@ -191,7 +191,7 @@ feature_immune_bridge_t* feature_immune_bridge_create(
         config ? config->chronic_degradation_threshold : 0.5f;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "feature_extractor_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);    return NULL;
     }

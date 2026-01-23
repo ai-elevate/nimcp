@@ -6,6 +6,7 @@
  */
 
 #include "plasticity/integration/nimcp_plasticity_bio_async_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -19,6 +20,7 @@
  * ============================================================================ */
 
 struct plasticity_bio_async_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     plasticity_bio_bridge_config_t config;
     plasticity_coordinator_t* coordinator;
     bio_router_t router;
@@ -48,9 +50,6 @@ struct plasticity_bio_async_bridge_struct {
     /* Statistics */
     plasticity_bio_async_stats_t stats;
 
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
-};
 
 /* ============================================================================
  * Helper Functions
@@ -164,8 +163,8 @@ plasticity_bio_async_bridge_t* plasticity_bio_async_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "plasticity_bio_async") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         nimcp_free(bridge->subscriptions);
         nimcp_free(bridge);
         return NULL;
@@ -182,8 +181,8 @@ void plasticity_bio_async_bridge_destroy(plasticity_bio_async_bridge_t* bridge) 
         plasticity_bio_async_disconnect(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge->subscriptions);
@@ -202,27 +201,27 @@ int plasticity_bio_async_connect(
     if (!bridge) return PLASTICITY_BIO_ERROR_NULL_PARAM;
     if (bridge->connected) return PLASTICITY_BIO_ERROR_ALREADY_CONNECTED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->coordinator = coordinator;
     bridge->router = router;
     bridge->connected = true;
     bridge->last_broadcast_us = get_timestamp_us();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return PLASTICITY_BIO_OK;
 }
 
 int plasticity_bio_async_disconnect(plasticity_bio_async_bridge_t* bridge) {
     if (!bridge) return PLASTICITY_BIO_ERROR_NULL_PARAM;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->coordinator = NULL;
     bridge->router = NULL;
     bridge->connected = false;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return PLASTICITY_BIO_OK;
 }
 
@@ -243,17 +242,17 @@ int plasticity_bio_async_register_module(
     if (!bridge) return PLASTICITY_BIO_ERROR_NULL_PARAM;
     if (type >= PLASTICITY_MODULE_COUNT) return PLASTICITY_BIO_ERROR_INVALID_TYPE;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if already registered */
     if (find_module(bridge, type)) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PLASTICITY_BIO_ERROR_ALREADY_CONNECTED;
     }
 
     /* Check capacity */
     if (bridge->module_count >= bridge->config.max_registered_modules) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PLASTICITY_BIO_ERROR_NO_MEMORY;
     }
 
@@ -268,7 +267,7 @@ int plasticity_bio_async_register_module(
 
     bridge->stats.registered_modules = bridge->module_count;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return PLASTICITY_BIO_OK;
 }
 
@@ -278,7 +277,7 @@ int plasticity_bio_async_unregister_module(
 ) {
     if (!bridge) return PLASTICITY_BIO_ERROR_NULL_PARAM;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->module_count; i++) {
         if (bridge->modules[i].type == type) {
@@ -288,12 +287,12 @@ int plasticity_bio_async_unregister_module(
             }
             bridge->module_count--;
             bridge->stats.registered_modules = bridge->module_count;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return PLASTICITY_BIO_OK;
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return PLASTICITY_BIO_ERROR_NOT_FOUND;
 }
 
@@ -304,16 +303,16 @@ int plasticity_bio_async_set_module_enabled(
 ) {
     if (!bridge) return PLASTICITY_BIO_ERROR_NULL_PARAM;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     plasticity_bio_module_entry_t* entry = find_module(bridge, type);
     if (!entry) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PLASTICITY_BIO_ERROR_NOT_FOUND;
     }
 
     entry->enabled = enabled;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return PLASTICITY_BIO_OK;
 }
 
@@ -341,7 +340,7 @@ int plasticity_bio_async_update(
 ) {
     if (!bridge || !bridge->connected) return PLASTICITY_BIO_ERROR_NOT_CONNECTED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->time_since_state_broadcast_ms += delta_ms;
     bridge->time_since_energy_report_ms += delta_ms;
@@ -369,7 +368,7 @@ int plasticity_bio_async_update(
         bridge->time_since_energy_report_ms = 0;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return PLASTICITY_BIO_OK;
 }
 
@@ -391,7 +390,7 @@ int plasticity_bio_async_broadcast_weight_update(
         return PLASTICITY_BIO_OK;  /* Below threshold, skip broadcast */
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     plasticity_bio_weight_update_msg_t msg = {0};
     init_message_header(&msg.header, 0x2100,
@@ -435,7 +434,7 @@ int plasticity_bio_async_broadcast_weight_update(
             break;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return PLASTICITY_BIO_OK;
 }
 
@@ -447,7 +446,7 @@ int plasticity_bio_async_broadcast_consolidation(
 ) {
     if (!bridge || !bridge->connected) return PLASTICITY_BIO_ERROR_NOT_CONNECTED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     plasticity_bio_consolidation_msg_t msg = {0};
     init_message_header(&msg.header, 0x2101,
@@ -462,7 +461,7 @@ int plasticity_bio_async_broadcast_consolidation(
     bridge->stats.consolidation_broadcasts++;
     bridge->stats.broadcasts_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return PLASTICITY_BIO_OK;
 }
 
@@ -475,7 +474,7 @@ int plasticity_bio_async_broadcast_ltp(
 ) {
     if (!bridge || !bridge->connected) return PLASTICITY_BIO_ERROR_NOT_CONNECTED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     plasticity_bio_ltp_ltd_msg_t msg = {0};
     init_message_header(&msg.header, 0x2104,
@@ -491,7 +490,7 @@ int plasticity_bio_async_broadcast_ltp(
     bridge->stats.ltp_events++;
     bridge->stats.broadcasts_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return PLASTICITY_BIO_OK;
 }
 
@@ -504,7 +503,7 @@ int plasticity_bio_async_broadcast_ltd(
 ) {
     if (!bridge || !bridge->connected) return PLASTICITY_BIO_ERROR_NOT_CONNECTED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     plasticity_bio_ltp_ltd_msg_t msg = {0};
     init_message_header(&msg.header, 0x2105,
@@ -520,7 +519,7 @@ int plasticity_bio_async_broadcast_ltd(
     bridge->stats.ltd_events++;
     bridge->stats.broadcasts_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return PLASTICITY_BIO_OK;
 }
 
@@ -533,7 +532,7 @@ int plasticity_bio_async_broadcast_scaling(
 ) {
     if (!bridge || !bridge->connected) return PLASTICITY_BIO_ERROR_NOT_CONNECTED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     plasticity_bio_scaling_msg_t msg = {0};
     init_message_header(&msg.header, 0x2103,
@@ -551,7 +550,7 @@ int plasticity_bio_async_broadcast_scaling(
     bridge->stats.scaling_events++;
     bridge->stats.broadcasts_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return PLASTICITY_BIO_OK;
 }
 
@@ -564,7 +563,7 @@ int plasticity_bio_async_broadcast_eligibility_convert(
 ) {
     if (!bridge || !bridge->connected) return PLASTICITY_BIO_ERROR_NOT_CONNECTED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     plasticity_bio_eligibility_msg_t msg = {0};
     init_message_header(&msg.header, 0x2102,
@@ -580,7 +579,7 @@ int plasticity_bio_async_broadcast_eligibility_convert(
 
     bridge->stats.broadcasts_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return PLASTICITY_BIO_OK;
 }
 
@@ -591,7 +590,7 @@ int plasticity_bio_async_broadcast_state_change(
 ) {
     if (!bridge || !bridge->connected) return PLASTICITY_BIO_ERROR_NOT_CONNECTED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     plasticity_bio_state_msg_t msg = {0};
     init_message_header(&msg.header, 0x2106,
@@ -606,7 +605,7 @@ int plasticity_bio_async_broadcast_state_change(
     bridge->stats.broadcasts_sent++;
     bridge->last_broadcast_us = msg.timestamp_us;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return PLASTICITY_BIO_OK;
 }
 
@@ -618,7 +617,7 @@ int plasticity_bio_async_broadcast_energy_report(
 ) {
     if (!bridge || !bridge->connected) return PLASTICITY_BIO_ERROR_NOT_CONNECTED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     plasticity_bio_energy_msg_t msg = {0};
     init_message_header(&msg.header, 0x2107,
@@ -634,7 +633,7 @@ int plasticity_bio_async_broadcast_energy_report(
     bridge->stats.total_energy_reported += total_energy;
     bridge->stats.broadcasts_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return PLASTICITY_BIO_OK;
 }
 
@@ -649,7 +648,7 @@ int plasticity_bio_async_broadcast_conflict(
 ) {
     if (!bridge || !bridge->connected) return PLASTICITY_BIO_ERROR_NOT_CONNECTED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     plasticity_bio_conflict_msg_t msg = {0};
     init_message_header(&msg.header, 0x2108,
@@ -667,7 +666,7 @@ int plasticity_bio_async_broadcast_conflict(
     bridge->stats.conflict_resolutions++;
     bridge->stats.broadcasts_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return PLASTICITY_BIO_OK;
 }
 
@@ -679,7 +678,7 @@ int plasticity_bio_async_notify_spike_timing(
 ) {
     if (!bridge || !bridge->connected) return PLASTICITY_BIO_ERROR_NOT_CONNECTED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     plasticity_bio_spike_timing_msg_t msg = {0};
     init_message_header(&msg.header, 0x2109,
@@ -693,7 +692,7 @@ int plasticity_bio_async_notify_spike_timing(
 
     bridge->stats.messages_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return PLASTICITY_BIO_OK;
 }
 
@@ -707,7 +706,7 @@ int plasticity_bio_async_request_rate_modulation(
 ) {
     if (!bridge || !bridge->connected) return PLASTICITY_BIO_ERROR_NOT_CONNECTED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     plasticity_bio_rate_mod_msg_t msg = {0};
     init_message_header(&msg.header, 0x210A,
@@ -723,7 +722,7 @@ int plasticity_bio_async_request_rate_modulation(
 
     bridge->stats.messages_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return PLASTICITY_BIO_OK;
 }
 
@@ -737,7 +736,7 @@ int plasticity_bio_async_complete_batch(
 ) {
     if (!bridge || !bridge->connected) return PLASTICITY_BIO_ERROR_NOT_CONNECTED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     plasticity_bio_batch_msg_t msg = {0};
     init_message_header(&msg.header, 0x210F,
@@ -761,7 +760,7 @@ int plasticity_bio_async_complete_batch(
     bridge->batch_ltd_count = 0;
     bridge->batch_weight_sum = 0;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return PLASTICITY_BIO_OK;
 }
 
@@ -776,19 +775,19 @@ int plasticity_bio_async_subscribe_module(
 ) {
     if (!bridge) return PLASTICITY_BIO_ERROR_NULL_PARAM;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if already subscribed */
     plasticity_bio_subscription_t* existing = find_subscription(bridge, module_id);
     if (existing) {
         existing->msg_type_mask |= msg_types;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PLASTICITY_BIO_OK;
     }
 
     /* Check capacity */
     if (bridge->subscription_count >= bridge->subscription_capacity) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PLASTICITY_BIO_ERROR_SUBSCRIPTION_FULL;
     }
 
@@ -806,7 +805,7 @@ int plasticity_bio_async_subscribe_module(
         bridge->stats.peak_subscriptions = bridge->subscription_count;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return PLASTICITY_BIO_OK;
 }
 
@@ -816,18 +815,18 @@ int plasticity_bio_async_unsubscribe_module(
 ) {
     if (!bridge) return PLASTICITY_BIO_ERROR_NULL_PARAM;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->subscription_count; i++) {
         if (bridge->subscriptions[i].module_id == module_id) {
             bridge->subscriptions[i].active = false;
             bridge->stats.active_subscriptions--;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return PLASTICITY_BIO_OK;
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return PLASTICITY_BIO_ERROR_NOT_FOUND;
 }
 
@@ -838,16 +837,16 @@ int plasticity_bio_async_update_subscription(
 ) {
     if (!bridge) return PLASTICITY_BIO_ERROR_NULL_PARAM;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     plasticity_bio_subscription_t* sub = find_subscription(bridge, module_id);
     if (!sub) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PLASTICITY_BIO_ERROR_NOT_FOUND;
     }
 
     sub->msg_type_mask = msg_types;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return PLASTICITY_BIO_OK;
 }
 
@@ -886,11 +885,11 @@ int plasticity_bio_async_get_stats(
 int plasticity_bio_async_reset_stats(plasticity_bio_async_bridge_t* bridge) {
     if (!bridge) return PLASTICITY_BIO_ERROR_NULL_PARAM;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(plasticity_bio_async_stats_t));
     bridge->stats.registered_modules = bridge->module_count;
     bridge->stats.active_subscriptions = bridge->subscription_count;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PLASTICITY_BIO_OK;
 }

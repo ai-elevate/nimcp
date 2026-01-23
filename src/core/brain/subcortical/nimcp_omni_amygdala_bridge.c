@@ -4,6 +4,7 @@
  */
 
 #include "core/brain/subcortical/nimcp_omni_amygdala_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/jepa/nimcp_jepa_bidirectional.h"
 #include "cognitive/predictive/nimcp_predictive_hierarchy.h"
 #include "cognitive/memory/nimcp_hopfield_memory.h"
@@ -106,8 +107,8 @@ omni_amygdala_bridge_t* omni_amygdala_bridge_create(
         omni_amygdala_default_config(&bridge->config);
     }
 
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "omni_amygdala") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -133,8 +134,8 @@ void omni_amygdala_bridge_destroy(omni_amygdala_bridge_t* bridge) {
         nimcp_free(bridge->amygdala_effects.threat_priors);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);
@@ -147,36 +148,36 @@ void omni_amygdala_bridge_destroy(omni_amygdala_bridge_t* bridge) {
 int omni_amygdala_connect_jepa(omni_amygdala_bridge_t* bridge,
                                 jepa_bidirectional_t* jepa) {
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->jepa = jepa;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
 int omni_amygdala_connect_pred_hier(omni_amygdala_bridge_t* bridge,
                                      predictive_hierarchy_t* pred_hier) {
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->pred_hier = pred_hier;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
 int omni_amygdala_connect_hopfield(omni_amygdala_bridge_t* bridge,
                                     hopfield_memory_t* hopfield) {
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->hopfield = hopfield;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
 int omni_amygdala_connect_amygdala(omni_amygdala_bridge_t* bridge,
                                     amygdala_t* amygdala) {
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->amygdala = amygdala;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -187,7 +188,7 @@ int omni_amygdala_connect_amygdala(omni_amygdala_bridge_t* bridge,
 int omni_amygdala_update(omni_amygdala_bridge_t* bridge) {
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get prediction error from connected systems */
     float pe = 0.0f;
@@ -260,7 +261,7 @@ int omni_amygdala_update(omni_amygdala_bridge_t* bridge) {
         bridge->stats.max_threat_level = (float)bridge->omni_effects.threat_level;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -311,7 +312,7 @@ int omni_amygdala_condition_fear(omni_amygdala_bridge_t* bridge,
                                   float strength) {
     NIMCP_CHECK_THROW(bridge && pattern && dim > 0, NIMCP_ERROR_INVALID_PARAM, "bridge or pattern is NULL, or dim is 0");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Store fear pattern in Hopfield if connected */
     if (bridge->hopfield && bridge->config.enable_fear_conditioning) {
@@ -322,7 +323,7 @@ int omni_amygdala_condition_fear(omni_amygdala_bridge_t* bridge,
         fminf(1.0f, bridge->amygdala_effects.fear_level +
               strength * bridge->config.conditioning_rate);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -331,14 +332,14 @@ int omni_amygdala_extinguish_fear(omni_amygdala_bridge_t* bridge,
                                    uint32_t dim) {
     NIMCP_CHECK_THROW(bridge && pattern && dim > 0, NIMCP_ERROR_INVALID_PARAM, "bridge or pattern is NULL, or dim is 0");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->amygdala_effects.fear_level *=
         (1.0f - bridge->config.extinction_rate);
     bridge->amygdala_effects.anxiety_level *=
         (1.0f - bridge->config.extinction_rate * 0.5f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -375,9 +376,9 @@ int omni_amygdala_get_stats(const omni_amygdala_bridge_t* bridge,
 
 int omni_amygdala_reset_stats(omni_amygdala_bridge_t* bridge) {
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(omni_amygdala_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 

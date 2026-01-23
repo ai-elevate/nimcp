@@ -32,7 +32,7 @@ predictive_thalamic_config_t predictive_thalamic_default_config(void) {
 predictive_thalamic_bridge_t* predictive_thalamic_bridge_create(void* predictive, thalamic_router_t* router, const predictive_thalamic_config_t* config) {
     predictive_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(predictive_thalamic_bridge_t));
     if (!bridge) return NULL;
-    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (bridge_base_init(&bridge->base, 0, "predictive_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -48,7 +48,7 @@ predictive_thalamic_bridge_t* predictive_thalamic_bridge_create(void* predictive
 void predictive_thalamic_bridge_destroy(predictive_thalamic_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
 }

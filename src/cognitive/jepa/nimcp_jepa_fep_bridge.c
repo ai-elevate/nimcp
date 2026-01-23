@@ -12,6 +12,7 @@
  */
 
 #include "cognitive/jepa/nimcp_jepa_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/jepa/nimcp_jepa_predictor.h"
 #include "cognitive/free_energy/nimcp_fep_orchestrator.h"
 #include "utils/memory/nimcp_memory.h"
@@ -28,12 +29,13 @@
  *===========================================================================*/
 
 struct jepa_fep_bridge {
+    bridge_base_t base;  /* MUST be first member */
+
     /* Configuration */
     jepa_fep_config_t config;
 
     /* State */
     jepa_fep_state_t state;
-    nimcp_mutex_t* mutex;
 
     /* References */
     fep_orchestrator_t* orchestrator;
@@ -239,10 +241,8 @@ jepa_fep_bridge_t* jepa_fep_bridge_create(const jepa_fep_config_t* config) {
         bridge->config = jepa_fep_config_default();
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize base (includes mutex creation) */
+    if (bridge_base_init(&bridge->base, 0, "jepa_fep") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -282,10 +282,8 @@ void jepa_fep_bridge_destroy(jepa_fep_bridge_t* bridge) {
         jepa_fep_bridge_unregister(bridge);
     }
 
-    /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base (includes mutex destruction) */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }
@@ -293,7 +291,7 @@ void jepa_fep_bridge_destroy(jepa_fep_bridge_t* bridge) {
 int jepa_fep_bridge_reset(jepa_fep_bridge_t* bridge) {
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset metrics */
     bridge->current_free_energy = JEPA_FEP_BASELINE_FREE_ENERGY;
@@ -321,7 +319,7 @@ int jepa_fep_bridge_reset(jepa_fep_bridge_t* bridge) {
 
     bridge->state = JEPA_FEP_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -337,11 +335,11 @@ int jepa_fep_bridge_register(
 ) {
     NIMCP_CHECK_THROW(bridge && orchestrator, -1, "bridge or orchestrator is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if already registered */
     if (bridge->registered) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         if (bridge_id_out) {
             *bridge_id_out = bridge->bridge_id;
         }
@@ -367,7 +365,7 @@ int jepa_fep_bridge_register(
     if (ret != 0) {
         bridge->orchestrator = NULL;
         bridge->predictor = NULL;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -379,17 +377,17 @@ int jepa_fep_bridge_register(
         *bridge_id_out = assigned_id;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int jepa_fep_bridge_unregister(jepa_fep_bridge_t* bridge) {
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->registered) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;  /* Not registered, nothing to do */
     }
 
@@ -404,16 +402,16 @@ int jepa_fep_bridge_unregister(jepa_fep_bridge_t* bridge) {
     bridge->predictor = NULL;
     bridge->state = JEPA_FEP_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 bool jepa_fep_bridge_is_registered(const jepa_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->base.mutex);
     bool registered = bridge->registered;
-    nimcp_mutex_unlock(((jepa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((jepa_fep_bridge_t*)bridge)->base.mutex);
 
     return registered;
 }
@@ -421,9 +419,9 @@ bool jepa_fep_bridge_is_registered(const jepa_fep_bridge_t* bridge) {
 uint32_t jepa_fep_bridge_get_id(const jepa_fep_bridge_t* bridge) {
     if (!bridge) return 0;
 
-    nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->base.mutex);
     uint32_t id = bridge->registered ? bridge->bridge_id : 0;
-    nimcp_mutex_unlock(((jepa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((jepa_fep_bridge_t*)bridge)->base.mutex);
 
     return id;
 }
@@ -436,7 +434,7 @@ int jepa_fep_update_callback(void* handle) {
     jepa_fep_bridge_t* bridge = (jepa_fep_bridge_t*)handle;
     NIMCP_CHECK_THROW(bridge, -1, "bridge handle is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t start_us = get_time_us();
 
@@ -475,7 +473,7 @@ int jepa_fep_update_callback(void* handle) {
     /* Check and trigger callbacks */
     check_callbacks(bridge);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -495,7 +493,7 @@ int jepa_fep_bridge_update(jepa_fep_bridge_t* bridge) {
 int jepa_fep_bridge_force_update(jepa_fep_bridge_t* bridge) {
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t start_us = get_time_us();
 
@@ -523,7 +521,7 @@ int jepa_fep_bridge_force_update(jepa_fep_bridge_t* bridge) {
     /* Check and trigger callbacks */
     check_callbacks(bridge);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -537,9 +535,9 @@ int jepa_fep_bridge_get_stats(
 ) {
     NIMCP_CHECK_THROW(bridge && stats_out, -1, "bridge or stats_out is NULL");
 
-    nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->base.mutex);
     *stats_out = bridge->stats;
-    nimcp_mutex_unlock(((jepa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((jepa_fep_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -547,11 +545,11 @@ int jepa_fep_bridge_get_stats(
 int jepa_fep_bridge_reset_stats(jepa_fep_bridge_t* bridge) {
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(jepa_fep_stats_t));
     bridge->stats.min_representation_quality = 1.0f;
     bridge->total_update_time_us = 0;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -559,9 +557,9 @@ int jepa_fep_bridge_reset_stats(jepa_fep_bridge_t* bridge) {
 float jepa_fep_bridge_get_free_energy_contribution(const jepa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->base.mutex);
     float fe = bridge->current_free_energy;
-    nimcp_mutex_unlock(((jepa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((jepa_fep_bridge_t*)bridge)->base.mutex);
 
     return fe;
 }
@@ -569,9 +567,9 @@ float jepa_fep_bridge_get_free_energy_contribution(const jepa_fep_bridge_t* brid
 float jepa_fep_bridge_get_embedding_prediction_error(const jepa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->base.mutex);
     float error = bridge->embedding_prediction_error;
-    nimcp_mutex_unlock(((jepa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((jepa_fep_bridge_t*)bridge)->base.mutex);
 
     return error;
 }
@@ -579,9 +577,9 @@ float jepa_fep_bridge_get_embedding_prediction_error(const jepa_fep_bridge_t* br
 float jepa_fep_bridge_get_representation_quality(const jepa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->base.mutex);
     float quality = bridge->representation_quality;
-    nimcp_mutex_unlock(((jepa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((jepa_fep_bridge_t*)bridge)->base.mutex);
 
     return quality;
 }
@@ -589,9 +587,9 @@ float jepa_fep_bridge_get_representation_quality(const jepa_fep_bridge_t* bridge
 jepa_fep_state_t jepa_fep_bridge_get_state(const jepa_fep_bridge_t* bridge) {
     if (!bridge) return JEPA_FEP_STATE_ERROR;
 
-    nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->base.mutex);
     jepa_fep_state_t state = bridge->state;
-    nimcp_mutex_unlock(((jepa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((jepa_fep_bridge_t*)bridge)->base.mutex);
 
     return state;
 }
@@ -599,9 +597,9 @@ jepa_fep_state_t jepa_fep_bridge_get_state(const jepa_fep_bridge_t* bridge) {
 bool jepa_fep_bridge_is_degraded(const jepa_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->base.mutex);
     bool degraded = (bridge->state == JEPA_FEP_STATE_DEGRADED);
-    nimcp_mutex_unlock(((jepa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((jepa_fep_bridge_t*)bridge)->base.mutex);
 
     return degraded;
 }
@@ -617,7 +615,7 @@ int jepa_fep_bridge_record_prediction_error(
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
     NIMCP_CHECK_THROW(prediction_error >= 0.0f, -1, "prediction_error must be non-negative");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update running average */
     bridge->sample_count++;
@@ -629,7 +627,7 @@ int jepa_fep_bridge_record_prediction_error(
     bridge->stats.embedding_predictions++;
     bridge->stats.avg_embedding_error = bridge->running_avg_error;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -640,7 +638,7 @@ int jepa_fep_bridge_record_representation_quality(
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
     NIMCP_CHECK_THROW(quality >= 0.0f && quality <= 1.0f, -1, "quality must be in range [0,1]");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update running average */
     if (bridge->sample_count == 0) {
@@ -658,7 +656,7 @@ int jepa_fep_bridge_record_representation_quality(
         bridge->stats.min_representation_quality = quality;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -673,10 +671,10 @@ int jepa_fep_bridge_set_high_fe_callback(
 ) {
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->high_fe_callback = callback;
     bridge->high_fe_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -688,10 +686,10 @@ int jepa_fep_bridge_set_collapse_callback(
 ) {
     NIMCP_CHECK_THROW(bridge, -1, "bridge is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->collapse_callback = callback;
     bridge->collapse_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -706,9 +704,9 @@ int jepa_fep_bridge_set_config(
 ) {
     NIMCP_CHECK_THROW(bridge && config, -1, "bridge or config is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->config = *config;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -719,9 +717,9 @@ int jepa_fep_bridge_get_config(
 ) {
     NIMCP_CHECK_THROW(bridge && config_out, -1, "bridge or config_out is NULL");
 
-    nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((jepa_fep_bridge_t*)bridge)->base.mutex);
     *config_out = bridge->config;
-    nimcp_mutex_unlock(((jepa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((jepa_fep_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }

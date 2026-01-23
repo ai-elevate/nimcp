@@ -5,6 +5,7 @@
  * @date 2026-01-13
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "sleep/integration/nimcp_sleep_bio_async_bridge.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -30,6 +31,7 @@ typedef struct {
  * ============================================================================ */
 
 struct sleep_bio_async_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     sleep_bio_async_config_t config;
     sleep_system_t sleep_system;
     bio_router_t router;

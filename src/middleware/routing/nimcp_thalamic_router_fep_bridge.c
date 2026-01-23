@@ -51,7 +51,7 @@ thalamic_router_fep_bridge_t* thalamic_router_fep_bridge_create(
     bridge->effects.pe_priority_level = SIGNAL_PRIORITY_NORMAL;
     bridge->state.current_precision = 0.5f;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "thalamic_router_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         thalamic_router_fep_bridge_destroy(bridge);
         return NULL;
@@ -69,7 +69,7 @@ void thalamic_router_fep_bridge_destroy(thalamic_router_fep_bridge_t* bridge) {
     }
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

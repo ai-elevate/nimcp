@@ -44,7 +44,7 @@ analysis_thalamic_bridge_t* analysis_thalamic_bridge_create(
     }
 
     /* Initialize mutex for thread safety */
-    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (bridge_base_init(&bridge->base, 0, "analysis_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "analysis_thalamic_bridge_create: failed to create mutex");
         nimcp_free(bridge);
@@ -63,7 +63,7 @@ analysis_thalamic_bridge_t* analysis_thalamic_bridge_create(
 void analysis_thalamic_bridge_destroy(analysis_thalamic_bridge_t* bridge) {
     if (bridge) {
         if (bridge->base.mutex) {
-            nimcp_mutex_free(bridge->base.mutex);
+            bridge_base_cleanup(&bridge->base);
         }
         nimcp_free(bridge);
     }

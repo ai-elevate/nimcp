@@ -11,6 +11,7 @@
  */
 
 #include "swarm/nimcp_swarm_dragonfly_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "api/nimcp_api_exception.h"
@@ -129,6 +130,8 @@ typedef struct {
  * @brief Internal bridge structure
  */
 struct swarm_dragonfly_bridge_s {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     swarm_dragonfly_bridge_config_t config;
 
@@ -167,8 +170,6 @@ struct swarm_dragonfly_bridge_s {
     uint64_t last_assignment_time_us;
     uint64_t creation_time_us;
 
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 };
 
 //=============================================================================
@@ -260,8 +261,8 @@ swarm_dragonfly_bridge_t* swarm_dragonfly_bridge_create(
     bridge->scheduler = scheduler;
     bridge->creation_time_us = get_time_us();
 
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "swarm_dragonfly") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -272,8 +273,8 @@ swarm_dragonfly_bridge_t* swarm_dragonfly_bridge_create(
 void swarm_dragonfly_bridge_destroy(swarm_dragonfly_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);
@@ -282,7 +283,7 @@ void swarm_dragonfly_bridge_destroy(swarm_dragonfly_bridge_t* bridge) {
 int swarm_dragonfly_bridge_reset(swarm_dragonfly_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     memset(bridge->targets, 0, sizeof(bridge->targets));
     bridge->num_targets = 0;
@@ -292,7 +293,7 @@ int swarm_dragonfly_bridge_reset(swarm_dragonfly_bridge_t* bridge) {
     bridge->local_position_set = false;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -387,14 +388,14 @@ int swarm_dragonfly_bridge_share_target(
 ) {
     if (!bridge || !target) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Find or create slot */
     target_record_t* record = find_target(bridge, target->target_id);
     if (!record) {
         record = find_free_slot(bridge);
         if (!record) {
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return -1;  /* No space */
         }
         bridge->num_targets++;
@@ -427,7 +428,7 @@ int swarm_dragonfly_bridge_share_target(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -465,11 +466,11 @@ int swarm_dragonfly_bridge_update_target(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     target_record_t* record = find_target(bridge, target_id);
     if (!record) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -497,7 +498,7 @@ int swarm_dragonfly_bridge_update_target(
         collective_workspace_add_item(bridge->workspace, &item);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -509,11 +510,11 @@ int swarm_dragonfly_bridge_remove_target(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     target_record_t* record = find_target(bridge, target_id);
     if (!record) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -527,7 +528,7 @@ int swarm_dragonfly_bridge_remove_target(
         bridge->has_assignment = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -539,7 +540,7 @@ int swarm_dragonfly_bridge_remove_target(
 int swarm_dragonfly_bridge_process_updates(swarm_dragonfly_bridge_t* bridge) {
     if (!bridge || !bridge->workspace) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     int updates = 0;
 
@@ -594,7 +595,7 @@ int swarm_dragonfly_bridge_process_updates(swarm_dragonfly_bridge_t* bridge) {
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return updates;
 }
@@ -607,7 +608,7 @@ int swarm_dragonfly_bridge_get_shared_targets(
 ) {
     if (!bridge || !targets || !num_targets) return -1;
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     uint32_t count = 0;
     for (uint32_t i = 0; i < SWARM_DRAGONFLY_MAX_SHARED_TARGETS && count < max_targets; i++) {
@@ -617,7 +618,7 @@ int swarm_dragonfly_bridge_get_shared_targets(
     }
     *num_targets = count;
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -629,7 +630,7 @@ int swarm_dragonfly_bridge_get_target(
 ) {
     if (!bridge || !target) return -1;
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     const target_record_t* record = NULL;
     for (uint32_t i = 0; i < SWARM_DRAGONFLY_MAX_SHARED_TARGETS; i++) {
@@ -641,13 +642,13 @@ int swarm_dragonfly_bridge_get_target(
     }
 
     if (!record) {
-        nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+        nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
         return -1;
     }
 
     *target = record->target;
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -662,14 +663,14 @@ bool swarm_dragonfly_bridge_get_assignment(
 ) {
     if (!bridge || !assignment) return false;
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     bool result = bridge->has_assignment;
     if (result) {
         *assignment = bridge->current_assignment;
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return result;
 }
@@ -681,12 +682,12 @@ bool swarm_dragonfly_bridge_request_assignment(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Find target */
     target_record_t* record = find_target(bridge, target_id);
     if (!record) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return false;
     }
 
@@ -694,7 +695,7 @@ bool swarm_dragonfly_bridge_request_assignment(
     if (bridge->local_position_set) {
         float dist = vec3_distance(bridge->local_position, record->target.position);
         if (dist > bridge->config.max_pursuit_distance_m) {
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return false;
         }
     }
@@ -716,7 +717,7 @@ bool swarm_dragonfly_bridge_request_assignment(
 
     bridge->stats.targets_assigned++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return true;
 }
@@ -727,10 +728,10 @@ int swarm_dragonfly_bridge_release_assignment(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->has_assignment) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -759,7 +760,7 @@ int swarm_dragonfly_bridge_release_assignment(
         bridge->in_formation = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -771,7 +772,7 @@ int swarm_dragonfly_bridge_report_intercept(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     target_record_t* record = find_target(bridge, target_id);
     if (record) {
@@ -791,7 +792,7 @@ int swarm_dragonfly_bridge_report_intercept(
         bridge->has_assignment = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -809,11 +810,11 @@ uint32_t swarm_dragonfly_bridge_create_formation(
 ) {
     if (!bridge || formation == PURSUIT_FORMATION_NONE) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     target_record_t* record = find_target(bridge, target_id);
     if (!record) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -857,7 +858,7 @@ uint32_t swarm_dragonfly_bridge_create_formation(
     memcpy(record->target.assigned_pursuers, fs->drone_ids,
            sizeof(uint16_t) * fs->num_drones);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return target_id;  /* Use target ID as formation ID */
 }
@@ -869,12 +870,12 @@ pursuit_role_t swarm_dragonfly_bridge_join_formation(
 ) {
     if (!bridge) return PURSUIT_ROLE_NONE;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* For now, simple join logic */
     target_record_t* record = find_target(bridge, formation_id);
     if (!record || record->target.formation == PURSUIT_FORMATION_NONE) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PURSUIT_ROLE_NONE;
     }
 
@@ -893,7 +894,7 @@ pursuit_role_t swarm_dragonfly_bridge_join_formation(
     bridge->in_formation = true;
     bridge->stats.formations_joined++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return assigned;
 }
@@ -904,11 +905,11 @@ int swarm_dragonfly_bridge_leave_formation(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->in_formation ||
         bridge->current_formation.target_id != formation_id) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -929,7 +930,7 @@ int swarm_dragonfly_bridge_leave_formation(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -940,14 +941,14 @@ bool swarm_dragonfly_bridge_get_formation(
 ) {
     if (!bridge || !state) return false;
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
 
     bool result = bridge->in_formation;
     if (result) {
         *state = bridge->current_formation;
     }
 
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return result;
 }
@@ -959,7 +960,7 @@ int swarm_dragonfly_bridge_update_formation_position(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     vec3_copy(bridge->local_position, position);
     vec3_copy(bridge->local_velocity, velocity);
@@ -971,7 +972,7 @@ int swarm_dragonfly_bridge_update_formation_position(
         bridge->current_formation.coherence = 0.9f;  /* Placeholder */
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -987,11 +988,11 @@ int swarm_dragonfly_bridge_initiate_handoff(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     target_record_t* record = find_target(bridge, target_id);
     if (!record) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -1003,7 +1004,7 @@ int swarm_dragonfly_bridge_initiate_handoff(
 
     bridge->stats.handoffs_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1015,11 +1016,11 @@ bool swarm_dragonfly_bridge_accept_handoff(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     target_record_t* record = find_target(bridge, target_id);
     if (!record) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return false;
     }
 
@@ -1041,7 +1042,7 @@ bool swarm_dragonfly_bridge_accept_handoff(
         bridge->stats.handoffs_received++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return accept;
 }
@@ -1068,9 +1069,9 @@ int swarm_dragonfly_bridge_get_stats(
 ) {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -1078,9 +1079,9 @@ int swarm_dragonfly_bridge_get_stats(
 int swarm_dragonfly_bridge_reset_stats(swarm_dragonfly_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1090,9 +1091,9 @@ uint32_t swarm_dragonfly_bridge_target_count(
 ) {
     if (!bridge) return 0;
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     uint32_t count = bridge->num_targets;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return count;
 }
@@ -1102,9 +1103,9 @@ bool swarm_dragonfly_bridge_in_formation(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     bool result = bridge->in_formation;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return result;
 }

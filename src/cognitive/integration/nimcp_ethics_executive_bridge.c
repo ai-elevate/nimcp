@@ -18,6 +18,7 @@
  */
 
 #include "cognitive/integration/nimcp_ethics_executive_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -45,12 +46,12 @@ typedef struct action_evaluation {
  * @brief Full bridge structure definition
  */
 struct ethics_executive_bridge {
+    bridge_base_t base;                     /**< MUST be first: base bridge infrastructure */
     ethics_executive_config_t config;       /**< Bridge configuration */
     action_evaluation_t* evaluations;       /**< Evaluation records array */
     size_t eval_capacity;                   /**< Capacity of evaluations array */
     size_t eval_count;                      /**< Current number of evaluations */
     ethics_executive_stats_t stats;         /**< Bridge statistics */
-    nimcp_mutex_t* mutex;                   /**< Thread safety mutex */
     bool initialized;                       /**< Initialization flag */
 };
 
@@ -193,8 +194,8 @@ ethics_executive_bridge_t* ethics_executive_bridge_create(
     memset(&bridge->stats, 0, sizeof(ethics_executive_stats_t));
 
     /* Create mutex for thread safety */
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "ethics_executive") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         nimcp_free(bridge->evaluations);
         nimcp_free(bridge);
         return NULL;
@@ -211,9 +212,9 @@ void ethics_executive_bridge_destroy(ethics_executive_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-        bridge->mutex = NULL;
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
+        bridge->base.mutex = NULL;
     }
 
     /* Free evaluations array */
@@ -245,12 +246,12 @@ int ethics_executive_constrain_action(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get or create evaluation for this action */
     action_evaluation_t* eval = get_or_create_evaluation_unlocked(bridge, (uint32_t)action_id);
     if (!eval) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -303,7 +304,7 @@ int ethics_executive_constrain_action(
     /* Update statistics */
     bridge->stats.actions_constrained++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -321,12 +322,12 @@ int ethics_executive_evaluate_action(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get or create evaluation for this action */
     action_evaluation_t* eval = get_or_create_evaluation_unlocked(bridge, (uint32_t)action_id);
     if (!eval) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -352,7 +353,7 @@ int ethics_executive_evaluate_action(
             / bridge->stats.evaluations_performed;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -369,11 +370,11 @@ int ethics_executive_veto_action(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if veto is enabled */
     if (!bridge->config.veto_enabled) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -383,7 +384,7 @@ int ethics_executive_veto_action(
         /* Create evaluation if not found */
         eval = get_or_create_evaluation_unlocked(bridge, (uint32_t)action_id);
         if (!eval) {
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return -1;
         }
         /* Evaluate if newly created */
@@ -403,11 +404,11 @@ int ethics_executive_veto_action(
                                       (float)bridge->stats.evaluations_performed;
         }
 
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;  /* Action vetoed */
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 1;  /* Action not vetoed */
 }
 
@@ -424,7 +425,7 @@ int ethics_executive_get_permitted_actions(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     size_t permitted_count = 0;
     float threshold = bridge->config.ethical_threshold;
@@ -442,7 +443,7 @@ int ethics_executive_get_permitted_actions(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return (int)permitted_count;
 }
@@ -466,9 +467,9 @@ int ethics_executive_bridge_get_stats(
     /* Cast away const for mutex lock (stats read is still logically const) */
     ethics_executive_bridge_t* mutable_bridge = (ethics_executive_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return 0;
 }

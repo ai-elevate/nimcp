@@ -42,7 +42,7 @@ social_bond_fep_bridge_t* social_bond_fep_bridge_create(const social_bond_fep_co
     } else {
         social_bond_fep_bridge_default_config(&bridge->config);
     }
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "love_loyalty_friendship_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -56,7 +56,7 @@ void social_bond_fep_bridge_destroy(social_bond_fep_bridge_t* bridge) {
         social_bond_fep_bridge_disconnect_bio_async(bridge);
     }
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
 }

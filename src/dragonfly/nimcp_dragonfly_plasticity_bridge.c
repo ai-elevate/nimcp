@@ -11,6 +11,7 @@
  */
 
 #include "dragonfly/nimcp_dragonfly_plasticity_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -47,6 +48,8 @@ static inline float clamp_f(float v, float min, float max) {
 //=============================================================================
 
 struct dragonfly_plasticity_bridge_s {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     dragonfly_plasticity_config_t config;
 
@@ -60,9 +63,6 @@ struct dragonfly_plasticity_bridge_s {
 
     /* Statistics */
     dragonfly_plasticity_stats_t stats;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 
     /* Timing */
     uint64_t creation_time_us;
@@ -176,8 +176,8 @@ dragonfly_plasticity_bridge_t dragonfly_plasticity_bridge_create(
     bridge->state.intercept_state.pursuit_aggressiveness = 0.7f;
     bridge->state.intercept_state.abort_threshold = 0.3f;
 
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "dragonfly_plasticity") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -188,8 +188,8 @@ dragonfly_plasticity_bridge_t dragonfly_plasticity_bridge_create(
 void dragonfly_plasticity_bridge_destroy(dragonfly_plasticity_bridge_t bridge) {
     if (!bridge) return;
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);
@@ -202,11 +202,11 @@ int dragonfly_plasticity_bridge_connect(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->dragonfly = dragonfly;
     bridge->plasticity = plasticity;
     bridge->connected = (dragonfly != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -214,11 +214,11 @@ int dragonfly_plasticity_bridge_connect(
 int dragonfly_plasticity_bridge_disconnect(dragonfly_plasticity_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->dragonfly = NULL;
     bridge->plasticity = NULL;
     bridge->connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -233,7 +233,7 @@ int dragonfly_plasticity_learn(
 ) {
     if (!bridge || !event) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float reward = 0.0f;
     if (event->signal == LEARN_REWARD) {
@@ -295,7 +295,7 @@ int dragonfly_plasticity_learn(
     bridge->stats.learning_progress =
         clamp_f(bridge->state.cumulative_reward * 0.01f + 0.5f, 0.0f, 1.0f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -353,7 +353,7 @@ int dragonfly_plasticity_update_eligibility(
 ) {
     if (!bridge || dt_s <= 0.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Decay all eligibility traces */
     float decay = powf(bridge->config.eligibility_decay, dt_s * 100.0f);
@@ -376,7 +376,7 @@ int dragonfly_plasticity_update_eligibility(
         bridge->state.imm_eligibility[motion_model] = 1.0f;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -397,7 +397,7 @@ int dragonfly_plasticity_apply_adaptations(dragonfly_plasticity_bridge_t bridge)
 int dragonfly_plasticity_reset_adaptations(dragonfly_plasticity_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset to defaults */
     for (int i = 0; i < PLASTICITY_TSDN_NEURONS; i++) {
@@ -418,7 +418,7 @@ int dragonfly_plasticity_reset_adaptations(dragonfly_plasticity_bridge_t bridge)
     bridge->state.cumulative_reward = 0.0f;
     bridge->state.learning_events = 0;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -429,9 +429,9 @@ int dragonfly_plasticity_get_tsdn_params(
 ) {
     if (!bridge || !params) return -1;
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *params = bridge->state.tsdn_state;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -442,9 +442,9 @@ int dragonfly_plasticity_get_imm_params(
 ) {
     if (!bridge || !params) return -1;
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *params = bridge->state.imm_state;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -455,9 +455,9 @@ int dragonfly_plasticity_get_intercept_params(
 ) {
     if (!bridge || !params) return -1;
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *params = bridge->state.intercept_state;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -472,9 +472,9 @@ int dragonfly_plasticity_get_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -485,9 +485,9 @@ int dragonfly_plasticity_get_stats(
 ) {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }

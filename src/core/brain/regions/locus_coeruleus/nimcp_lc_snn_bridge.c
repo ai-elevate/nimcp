@@ -5,6 +5,7 @@
  * @date 2026-01-11
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/locus_coeruleus/nimcp_lc_snn_bridge.h"
 #include "core/brain/regions/locus_coeruleus/nimcp_lc_adapter.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -17,6 +18,7 @@
  *===========================================================================*/
 
 struct nimcp_lc_snn_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /* Configuration */
     nimcp_lc_snn_config_t config;
 

@@ -2,6 +2,7 @@
 // nimcp_physics_swarm_bridge.c - Physics Layer to Swarm System Bridge
 //=============================================================================
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "physics/bridges/nimcp_physics_swarm_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -14,6 +15,7 @@
 //=============================================================================
 
 struct physics_swarm_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     physics_swarm_config_t config;
 
     /** Local partitions */

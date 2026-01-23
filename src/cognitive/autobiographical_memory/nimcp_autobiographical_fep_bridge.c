@@ -144,7 +144,7 @@ autobiographical_fep_bridge_t* autobiographical_fep_bridge_create(
     memset(&bridge->stats, 0, sizeof(autobiographical_fep_stats_t));
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "autobiographical_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -173,7 +173,7 @@ void autobiographical_fep_bridge_destroy(autobiographical_fep_bridge_t* bridge) 
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

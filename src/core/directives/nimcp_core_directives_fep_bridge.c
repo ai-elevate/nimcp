@@ -98,7 +98,7 @@ directive_fep_bridge_t* directive_fep_bridge_create(
     bridge->state.precision = bridge->config.precision_default;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "core_directives_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR(LOG_MODULE_DIRECTIVE_FEP " Failed to create mutex");
         nimcp_free(bridge);
@@ -126,7 +126,7 @@ void directive_fep_bridge_destroy(directive_fep_bridge_t* bridge) {
     }
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

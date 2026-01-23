@@ -10,6 +10,7 @@
  */
 
 #include "security/continual_learning/nimcp_security_continual_learning_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include "utils/error/nimcp_error_codes.h"
@@ -173,7 +174,7 @@ security_cl_fep_bridge_t* security_cl_fep_create(
     bridge->security_cl = security_cl;
 
     /* Initialize base bridge */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "security_continual_learning_fe") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Security CL FEP bridge: mutex creation failed");
         nimcp_free(bridge);
@@ -220,7 +221,7 @@ void security_cl_fep_destroy(security_cl_fep_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

@@ -38,7 +38,7 @@ predictive_coding_fep_bridge_t* predictive_coding_fep_bridge_create(const predic
     memset(&bridge->pc_effects, 0, sizeof(predictive_coding_fep_feedback_t));
     memset(&bridge->stats, 0, sizeof(predictive_coding_fep_stats_t));
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "predictive_coding_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -56,7 +56,7 @@ void predictive_coding_fep_bridge_destroy(predictive_coding_fep_bridge_t* bridge
     if (bridge->base.bio_async_enabled) predictive_coding_fep_bridge_disconnect_bio_async(bridge);
     if (bridge->fep_effects.level_free_energies) nimcp_free(bridge->fep_effects.level_free_energies);
     if (bridge->pc_effects.prediction_errors) nimcp_free(bridge->pc_effects.prediction_errors);
-    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

@@ -14,6 +14,7 @@
  * @version 1.0.0
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "physics/bridges/nimcp_ephaptic_fft_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "api/nimcp_api_exception.h"
@@ -36,6 +37,7 @@
 //=============================================================================
 
 struct ephaptic_fft_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /** Configuration */
     ephaptic_fft_config_t config;
 

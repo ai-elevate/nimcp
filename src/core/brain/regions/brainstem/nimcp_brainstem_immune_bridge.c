@@ -167,7 +167,7 @@ brainstem_immune_bridge_t brainstem_immune_create(
     bridge->state = BRAINSTEM_IMMUNE_NORMAL;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "brainstem_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create bridge mutex");
         nimcp_free(bridge);
@@ -203,7 +203,7 @@ void brainstem_immune_destroy(brainstem_immune_bridge_t bridge) {
     }
 
     /* Destroy mutex */
-    nimcp_platform_mutex_destroy(bridge->base.mutex);
+    bridge_base_cleanup(&bridge->base);
 
     /* Free bridge */
     nimcp_free(bridge);

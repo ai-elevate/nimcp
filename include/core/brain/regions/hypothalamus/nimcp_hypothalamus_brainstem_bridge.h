@@ -42,6 +42,7 @@ extern "C" {
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_drives.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 
 /*=============================================================================
  * CONSTANTS
@@ -185,6 +186,8 @@ typedef struct {
  * @brief Brainstem bridge context
  */
 typedef struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     hypo_brainstem_bridge_config_t config;
 
@@ -218,8 +221,6 @@ typedef struct {
     uint64_t arousal_requests_sent;
     uint64_t protection_requests_sent;
 
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 } hypo_brainstem_bridge_t;
 
 /*=============================================================================

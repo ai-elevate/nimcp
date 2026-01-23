@@ -118,7 +118,7 @@ attention_sleep_bridge_t attention_sleep_bridge_create(
     bridge->effects.spotlight_size_factor = 1.0f;
     bridge->effects.attention_offline = false;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "attention_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "attention_sleep_bridge_create: failed to create mutex");
         nimcp_free(bridge);
@@ -160,7 +160,7 @@ void attention_sleep_bridge_destroy(attention_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->base.mutex) nimcp_mutex_free(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

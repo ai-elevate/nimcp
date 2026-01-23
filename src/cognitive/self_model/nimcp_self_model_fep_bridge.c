@@ -60,7 +60,7 @@ self_model_fep_bridge_t* self_model_fep_bridge_create(
         self_model_fep_bridge_default_config(&bridge->config);
     }
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "self_model_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -82,7 +82,7 @@ void self_model_fep_bridge_destroy(self_model_fep_bridge_t* bridge) {
     }
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

@@ -3,6 +3,7 @@
  * @brief Dragonfly-to-Bio-Async Integration Bridge Implementation
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "dragonfly/nimcp_dragonfly_bio_async_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -25,6 +26,7 @@ struct dragonfly_bio_future_s {
 };
 
 struct dragonfly_bio_async_bridge_s {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     dragonfly_system_t* dragonfly;
     void* bio_async_system;
     dragonfly_bio_async_config_t config;

@@ -43,6 +43,7 @@ extern "C" {
 #include "core/medulla/nimcp_medulla.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 
 /*=============================================================================
  * CONSTANTS
@@ -141,6 +142,8 @@ typedef struct {
  * @brief Medulla bridge context
  */
 typedef struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     hypo_medulla_bridge_config_t config;
 
@@ -169,8 +172,6 @@ typedef struct {
     uint64_t circadian_syncs;
     uint64_t status_updates_received;
 
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 } hypo_medulla_bridge_t;
 
 /*=============================================================================

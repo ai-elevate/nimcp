@@ -11,6 +11,7 @@
  */
 
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_medulla_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/time/nimcp_time.h"
@@ -199,7 +200,7 @@ hypo_medulla_bridge_t* hypo_medulla_bridge_create(
     /* Create mutex */
     mutex_attr_t attr = {0};
     attr.type = MUTEX_TYPE_NORMAL;
-    bridge->mutex = nimcp_mutex_create(&attr);
+    bridge->base.mutex = nimcp_mutex_create(&attr);
 
     return bridge;
 }
@@ -209,8 +210,8 @@ void hypo_medulla_bridge_destroy(hypo_medulla_bridge_t* bridge) {
         return;
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     free(bridge);
@@ -221,7 +222,7 @@ void hypo_medulla_bridge_reset(hypo_medulla_bridge_t* bridge) {
         return;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset medulla status */
     bridge->medulla_status.state = MEDULLA_STATE_STOPPED;
@@ -240,7 +241,7 @@ void hypo_medulla_bridge_reset(hypo_medulla_bridge_t* bridge) {
     bridge->circadian_syncs = 0;
     bridge->status_updates_received = 0;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 /*=============================================================================
@@ -252,7 +253,7 @@ int hypo_medulla_bridge_update(hypo_medulla_bridge_t* bridge, float dt_ms) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now = nimcp_time_get_us();
     bridge->last_update_us = now;
@@ -310,7 +311,7 @@ int hypo_medulla_bridge_update(hypo_medulla_bridge_t* bridge, float dt_ms) {
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -400,7 +401,7 @@ void hypo_medulla_bridge_process_status(
         return;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->medulla_status = *status;
     bridge->status_updates_received++;
@@ -418,7 +419,7 @@ void hypo_medulla_bridge_process_status(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 bool hypo_medulla_bridge_get_status(
@@ -429,9 +430,9 @@ bool hypo_medulla_bridge_get_status(
         return false;
     }
 
-    nimcp_mutex_lock(((hypo_medulla_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((hypo_medulla_bridge_t*)bridge)->base.mutex);
     *status = bridge->medulla_status;
-    nimcp_mutex_unlock(((hypo_medulla_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((hypo_medulla_bridge_t*)bridge)->base.mutex);
 
     return true;
 }

@@ -218,7 +218,7 @@ reasoning_sleep_bridge_t reasoning_sleep_bridge_create(
     bridge->effects.rem_creativity_boost = false;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "reasoning_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for reasoning-sleep bridge");
         nimcp_free(bridge);
@@ -271,7 +271,7 @@ void reasoning_sleep_bridge_destroy(reasoning_sleep_bridge_t bridge)
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     /* Free bridge */

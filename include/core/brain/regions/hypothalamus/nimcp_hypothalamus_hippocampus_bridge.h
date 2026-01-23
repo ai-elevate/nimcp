@@ -44,6 +44,7 @@ extern "C" {
 #include "core/brain/regions/hippocampus/nimcp_hippocampus_adapter.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 
 /*=============================================================================
  * CONSTANTS
@@ -227,6 +228,8 @@ typedef struct {
  * @brief Hippocampus bridge context
  */
 typedef struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     hypo_hipp_bridge_config_t config;
 
@@ -260,8 +263,6 @@ typedef struct {
     uint64_t consolidation_signals_sent;
     uint64_t nav_goals_set;
 
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 } hypo_hipp_bridge_t;
 
 /*=============================================================================

@@ -10,6 +10,7 @@
  * @date 2025-12-30
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/cingulate/nimcp_cingulate_quantum_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -39,6 +40,7 @@
  * @brief Internal quantum bridge structure
  */
 struct cingulate_quantum_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /* Configuration */
     cingulate_quantum_config_t config;
 

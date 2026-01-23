@@ -5,6 +5,7 @@
  * @date 2026-01-13
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/reticular/bridges/nimcp_reticular_bio_async_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -17,6 +18,7 @@
  * ============================================================================ */
 
 struct reticular_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     reticular_bridge_config_t config;
     nimcp_reticular_t* reticular;
     bio_router_t router;

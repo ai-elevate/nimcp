@@ -17,6 +17,7 @@
  */
 
 #include "cognitive/integration/nimcp_rcog_hub_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/integration/nimcp_cognitive_integration_hub.h"
 #include "cognitive/integration/nimcp_cognitive_event_types.h"
 #include "cognitive/recursive/nimcp_rcog_engine.h"
@@ -40,6 +41,7 @@
  * @brief Internal rcog hub bridge structure
  */
 struct rcog_hub_bridge {
+    bridge_base_t base;                      /**< MUST be first: base bridge infrastructure */
     rcog_hub_bridge_config_t config;         /**< Bridge configuration */
     cognitive_integration_hub_t hub;          /**< Connected cognitive hub */
     rcog_engine_t* engine;                    /**< Connected rcog engine */
@@ -58,9 +60,6 @@ struct rcog_hub_bridge {
 
     /* Statistics */
     rcog_hub_bridge_stats_t stats;            /**< Bridge statistics */
-
-    /* Synchronization */
-    nimcp_mutex_t* mutex;                     /**< Thread safety mutex */
 };
 
 /* ============================================================================
@@ -109,21 +108,21 @@ static int rcog_hub_on_event(const cognitive_event_data_t* event, void* user_dat
 
     rcog_hub_bridge_t* bridge = (rcog_hub_bridge_t*)user_data;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update statistics */
     bridge->stats.events_received++;
     bridge->stats.last_event_timestamp = get_timestamp_ms();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Dispatch based on event type */
     switch (event->event_type) {
         case COG_EVENT_INPUT_RECEIVED: {
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
             rcog_hub_input_callback_t callback = bridge->input_callback;
             void* cb_data = bridge->input_callback_user_data;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
 
             if (callback && event->payload) {
                 /* Parse input payload - assume text query with priority */
@@ -133,20 +132,20 @@ static int rcog_hub_on_event(const cognitive_event_data_t* event, void* user_dat
                 int result = callback(query, RCOG_GOAL_QUESTION_ANSWERING, priority, cb_data);
 
                 if (result == 0) {
-                    nimcp_mutex_lock(bridge->mutex);
+                    nimcp_mutex_lock(bridge->base.mutex);
                     bridge->stats.goals_from_input_events++;
                     bridge->stats.recursions_triggered++;
-                    nimcp_mutex_unlock(bridge->mutex);
+                    nimcp_mutex_unlock(bridge->base.mutex);
                 }
             }
             break;
         }
 
         case COG_EVENT_ATTENTION_SHIFT: {
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
             rcog_hub_attention_callback_t callback = bridge->attention_callback;
             void* cb_data = bridge->attention_callback_user_data;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
 
             if (callback && event->payload) {
                 /* Parse attention payload */
@@ -158,18 +157,18 @@ static int rcog_hub_on_event(const cognitive_event_data_t* event, void* user_dat
 
                 callback(new_focus, old_focus, urgency, cb_data);
 
-                nimcp_mutex_lock(bridge->mutex);
+                nimcp_mutex_lock(bridge->base.mutex);
                 bridge->stats.priority_changes++;
-                nimcp_mutex_unlock(bridge->mutex);
+                nimcp_mutex_unlock(bridge->base.mutex);
             }
             break;
         }
 
         case COG_EVENT_MEMORY_ACCESS: {
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
             rcog_hub_memory_callback_t callback = bridge->memory_callback;
             void* cb_data = bridge->memory_callback_user_data;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
 
             if (callback && event->payload) {
                 /* Parse memory access payload */
@@ -182,9 +181,9 @@ static int rcog_hub_on_event(const cognitive_event_data_t* event, void* user_dat
 
                 callback(memory_id, access_type, relevance, cb_data);
 
-                nimcp_mutex_lock(bridge->mutex);
+                nimcp_mutex_lock(bridge->base.mutex);
                 bridge->stats.context_updates++;
-                nimcp_mutex_unlock(bridge->mutex);
+                nimcp_mutex_unlock(bridge->base.mutex);
             }
             break;
         }
@@ -220,7 +219,7 @@ static int rcog_hub_query_handler(
 
     rcog_hub_bridge_t* bridge = (rcog_hub_bridge_t*)context;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update query stats */
     bridge->stats.queries_handled++;
@@ -228,7 +227,7 @@ static int rcog_hub_query_handler(
     /* Get engine reference */
     rcog_engine_t* engine = bridge->engine;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Initialize result */
     result->status = 0;
@@ -370,8 +369,8 @@ rcog_hub_bridge_t* rcog_hub_bridge_create(
     }
 
     /* Create mutex for thread safety */
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "rcog_hub") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -408,9 +407,9 @@ void rcog_hub_bridge_destroy(rcog_hub_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-        bridge->mutex = NULL;
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
+        bridge->base.mutex = NULL;
     }
 
     bridge->initialized = false;
@@ -431,11 +430,11 @@ int rcog_hub_bridge_connect(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if already connected */
     if (bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -443,7 +442,7 @@ int rcog_hub_bridge_connect(
     bridge->hub = hub;
     bridge->engine = engine;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Register module with hub */
     int result = cognitive_hub_register_module(
@@ -455,10 +454,10 @@ int rcog_hub_bridge_connect(
     );
 
     if (result != 0) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->hub = NULL;
         bridge->engine = NULL;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -514,9 +513,9 @@ int rcog_hub_bridge_connect(
         }
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->connected = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -526,17 +525,17 @@ int rcog_hub_bridge_disconnect(rcog_hub_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->hub) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     cognitive_integration_hub_t hub = bridge->hub;
     uint32_t module_id = bridge->config.module_id;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Unsubscribe from events */
     if (bridge->config.auto_subscribe_input) {
@@ -552,11 +551,11 @@ int rcog_hub_bridge_disconnect(rcog_hub_bridge_t* bridge) {
     /* Unregister module from hub */
     cognitive_hub_unregister_module(hub, module_id);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->hub = NULL;
     bridge->engine = NULL;
     bridge->connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -569,9 +568,9 @@ int rcog_hub_bridge_set_engine(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->engine = engine;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -584,9 +583,9 @@ bool rcog_hub_bridge_is_connected(const rcog_hub_bridge_t* bridge) {
     /* Cast away const for mutex lock (safe - only reading) */
     rcog_hub_bridge_t* mutable_bridge = (rcog_hub_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
     bool connected = bridge->connected;
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return connected;
 }
@@ -604,10 +603,10 @@ int rcog_hub_bridge_set_input_callback(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->input_callback = callback;
     bridge->input_callback_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -621,10 +620,10 @@ int rcog_hub_bridge_set_attention_callback(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_callback = callback;
     bridge->attention_callback_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -638,10 +637,10 @@ int rcog_hub_bridge_set_memory_callback(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->memory_callback = callback;
     bridge->memory_callback_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -661,17 +660,17 @@ int rcog_hub_publish_recursion_start(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->hub) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     cognitive_integration_hub_t hub = bridge->hub;
     uint32_t module_id = bridge->config.module_id;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Create payload */
     rcog_hub_recursion_start_payload_t payload;
@@ -695,10 +694,10 @@ int rcog_hub_publish_recursion_start(
     int result = cognitive_hub_publish(hub, module_id, COG_EVENT_STATE_CHANGE, &event);
 
     if (result == 0) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.events_published++;
         bridge->stats.recursions_triggered++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return result;
@@ -718,17 +717,17 @@ int rcog_hub_publish_recursion_complete(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->hub) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     cognitive_integration_hub_t hub = bridge->hub;
     uint32_t module_id = bridge->config.module_id;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Create payload */
     rcog_hub_recursion_complete_payload_t payload;
@@ -754,9 +753,9 @@ int rcog_hub_publish_recursion_complete(
     int result = cognitive_hub_publish(hub, module_id, COG_EVENT_OUTPUT_READY, &event);
 
     if (result == 0) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.events_published++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return result;
@@ -774,24 +773,24 @@ int rcog_hub_publish_subtask_spawned(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if subtask events are enabled */
     if (!bridge->config.publish_subtask_events) {
         bridge->stats.subtasks_spawned++;  /* Still track locally */
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;  /* Success - just not published */
     }
 
     if (!bridge->connected || !bridge->hub) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     cognitive_integration_hub_t hub = bridge->hub;
     uint32_t module_id = bridge->config.module_id;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Create payload */
     rcog_hub_subtask_spawned_payload_t payload;
@@ -815,10 +814,10 @@ int rcog_hub_publish_subtask_spawned(
     int result = cognitive_hub_publish_async(hub, module_id, COG_EVENT_STATE_CHANGE, &event);
 
     if (result == 0) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.events_published++;
         bridge->stats.subtasks_spawned++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return result;
@@ -838,17 +837,17 @@ int rcog_hub_publish_recursion_event(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->hub) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     cognitive_integration_hub_t hub = bridge->hub;
     uint32_t module_id = bridge->config.module_id;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Map rcog event type to cognitive event type */
     cognitive_event_type_t cog_event_type;
@@ -888,9 +887,9 @@ int rcog_hub_publish_recursion_event(
     int result = cognitive_hub_publish(hub, module_id, cog_event_type, &event);
 
     if (result == 0) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.events_published++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return result;
@@ -913,11 +912,11 @@ int rcog_hub_bridge_get_state(
     /* Cast away const for mutex lock */
     rcog_hub_bridge_t* mutable_bridge = (rcog_hub_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     rcog_engine_t* engine = bridge->engine;
 
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     if (!engine) {
         /* No engine connected - return zeros */
@@ -955,9 +954,9 @@ int rcog_hub_bridge_get_stats(
     /* Cast away const for mutex lock */
     rcog_hub_bridge_t* mutable_bridge = (rcog_hub_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return 0;
 }
@@ -967,9 +966,9 @@ int rcog_hub_bridge_reset_stats(rcog_hub_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(rcog_hub_bridge_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

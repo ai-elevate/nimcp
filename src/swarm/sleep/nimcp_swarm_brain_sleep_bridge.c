@@ -82,7 +82,7 @@ swarm_brain_sleep_bridge_t swarm_brain_sleep_bridge_create(
     bridge->effects.coherence_factor = 1.0f;
     bridge->effects.coordination_enabled = true;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "swarm_brain_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
 
     bridge->callback_registered = sleep_register_state_callback(
@@ -102,7 +102,7 @@ void swarm_brain_sleep_bridge_destroy(swarm_brain_sleep_bridge_t bridge)
         sleep_unregister_state_callback(bridge->sleep_system,
             swarm_brain_on_sleep_state_change, bridge);
     }
-    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

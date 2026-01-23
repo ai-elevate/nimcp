@@ -130,7 +130,7 @@ sec_hippo_fep_bridge_t* sec_hippo_fep_create(
     bridge->fep_system = fep_system;
 
     /* Initialize base bridge infrastructure */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "security_hippocampus_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Security Hippocampus FEP bridge: mutex creation failed");
         nimcp_free(bridge);
@@ -175,7 +175,7 @@ void sec_hippo_fep_destroy(sec_hippo_fep_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
         bridge->base.mutex = NULL;
     }
 

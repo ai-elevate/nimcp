@@ -247,7 +247,7 @@ snn_training_integration_bridge_t* snn_training_integration_create(
     }
 
     /* Initialize mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "snn_training_integration") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for SNN training integration bridge");
         nimcp_free(bridge);
@@ -294,7 +294,7 @@ void snn_training_integration_destroy(
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

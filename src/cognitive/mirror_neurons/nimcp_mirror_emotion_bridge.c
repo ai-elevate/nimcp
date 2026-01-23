@@ -9,6 +9,7 @@
  */
 
 #include "cognitive/mirror_neurons/nimcp_mirror_emotion_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -26,6 +27,8 @@
 //=============================================================================
 
 struct mirror_emotion_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     mirror_emotion_config_t config;
     mirror_emotion_state_t state;
 
@@ -45,9 +48,6 @@ struct mirror_emotion_bridge {
 
     /* Statistics */
     mirror_emotion_stats_t stats;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 
     /* Bio-async registration */
     bool bio_async_registered;
@@ -403,12 +403,9 @@ mirror_emotion_bridge_t* mirror_emotion_create(const mirror_emotion_config_t* co
     bridge->sensitivity_multiplier = 1.0f;
     bridge->crisis_mode = false;
 
-    /* Create mutex */
-    mutex_attr_t attr = {0};
-    attr.type = MUTEX_TYPE_NORMAL;
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
-        nimcp_log(LOG_LEVEL_ERROR, "Mirror-Emotion: Failed to create mutex");
+    /* Initialize bridge base infrastructure (includes mutex) */
+    if (bridge_base_init(&bridge->base, 0, "mirror_emotion") != 0) {
+        nimcp_log(LOG_LEVEL_ERROR, "Mirror-Emotion: Failed to initialize bridge base");
         nimcp_free(bridge);
         return NULL;
     }
@@ -433,10 +430,8 @@ void mirror_emotion_destroy(mirror_emotion_bridge_t* bridge) {
         mirror_emotion_unregister_bio_async(bridge);
     }
 
-    /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
     nimcp_log(LOG_LEVEL_DEBUG, "Mirror-Emotion: Destroyed bridge");
@@ -449,7 +444,7 @@ bool mirror_emotion_process_observation(
 ) {
     if (!bridge || !observation || !result) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     memset(result, 0, sizeof(mirror_emotion_resonance_t));
     result->timestamp_us = nimcp_time_now_us();
@@ -494,7 +489,7 @@ bool mirror_emotion_process_observation(
 
     /* Apply resonance threshold */
     if (observation->resonance_strength < bridge->config.resonance_threshold) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         bridge->stats.total_observations++;
         return false;  /* Insufficient resonance */
     }
@@ -564,7 +559,7 @@ bool mirror_emotion_process_observation(
 
     bridge->state = MIRROR_EMOTION_STATE_RESONATING;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Bio-async message sending would happen here when integrated
      * into a full bio-async context with proper router registration */
@@ -605,13 +600,13 @@ float mirror_emotion_compute_contagion(
 ) {
     if (!bridge) return 0.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     mirror_emotion_agent_state_t* agent = get_or_create_agent(bridge, agent_id);
     float resonance = intensity;  /* Assume resonance equals intensity if not given */
     float contagion = compute_contagion_internal(bridge, agent, intensity, resonance);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return contagion;
 }
 
@@ -622,7 +617,7 @@ bool mirror_emotion_trigger_empathy(
     if (!bridge || !resonance) return false;
     if (resonance->empathy_level < 0.3f) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = MIRROR_EMOTION_STATE_CONTAGION_ACTIVE;
 
@@ -632,7 +627,7 @@ bool mirror_emotion_trigger_empathy(
     bridge->current_valence = resonance->valence;
     bridge->current_arousal = resonance->arousal;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     nimcp_log(LOG_LEVEL_DEBUG, "Mirror-Emotion: Empathic response triggered (emotion=%u, level=%.2f)",
               resonance->emotion_category, resonance->empathy_level);
@@ -647,7 +642,7 @@ float mirror_emotion_regulate_contagion(
 ) {
     if (!bridge) return 0.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     mirror_emotion_agent_state_t* agent = NULL;
     for (uint32_t i = 0; i < MIRROR_EMOTION_MAX_AGENTS; i++) {
@@ -668,7 +663,7 @@ float mirror_emotion_regulate_contagion(
     bridge->state = MIRROR_EMOTION_STATE_REGULATED;
     bridge->stats.regulation_events++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return new_contagion;
 }
 
@@ -678,9 +673,9 @@ mirror_emotion_agent_state_t* mirror_emotion_get_agent(
 ) {
     if (!bridge) return NULL;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     mirror_emotion_agent_state_t* agent = get_or_create_agent(bridge, agent_id);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return agent;
 }
@@ -692,7 +687,7 @@ void mirror_emotion_update_familiarity(
 ) {
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     mirror_emotion_agent_state_t* agent = NULL;
     for (uint32_t i = 0; i < MIRROR_EMOTION_MAX_AGENTS; i++) {
@@ -706,7 +701,7 @@ void mirror_emotion_update_familiarity(
         agent->familiarity = fminf(1.0f, fmaxf(0.0f, agent->familiarity + delta));
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 float mirror_emotion_simd_similarity(
@@ -740,7 +735,7 @@ float mirror_emotion_modulate_sensitivity(
 ) {
     if (!bridge) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->current_emotion = emotion;
     bridge->current_intensity = intensity;
@@ -763,7 +758,7 @@ float mirror_emotion_modulate_sensitivity(
                                            bridge->sensitivity_multiplier));
 
     float result = bridge->sensitivity_multiplier;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
@@ -773,13 +768,13 @@ void mirror_emotion_set_crisis_mode(
 ) {
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->crisis_mode = crisis_active;
     if (crisis_active) {
         bridge->state = MIRROR_EMOTION_STATE_REGULATED;
         bridge->sensitivity_multiplier = 0.5f;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 bool mirror_emotion_register_bio_async(mirror_emotion_bridge_t* bridge) {
@@ -803,7 +798,7 @@ bool mirror_emotion_get_stats(
 ) {
     if (!bridge || !stats) return false;
 
-    nimcp_mutex_lock(((mirror_emotion_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((mirror_emotion_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
 
     /* Update active agent count */
@@ -819,14 +814,14 @@ bool mirror_emotion_get_stats(
         stats->avg_agent_familiarity = total_familiarity / stats->active_agents;
     }
 
-    nimcp_mutex_unlock(((mirror_emotion_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((mirror_emotion_bridge_t*)bridge)->base.mutex);
     return true;
 }
 
 void mirror_emotion_reset_stats(mirror_emotion_bridge_t* bridge) {
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(mirror_emotion_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }

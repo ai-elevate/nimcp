@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/sleep_wake/nimcp_sleep_wake_snn_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_config.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
@@ -25,9 +26,9 @@
 //=============================================================================
 
 struct sleep_wake_snn_bridge {
+    bridge_base_t base;
     sleep_wake_snn_config_t config;
     snn_network_t* snn;
-    nimcp_mutex_t* mutex;
 
     /* State */
     sleep_wake_snn_state_t state;
@@ -150,10 +151,8 @@ sleep_wake_snn_bridge_t* sleep_wake_snn_create(const sleep_wake_snn_config_t* co
         return NULL;
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize bridge base */
+    if (bridge_base_init(&bridge->base, 0, "sleep_wake_snn") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -170,7 +169,7 @@ sleep_wake_snn_bridge_t* sleep_wake_snn_create(const sleep_wake_snn_config_t* co
 
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -225,9 +224,7 @@ void sleep_wake_snn_destroy(sleep_wake_snn_bridge_t* bridge) {
         snn_network_destroy(bridge->snn);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge->encoding_buffer);
     nimcp_free(bridge->output_buffer);
@@ -239,7 +236,7 @@ void sleep_wake_snn_destroy(sleep_wake_snn_bridge_t* bridge) {
 int sleep_wake_snn_reset(sleep_wake_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset SNN network */
     if (bridge->snn) {
@@ -273,7 +270,7 @@ int sleep_wake_snn_reset(sleep_wake_snn_bridge_t* bridge) {
     bridge->circadian_signal = 0.5f;
     bridge->prev_stage = 0;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -289,7 +286,7 @@ int sleep_wake_snn_encode_state(
     if (!bridge || !dimensions) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = SLEEP_WAKE_SNN_STATE_ENCODING;
 
     uint32_t neurons_per_dim = bridge->config.neurons_per_dim;
@@ -334,7 +331,7 @@ int sleep_wake_snn_encode_state(
 
     bridge->stats.total_spikes += total_spikes;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return total_spikes;
 }
 
@@ -345,7 +342,7 @@ int sleep_wake_snn_encode_pressure(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[SLEEP_WAKE_DIM_COUNT] = {0};
     dims[SLEEP_WAKE_DIM_SLEEP_PRESSURE] = clamp_f(pressure, 0.0f, 1.0f);
@@ -359,7 +356,7 @@ int sleep_wake_snn_encode_pressure(
     bridge->sleep_pressure_signal = pressure;
     bridge->circadian_signal = circadian_phase;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return sleep_wake_snn_encode_state(bridge, dims, 4);
 }
@@ -371,14 +368,14 @@ int sleep_wake_snn_encode_arousal(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[SLEEP_WAKE_DIM_COUNT] = {0};
     dims[SLEEP_WAKE_DIM_AROUSAL] = clamp_f(arousal, 0.0f, 1.0f);
     dims[SLEEP_WAKE_DIM_WAKE_PROMOTION] = clamp_f(wake_drive, 0.0f, 1.0f);
     dims[SLEEP_WAKE_DIM_SLEEP_PROMOTION] = clamp_f(1.0f - arousal, 0.0f, 1.0f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return sleep_wake_snn_encode_state(bridge, dims, 3);
 }
@@ -391,7 +388,7 @@ int sleep_wake_snn_encode_stage(
     if (!bridge) return -1;
     if (stage > 4) return -1; /* 0=awake, 1=N1, 2=N2, 3=N3, 4=REM */
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[SLEEP_WAKE_DIM_COUNT] = {0};
     float depth = clamp_f(stage_depth, 0.0f, 1.0f);
@@ -439,7 +436,7 @@ int sleep_wake_snn_encode_stage(
         bridge->prev_stage = stage;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return sleep_wake_snn_encode_state(bridge, dims, SLEEP_WAKE_DIM_COUNT);
 }
@@ -452,7 +449,7 @@ int sleep_wake_snn_simulate(sleep_wake_snn_bridge_t* bridge, float duration_ms) 
     if (!bridge) return -1;
     if (duration_ms <= 0.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = SLEEP_WAKE_SNN_STATE_SIMULATING;
 
     float dt = bridge->config.dt_ms;
@@ -543,7 +540,7 @@ int sleep_wake_snn_simulate(sleep_wake_snn_bridge_t* bridge, float duration_ms) 
         bridge->arousal_callback(bridge, &bridge->last_arousal, bridge->arousal_callback_data);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -579,9 +576,9 @@ int sleep_wake_snn_get_arousal(
 ) {
     if (!bridge || !arousal) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *arousal = bridge->last_arousal;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -594,11 +591,11 @@ int sleep_wake_snn_get_activations(
     if (!bridge || !activations) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t d = 0; d < num_dims; d++) {
         activations[d] = bridge->dim_states[d].activation;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -609,13 +606,13 @@ bool sleep_wake_snn_check_sleep_onset(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float pressure = bridge->last_arousal.sleep_pressure;
     if (sleep_pressure) {
         *sleep_pressure = pressure;
     }
     bool onset = bridge->last_arousal.sleep_onset;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return onset;
 }
@@ -626,13 +623,13 @@ bool sleep_wake_snn_check_high_arousal(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_arousal.arousal_level;
     if (arousal_level) {
         *arousal_level = level;
     }
     bool high = level > bridge->config.arousal_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return high;
 }
@@ -643,7 +640,7 @@ bool sleep_wake_snn_check_stage_change(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     /* Calculate magnitude from prev_state differences */
     float mag = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
@@ -656,7 +653,7 @@ bool sleep_wake_snn_check_stage_change(
         *change_magnitude = mag;
     }
     bool changed = mag > bridge->config.stage_change_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return changed;
 }
@@ -673,9 +670,9 @@ int sleep_wake_snn_get_dim_state(
     if (!bridge || !state) return -1;
     if (dim >= bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -686,7 +683,7 @@ int sleep_wake_snn_get_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
     state->mean_arousal = bridge->last_arousal.arousal_level;
@@ -703,16 +700,16 @@ int sleep_wake_snn_get_state(
         state->total_activity += bridge->dim_states[d].activation;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int sleep_wake_snn_get_stats(sleep_wake_snn_bridge_t* bridge, sleep_wake_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -720,9 +717,9 @@ int sleep_wake_snn_get_stats(sleep_wake_snn_bridge_t* bridge, sleep_wake_snn_sta
 int sleep_wake_snn_reset_stats(sleep_wake_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(sleep_wake_snn_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -730,9 +727,9 @@ int sleep_wake_snn_reset_stats(sleep_wake_snn_bridge_t* bridge) {
 float sleep_wake_snn_get_arousal_level(sleep_wake_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float arousal = bridge->last_arousal.arousal_level;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return arousal;
 }
@@ -740,12 +737,12 @@ float sleep_wake_snn_get_arousal_level(sleep_wake_snn_bridge_t* bridge) {
 float sleep_wake_snn_get_total_activity(sleep_wake_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float total = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
         total += bridge->dim_states[d].activation;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return total;
 }
@@ -761,10 +758,10 @@ int sleep_wake_snn_register_sleep_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->sleep_callback = callback;
     bridge->sleep_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -776,10 +773,10 @@ int sleep_wake_snn_register_arousal_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->arousal_callback = callback;
     bridge->arousal_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -791,10 +788,10 @@ int sleep_wake_snn_register_stage_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stage_callback = callback;
     bridge->stage_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -807,10 +804,10 @@ int sleep_wake_snn_bio_async_connect(sleep_wake_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -818,9 +815,9 @@ int sleep_wake_snn_bio_async_connect(sleep_wake_snn_bridge_t* bridge) {
 int sleep_wake_snn_bio_async_disconnect(sleep_wake_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -828,9 +825,9 @@ int sleep_wake_snn_bio_async_disconnect(sleep_wake_snn_bridge_t* bridge) {
 bool sleep_wake_snn_is_bio_async_connected(sleep_wake_snn_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
 }

@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/free_energy/nimcp_fep_snn_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_config.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
@@ -25,9 +26,9 @@
 //=============================================================================
 
 struct fep_snn_bridge {
+    bridge_base_t base;
     fep_snn_config_t config;
     snn_network_t* snn;
-    nimcp_mutex_t* mutex;
 
     /* State */
     fep_snn_state_t state;
@@ -150,10 +151,8 @@ fep_snn_bridge_t* fep_snn_create(const fep_snn_config_t* config) {
         return NULL;
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize bridge base */
+    if (bridge_base_init(&bridge->base, 0, "fep_snn") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -170,7 +169,7 @@ fep_snn_bridge_t* fep_snn_create(const fep_snn_config_t* config) {
 
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -225,9 +224,7 @@ void fep_snn_destroy(fep_snn_bridge_t* bridge) {
         snn_network_destroy(bridge->snn);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge->encoding_buffer);
     nimcp_free(bridge->output_buffer);
@@ -239,7 +236,7 @@ void fep_snn_destroy(fep_snn_bridge_t* bridge) {
 int fep_snn_reset(fep_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset SNN network */
     if (bridge->snn) {
@@ -273,7 +270,7 @@ int fep_snn_reset(fep_snn_bridge_t* bridge) {
     bridge->precision_signal = 0.5f;
     bridge->prev_free_energy = 0.5f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -289,7 +286,7 @@ int fep_snn_encode_state(
     if (!bridge || !dimensions) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = FEP_SNN_STATE_ENCODING;
 
     uint32_t neurons_per_dim = bridge->config.neurons_per_dim;
@@ -340,7 +337,7 @@ int fep_snn_encode_state(
 
     bridge->stats.total_spikes += total_spikes;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return total_spikes;
 }
 
@@ -351,7 +348,7 @@ int fep_snn_encode_prediction_error(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[FEP_DIM_COUNT] = {0};
     dims[FEP_DIM_PREDICTION_ERROR] = clamp_f(pred_error, 0.0f, 1.0f);
@@ -361,7 +358,7 @@ int fep_snn_encode_prediction_error(
     bridge->pred_error_signal = pred_error;
     bridge->precision_signal = precision;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return fep_snn_encode_state(bridge, dims, 3);
 }
@@ -373,7 +370,7 @@ int fep_snn_encode_free_energy(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[FEP_DIM_COUNT] = {0};
     dims[FEP_DIM_FREE_ENERGY] = clamp_f(free_energy, 0.0f, 1.0f);
@@ -387,7 +384,7 @@ int fep_snn_encode_free_energy(
     }
     bridge->prev_free_energy = free_energy;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return fep_snn_encode_state(bridge, dims, 2);
 }
@@ -399,7 +396,7 @@ int fep_snn_encode_active_inference(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[FEP_DIM_COUNT] = {0};
     dims[FEP_DIM_ACTIVE_INFERENCE] = clamp_f(action_drive, 0.0f, 1.0f);
@@ -407,7 +404,7 @@ int fep_snn_encode_active_inference(
 
     bridge->last_belief.active_inference_drive = action_drive;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return fep_snn_encode_state(bridge, dims, 2);
 }
@@ -420,7 +417,7 @@ int fep_snn_simulate(fep_snn_bridge_t* bridge, float duration_ms) {
     if (!bridge) return -1;
     if (duration_ms <= 0.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = FEP_SNN_STATE_SIMULATING;
 
     float dt = bridge->config.dt_ms;
@@ -497,7 +494,7 @@ int fep_snn_simulate(fep_snn_bridge_t* bridge, float duration_ms) {
         bridge->belief_callback(bridge, &bridge->last_belief, bridge->belief_callback_data);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -533,9 +530,9 @@ int fep_snn_get_belief(
 ) {
     if (!bridge || !belief) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *belief = bridge->last_belief;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -548,11 +545,11 @@ int fep_snn_get_activations(
     if (!bridge || !activations) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t d = 0; d < num_dims; d++) {
         activations[d] = bridge->dim_states[d].activation;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -563,13 +560,13 @@ bool fep_snn_check_pred_error(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_belief.prediction_error;
     if (pred_error_level) {
         *pred_error_level = level;
     }
     bool detected = level > bridge->config.pred_error_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return detected;
 }
@@ -580,13 +577,13 @@ bool fep_snn_check_belief_update(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float magnitude = bridge->last_belief.prediction_error * bridge->last_belief.precision;
     if (update_magnitude) {
         *update_magnitude = magnitude;
     }
     bool needed = bridge->last_belief.belief_update_needed;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return needed;
 }
@@ -597,7 +594,7 @@ bool fep_snn_check_state_change(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     /* Calculate magnitude from prev_state differences */
     float mag = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
@@ -610,7 +607,7 @@ bool fep_snn_check_state_change(
         *change_magnitude = mag;
     }
     bool changed = mag > bridge->config.state_change_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return changed;
 }
@@ -627,9 +624,9 @@ int fep_snn_get_dim_state(
     if (!bridge || !state) return -1;
     if (dim >= bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -640,7 +637,7 @@ int fep_snn_get_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
     state->mean_free_energy = bridge->last_belief.free_energy;
@@ -657,16 +654,16 @@ int fep_snn_get_state(
         state->total_activity += bridge->dim_states[d].activation;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int fep_snn_get_stats(fep_snn_bridge_t* bridge, fep_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -674,9 +671,9 @@ int fep_snn_get_stats(fep_snn_bridge_t* bridge, fep_snn_stats_t* stats) {
 int fep_snn_reset_stats(fep_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(fep_snn_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -684,9 +681,9 @@ int fep_snn_reset_stats(fep_snn_bridge_t* bridge) {
 float fep_snn_get_free_energy(fep_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float free_energy = bridge->last_belief.free_energy;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return free_energy;
 }
@@ -694,12 +691,12 @@ float fep_snn_get_free_energy(fep_snn_bridge_t* bridge) {
 float fep_snn_get_total_activity(fep_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float total = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
         total += bridge->dim_states[d].activation;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return total;
 }
@@ -715,10 +712,10 @@ int fep_snn_register_pred_error_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->pred_error_callback = callback;
     bridge->pred_error_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -730,10 +727,10 @@ int fep_snn_register_belief_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->belief_callback = callback;
     bridge->belief_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -745,10 +742,10 @@ int fep_snn_register_free_energy_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->free_energy_callback = callback;
     bridge->free_energy_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -761,10 +758,10 @@ int fep_snn_bio_async_connect(fep_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -772,9 +769,9 @@ int fep_snn_bio_async_connect(fep_snn_bridge_t* bridge) {
 int fep_snn_bio_async_disconnect(fep_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -782,9 +779,9 @@ int fep_snn_bio_async_disconnect(fep_snn_bridge_t* bridge) {
 bool fep_snn_is_bio_async_connected(fep_snn_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
 }

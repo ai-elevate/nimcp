@@ -7,6 +7,7 @@
  * @author NIMCP Development Team
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/olfactory/bridges/nimcp_olfact_quantum_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
@@ -20,6 +21,7 @@
  * ============================================================================ */
 
 struct olfact_quantum_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     olfact_quantum_config_t config;
     nimcp_olfactory_t* olfact;
 

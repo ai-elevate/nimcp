@@ -22,6 +22,7 @@
  */
 
 #include "cognitive/integration/nimcp_imagination_reasoning_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/integration/nimcp_cognitive_integration_hub.h"
 #include "cognitive/integration/nimcp_cognitive_event_types.h"
 #include "utils/thread/nimcp_thread.h"
@@ -61,6 +62,7 @@ typedef struct {
  * @brief Imagination-Reasoning bridge internal structure
  */
 struct imagination_reasoning_bridge {
+    bridge_base_t base;                        /**< MUST be first: base bridge infrastructure */
     imagination_reasoning_config_t config;     /**< Bridge configuration */
     cognitive_integration_hub_t hub;           /**< Connected hub */
     imagination_engine_t* imagination;         /**< Imagination engine ref */
@@ -86,7 +88,6 @@ struct imagination_reasoning_bridge {
     imagination_reasoning_stats_t stats;       /**< Bridge statistics */
 
     /* Synchronization */
-    nimcp_mutex_t* mutex;                      /**< Thread synchronization */
     bool connected;                            /**< Connection status */
     bool initialized;                          /**< Initialization flag */
 };
@@ -180,9 +181,9 @@ static int handle_counterfactual_result_unlocked(
         void* user_data = bridge->counterfactual_callback_data;
 
         /* Release lock for callback */
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         callback(result, user_data);
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     return 0;
@@ -210,9 +211,9 @@ static int handle_simulation_result_unlocked(
         void* user_data = bridge->simulation_callback_data;
 
         /* Release lock for callback */
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         callback(result, user_data);
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     return 0;
@@ -246,9 +247,9 @@ static int handle_creative_result_unlocked(
         void* user_data = bridge->creative_callback_data;
 
         /* Release lock for callback */
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         callback(result, user_data);
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     return 0;
@@ -276,9 +277,9 @@ static int handle_insight_feedback_unlocked(
         void* user_data = bridge->insight_callback_data;
 
         /* Release lock for callback */
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         callback(insight, user_data);
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     return 0;
@@ -298,14 +299,14 @@ static int imagination_reasoning_query_handler(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
         result->status = -1;
         strncpy(result->error_message, "Bridge not connected",
                 sizeof(result->error_message) - 1);
         bridge->stats.query_errors++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -327,7 +328,7 @@ static int imagination_reasoning_query_handler(
                 strncpy(result->error_message, "Memory allocation failed",
                         sizeof(result->error_message) - 1);
                 bridge->stats.query_errors++;
-                nimcp_mutex_unlock(bridge->mutex);
+                nimcp_mutex_unlock(bridge->base.mutex);
                 return -1;
             }
 
@@ -348,7 +349,7 @@ static int imagination_reasoning_query_handler(
                 strncpy(result->error_message, "Memory allocation failed",
                         sizeof(result->error_message) - 1);
                 bridge->stats.query_errors++;
-                nimcp_mutex_unlock(bridge->mutex);
+                nimcp_mutex_unlock(bridge->base.mutex);
                 return -1;
             }
 
@@ -364,12 +365,12 @@ static int imagination_reasoning_query_handler(
             strncpy(result->error_message, "Unsupported query type",
                     sizeof(result->error_message) - 1);
             bridge->stats.query_errors++;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return -1;
     }
 
     bridge->stats.queries_handled++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -427,9 +428,8 @@ imagination_reasoning_bridge_t* imagination_reasoning_bridge_create(
         bridge->config.module_id = IMAG_REASON_DEFAULT_MODULE_ID;
     }
 
-    /* Create mutex for thread safety */
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "imagination_reasoning") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -440,7 +440,7 @@ imagination_reasoning_bridge_t* imagination_reasoning_bridge_create(
 
     bridge->active_scenarios = nimcp_calloc(max_scenarios, sizeof(active_scenario_t));
     if (!bridge->active_scenarios) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -488,11 +488,8 @@ void imagination_reasoning_bridge_destroy(imagination_reasoning_bridge_t* bridge
         bridge->active_scenarios = NULL;
     }
 
-    /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-        bridge->mutex = NULL;
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     bridge->initialized = false;
 
@@ -515,10 +512,10 @@ int imagination_reasoning_bridge_register_with_hub(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;  /* Already connected */
     }
 
@@ -531,7 +528,7 @@ int imagination_reasoning_bridge_register_with_hub(
         bridge
     );
     if (ret != 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -545,7 +542,7 @@ int imagination_reasoning_bridge_register_with_hub(
     );
     if (ret != 0) {
         cognitive_hub_unregister_module(hub, bridge->config.module_id);
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -560,7 +557,7 @@ int imagination_reasoning_bridge_register_with_hub(
     if (ret != 0) {
         cognitive_hub_unsubscribe(hub, bridge->config.module_id, COG_EVENT_OUTPUT_READY);
         cognitive_hub_unregister_module(hub, bridge->config.module_id);
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -576,7 +573,7 @@ int imagination_reasoning_bridge_register_with_hub(
         cognitive_hub_unsubscribe(hub, bridge->config.module_id, COG_EVENT_STATE_CHANGE);
         cognitive_hub_unsubscribe(hub, bridge->config.module_id, COG_EVENT_OUTPUT_READY);
         cognitive_hub_unregister_module(hub, bridge->config.module_id);
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -618,7 +615,7 @@ int imagination_reasoning_bridge_register_with_hub(
     bridge->hub = hub;
     bridge->connected = true;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -630,10 +627,10 @@ int imagination_reasoning_bridge_unregister_from_hub(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -661,7 +658,7 @@ int imagination_reasoning_bridge_unregister_from_hub(
     bridge->hub = NULL;
     bridge->connected = false;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -684,9 +681,9 @@ bool imagination_reasoning_bridge_is_connected(
         return false;
     }
 
-    nimcp_mutex_lock(((imagination_reasoning_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((imagination_reasoning_bridge_t*)bridge)->base.mutex);
     bool connected = bridge->connected;
-    nimcp_mutex_unlock(((imagination_reasoning_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((imagination_reasoning_bridge_t*)bridge)->base.mutex);
 
     return connected;
 }
@@ -703,9 +700,9 @@ int imagination_reasoning_bridge_set_imagination(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->imagination = engine;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -718,9 +715,9 @@ int imagination_reasoning_bridge_set_reasoning(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->reasoning = engine;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -737,10 +734,10 @@ int imagination_reasoning_request_counterfactual_analysis(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -782,7 +779,7 @@ int imagination_reasoning_request_counterfactual_analysis(
     uint32_t module_id = bridge->config.module_id;
 
     /* Release lock before publishing to avoid deadlock from synchronous callbacks */
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Publish to hub */
     int ret = cognitive_hub_publish(
@@ -793,12 +790,12 @@ int imagination_reasoning_request_counterfactual_analysis(
     );
 
     /* Relock to update stats */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     if (ret == 0) {
         bridge->stats.events_published++;
         bridge->stats.counterfactual_queries++;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return ret;
 }
@@ -812,10 +809,10 @@ int imagination_reasoning_set_counterfactual_callback(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->counterfactual_callback = callback;
     bridge->counterfactual_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -832,10 +829,10 @@ int imagination_reasoning_publish_simulation_result(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -863,7 +860,7 @@ int imagination_reasoning_publish_simulation_result(
     uint32_t module_id = bridge->config.module_id;
 
     /* Release lock before publishing to avoid deadlock from synchronous callbacks */
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Publish to hub */
     int ret = cognitive_hub_publish(
@@ -874,12 +871,12 @@ int imagination_reasoning_publish_simulation_result(
     );
 
     /* Relock to update stats */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     if (ret == 0) {
         bridge->stats.events_published++;
         bridge->stats.simulation_results++;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return ret;
 }
@@ -893,10 +890,10 @@ int imagination_reasoning_set_simulation_callback(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->simulation_callback = callback;
     bridge->simulation_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -913,10 +910,10 @@ int imagination_reasoning_request_creative_inference(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -947,7 +944,7 @@ int imagination_reasoning_request_creative_inference(
     uint32_t module_id = bridge->config.module_id;
 
     /* Release lock before publishing to avoid deadlock from synchronous callbacks */
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Publish to hub */
     int ret = cognitive_hub_publish(
@@ -958,11 +955,11 @@ int imagination_reasoning_request_creative_inference(
     );
 
     /* Relock to update stats */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     if (ret == 0) {
         bridge->stats.events_published++;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return ret;
 }
@@ -976,10 +973,10 @@ int imagination_reasoning_set_creative_callback(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->creative_callback = callback;
     bridge->creative_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -996,10 +993,10 @@ int imagination_reasoning_publish_insight(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -1027,7 +1024,7 @@ int imagination_reasoning_publish_insight(
     uint32_t module_id = bridge->config.module_id;
 
     /* Release lock before publishing to avoid deadlock from synchronous callbacks */
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Publish to hub */
     int ret = cognitive_hub_publish(
@@ -1038,12 +1035,12 @@ int imagination_reasoning_publish_insight(
     );
 
     /* Relock to update stats */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     if (ret == 0) {
         bridge->stats.events_published++;
         bridge->stats.insights_shared++;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return ret;
 }
@@ -1057,10 +1054,10 @@ int imagination_reasoning_set_insight_callback(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->insight_callback = callback;
     bridge->insight_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1083,12 +1080,12 @@ int imagination_reasoning_generate_scenario(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Find free slot */
     int slot = find_free_scenario_slot_unlocked(bridge);
     if (slot < 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;  /* No free slots */
     }
 
@@ -1117,7 +1114,7 @@ int imagination_reasoning_generate_scenario(
     /* Update statistics */
     bridge->stats.scenarios_generated++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1131,7 +1128,7 @@ int imagination_reasoning_analyze_scenario(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update state */
     bridge->state = IMAG_REASON_STATE_ANALYZING;
@@ -1180,7 +1177,7 @@ int imagination_reasoning_analyze_scenario(
         bridge->state = IMAG_REASON_STATE_IDLE;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1193,10 +1190,10 @@ int imagination_reasoning_publish_result(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -1214,7 +1211,7 @@ int imagination_reasoning_publish_result(
     uint32_t module_id = bridge->config.module_id;
 
     /* Release lock before publishing to avoid deadlock from synchronous callbacks */
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Publish to hub */
     int ret = cognitive_hub_publish(
@@ -1225,11 +1222,11 @@ int imagination_reasoning_publish_result(
     );
 
     /* Relock to update stats */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     if (ret == 0) {
         bridge->stats.events_published++;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return ret;
 }
@@ -1249,10 +1246,10 @@ int imagination_reasoning_on_event(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -1317,7 +1314,7 @@ int imagination_reasoning_on_event(
             break;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -1333,9 +1330,9 @@ imagination_reasoning_state_t imagination_reasoning_bridge_get_state(
         return IMAG_REASON_STATE_ERROR;
     }
 
-    nimcp_mutex_lock(((imagination_reasoning_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((imagination_reasoning_bridge_t*)bridge)->base.mutex);
     imagination_reasoning_state_t state = bridge->state;
-    nimcp_mutex_unlock(((imagination_reasoning_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((imagination_reasoning_bridge_t*)bridge)->base.mutex);
 
     return state;
 }
@@ -1357,9 +1354,9 @@ uint32_t imagination_reasoning_bridge_get_active_scenarios(
         return 0;
     }
 
-    nimcp_mutex_lock(((imagination_reasoning_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((imagination_reasoning_bridge_t*)bridge)->base.mutex);
     uint32_t count = bridge->active_scenario_count;
-    nimcp_mutex_unlock(((imagination_reasoning_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((imagination_reasoning_bridge_t*)bridge)->base.mutex);
 
     return count;
 }
@@ -1380,9 +1377,9 @@ int imagination_reasoning_bridge_get_stats(
         return -1;
     }
 
-    nimcp_mutex_lock(((imagination_reasoning_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((imagination_reasoning_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(((imagination_reasoning_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((imagination_reasoning_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -1396,9 +1393,9 @@ int imagination_reasoning_bridge_reset_stats(imagination_reasoning_bridge_t* bri
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(imagination_reasoning_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1408,14 +1405,14 @@ int imagination_reasoning_bridge_force_update(imagination_reasoning_bridge_t* br
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update state based on active scenarios */
     if (bridge->active_scenario_count == 0) {
         bridge->state = IMAG_REASON_STATE_IDLE;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

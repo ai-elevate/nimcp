@@ -6,6 +6,7 @@
  */
 
 #include "training/integration/nimcp_training_bio_async_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/platform/nimcp_platform_time.h"
@@ -65,6 +66,7 @@ typedef struct {
  * @brief Bio-async bridge internal structure for training
  */
 struct training_bio_async_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /* Configuration */
     training_bio_bridge_config_t config;
 
@@ -113,9 +115,6 @@ struct training_bio_async_bridge {
     /* Statistics */
     training_bio_bridge_stats_t stats;
 
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
-};
 
 /*=============================================================================
  * HELPER FUNCTIONS
@@ -217,8 +216,8 @@ training_bio_async_bridge_t* training_bio_bridge_create(
     /* Initialize mutex */
     mutex_attr_t attr = {0};
     attr.type = MUTEX_TYPE_NORMAL;
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_mutex_create(&attr);
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -261,8 +260,8 @@ void training_bio_bridge_destroy(training_bio_async_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);
@@ -280,13 +279,13 @@ int training_bio_bridge_connect(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async = bio_async;
 
     /* Update connection status */
     bridge->connected = (bridge->bio_async != NULL);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -299,9 +298,9 @@ int training_bio_bridge_connect_hub(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->hub = hub;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -314,9 +313,9 @@ int training_bio_bridge_connect_gradient_manager(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->grad_mgr = grad_mgr;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -329,9 +328,9 @@ int training_bio_bridge_connect_distributed(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->dist_ctx = dist_ctx;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -341,7 +340,7 @@ int training_bio_bridge_disconnect(training_bio_async_bridge_t* bridge) {
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->bio_async = NULL;
     bridge->hub = NULL;
@@ -349,7 +348,7 @@ int training_bio_bridge_disconnect(training_bio_async_bridge_t* bridge) {
     bridge->dist_ctx = NULL;
     bridge->connected = false;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -375,10 +374,10 @@ int training_bio_bridge_update(
 
     uint64_t start_time = nimcp_platform_time_monotonic_us();
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return TRAIN_BIO_ERROR_NOT_CONNECTED;
     }
 
@@ -426,7 +425,7 @@ int training_bio_bridge_update(
     uint64_t elapsed = nimcp_platform_time_monotonic_us() - start_time;
     bridge->stats.total_update_time_us += elapsed;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -445,10 +444,10 @@ int training_bio_bridge_send_message(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return TRAIN_BIO_ERROR_NOT_CONNECTED;
     }
 
@@ -458,7 +457,7 @@ int training_bio_bridge_send_message(
     /* In a full implementation, this would send through bio-async */
     bridge->stats.messages_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -473,11 +472,11 @@ int training_bio_bridge_register_handler(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if we can add more handlers */
     if (bridge->num_handlers >= TRAIN_BIO_MAX_HANDLERS) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return TRAIN_BIO_ERROR_HANDLERS_FULL;
     }
 
@@ -488,7 +487,7 @@ int training_bio_bridge_register_handler(
             bridge->handlers[i].handler = handler;
             bridge->handlers[i].user_data = user_data;
             bridge->handlers[i].active = true;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return TRAIN_BIO_OK;
         }
     }
@@ -500,7 +499,7 @@ int training_bio_bridge_register_handler(
     entry->user_data = user_data;
     entry->active = true;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -513,17 +512,17 @@ int training_bio_bridge_unregister_handler(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     for (size_t i = 0; i < bridge->num_handlers; i++) {
         if (bridge->handlers[i].type == message_type) {
             bridge->handlers[i].active = false;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return TRAIN_BIO_OK;
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return TRAIN_BIO_OK; /* Not found is not an error */
 }
 
@@ -541,7 +540,7 @@ int training_bio_bridge_signal_batch_complete(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->current_epoch = epoch;
     bridge->current_batch = batch;
@@ -576,7 +575,7 @@ int training_bio_bridge_signal_batch_complete(
     dispatch_message_unlocked(bridge, TRAIN_MSG_BATCH_COMPLETE, &payload, sizeof(payload));
     bridge->stats.messages_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -591,7 +590,7 @@ int training_bio_bridge_signal_epoch_complete(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->current_epoch = epoch;
     bridge->outgoing_effects.completed_epochs++;
@@ -628,7 +627,7 @@ int training_bio_bridge_signal_epoch_complete(
     dispatch_message_unlocked(bridge, TRAIN_MSG_EPOCH_DONE, &payload, sizeof(payload));
     bridge->stats.messages_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -642,7 +641,7 @@ int training_bio_bridge_signal_lr_adjusted(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->current_lr = new_lr;
 
@@ -666,7 +665,7 @@ int training_bio_bridge_signal_lr_adjusted(
     dispatch_message_unlocked(bridge, TRAIN_MSG_LR_ADJUSTED, &payload, sizeof(payload));
     bridge->stats.messages_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -680,7 +679,7 @@ int training_bio_bridge_signal_early_stopping(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->outgoing_effects.early_stopping_triggered = true;
     bridge->outgoing_effects.convergence_detected = true;
@@ -702,7 +701,7 @@ int training_bio_bridge_signal_early_stopping(
     dispatch_message_unlocked(bridge, TRAIN_MSG_TRAINING_STOP, &payload, sizeof(payload));
     bridge->stats.messages_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -725,10 +724,10 @@ int training_bio_bridge_sync_gradients(
         return TRAIN_BIO_ERROR_INVALID_CONFIG;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return TRAIN_BIO_ERROR_NOT_CONNECTED;
     }
 
@@ -740,7 +739,7 @@ int training_bio_bridge_sync_gradients(
         }
         bridge->gradient_sync.buffer = nimcp_calloc(gradient_count, sizeof(float));
         if (!bridge->gradient_sync.buffer) {
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return TRAIN_BIO_ERROR_ALLOC_FAILED;
         }
         bridge->gradient_sync.count = gradient_count;
@@ -810,7 +809,7 @@ int training_bio_bridge_sync_gradients(
         bridge->gradient_callback(&payload, bridge->gradient_callback_user_data);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -828,7 +827,7 @@ int training_bio_bridge_await_gradient_sync(
     uint64_t timeout_us = (uint64_t)timeout_ms * 1000ULL;
 
     while (1) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
 
         /* Check if sync is complete (all workers contributed) */
         if (bridge->gradient_sync.received_count >= bridge->num_workers ||
@@ -864,7 +863,7 @@ int training_bio_bridge_await_gradient_sync(
             dispatch_message_unlocked(bridge, TRAIN_MSG_GRADIENT_SYNC_DONE, NULL, 0);
             bridge->stats.messages_sent++;
 
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return TRAIN_BIO_OK;
         }
 
@@ -873,11 +872,11 @@ int training_bio_bridge_await_gradient_sync(
         if (elapsed >= timeout_us) {
             bridge->stats.gradient_sync_timeouts++;
             bridge->outgoing_effects.sync_timeout_alert = true;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return TRAIN_BIO_ERROR_SYNC_TIMEOUT;
         }
 
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
 
         /* Sleep briefly before checking again */
         nimcp_platform_sleep_ms(1);
@@ -894,10 +893,10 @@ int training_bio_bridge_create_gradient_phase_sync(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return TRAIN_BIO_ERROR_NOT_CONNECTED;
     }
 
@@ -907,7 +906,7 @@ int training_bio_bridge_create_gradient_phase_sync(
 
     bridge->stats.phase_syncs_created++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -926,11 +925,11 @@ int training_bio_bridge_wait_gradient_coherent(
     (void)coherence_threshold;
     (void)timeout_ms;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.phase_syncs_achieved++;
     bridge->stats.avg_coherence = coherence_threshold; /* Simplified */
     bridge->incoming_effects.current_sync_coherence = coherence_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -944,10 +943,10 @@ int training_bio_bridge_on_gradient_sync(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->gradient_callback = callback;
     bridge->gradient_callback_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -964,10 +963,10 @@ int training_bio_bridge_broadcast_loss(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return TRAIN_BIO_ERROR_NOT_CONNECTED;
     }
 
@@ -989,7 +988,7 @@ int training_bio_bridge_broadcast_loss(
         bridge->loss_callback(payload, bridge->loss_callback_user_data);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -1007,7 +1006,7 @@ int training_bio_bridge_aggregate_loss(
     uint64_t timeout_us = (uint64_t)timeout_ms * 1000ULL;
 
     while (1) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
 
         /* Check if aggregation is complete */
         if (bridge->loss_agg.received_count >= bridge->num_workers ||
@@ -1027,18 +1026,18 @@ int training_bio_bridge_aggregate_loss(
             dispatch_message_unlocked(bridge, TRAIN_MSG_LOSS_AGGREGATE, out_avg_loss, sizeof(float));
             bridge->stats.messages_sent++;
 
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return TRAIN_BIO_OK;
         }
 
         /* Check timeout */
         uint64_t elapsed = nimcp_platform_time_monotonic_us() - start_time;
         if (elapsed >= timeout_us) {
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return TRAIN_BIO_ERROR_SYNC_TIMEOUT;
         }
 
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         nimcp_platform_sleep_ms(1);
     }
 }
@@ -1052,10 +1051,10 @@ int training_bio_bridge_on_loss_broadcast(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->loss_callback = callback;
     bridge->loss_callback_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -1074,7 +1073,7 @@ int training_bio_bridge_signal_checkpoint_start(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     training_checkpoint_payload_t payload = {
         .epoch = epoch,
@@ -1092,7 +1091,7 @@ int training_bio_bridge_signal_checkpoint_start(
     dispatch_message_unlocked(bridge, TRAIN_MSG_CHECKPOINT_START, &payload, sizeof(payload));
     bridge->stats.messages_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -1105,7 +1104,7 @@ int training_bio_bridge_signal_checkpoint_complete(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->stats.checkpoints_saved++;
     bridge->outgoing_effects.trigger_checkpoint_wave = false;
@@ -1123,7 +1122,7 @@ int training_bio_bridge_signal_checkpoint_complete(
         bridge->stats.messages_sent++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -1137,10 +1136,10 @@ int training_bio_bridge_initiate_checkpoint_wave(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return TRAIN_BIO_ERROR_NOT_CONNECTED;
     }
 
@@ -1153,7 +1152,7 @@ int training_bio_bridge_initiate_checkpoint_wave(
 
     bridge->stats.glial_waves_initiated++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -1170,9 +1169,9 @@ int training_bio_bridge_await_checkpoint_wave(
     /* In a full implementation, this would wait for wave propagation */
     (void)timeout_ms;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.avg_wave_intensity = bridge->config.checkpoint_wave_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -1190,16 +1189,16 @@ int training_bio_bridge_register_worker(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->num_workers >= TRAIN_BIO_MAX_WORKERS) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return TRAIN_BIO_ERROR_HANDLERS_FULL;
     }
 
     /* Check if already registered */
     if (find_worker_unlocked(bridge, worker_id)) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return TRAIN_BIO_ERROR_ALREADY_CONNECTED;
     }
 
@@ -1219,7 +1218,7 @@ int training_bio_bridge_register_worker(
 
     bridge->incoming_effects.total_workers = bridge->num_workers;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -1232,11 +1231,11 @@ int training_bio_bridge_signal_worker_ready(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     training_worker_info_t* worker = find_worker_unlocked(bridge, worker_id);
     if (!worker) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return TRAIN_BIO_ERROR_INVALID_WORKER_ID;
     }
 
@@ -1255,7 +1254,7 @@ int training_bio_bridge_signal_worker_ready(
     dispatch_message_unlocked(bridge, TRAIN_MSG_WORKER_READY, &worker_id, sizeof(worker_id));
     bridge->stats.messages_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -1272,7 +1271,7 @@ int training_bio_bridge_barrier(
     uint64_t timeout_us = (uint64_t)timeout_ms * 1000ULL;
 
     while (1) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
 
         /* Check if all workers are ready */
         uint32_t ready_count = 0;
@@ -1294,18 +1293,18 @@ int training_bio_bridge_barrier(
             dispatch_message_unlocked(bridge, TRAIN_MSG_SYNC_BARRIER, NULL, 0);
             bridge->stats.messages_sent++;
 
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return TRAIN_BIO_OK;
         }
 
         /* Check timeout */
         uint64_t elapsed = nimcp_platform_time_monotonic_us() - start_time;
         if (elapsed >= timeout_us) {
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return TRAIN_BIO_ERROR_SYNC_TIMEOUT;
         }
 
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         nimcp_platform_sleep_ms(1);
     }
 }
@@ -1320,10 +1319,10 @@ int training_bio_bridge_broadcast_params(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return TRAIN_BIO_ERROR_NOT_CONNECTED;
     }
 
@@ -1341,7 +1340,7 @@ int training_bio_bridge_broadcast_params(
     dispatch_message_unlocked(bridge, TRAIN_MSG_PARAM_BROADCAST, &info, sizeof(info));
     bridge->stats.messages_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -1365,7 +1364,7 @@ uint32_t training_bio_bridge_check_stragglers(
         return 0;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t straggler_count = 0;
     uint64_t now = nimcp_platform_time_monotonic_us();
@@ -1382,7 +1381,7 @@ uint32_t training_bio_bridge_check_stragglers(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return straggler_count;
 }
@@ -1404,14 +1403,14 @@ int training_bio_bridge_release_dopamine(
         return TRAIN_BIO_ERROR_INVALID_CONFIG;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->outgoing_effects.dopamine_release =
         amount * bridge->config.dopamine_sensitivity;
 
     (void)trigger;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -1425,14 +1424,14 @@ int training_bio_bridge_signal_priority(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->outgoing_effects.norepinephrine_level =
         priority * bridge->config.norepinephrine_sensitivity;
 
     (void)alert_type;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -1446,7 +1445,7 @@ int training_bio_bridge_modulate_attention(
         return TRAIN_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->outgoing_effects.acetylcholine_level =
         attention * bridge->config.acetylcholine_sensitivity;
@@ -1455,7 +1454,7 @@ int training_bio_bridge_modulate_attention(
         bridge->outgoing_effects.focused_layer = (uint32_t)layer_idx;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return TRAIN_BIO_OK;
 }
@@ -1518,10 +1517,10 @@ void training_bio_bridge_reset_stats(training_bio_async_bridge_t* bridge) {
         return;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(training_bio_bridge_stats_t));
     bridge->stats.best_loss = INFINITY;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 /*=============================================================================

@@ -6,6 +6,7 @@
  * optimized memory search, pattern matching, and spatial navigation.
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/hippocampus/nimcp_hippocampus_quantum_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "cognitive/reasoning/nimcp_quantum_reasoning.h"
@@ -18,6 +19,7 @@
  *===========================================================================*/
 
 struct hippocampus_quantum_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* hippocampus;                       /**< Hippocampus adapter handle */
     hippocampus_quantum_config_t config;     /**< Configuration */
     qreason_t quantum_reasoner;              /**< Quantum reasoning engine */

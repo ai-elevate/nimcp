@@ -13,6 +13,7 @@
  */
 
 #include "cognitive/memory/core/nimcp_pr_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
@@ -33,6 +34,8 @@
  * WHY:  Encapsulate all bridge data for thread safety
  */
 struct pr_immune_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     pr_immune_bridge_config_t config;
 
@@ -63,9 +66,6 @@ struct pr_immune_bridge_struct {
 
     /* Bio-async */
     bool bio_async_connected;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 
     /* Update tracking */
     uint64_t last_update_ms;
@@ -386,10 +386,8 @@ pr_immune_bridge_t pr_immune_bridge_create(
     }
     memset(bridge->cleanup_queue, 0, bridge->cleanup_capacity * sizeof(pr_cleanup_tag_t));
 
-    /* Create mutex */
-    mutex_attr_t attr = { .type = MUTEX_TYPE_NORMAL };
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "pr_immune") != 0) {
         nimcp_free(bridge->cleanup_queue);
         nimcp_free(bridge);
         return NULL;
@@ -411,13 +409,12 @@ pr_immune_bridge_t pr_immune_bridge_create(
 void pr_immune_bridge_destroy(pr_immune_bridge_t bridge) {
     if (!bridge) return;
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
-
     if (bridge->cleanup_queue) {
         nimcp_free(bridge->cleanup_queue);
     }
+
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }
@@ -425,7 +422,7 @@ void pr_immune_bridge_destroy(pr_immune_bridge_t bridge) {
 int pr_immune_bridge_reset(pr_immune_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset cleanup queue */
     bridge->cleanup_count = 0;
@@ -441,7 +438,7 @@ int pr_immune_bridge_reset(pr_immune_bridge_t bridge) {
     bridge->sim_coordination.promotions_triggered = 0;
     bridge->sim_coordination.entanglements_pruned = 0;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -451,10 +448,10 @@ int pr_immune_bridge_connect_immune(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->immune_system = immune_system;
     update_cytokine_effects(bridge);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -465,10 +462,10 @@ int pr_immune_bridge_connect_sleep(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->sleep_system = sleep_system;
     update_sim_coordination(bridge);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -485,7 +482,7 @@ nimcp_quaternion_t pr_immune_bridge_modulate_consolidation(
     nimcp_quaternion_t result = quat_identity();
     if (!bridge || !node) return result;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get base quaternion from node */
     result = node->state;
@@ -514,7 +511,7 @@ nimcp_quaternion_t pr_immune_bridge_modulate_consolidation(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
@@ -525,12 +522,12 @@ int pr_immune_bridge_apply_inflammation(
 {
     if (!bridge || !node || !quat_out) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     *quat_out = node->state;
 
     if (!bridge->config.enable_inflammation_effects) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -550,16 +547,16 @@ int pr_immune_bridge_apply_inflammation(
         bridge->stats.inflammation_effects++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 float pr_immune_bridge_get_consolidation_modifier(pr_immune_bridge_t bridge) {
     if (!bridge) return 0.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float modifier = bridge->cytokine_effects.net_consolidation_modifier;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return modifier;
 }
@@ -567,9 +564,9 @@ float pr_immune_bridge_get_consolidation_modifier(pr_immune_bridge_t bridge) {
 float pr_immune_bridge_get_accessibility_modifier(pr_immune_bridge_t bridge) {
     if (!bridge) return 0.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float modifier = bridge->cytokine_effects.net_accessibility_modifier;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return modifier;
 }
@@ -587,11 +584,11 @@ int pr_immune_bridge_tag_for_cleanup(
     if (!bridge) return -1;
     if (!bridge->config.enable_cleanup_tagging) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if already tagged */
     if (find_cleanup_tag_unlocked(bridge, node_id)) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;  /* Already tagged */
     }
 
@@ -607,7 +604,7 @@ int pr_immune_bridge_tag_for_cleanup(
 
     int result = add_cleanup_tag_unlocked(bridge, &tag);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result;
 }
 
@@ -617,9 +614,9 @@ bool pr_immune_bridge_is_tagged(
 {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool tagged = (find_cleanup_tag_unlocked(bridge, node_id) != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return tagged;
 }
@@ -631,17 +628,17 @@ int pr_immune_bridge_get_tag(
 {
     if (!bridge || !tag_out) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     pr_cleanup_tag_t* tag = find_cleanup_tag_unlocked(bridge, node_id);
     if (!tag) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     *tag_out = *tag;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -651,18 +648,18 @@ int pr_immune_bridge_untag(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     pr_cleanup_tag_t* tag = find_cleanup_tag_unlocked(bridge, node_id);
     if (!tag) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     /* Mark as processed to effectively remove */
     tag->processed = true;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -672,7 +669,7 @@ int pr_immune_bridge_get_next_cleanup(
 {
     if (!bridge || !tag_out) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Find next unprocessed tag */
     while (bridge->cleanup_count > 0) {
@@ -680,7 +677,7 @@ int pr_immune_bridge_get_next_cleanup(
 
         if (!tag->processed) {
             *tag_out = *tag;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return 0;
         }
 
@@ -689,7 +686,7 @@ int pr_immune_bridge_get_next_cleanup(
         bridge->cleanup_count--;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return -1;  /* Queue empty */
 }
 
@@ -699,7 +696,7 @@ int pr_immune_bridge_cleanup_complete(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     pr_cleanup_tag_t* tag = find_cleanup_tag_unlocked(bridge, node_id);
     if (tag) {
@@ -708,7 +705,7 @@ int pr_immune_bridge_cleanup_complete(
         bridge->sim_coordination.nodes_cleaned++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return tag ? 0 : -1;
 }
 
@@ -719,7 +716,7 @@ int pr_immune_bridge_cleanup_complete(
 int pr_immune_bridge_process_inflammation(pr_immune_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->immune_system) {
         /* Get inflammation level from immune system */
@@ -751,7 +748,7 @@ int pr_immune_bridge_process_inflammation(pr_immune_bridge_t bridge) {
     /* Update derived effects */
     update_cytokine_effects(bridge);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -760,9 +757,9 @@ pr_inflammation_impact_t pr_immune_bridge_get_inflammation_impact(
 {
     if (!bridge) return PR_INFLAMMATION_NONE;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     pr_inflammation_impact_t impact = bridge->cytokine_effects.impact_level;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return impact;
 }
@@ -770,9 +767,9 @@ pr_inflammation_impact_t pr_immune_bridge_get_inflammation_impact(
 bool pr_immune_bridge_is_chronic_inflammation(pr_immune_bridge_t bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool chronic = bridge->chronic_inflammation;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return chronic;
 }
@@ -780,9 +777,9 @@ bool pr_immune_bridge_is_chronic_inflammation(pr_immune_bridge_t bridge) {
 float pr_immune_bridge_get_decay_multiplier(pr_immune_bridge_t bridge) {
     if (!bridge) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float mult = bridge->cytokine_effects.decay_rate_multiplier;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return mult;
 }
@@ -798,12 +795,12 @@ int pr_immune_bridge_cytokine_to_quaternion(
 {
     if (!bridge || !modulated_out) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     *modulated_out = base_quat;
 
     if (!bridge->config.enable_cytokine_modulation) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -824,7 +821,7 @@ int pr_immune_bridge_cytokine_to_quaternion(
                                   PR_IMMUNE_QUAT_MIN, PR_IMMUNE_QUAT_MAX);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -834,9 +831,9 @@ int pr_immune_bridge_get_cytokine_effects(
 {
     if (!bridge || !effects_out) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects_out = bridge->cytokine_effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -904,12 +901,12 @@ int pr_immune_bridge_sleep_consolidation(
 {
     if (!bridge || !node || !quat_out) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     *quat_out = node->state;
 
     if (!bridge->config.enable_sleep_coordination) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -958,16 +955,16 @@ int pr_immune_bridge_sleep_consolidation(
 
     bridge->sim_coordination.nodes_consolidated++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 pr_sim_phase_t pr_immune_bridge_get_sim_phase(pr_immune_bridge_t bridge) {
     if (!bridge) return PR_SIM_PHASE_AWAKE;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     pr_sim_phase_t phase = bridge->sim_coordination.current_phase;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return phase;
 }
@@ -978,9 +975,9 @@ int pr_immune_bridge_get_sim_coordination(
 {
     if (!bridge || !coordination_out) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *coordination_out = bridge->sim_coordination;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -988,9 +985,9 @@ int pr_immune_bridge_get_sim_coordination(
 int pr_immune_bridge_sync_sleep_phase(pr_immune_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     update_sim_coordination(bridge);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -998,10 +995,10 @@ int pr_immune_bridge_sync_sleep_phase(pr_immune_bridge_t bridge) {
 bool pr_immune_bridge_is_deep_sleep_consolidation(pr_immune_bridge_t bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool active = (bridge->sim_coordination.current_phase == PR_SIM_PHASE_DEEP_SLEEP) &&
                   bridge->sim_coordination.immune_consolidation_active;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return active;
 }
@@ -1009,9 +1006,9 @@ bool pr_immune_bridge_is_deep_sleep_consolidation(pr_immune_bridge_t bridge) {
 bool pr_immune_bridge_is_rem_cleanup_active(pr_immune_bridge_t bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool active = (bridge->sim_coordination.current_phase == PR_SIM_PHASE_REM_SLEEP);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return active;
 }
@@ -1100,7 +1097,7 @@ int pr_immune_bridge_update(
 
     uint64_t start_time = nimcp_time_get_us();
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update cytokine effects from immune system */
     update_cytokine_effects(bridge);
@@ -1155,7 +1152,7 @@ int pr_immune_bridge_update(
 
     bridge->last_update_ms = nimcp_time_get_ms();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Update timing stats */
     uint64_t elapsed_us = nimcp_time_get_us() - start_time;
@@ -1175,9 +1172,9 @@ int pr_immune_bridge_get_stats(
 {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1185,9 +1182,9 @@ int pr_immune_bridge_get_stats(
 uint32_t pr_immune_bridge_get_cleanup_queue_size(pr_immune_bridge_t bridge) {
     if (!bridge) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     uint32_t size = bridge->cleanup_count;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return size;
 }

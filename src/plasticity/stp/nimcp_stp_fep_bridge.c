@@ -80,7 +80,7 @@ stp_fep_bridge_t* stp_fep_bridge_create(const stp_fep_config_t* config) {
     memset(&bridge->stats, 0, sizeof(stp_fep_stats_t));
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "stp_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         LOG_ERROR("STP-FEP bridge mutex creation failed");
@@ -107,7 +107,7 @@ void stp_fep_bridge_destroy(stp_fep_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

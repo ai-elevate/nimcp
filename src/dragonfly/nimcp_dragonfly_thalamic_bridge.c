@@ -3,6 +3,7 @@
  * @brief Implementation of Dragonfly-to-Thalamic System Bridge
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "dragonfly/nimcp_dragonfly_thalamic_bridge.h"
 #include "dragonfly/nimcp_dragonfly.h"
 #include "dragonfly/nimcp_dragonfly_tsdn.h"
@@ -19,6 +20,7 @@
 //=============================================================================
 
 struct dragonfly_thalamic_bridge_s {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     bool initialized;
 
     /* Connected systems */

@@ -7,6 +7,7 @@
 
 /* Include actual type definitions BEFORE the bridge header to avoid forward decl conflicts */
 #include "security/nimcp_security_orchestrator.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/integration/nimcp_cognitive_integration_hub.h"
 #include "cognitive/integration/nimcp_cognitive_event_types.h"
 #include "cognitive/integration/nimcp_security_cognitive_hub_bridge.h"
@@ -27,6 +28,8 @@
  * @brief Internal bridge structure
  */
 struct security_cognitive_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     security_cognitive_config_t config;
 
@@ -45,9 +48,6 @@ struct security_cognitive_bridge_struct {
     /* Statistics */
     security_cognitive_stats_t stats;
 
-    /* Synchronization */
-    nimcp_mutex_t* mutex;
-
     /* Timestamps */
     uint64_t create_time;
 };
@@ -56,8 +56,8 @@ struct security_cognitive_bridge_struct {
  * HELPER MACROS
  * ============================================================================ */
 
-#define BRIDGE_LOCK(b) nimcp_mutex_lock((b)->mutex)
-#define BRIDGE_UNLOCK(b) nimcp_mutex_unlock((b)->mutex)
+#define BRIDGE_LOCK(b) nimcp_mutex_lock((b)->base.mutex)
+#define BRIDGE_UNLOCK(b) nimcp_mutex_unlock((b)->base.mutex)
 
 /* ============================================================================
  * INTERNAL HELPER FUNCTIONS
@@ -286,10 +286,8 @@ security_cognitive_bridge_t security_cognitive_bridge_create(
         security_cognitive_default_config(&bridge->config);
     }
 
-    /* Initialize mutex */
-    mutex_attr_t attr = { .type = MUTEX_TYPE_RECURSIVE };
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "security_cognitive") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -309,10 +307,8 @@ void security_cognitive_bridge_destroy(security_cognitive_bridge_t bridge)
     security_cognitive_disconnect_security(bridge);
     security_cognitive_disconnect_cognitive(bridge);
 
-    /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }

@@ -9,6 +9,7 @@
  * Uses shared metabolic modulation utilities from nimcp_metabolic_modulation.h
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/personality/nimcp_personality_substrate_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
@@ -20,6 +21,7 @@
 #include <math.h>
 
 struct personality_substrate_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* personality;
     neural_substrate_t* substrate;
     personality_substrate_config_t config;

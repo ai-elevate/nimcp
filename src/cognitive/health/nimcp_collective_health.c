@@ -8,7 +8,7 @@
  */
 
 /* Enable POSIX clock functions */
-#define _POSIX_C_SOURCE 199309L
+#define _POSIX_C_SOURCE 200809L
 
 #include "cognitive/health/nimcp_collective_health.h"
 #include "utils/exception/nimcp_exception_macros.h"

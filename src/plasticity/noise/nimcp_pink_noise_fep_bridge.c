@@ -42,7 +42,7 @@ pink_noise_fep_bridge_t* pink_noise_fep_bridge_create(const pink_noise_fep_confi
     memset(&bridge->noise_effects, 0, sizeof(pink_noise_fep_feedback_t));
     memset(&bridge->stats, 0, sizeof(pink_noise_fep_stats_t));
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "pink_noise_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -57,7 +57,7 @@ pink_noise_fep_bridge_t* pink_noise_fep_bridge_create(const pink_noise_fep_confi
 void pink_noise_fep_bridge_destroy(pink_noise_fep_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.bio_async_enabled) pink_noise_fep_bridge_disconnect_bio_async(bridge);
-    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

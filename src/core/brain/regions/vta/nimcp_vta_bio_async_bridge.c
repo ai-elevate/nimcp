@@ -5,6 +5,7 @@
  * @date 2026-01-11
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/vta/nimcp_vta_bio_async_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -26,6 +27,7 @@ typedef struct {
 } vta_internal_state_t;
 
 struct vta_bio_async_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     vta_bio_async_config_t config;
     nimcp_vta_adapter_t adapter;
     bio_router_t router;

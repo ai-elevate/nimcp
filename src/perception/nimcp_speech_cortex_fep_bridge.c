@@ -71,7 +71,7 @@ speech_cortex_fep_bridge_t* speech_cortex_fep_bridge_create(
     }
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "speech_cortex_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to create mutex for speech_cortex_fep_bridge");
         nimcp_free(bridge);
@@ -112,7 +112,7 @@ void speech_cortex_fep_bridge_destroy(speech_cortex_fep_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

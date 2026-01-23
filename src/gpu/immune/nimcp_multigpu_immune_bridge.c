@@ -155,7 +155,7 @@ multigpu_immune_bridge_t* multigpu_immune_create(
     bridge->last_update_time = get_time_ms();
     bridge->error_window_start = bridge->last_update_time;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "multigpu_immune") != 0) { nimcp_free(bridge); return NULL; }
 
     /* Allocate per-GPU utilization array if multigpu context available */
     if (multigpu_context) {
@@ -188,7 +188,7 @@ void multigpu_immune_destroy(multigpu_immune_bridge_t* bridge) {
     }
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

@@ -12,6 +12,7 @@
  */
 
 #include "cognitive/game_theory/nimcp_game_theory_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/game_theory/nimcp_game_theory.h"
 #include "cognitive/free_energy/nimcp_fep_orchestrator.h"
 #include "utils/memory/nimcp_memory.h"
@@ -27,12 +28,13 @@
  *===========================================================================*/
 
 struct gt_fep_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     gt_fep_config_t config;
 
     /* State */
     gt_fep_state_t state;
-    nimcp_mutex_t* mutex;
 
     /* References */
     fep_orchestrator_t* orchestrator;
@@ -300,10 +302,8 @@ gt_fep_bridge_t* gt_fep_bridge_create(const gt_fep_config_t* config) {
         bridge->config = gt_fep_config_default();
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize bridge base infrastructure (includes mutex) */
+    if (bridge_base_init(&bridge->base, 0, "gt_fep") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -343,10 +343,8 @@ void gt_fep_bridge_destroy(gt_fep_bridge_t* bridge) {
         gt_fep_bridge_unregister(bridge);
     }
 
-    /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }
@@ -354,7 +352,7 @@ void gt_fep_bridge_destroy(gt_fep_bridge_t* bridge) {
 int gt_fep_bridge_reset(gt_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset metrics */
     memset(&bridge->metrics, 0, sizeof(gt_fep_metrics_t));
@@ -377,7 +375,7 @@ int gt_fep_bridge_reset(gt_fep_bridge_t* bridge) {
 
     bridge->state = GT_FEP_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -393,11 +391,11 @@ int gt_fep_bridge_register(
 ) {
     if (!bridge || !orchestrator) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if already registered */
     if (bridge->registered) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         if (bridge_id_out) {
             *bridge_id_out = bridge->bridge_id;
         }
@@ -423,7 +421,7 @@ int gt_fep_bridge_register(
     if (ret != 0) {
         bridge->orchestrator = NULL;
         bridge->gt_system = NULL;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -435,17 +433,17 @@ int gt_fep_bridge_register(
         *bridge_id_out = assigned_id;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int gt_fep_bridge_unregister(gt_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->registered) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;  /* Not registered, nothing to do */
     }
 
@@ -460,16 +458,16 @@ int gt_fep_bridge_unregister(gt_fep_bridge_t* bridge) {
     bridge->gt_system = NULL;
     bridge->state = GT_FEP_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 bool gt_fep_bridge_is_registered(const gt_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->base.mutex);
     bool registered = bridge->registered;
-    nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->base.mutex);
 
     return registered;
 }
@@ -477,9 +475,9 @@ bool gt_fep_bridge_is_registered(const gt_fep_bridge_t* bridge) {
 uint32_t gt_fep_bridge_get_id(const gt_fep_bridge_t* bridge) {
     if (!bridge) return 0;
 
-    nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->base.mutex);
     uint32_t id = bridge->registered ? bridge->bridge_id : 0;
-    nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->base.mutex);
 
     return id;
 }
@@ -492,11 +490,11 @@ int gt_fep_update_callback(void* handle) {
     gt_fep_bridge_t* bridge = (gt_fep_bridge_t*)handle;
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Ensure we're registered */
     if (!bridge->registered) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -564,7 +562,7 @@ int gt_fep_update_callback(void* handle) {
     /* Check and trigger callbacks */
     check_callbacks(bridge);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -580,7 +578,7 @@ void gt_fep_destroy_callback(void* handle) {
 int gt_fep_bridge_force_update(gt_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t start_us = get_time_us();
 
@@ -600,7 +598,7 @@ int gt_fep_bridge_force_update(gt_fep_bridge_t* bridge) {
     /* Check and trigger callbacks */
     check_callbacks(bridge);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -610,10 +608,10 @@ int gt_fep_bridge_update_strategy_uncertainty(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.strategy_uncertainty = clamp_f(uncertainty, 0.0f, 1.0f);
     bridge->stats.strategy_computations++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -624,9 +622,9 @@ int gt_fep_bridge_update_opponent_error(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.opponent_prediction_error = clamp_f(error, 0.0f, 1.0f);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -637,10 +635,10 @@ int gt_fep_bridge_update_nash_distance(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.nash_distance = clamp_f(distance, 0.0f, 1.0f);
     bridge->stats.nash_equilibrium_checks++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -655,9 +653,9 @@ int gt_fep_bridge_get_metrics(
 ) {
     if (!bridge || !metrics_out) return -1;
 
-    nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->base.mutex);
     *metrics_out = bridge->metrics;
-    nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -668,9 +666,9 @@ int gt_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats_out) return -1;
 
-    nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->base.mutex);
     *stats_out = bridge->stats;
-    nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -678,11 +676,11 @@ int gt_fep_bridge_get_stats(
 int gt_fep_bridge_reset_stats(gt_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(gt_fep_stats_t));
     bridge->running_avg_fe = 0.0f;
     bridge->running_count = 0;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -690,9 +688,9 @@ int gt_fep_bridge_reset_stats(gt_fep_bridge_t* bridge) {
 float gt_fep_bridge_get_free_energy(const gt_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->base.mutex);
     float fe = bridge->metrics.free_energy;
-    nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->base.mutex);
 
     return fe;
 }
@@ -700,9 +698,9 @@ float gt_fep_bridge_get_free_energy(const gt_fep_bridge_t* bridge) {
 float gt_fep_bridge_get_strategy_uncertainty(const gt_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->base.mutex);
     float su = bridge->metrics.strategy_uncertainty;
-    nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->base.mutex);
 
     return su;
 }
@@ -710,9 +708,9 @@ float gt_fep_bridge_get_strategy_uncertainty(const gt_fep_bridge_t* bridge) {
 float gt_fep_bridge_get_prediction_error(const gt_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->base.mutex);
     float pe = bridge->metrics.prediction_error;
-    nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->base.mutex);
 
     return pe;
 }
@@ -724,9 +722,9 @@ float gt_fep_bridge_get_prediction_error(const gt_fep_bridge_t* bridge) {
 gt_fep_state_t gt_fep_bridge_get_state(const gt_fep_bridge_t* bridge) {
     if (!bridge) return GT_FEP_STATE_ERROR;
 
-    nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->base.mutex);
     gt_fep_state_t state = bridge->state;
-    nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->base.mutex);
 
     return state;
 }
@@ -734,9 +732,9 @@ gt_fep_state_t gt_fep_bridge_get_state(const gt_fep_bridge_t* bridge) {
 bool gt_fep_bridge_is_degraded(const gt_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->base.mutex);
     bool degraded = (bridge->state == GT_FEP_STATE_DEGRADED);
-    nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->base.mutex);
 
     return degraded;
 }
@@ -744,9 +742,9 @@ bool gt_fep_bridge_is_degraded(const gt_fep_bridge_t* bridge) {
 bool gt_fep_bridge_is_at_nash(const gt_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->base.mutex);
     bool at_nash = bridge->metrics.at_nash_equilibrium;
-    nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->base.mutex);
 
     return at_nash;
 }
@@ -773,10 +771,10 @@ int gt_fep_bridge_set_high_fe_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->high_fe_callback = callback;
     bridge->high_fe_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -788,10 +786,10 @@ int gt_fep_bridge_set_surprise_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->surprise_callback = callback;
     bridge->surprise_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -803,10 +801,10 @@ int gt_fep_bridge_set_metrics_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics_callback = callback;
     bridge->metrics_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -821,9 +819,9 @@ int gt_fep_bridge_set_config(
 ) {
     if (!bridge || !config) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->config = *config;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -834,9 +832,9 @@ int gt_fep_bridge_get_config(
 ) {
     if (!bridge || !config_out) return -1;
 
-    nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((gt_fep_bridge_t*)bridge)->base.mutex);
     *config_out = bridge->config;
-    nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((gt_fep_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }

@@ -28,6 +28,7 @@
  * @author NIMCP Development Team
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/wernicke/nimcp_wernicke_gpu_bio_bridge.h"
 #include "gpu/cognitive/nimcp_wernicke_gpu.h"
 #include "async/nimcp_bio_async.h"
@@ -59,6 +60,7 @@
  *=============================================================================*/
 
 struct wernicke_gpu_bio_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /* GPU context */
     wernicke_gpu_context_t* gpu_ctx;
     bool owns_gpu_ctx;

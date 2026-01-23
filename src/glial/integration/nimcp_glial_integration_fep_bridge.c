@@ -41,7 +41,7 @@ glial_integration_fep_bridge_t* glial_integration_fep_create(
     bridge->glial_integration = glial_integration;
     bridge->fep_system = fep_system;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "glial_integration_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("glial_integration_fep_create: mutex creation failed");
         nimcp_free(bridge);
@@ -59,7 +59,7 @@ void glial_integration_fep_destroy(glial_integration_fep_bridge_t* bridge) {
         glial_integration_fep_disconnect_bio_async(bridge);
     }
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Glial integration-FEP bridge destroyed");

@@ -6,6 +6,7 @@
  * realistic speech production under fatigue/stress conditions.
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/broca/nimcp_broca_substrate_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -23,6 +24,7 @@
 //=============================================================================
 
 struct broca_substrate_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* broca;                         /**< Broca adapter handle */
     neural_substrate_t* substrate;       /**< Neural substrate handle */
     broca_substrate_config_t config;     /**< Configuration */

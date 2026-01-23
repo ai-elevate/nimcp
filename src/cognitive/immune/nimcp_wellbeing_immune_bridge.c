@@ -210,7 +210,7 @@ wellbeing_immune_bridge_t* wellbeing_immune_bridge_create(
     }
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "wellbeing_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);    return NULL;
     }
@@ -224,7 +224,7 @@ void wellbeing_immune_bridge_destroy(wellbeing_immune_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */

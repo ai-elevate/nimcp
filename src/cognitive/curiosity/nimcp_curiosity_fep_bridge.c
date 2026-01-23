@@ -116,7 +116,7 @@ curiosity_fep_bridge_t* curiosity_fep_bridge_create(const curiosity_fep_config_t
     memset(&bridge->effects, 0, sizeof(curiosity_fep_effects_t));
 
     /* Create mutex for thread safety */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "curiosity_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for curiosity-FEP bridge");
         curiosity_fep_bridge_destroy(bridge);
@@ -145,7 +145,7 @@ void curiosity_fep_bridge_destroy(curiosity_fep_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

@@ -3,6 +3,7 @@
  * @brief Brain Immune-Thalamic Bridge Implementation
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/immune/nimcp_brain_immune_thalamic_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
@@ -12,6 +13,7 @@
 #include <string.h>
 
 struct brain_immune_thalamic_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* brain_immune;
     thalamic_router_t* router;
     brain_immune_thalamic_config_t config;

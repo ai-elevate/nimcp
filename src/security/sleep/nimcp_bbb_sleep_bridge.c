@@ -75,7 +75,7 @@ bbb_sleep_bridge_t bbb_sleep_bridge_create(
     bridge->effects.response_urgency_factor = 1.0f;
     bridge->effects.glymphatic_active = false;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "bbb_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
 
     bridge->callback_registered = sleep_register_state_callback(
@@ -94,7 +94,7 @@ void bbb_sleep_bridge_destroy(bbb_sleep_bridge_t bridge) {
         sleep_unregister_state_callback(bridge->sleep_system,
             bbb_on_sleep_state_change, bridge);
     }
-    if (bridge->base.mutex) nimcp_mutex_free(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

@@ -7,6 +7,7 @@
  */
 
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_hippocampus_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -130,7 +131,7 @@ hypo_hipp_bridge_t* hypo_hipp_bridge_create(
     /* Create mutex */
     mutex_attr_t attr;
     attr.type = MUTEX_TYPE_NORMAL;
-    bridge->mutex = nimcp_mutex_create(&attr);
+    bridge->base.mutex = nimcp_mutex_create(&attr);
 
     NIMCP_LOG_INFO("Hypothalamus-Hippocampus bridge created");
     return bridge;
@@ -140,8 +141,8 @@ void hypo_hipp_bridge_destroy(hypo_hipp_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);
@@ -151,7 +152,7 @@ void hypo_hipp_bridge_destroy(hypo_hipp_bridge_t* bridge) {
 void hypo_hipp_bridge_reset(hypo_hipp_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset state */
     memset(&bridge->current_priority, 0, sizeof(bridge->current_priority));
@@ -176,7 +177,7 @@ void hypo_hipp_bridge_reset(hypo_hipp_bridge_t* bridge) {
     bridge->consolidation_signals_sent = 0;
     bridge->nav_goals_set = 0;
 
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOG_DEBUG("Hypothalamus-Hippocampus bridge reset");
 }
@@ -188,7 +189,7 @@ void hypo_hipp_bridge_reset(hypo_hipp_bridge_t* bridge) {
 int hypo_hipp_bridge_update(hypo_hipp_bridge_t* bridge, float dt_ms) {
     if (!bridge || !bridge->drives) return -1;
 
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now_us = nimcp_time_now_us();
 
@@ -211,7 +212,7 @@ int hypo_hipp_bridge_update(hypo_hipp_bridge_t* bridge, float dt_ms) {
         hypo_hipp_bridge_broadcast_encoding_priority(bridge);
     }
 
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -387,7 +388,7 @@ float hypo_hipp_bridge_process_retrieval(
 
     if (!bridge || !retrieval) return 0.0f;
 
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     float influence = 0.0f;
 
@@ -427,7 +428,7 @@ float hypo_hipp_bridge_process_retrieval(
 
     bridge->memory_retrievals_processed++;
 
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
     return influence;
 }
 
@@ -437,7 +438,7 @@ void hypo_hipp_bridge_process_context(
 
     if (!bridge || !context) return;
 
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->current_context = *context;
 
@@ -448,7 +449,7 @@ void hypo_hipp_bridge_process_context(
                                      (1.0f - context->safety_estimate) * 0.3f);
     }
 
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 float hypo_hipp_bridge_process_replay(
@@ -459,7 +460,7 @@ float hypo_hipp_bridge_process_replay(
 
     float reward_prediction = 0.0f;
 
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->config.enable_replay_rewards) {
         /* Convert replay total reward to drive-relevant reward prediction */
@@ -484,7 +485,7 @@ float hypo_hipp_bridge_process_replay(
 
     bridge->replay_events_processed++;
 
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
     return reward_prediction;
 }
 
@@ -509,11 +510,11 @@ bool hypo_hipp_bridge_connect(
 
     if (!bridge) return false;
 
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->hippocampus = hippocampus;
 
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOG_INFO("Hippocampus connected to hypothalamus bridge");
     return true;
@@ -577,7 +578,7 @@ bool hypo_hipp_bridge_create_association(
 
     if (!bridge || drive >= HYPO_DRIVE_COUNT) return false;
 
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     bool success = false;
 
@@ -604,7 +605,7 @@ bool hypo_hipp_bridge_create_association(
         success = true;
     }
 
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
     return success;
 }
 
@@ -616,7 +617,7 @@ float hypo_hipp_bridge_strengthen_association(
 
     if (!bridge || drive >= HYPO_DRIVE_COUNT) return -1.0f;
 
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     float new_strength = -1.0f;
 
@@ -632,7 +633,7 @@ float hypo_hipp_bridge_strengthen_association(
         }
     }
 
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
     return new_strength;
 }
 

@@ -3,6 +3,7 @@
  * @brief Cognitive Bias-Neural Substrate Bridge Implementation
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/bias/nimcp_bias_substrate_bridge.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
@@ -12,6 +13,7 @@
 #include <string.h>
 
 struct bias_substrate_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* bias;
     neural_substrate_t* substrate;
     bias_substrate_config_t config;

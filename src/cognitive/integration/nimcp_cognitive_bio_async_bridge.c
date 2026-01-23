@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/integration/nimcp_cognitive_bio_async_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/platform/nimcp_platform_time.h"
@@ -58,6 +59,7 @@ typedef struct {
  * @brief Internal bridge structure
  */
 struct cognitive_bio_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /* Configuration */
     cognitive_bio_bridge_config_t config;
 
@@ -88,9 +90,6 @@ struct cognitive_bio_bridge {
 
     /* Statistics */
     cognitive_bio_bridge_stats_t stats;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 
     /* Timing */
     uint64_t last_update_time_ms;
@@ -268,8 +267,8 @@ cognitive_bio_bridge_t* cognitive_bio_bridge_create(
     /* Initialize mutex */
     mutex_attr_t attr = {0};
     attr.type = MUTEX_TYPE_NORMAL;
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_mutex_create(&attr);
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -311,8 +310,8 @@ void cognitive_bio_bridge_destroy(cognitive_bio_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);
@@ -330,10 +329,10 @@ int cognitive_bio_bridge_connect(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async = bio_async;
     bridge->connected = (bridge->bio_async != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -346,9 +345,9 @@ int cognitive_bio_bridge_connect_brain(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->brain = brain;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -358,10 +357,10 @@ int cognitive_bio_bridge_disconnect(cognitive_bio_bridge_t* bridge) {
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async = NULL;
     bridge->connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -391,10 +390,10 @@ int cognitive_bio_bridge_register_module(
         return COG_BIO_ERROR_INVALID_CONFIG;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->modules[idx].active) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return COG_BIO_ERROR_MODULE_ALREADY_REG;
     }
 
@@ -412,7 +411,7 @@ int cognitive_bio_bridge_register_module(
     /* Send registration notification */
     dispatch_message_unlocked(bridge, COG_MSG_MODULE_REGISTERED, &type, sizeof(type));
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -430,10 +429,10 @@ int cognitive_bio_bridge_unregister_module(
         return COG_BIO_ERROR_INVALID_CONFIG;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->modules[idx].active) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return COG_BIO_ERROR_MODULE_NOT_FOUND;
     }
 
@@ -445,7 +444,7 @@ int cognitive_bio_bridge_unregister_module(
     /* Send unregistration notification */
     dispatch_message_unlocked(bridge, COG_MSG_MODULE_UNREGISTERED, &type, sizeof(type));
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -507,10 +506,10 @@ int cognitive_bio_bridge_update(
 
     uint64_t start_time = nimcp_platform_time_monotonic_us();
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return COG_BIO_ERROR_DISCONNECTED;
     }
 
@@ -561,7 +560,7 @@ int cognitive_bio_bridge_update(
     bridge->stats.avg_update_time_us =
         (bridge->stats.avg_update_time_us * (update_count - 1) + (float)elapsed) / update_count;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -580,10 +579,10 @@ int cognitive_bio_bridge_send_message(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return COG_BIO_ERROR_DISCONNECTED;
     }
 
@@ -592,7 +591,7 @@ int cognitive_bio_bridge_send_message(
 
     bridge->stats.total_messages_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -613,10 +612,10 @@ int cognitive_bio_bridge_send_to_module(
         return COG_BIO_ERROR_INVALID_CONFIG;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->modules[idx].active) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return COG_BIO_ERROR_MODULE_NOT_FOUND;
     }
 
@@ -626,7 +625,7 @@ int cognitive_bio_bridge_send_to_module(
     bridge->modules[idx].messages_received++;
     bridge->stats.total_messages_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -641,10 +640,10 @@ int cognitive_bio_bridge_register_handler(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->num_handlers >= HANDLER_TABLE_SIZE) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return COG_BIO_ERROR_HANDLER_FULL;
     }
 
@@ -668,7 +667,7 @@ int cognitive_bio_bridge_register_handler(
 
     bridge->stats.registered_handlers++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -682,7 +681,7 @@ int cognitive_bio_bridge_unregister_handler(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bool found = false;
     for (size_t i = 0; i < bridge->num_handlers; i++) {
@@ -696,7 +695,7 @@ int cognitive_bio_bridge_unregister_handler(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return found ? COG_BIO_OK : COG_BIO_ERROR_MODULE_NOT_FOUND;
 }
@@ -724,7 +723,7 @@ int cognitive_bio_bridge_broadcast_attention_shift(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update outgoing effects */
     bridge->outgoing_effects.attention_target_id = target_id;
@@ -743,7 +742,7 @@ int cognitive_bio_bridge_broadcast_attention_shift(
     bridge->stats.broadcast_count++;
     bridge->stats.total_messages_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -767,7 +766,7 @@ int cognitive_bio_bridge_broadcast_emotion_update(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update outgoing effects */
     bridge->outgoing_effects.current_valence = valence;
@@ -792,7 +791,7 @@ int cognitive_bio_bridge_broadcast_emotion_update(
     bridge->stats.broadcast_count++;
     bridge->stats.total_messages_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -816,7 +815,7 @@ int cognitive_bio_bridge_broadcast_goal_change(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update outgoing effects based on status */
     bridge->outgoing_effects.current_priority = priority;
@@ -856,7 +855,7 @@ int cognitive_bio_bridge_broadcast_goal_change(
     bridge->stats.broadcast_count++;
     bridge->stats.total_messages_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -880,7 +879,7 @@ int cognitive_bio_bridge_broadcast_salience_spike(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Threat increases norepinephrine */
     if (is_threat) {
@@ -911,7 +910,7 @@ int cognitive_bio_bridge_broadcast_salience_spike(
     bridge->stats.broadcast_count++;
     bridge->stats.total_messages_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -933,7 +932,7 @@ int cognitive_bio_bridge_broadcast_load_warning(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->outgoing_effects.cognitive_load = current_load;
     bridge->outgoing_effects.capacity_warning = true;
@@ -951,7 +950,7 @@ int cognitive_bio_bridge_broadcast_load_warning(
     bridge->stats.broadcast_count++;
     bridge->stats.total_messages_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -971,10 +970,10 @@ int cognitive_bio_bridge_request_state_sync(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return COG_BIO_ERROR_DISCONNECTED;
     }
 
@@ -1001,7 +1000,7 @@ int cognitive_bio_bridge_request_state_sync(
     /* Send completion */
     dispatch_message_unlocked(bridge, COG_MSG_STATE_SYNC_COMPLETE, NULL, 0);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -1015,10 +1014,10 @@ int cognitive_bio_bridge_on_state_change(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->num_state_callbacks >= MAX_STATE_CALLBACKS) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return COG_BIO_ERROR_HANDLER_FULL;
     }
 
@@ -1038,7 +1037,7 @@ int cognitive_bio_bridge_on_state_change(
         bridge->num_state_callbacks++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -1051,7 +1050,7 @@ int cognitive_bio_bridge_trigger_transition(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->current_transition = transition;
     bridge->outgoing_effects.trigger_glial_wave = true;
@@ -1060,7 +1059,7 @@ int cognitive_bio_bridge_trigger_transition(
     /* Notify callbacks */
     notify_state_change_unlocked(bridge, transition, COG_BIO_MODULE_ROOT);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -1082,7 +1081,7 @@ int cognitive_bio_bridge_release_dopamine(
         return COG_BIO_ERROR_INVALID_CONFIG;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->outgoing_effects.dopamine_release = amount;
     bridge->outgoing_effects.goals_achieved++;
@@ -1092,7 +1091,7 @@ int cognitive_bio_bridge_release_dopamine(
     bridge->stats.avg_dopamine =
         (bridge->stats.avg_dopamine * 0.9f) + (amount * 0.1f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -1110,7 +1109,7 @@ int cognitive_bio_bridge_signal_urgency(
         return COG_BIO_ERROR_INVALID_CONFIG;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->outgoing_effects.norepinephrine_level = urgency;
     bridge->outgoing_effects.urgency_escalation =
@@ -1120,7 +1119,7 @@ int cognitive_bio_bridge_signal_urgency(
     bridge->stats.avg_norepinephrine =
         (bridge->stats.avg_norepinephrine * 0.9f) + (urgency * 0.1f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -1138,7 +1137,7 @@ int cognitive_bio_bridge_modulate_attention(
         return COG_BIO_ERROR_INVALID_CONFIG;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->outgoing_effects.acetylcholine_level = attention;
     bridge->outgoing_effects.attention_target_id = target_id;
@@ -1146,7 +1145,7 @@ int cognitive_bio_bridge_modulate_attention(
     bridge->stats.avg_acetylcholine =
         (bridge->stats.avg_acetylcholine * 0.9f) + (attention * 0.1f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -1163,14 +1162,14 @@ int cognitive_bio_bridge_set_mood_level(
         return COG_BIO_ERROR_INVALID_CONFIG;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->outgoing_effects.serotonin_level = level;
 
     bridge->stats.avg_serotonin =
         (bridge->stats.avg_serotonin * 0.9f) + (level * 0.1f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -1190,10 +1189,10 @@ int cognitive_bio_bridge_create_phase_sync(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return COG_BIO_ERROR_DISCONNECTED;
     }
 
@@ -1204,7 +1203,7 @@ int cognitive_bio_bridge_create_phase_sync(
 
     bridge->stats.phase_syncs_requested++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -1222,11 +1221,11 @@ int cognitive_bio_bridge_wait_coherent(
     (void)coherence_threshold;
     (void)timeout_ms;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->stats.phase_syncs_achieved++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -1244,10 +1243,10 @@ int cognitive_bio_bridge_initiate_glial_wave(
         return COG_BIO_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return COG_BIO_ERROR_DISCONNECTED;
     }
 
@@ -1261,7 +1260,7 @@ int cognitive_bio_bridge_initiate_glial_wave(
     bridge->incoming_effects.glial_wave_active = true;
     bridge->incoming_effects.wave_source_module = COG_BIO_MODULE_ROOT;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return COG_BIO_OK;
 }
@@ -1324,7 +1323,7 @@ void cognitive_bio_bridge_reset_stats(cognitive_bio_bridge_t* bridge) {
         return;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Preserve active module count */
     uint32_t active = bridge->stats.active_modules;
@@ -1335,7 +1334,7 @@ void cognitive_bio_bridge_reset_stats(cognitive_bio_bridge_t* bridge) {
     bridge->stats.active_modules = active;
     bridge->stats.registered_handlers = handlers;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 /*=============================================================================

@@ -13,6 +13,7 @@
  */
 
 #include "cognitive/memory/core/nimcp_pr_sleep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
 #include <stdlib.h>
@@ -50,6 +51,7 @@
  * @brief Internal sleep bridge structure
  */
 struct pr_sleep_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /** Validation magic */
     uint32_t magic;
 
@@ -266,8 +268,8 @@ NIMCP_EXPORT pr_sleep_bridge_t pr_sleep_bridge_create(const pr_sleep_config_t* c
 
     // Initialize mutex if threading is available
 #ifdef NIMCP_HAS_THREADS
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "pr_sleep") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         free(bridge->replay_history);
         free(bridge->replay_buffer);
         free(bridge);
@@ -287,8 +289,8 @@ NIMCP_EXPORT void pr_sleep_bridge_destroy(pr_sleep_bridge_t bridge) {
     bridge->magic = 0;
 
 #ifdef NIMCP_HAS_THREADS
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 #endif
 
@@ -312,13 +314,13 @@ NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_set_ladder(
     }
 
 #ifdef NIMCP_HAS_THREADS
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 #endif
 
     bridge->ladder = ladder;
 
 #ifdef NIMCP_HAS_THREADS
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 #endif
 
     return PR_SLEEP_SUCCESS;
@@ -333,13 +335,13 @@ NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_set_entanglement(
     }
 
 #ifdef NIMCP_HAS_THREADS
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 #endif
 
     bridge->graph = graph;
 
 #ifdef NIMCP_HAS_THREADS
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 #endif
 
     return PR_SLEEP_SUCCESS;
@@ -351,7 +353,7 @@ NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_reset(pr_sleep_bridge_t bridge) {
     }
 
 #ifdef NIMCP_HAS_THREADS
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 #endif
 
     // Reset to wake state
@@ -381,7 +383,7 @@ NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_reset(pr_sleep_bridge_t bridge) {
     bridge->last_consolidation_time_ms = now;
 
 #ifdef NIMCP_HAS_THREADS
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 #endif
 
     return PR_SLEEP_SUCCESS;
@@ -404,7 +406,7 @@ NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_set_stage(
     }
 
 #ifdef NIMCP_HAS_THREADS
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 #endif
 
     pr_sleep_stage_t old_stage = bridge->current_stage;
@@ -463,7 +465,7 @@ NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_set_stage(
     }
 
 #ifdef NIMCP_HAS_THREADS
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 #endif
 
     // Invoke callback (outside lock)
@@ -574,7 +576,7 @@ NIMCP_EXPORT int pr_sleep_bridge_consolidate(pr_sleep_bridge_t bridge) {
     }
 
 #ifdef NIMCP_HAS_THREADS
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 #endif
 
     int processed = 0;
@@ -606,7 +608,7 @@ NIMCP_EXPORT int pr_sleep_bridge_consolidate(pr_sleep_bridge_t bridge) {
     bridge->last_consolidation_time_ms = get_current_time_ms();
 
 #ifdef NIMCP_HAS_THREADS
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 #endif
 
     return processed;
@@ -689,7 +691,7 @@ NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_get_replay_candidates(
     }
 
 #ifdef NIMCP_HAS_THREADS
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 #endif
 
     *count = 0;
@@ -765,7 +767,7 @@ NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_get_replay_candidates(
     bridge->replay_buffer_count = to_copy;
 
 #ifdef NIMCP_HAS_THREADS
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 #endif
 
     return PR_SLEEP_SUCCESS;
@@ -786,14 +788,14 @@ NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_replay(
     }
 
 #ifdef NIMCP_HAS_THREADS
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 #endif
 
     // Find the node
     pr_memory_node_t* node = z_ladder_find(bridge->ladder, node_id);
     if (!node) {
 #ifdef NIMCP_HAS_THREADS
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
 #endif
         return PR_SLEEP_ERROR_REPLAY_FAILED;
     }
@@ -845,13 +847,13 @@ NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_replay(
             // Invoke promotion callback
             if (bridge->promotion_callback) {
 #ifdef NIMCP_HAS_THREADS
-                nimcp_mutex_unlock(bridge->mutex);
+                nimcp_mutex_unlock(bridge->base.mutex);
 #endif
                 bridge->promotion_callback(
                     node_id, old_tier, ev.tier_after,
                     bridge->current_stage, bridge->promotion_callback_data);
 #ifdef NIMCP_HAS_THREADS
-                nimcp_mutex_lock(bridge->mutex);
+                nimcp_mutex_lock(bridge->base.mutex);
 #endif
             }
         }
@@ -882,7 +884,7 @@ NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_replay(
     }
 
 #ifdef NIMCP_HAS_THREADS
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 #endif
 
     // Invoke replay callback (outside lock)
@@ -970,7 +972,7 @@ NIMCP_EXPORT int pr_sleep_bridge_promote_z_ladder(pr_sleep_bridge_t bridge) {
     }
 
 #ifdef NIMCP_HAS_THREADS
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 #endif
 
     int promoted = 0;
@@ -1014,13 +1016,13 @@ NIMCP_EXPORT int pr_sleep_bridge_promote_z_ladder(pr_sleep_bridge_t bridge) {
 
                     if (bridge->promotion_callback) {
 #ifdef NIMCP_HAS_THREADS
-                        nimcp_mutex_unlock(bridge->mutex);
+                        nimcp_mutex_unlock(bridge->base.mutex);
 #endif
                         bridge->promotion_callback(
                             node->node_id, old_tier, node->tier,
                             bridge->current_stage, bridge->promotion_callback_data);
 #ifdef NIMCP_HAS_THREADS
-                        nimcp_mutex_lock(bridge->mutex);
+                        nimcp_mutex_lock(bridge->base.mutex);
 #endif
                     }
                 }
@@ -1029,7 +1031,7 @@ NIMCP_EXPORT int pr_sleep_bridge_promote_z_ladder(pr_sleep_bridge_t bridge) {
     }
 
 #ifdef NIMCP_HAS_THREADS
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 #endif
 
     return promoted;
@@ -1096,7 +1098,7 @@ NIMCP_EXPORT int pr_sleep_bridge_emotional_process(pr_sleep_bridge_t bridge) {
     }
 
 #ifdef NIMCP_HAS_THREADS
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 #endif
 
     int processed = 0;
@@ -1150,7 +1152,7 @@ NIMCP_EXPORT int pr_sleep_bridge_emotional_process(pr_sleep_bridge_t bridge) {
     }
 
 #ifdef NIMCP_HAS_THREADS
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 #endif
 
     return processed;
@@ -1197,7 +1199,7 @@ NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_get_emotional_memories(
     }
 
 #ifdef NIMCP_HAS_THREADS
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 #endif
 
     *count = 0;
@@ -1252,7 +1254,7 @@ NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_get_emotional_memories(
     *count = candidate_count;
 
 #ifdef NIMCP_HAS_THREADS
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 #endif
 
     return PR_SLEEP_SUCCESS;
@@ -1401,13 +1403,13 @@ NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_reset_stats(pr_sleep_bridge_t brid
     }
 
 #ifdef NIMCP_HAS_THREADS
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 #endif
 
     memset(&bridge->stats, 0, sizeof(pr_sleep_stats_t));
 
 #ifdef NIMCP_HAS_THREADS
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 #endif
 
     return PR_SLEEP_SUCCESS;
@@ -1457,14 +1459,14 @@ NIMCP_EXPORT pr_sleep_error_t pr_sleep_bridge_clear_replay_history(pr_sleep_brid
     }
 
 #ifdef NIMCP_HAS_THREADS
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 #endif
 
     bridge->replay_history_count = 0;
     bridge->replay_history_head = 0;
 
 #ifdef NIMCP_HAS_THREADS
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 #endif
 
     return PR_SLEEP_SUCCESS;

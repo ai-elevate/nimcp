@@ -274,6 +274,9 @@ protected:
         // Create health agent with correct API
         health_agent_config_t agent_config;
         nimcp_health_agent_default_config(&agent_config);
+        // Register callback for anomaly notifications
+        agent_config.on_anomaly_detected = health_agent_callback;
+        agent_config.callback_user_data = nullptr;
         health_agent_ = nimcp_health_agent_create(&agent_config);
         g_test_health_agent = health_agent_;
 

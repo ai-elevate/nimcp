@@ -67,7 +67,7 @@ rate_fep_bridge_t* rate_fep_create(
     bridge->fep_system = fep_system;
     bridge->limiter = limiter;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "rate_limiter_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Rate FEP bridge: mutex creation failed");
         nimcp_free(bridge);
@@ -93,7 +93,7 @@ void rate_fep_destroy(rate_fep_bridge_t* bridge) {
     }
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

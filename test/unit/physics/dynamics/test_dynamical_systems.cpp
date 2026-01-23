@@ -784,7 +784,7 @@ TEST_F(DynamicalSystemsTest, BridgeRegisterExceptionHandler) {
     ASSERT_NE(bridge, nullptr);
 
     void* dummy_handler = (void*)0x12345678;
-    EXPECT_EQ(dynsys_bridge_register_exception_handler(bridge, (nimcp_exception_handler_t)dummy_handler), 0);
+    EXPECT_EQ(dynsys_bridge_register_exception_handler(bridge, (dynsys_exception_handler_t)dummy_handler), 0);
 
     dynsys_bridge_destroy(bridge);
 }

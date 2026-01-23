@@ -112,15 +112,27 @@ static const bio_message_type_t BIO_MSG_TEST_ERROR    = (bio_message_type_t)0x10
 static const bio_message_type_t BIO_MSG_TEST_BATCH    = (bio_message_type_t)0x1004;
 
 /**
- * @brief Test message header (compatible with bio_message_header_t layout)
+ * @brief Test message header (MUST match bio_message_header_t layout exactly)
+ *
+ * Layout from nimcp_bio_messages.h:
+ * - bio_message_type_t type (4 bytes)
+ * - uint32_t sequence_id (4 bytes)
+ * - uint32_t source_module (4 bytes)
+ * - uint32_t target_module (4 bytes)
+ * - uint64_t timestamp_us (8 bytes)
+ * - nimcp_bio_channel_type_t channel (4 bytes)
+ * - uint32_t payload_size (4 bytes)
+ * - uint32_t flags (4 bytes)
  */
 typedef struct {
-    uint32_t msg_type;
-    uint32_t source_module;
-    uint32_t target_module;
-    uint32_t payload_size;
-    uint64_t timestamp;
-    uint32_t flags;
+    uint32_t msg_type;       /* bio_message_type_t type */
+    uint32_t sequence_id;    /* sequence number */
+    uint32_t source_module;  /* source module ID */
+    uint32_t target_module;  /* target module ID */
+    uint64_t timestamp;      /* timestamp_us */
+    uint32_t channel;        /* nimcp_bio_channel_type_t */
+    uint32_t payload_size;   /* payload size */
+    uint32_t flags;          /* message flags */
 } test_bio_msg_header_t;
 
 /**

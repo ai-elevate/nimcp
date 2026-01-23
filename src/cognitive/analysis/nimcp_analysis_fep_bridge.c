@@ -60,7 +60,7 @@ analysis_fep_bridge_t* analysis_fep_bridge_create(const analysis_fep_config_t* c
         analysis_fep_bridge_default_config(&bridge->config);
     }
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "analysis_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "analysis_fep_bridge_create: failed to create mutex");
         nimcp_free(bridge);
@@ -83,7 +83,7 @@ void analysis_fep_bridge_destroy(analysis_fep_bridge_t* bridge) {
     }
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

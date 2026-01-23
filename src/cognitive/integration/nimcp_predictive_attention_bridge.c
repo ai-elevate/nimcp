@@ -20,6 +20,7 @@
  */
 
 #include "cognitive/integration/nimcp_predictive_attention_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/integration/nimcp_cognitive_integration_hub.h"
 #include "cognitive/integration/nimcp_cognitive_event_types.h"
 #include "utils/thread/nimcp_thread.h"
@@ -42,6 +43,7 @@
  * @brief Internal predictive-attention bridge structure
  */
 struct predictive_attention_bridge {
+    bridge_base_t base;                            /**< MUST be first: base bridge infrastructure */
     predictive_attention_bridge_config_t config;  /**< Bridge configuration */
     cognitive_integration_hub_t hub;               /**< Connected cognitive hub */
 
@@ -65,9 +67,6 @@ struct predictive_attention_bridge {
     uint32_t error_count;                          /**< Count for average */
     float precision_sum;                           /**< Sum of precision values */
     uint32_t precision_count;                      /**< Count for average */
-
-    /* Synchronization */
-    nimcp_mutex_t* mutex;                          /**< Thread safety mutex */
 };
 
 /* ============================================================================
@@ -127,22 +126,22 @@ static int pred_attn_hub_on_event(const cognitive_event_data_t* event, void* use
 
     predictive_attention_bridge_t* bridge = (predictive_attention_bridge_t*)user_data;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update statistics */
     bridge->stats.events_received++;
     bridge->stats.total_events++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Dispatch based on event type */
     switch (event->event_type) {
         case COG_EVENT_INPUT_RECEIVED: {
             /* Handle prediction input events */
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
             pred_attn_prediction_callback_t callback = bridge->prediction_callback;
             void* cb_data = bridge->prediction_callback_user_data;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
 
             if (callback && event->payload && event->payload_size >= sizeof(float) * 2) {
                 /* Parse prediction payload: [prediction, confidence, location] */
@@ -156,19 +155,19 @@ static int pred_attn_hub_on_event(const cognitive_event_data_t* event, void* use
 
                 callback(prediction, location, confidence, cb_data);
 
-                nimcp_mutex_lock(bridge->mutex);
+                nimcp_mutex_lock(bridge->base.mutex);
                 bridge->stats.focus_predictions++;
-                nimcp_mutex_unlock(bridge->mutex);
+                nimcp_mutex_unlock(bridge->base.mutex);
             }
             break;
         }
 
         case COG_EVENT_ATTENTION_SHIFT: {
             /* Handle attention shift events */
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
             pred_attn_attention_callback_t callback = bridge->attention_callback;
             void* cb_data = bridge->attention_callback_user_data;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
 
             if (callback && event->payload && event->payload_size >= sizeof(uint64_t) * 2) {
                 /* Parse attention shift payload */
@@ -180,9 +179,9 @@ static int pred_attn_hub_on_event(const cognitive_event_data_t* event, void* use
                 int result = callback(old_focus, new_focus, urgency, cb_data);
 
                 if (result == 0) {
-                    nimcp_mutex_lock(bridge->mutex);
+                    nimcp_mutex_lock(bridge->base.mutex);
                     bridge->stats.surprise_shifts++;
-                    nimcp_mutex_unlock(bridge->mutex);
+                    nimcp_mutex_unlock(bridge->base.mutex);
                 }
             }
             break;
@@ -190,11 +189,11 @@ static int pred_attn_hub_on_event(const cognitive_event_data_t* event, void* use
 
         case COG_EVENT_STATE_CHANGE: {
             /* Handle state change events (may contain errors or precision updates) */
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
             pred_attn_error_callback_t callback = bridge->error_callback;
             void* cb_data = bridge->error_callback_user_data;
             float threshold = bridge->config.error_attention_threshold;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
 
             if (callback && event->payload && event->payload_size >= sizeof(float) + sizeof(uint64_t)) {
                 /* Parse error payload */
@@ -204,11 +203,11 @@ static int pred_attn_hub_on_event(const cognitive_event_data_t* event, void* use
                 if (*error_mag >= threshold) {
                     callback(*error_mag, *location, cb_data);
 
-                    nimcp_mutex_lock(bridge->mutex);
+                    nimcp_mutex_lock(bridge->base.mutex);
                     bridge->stats.prediction_errors++;
                     update_running_average(&bridge->error_sum, &bridge->error_count,
                                          &bridge->stats.avg_error_magnitude, *error_mag);
-                    nimcp_mutex_unlock(bridge->mutex);
+                    nimcp_mutex_unlock(bridge->base.mutex);
                 }
             }
             break;
@@ -245,12 +244,12 @@ static int pred_attn_query_handler(
 
     predictive_attention_bridge_t* bridge = (predictive_attention_bridge_t*)context;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update query stats */
     bridge->stats.queries_handled++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Initialize result */
     result->status = 0;
@@ -262,9 +261,9 @@ static int pred_attn_query_handler(
     switch (query->query_type) {
         case COG_QUERY_STATUS: {
             /* Return connection status */
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
             bool connected = bridge->connected;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
 
             const char* status_str = connected ? "connected" : "disconnected";
             size_t len = strlen(status_str) + 1;
@@ -282,9 +281,9 @@ static int pred_attn_query_handler(
             predictive_attention_bridge_stats_t* stats_copy =
                 nimcp_malloc(sizeof(predictive_attention_bridge_stats_t));
             if (stats_copy) {
-                nimcp_mutex_lock(bridge->mutex);
+                nimcp_mutex_lock(bridge->base.mutex);
                 *stats_copy = bridge->stats;
-                nimcp_mutex_unlock(bridge->mutex);
+                nimcp_mutex_unlock(bridge->base.mutex);
 
                 result->result_data = stats_copy;
                 result->result_size = sizeof(predictive_attention_bridge_stats_t);
@@ -303,12 +302,12 @@ static int pred_attn_query_handler(
 
             pred_attn_metrics_t* metrics = nimcp_malloc(sizeof(pred_attn_metrics_t));
             if (metrics) {
-                nimcp_mutex_lock(bridge->mutex);
+                nimcp_mutex_lock(bridge->base.mutex);
                 metrics->avg_error = bridge->stats.avg_error_magnitude;
                 metrics->avg_precision = bridge->stats.avg_precision;
                 metrics->total_events = bridge->stats.total_events;
                 metrics->error_count = bridge->stats.prediction_errors;
-                nimcp_mutex_unlock(bridge->mutex);
+                nimcp_mutex_unlock(bridge->base.mutex);
 
                 result->result_data = metrics;
                 result->result_size = sizeof(pred_attn_metrics_t);
@@ -321,9 +320,9 @@ static int pred_attn_query_handler(
                     sizeof(result->error_message) - 1);
             result->status = -1;
 
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
             bridge->stats.query_errors++;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             break;
     }
 
@@ -378,9 +377,8 @@ predictive_attention_bridge_t* predictive_attention_bridge_create(
         predictive_attention_bridge_default_config(&bridge->config);
     }
 
-    /* Create mutex for thread safety */
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "predictive_attention") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -421,11 +419,8 @@ void predictive_attention_bridge_destroy(predictive_attention_bridge_t* bridge) 
         predictive_attention_bridge_unregister_from_hub(bridge);
     }
 
-    /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-        bridge->mutex = NULL;
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     bridge->initialized = false;
 
@@ -444,18 +439,18 @@ int predictive_attention_bridge_register_with_hub(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if already connected */
     if (bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     /* Store hub reference */
     bridge->hub = hub;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Register module with hub */
     int result = cognitive_hub_register_module(
@@ -467,9 +462,9 @@ int predictive_attention_bridge_register_with_hub(
     );
 
     if (result != 0) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->hub = NULL;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -517,9 +512,9 @@ int predictive_attention_bridge_register_with_hub(
         /* Non-fatal */
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->connected = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -531,16 +526,16 @@ int predictive_attention_bridge_unregister_from_hub(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->hub) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     cognitive_integration_hub_t hub = bridge->hub;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Unsubscribe from events */
     if (bridge->config.enable_prediction_subscription) {
@@ -556,10 +551,10 @@ int predictive_attention_bridge_unregister_from_hub(
     /* Unregister module from hub */
     cognitive_hub_unregister_module(hub, PRED_ATTN_BRIDGE_MODULE_ID);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->hub = NULL;
     bridge->connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -574,9 +569,9 @@ bool predictive_attention_bridge_is_connected(
     /* Cast away const for mutex lock (safe - only reading) */
     predictive_attention_bridge_t* mutable_bridge = (predictive_attention_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
     bool connected = bridge->connected;
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return connected;
 }
@@ -594,17 +589,17 @@ int predictive_attention_publish_prediction_error(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->hub) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     cognitive_integration_hub_t hub = bridge->hub;
     float threshold = bridge->config.error_attention_threshold;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Clamp error to valid range */
     error = clamp_float(error, 0.0f, 1.0f);
@@ -635,12 +630,12 @@ int predictive_attention_publish_prediction_error(
                                        COG_EVENT_STATE_CHANGE, &event);
 
     if (result == 0) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.events_published++;
         bridge->stats.prediction_errors++;
         update_running_average(&bridge->error_sum, &bridge->error_count,
                              &bridge->stats.avg_error_magnitude, error);
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return result;
@@ -654,16 +649,16 @@ int predictive_attention_request_attention_to_error(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->hub) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     cognitive_integration_hub_t hub = bridge->hub;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Create attention shift request event */
     struct {
@@ -692,10 +687,10 @@ int predictive_attention_request_attention_to_error(
                                        COG_EVENT_ATTENTION_SHIFT, &event);
 
     if (result == 0) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.events_published++;
         bridge->stats.attention_requests++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return result;
@@ -709,16 +704,16 @@ int predictive_attention_publish_precision_estimate(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->hub) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     cognitive_integration_hub_t hub = bridge->hub;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Create event data */
     cognitive_event_data_t event;
@@ -734,12 +729,12 @@ int predictive_attention_publish_precision_estimate(
                                        COG_EVENT_STATE_CHANGE, &event);
 
     if (result == 0) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.events_published++;
         bridge->stats.precision_updates++;
         update_running_average(&bridge->precision_sum, &bridge->precision_count,
                              &bridge->stats.avg_precision, precision_data->precision_new);
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return result;
@@ -757,16 +752,16 @@ int predictive_attention_notify_attended_prediction(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->hub) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     cognitive_integration_hub_t hub = bridge->hub;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Create event data */
     cognitive_event_data_t event;
@@ -782,10 +777,10 @@ int predictive_attention_notify_attended_prediction(
                                        COG_EVENT_OUTPUT_READY, &event);
 
     if (result == 0) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.events_published++;
         bridge->stats.focus_predictions++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return result;
@@ -799,16 +794,16 @@ int predictive_attention_request_prediction_for_focus(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->hub) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     cognitive_integration_hub_t hub = bridge->hub;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Create event data */
     cognitive_event_data_t event;
@@ -824,9 +819,9 @@ int predictive_attention_request_prediction_for_focus(
                                        COG_EVENT_INPUT_RECEIVED, &event);
 
     if (result == 0) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.events_published++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return result;
@@ -845,10 +840,10 @@ int predictive_attention_set_prediction_callback(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->prediction_callback = callback;
     bridge->prediction_callback_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -862,10 +857,10 @@ int predictive_attention_set_attention_callback(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_callback = callback;
     bridge->attention_callback_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -879,10 +874,10 @@ int predictive_attention_set_error_callback(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->error_callback = callback;
     bridge->error_callback_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -902,9 +897,9 @@ int predictive_attention_bridge_get_stats(
     /* Cast away const for mutex lock */
     predictive_attention_bridge_t* mutable_bridge = (predictive_attention_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return 0;
 }
@@ -916,13 +911,13 @@ int predictive_attention_bridge_reset_stats(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(predictive_attention_bridge_stats_t));
     bridge->error_sum = 0.0f;
     bridge->error_count = 0;
     bridge->precision_sum = 0.0f;
     bridge->precision_count = 0;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

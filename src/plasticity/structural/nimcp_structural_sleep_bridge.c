@@ -140,7 +140,7 @@ structural_sleep_bridge_t structural_sleep_bridge_create(
     bridge->structural_system = structural_system;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "structural_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
@@ -161,7 +161,7 @@ void structural_sleep_bridge_destroy(structural_sleep_bridge_t bridge) {
     if (!bridge) return;
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

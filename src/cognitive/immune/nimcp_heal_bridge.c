@@ -12,6 +12,7 @@
  */
 
 #include "cognitive/immune/nimcp_heal_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
@@ -290,9 +291,8 @@ heal_bridge_t* heal_bridge_create(
     bridge->sandbox.use_fork = true;
     bridge->sandbox.run_regression = false;
 
-    /* Create mutex */
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (bridge->mutex == NULL) {
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "heal") != 0) {
         nimcp_free(bridge->rollback_history);
         nimcp_free(bridge->active_chains);
         nimcp_free(bridge->candidates);
@@ -315,9 +315,8 @@ void heal_bridge_destroy(heal_bridge_t* bridge)
 {
     if (bridge == NULL) return;
 
-    if (bridge->mutex != NULL) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     if (bridge->rollback_history != NULL) {
         nimcp_free(bridge->rollback_history);
@@ -348,9 +347,9 @@ int heal_bridge_process_crash(
 
     uint64_t start_time = get_time_ms();
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.crashes_received++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Step 1: Get antigen from code_immune */
     const code_antigen_t* antigen = NULL;
@@ -394,17 +393,17 @@ int heal_bridge_process_crash(
     }
 
     if (ret != 0 || fix.status != HEAL_STATUS_SUCCESS) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.fixes_failed++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
 
         LOG_MODULE_WARN(LOG_TAG, "Fix generation failed for antigen %lu", antigen_id);
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.fixes_generated++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Step 4: Validate fix in sandbox */
     sandbox_result_t sandbox_result = SANDBOX_RESULT_SKIPPED;
@@ -414,9 +413,9 @@ int heal_bridge_process_crash(
 
         if (sandbox_result != SANDBOX_RESULT_SUCCESS &&
             bridge->config.require_validation) {
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
             bridge->stats.fixes_failed++;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
 
             LOG_MODULE_WARN(LOG_TAG, "Fix validation failed: %s",
                            heal_bridge_sandbox_result_to_string(sandbox_result));
@@ -424,9 +423,9 @@ int heal_bridge_process_crash(
         }
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.fixes_validated++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Step 5: Produce antibody via code_immune */
     uint64_t antibody_id = 0;
@@ -468,9 +467,9 @@ int heal_bridge_process_crash(
                     add_rollback_entry(bridge, antibody_id,
                                        fix.original_code, NULL);
 
-                    nimcp_mutex_lock(bridge->mutex);
+                    nimcp_mutex_lock(bridge->base.mutex);
                     bridge->stats.fixes_applied++;
-                    nimcp_mutex_unlock(bridge->mutex);
+                    nimcp_mutex_unlock(bridge->base.mutex);
 
                     LOG_MODULE_INFO(LOG_TAG, "Fix applied: antibody %lu for antigen %lu",
                                     antibody_id, antigen_id);
@@ -496,12 +495,12 @@ int heal_bridge_process_crash(
 
     /* Update timing statistics */
     uint64_t elapsed_ms = get_time_ms() - start_time;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     uint64_t total_crashes = bridge->stats.crashes_received;
     bridge->stats.avg_pipeline_time_ms =
         (bridge->stats.avg_pipeline_time_ms * (total_crashes - 1) + (double)elapsed_ms) /
         total_crashes;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     if (antibody_id_out != NULL) {
         *antibody_id_out = antibody_id;
@@ -557,9 +556,9 @@ int heal_bridge_validate_fix(
 
     uint64_t start_time = get_time_ms();
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.sandbox_runs++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     *result_out = SANDBOX_RESULT_SUCCESS;
 
@@ -646,9 +645,9 @@ int heal_bridge_validate_fix(
                 /* Child crashed */
                 *result_out = SANDBOX_RESULT_CRASH;
 
-                nimcp_mutex_lock(bridge->mutex);
+                nimcp_mutex_lock(bridge->base.mutex);
                 bridge->stats.sandbox_crashes++;
-                nimcp_mutex_unlock(bridge->mutex);
+                nimcp_mutex_unlock(bridge->base.mutex);
             }
             break;
         } else if (result == 0) {
@@ -669,14 +668,14 @@ int heal_bridge_validate_fix(
         waitpid(pid, NULL, 0);
         *result_out = SANDBOX_RESULT_TIMEOUT;
 
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.sandbox_timeouts++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     /* Update statistics */
     uint64_t sandbox_time = get_time_ms() - start_time;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     uint64_t total_runs = bridge->stats.sandbox_runs;
     bridge->stats.avg_sandbox_time_ms =
         (bridge->stats.avg_sandbox_time_ms * (total_runs - 1) + (double)sandbox_time) /
@@ -687,7 +686,7 @@ int heal_bridge_validate_fix(
     } else if (*result_out == SANDBOX_RESULT_REGRESSION) {
         bridge->stats.sandbox_regressions++;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -727,7 +726,7 @@ int heal_bridge_register_candidate(
     if (bridge == NULL || features == NULL || fix == NULL) return -1;
     if (!bridge->config.enable_pattern_evolution) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check capacity */
     if (bridge->candidate_count >= bridge->candidate_capacity) {
@@ -768,7 +767,7 @@ int heal_bridge_register_candidate(
         *candidate_id_out = candidate->id;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     LOG_MODULE_DEBUG(LOG_TAG, "Registered evolution candidate %lu (pattern=%s)",
                      candidate->id,
@@ -785,11 +784,11 @@ int heal_bridge_record_candidate_outcome(
 {
     if (bridge == NULL) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     pattern_candidate_t* candidate = find_candidate_unlocked(bridge, candidate_id);
     if (candidate == NULL) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -831,7 +830,7 @@ int heal_bridge_record_candidate_outcome(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Promote if threshold reached */
     if (should_promote) {
@@ -851,11 +850,11 @@ int heal_bridge_promote_candidate(
 {
     if (bridge == NULL) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     pattern_candidate_t* candidate = find_candidate_unlocked(bridge, candidate_id);
     if (candidate == NULL || candidate->state == PATTERN_EVO_PROMOTED) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -881,7 +880,7 @@ int heal_bridge_promote_candidate(
     new_pattern.enabled = true;
     new_pattern.user_defined = false;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Register with pattern library */
     uint32_t new_id = 0;
@@ -892,12 +891,12 @@ int heal_bridge_promote_candidate(
     }
 
     if (ret == 0) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         candidate->state = PATTERN_EVO_PROMOTED;
         candidate->promoted_pattern_id = new_id;
         bridge->stats.patterns_evolved++;
         bridge->stats.candidates_active--;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
 
         LOG_MODULE_INFO(LOG_TAG, "Promoted candidate %lu to pattern %u (%s)",
                         candidate_id, new_id, new_pattern.name);
@@ -918,7 +917,7 @@ int heal_bridge_decay_candidates(heal_bridge_t* bridge)
     uint64_t decay_window = 24 * 60 * 60 * 1000;  /* 24 hours */
     int pruned = 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     for (size_t i = 0; i < bridge->candidate_count; ) {
         pattern_candidate_t* candidate = &bridge->candidates[i];
@@ -951,7 +950,7 @@ int heal_bridge_decay_candidates(heal_bridge_t* bridge)
         i++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return pruned;
 }
@@ -968,11 +967,11 @@ int heal_bridge_create_chain(
 {
     if (bridge == NULL || source_code == NULL) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check capacity */
     if (bridge->chain_count >= bridge->chain_capacity) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -990,7 +989,7 @@ int heal_bridge_create_chain(
 
     uint64_t created_chain_id = chain->id;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Generate fix candidates */
     if (bridge->self_heal != NULL) {
@@ -1051,11 +1050,11 @@ int heal_bridge_add_to_chain(
 {
     if (bridge == NULL || fix == NULL) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     fix_chain_t* chain = find_chain_unlocked(bridge, chain_id);
     if (chain == NULL || chain->fix_count >= HEAL_BRIDGE_MAX_FIX_CHAIN) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -1071,7 +1070,7 @@ int heal_bridge_add_to_chain(
     chain->fix_count++;
     chain->overall_confidence = calculate_chain_confidence(chain);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1082,16 +1081,16 @@ int heal_bridge_execute_chain(
 {
     if (bridge == NULL) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     fix_chain_t* chain = find_chain_unlocked(bridge, chain_id);
     if (chain == NULL || chain->fix_count == 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     chain->status = CHAIN_STATUS_IN_PROGRESS;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     bool any_failed = false;
     size_t applied_count = 0;
@@ -1140,7 +1139,7 @@ int heal_bridge_execute_chain(
     }
 
     /* Update chain status */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     chain->applied_count = applied_count;
     chain->complete_time = get_time_ms();
@@ -1148,11 +1147,11 @@ int heal_bridge_execute_chain(
     if (any_failed && bridge->config.atomic_chains) {
         /* Rollback all applied fixes */
         chain->status = CHAIN_STATUS_ROLLBACK;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
 
         heal_bridge_rollback_chain(bridge, chain_id);
 
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         chain->status = CHAIN_STATUS_FAILED;
         bridge->stats.chains_failed++;
     } else if (applied_count == chain->fix_count) {
@@ -1166,7 +1165,7 @@ int heal_bridge_execute_chain(
         bridge->stats.chains_failed++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return (chain->status == CHAIN_STATUS_COMPLETE) ? 0 :
            (chain->status == CHAIN_STATUS_PARTIAL) ? 1 : -1;
@@ -1180,11 +1179,11 @@ int heal_bridge_get_chain_status(
 {
     if (bridge == NULL) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     fix_chain_t* chain = find_chain_unlocked(bridge, chain_id);
     if (chain == NULL) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -1196,7 +1195,7 @@ int heal_bridge_get_chain_status(
         *applied_count_out = chain->applied_count;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1212,11 +1211,11 @@ int heal_bridge_rollback(
     if (bridge == NULL) return -1;
     if (!bridge->config.enable_rollback) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     rollback_entry_t* entry = find_rollback_entry(bridge, antibody_id);
     if (entry == NULL || !entry->can_rollback) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -1224,14 +1223,14 @@ int heal_bridge_rollback(
     uint64_t age = get_time_ms() - entry->apply_time;
     if (age > bridge->config.rollback_window_ms) {
         entry->can_rollback = false;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
 
         LOG_MODULE_WARN(LOG_TAG, "Rollback window expired for antibody %lu",
                         antibody_id);
         return -1;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Perform rollback via code_immune */
     int ret = 0;
@@ -1240,16 +1239,16 @@ int heal_bridge_rollback(
     }
 
     if (ret == 0) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         entry->can_rollback = false;  /* One-shot rollback */
         bridge->stats.rollbacks_performed++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
 
         LOG_MODULE_INFO(LOG_TAG, "Rolled back antibody %lu", antibody_id);
     } else {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.rollbacks_failed++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return ret;
@@ -1261,15 +1260,15 @@ int heal_bridge_rollback_chain(
 {
     if (bridge == NULL) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     fix_chain_t* chain = find_chain_unlocked(bridge, chain_id);
     if (chain == NULL) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Rollback in reverse order */
     int failures = 0;
@@ -1296,7 +1295,7 @@ int heal_bridge_cleanup_rollback_history(heal_bridge_t* bridge)
     uint64_t now = get_time_ms();
     int cleaned = 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     for (size_t i = 0; i < bridge->rollback_count; ) {
         rollback_entry_t* entry = &bridge->rollback_history[i];
@@ -1316,7 +1315,7 @@ int heal_bridge_cleanup_rollback_history(heal_bridge_t* bridge)
         i++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return cleaned;
 }
@@ -1331,7 +1330,7 @@ int heal_bridge_get_stats(
 {
     if (bridge == NULL || stats == NULL) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
 
     /* Calculate overall success rate */
@@ -1343,7 +1342,7 @@ int heal_bridge_get_stats(
         stats->overall_success_rate = 0.0f;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1352,9 +1351,9 @@ int heal_bridge_reset_stats(heal_bridge_t* bridge)
 {
     if (bridge == NULL) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(heal_bridge_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

@@ -3,6 +3,7 @@
  * @brief Shadow Emotions-Thalamic Bridge Implementation
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/shadow_emotions/nimcp_shadow_emotions_thalamic_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
@@ -11,6 +12,7 @@
 #include <string.h>
 
 struct shadow_emotions_thalamic_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* shadow_emotions;
     thalamic_router_t* router;
     shadow_emotions_thalamic_config_t config;

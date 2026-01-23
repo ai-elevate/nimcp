@@ -7,6 +7,7 @@
  * HOW: Monitors ATP/fatigue; modulates bonding, loyalty, trust
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/social/nimcp_social_substrate_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
@@ -18,6 +19,7 @@
 #include <math.h>
 
 struct social_substrate_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* social;
     neural_substrate_t* substrate;
     social_substrate_config_t config;

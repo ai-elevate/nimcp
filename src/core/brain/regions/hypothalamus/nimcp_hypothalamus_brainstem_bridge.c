@@ -11,6 +11,7 @@
  */
 
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_brainstem_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/time/nimcp_time.h"
@@ -270,7 +271,7 @@ hypo_brainstem_bridge_t* hypo_brainstem_bridge_create(
     /* Create mutex */
     mutex_attr_t attr = {0};
     attr.type = MUTEX_TYPE_NORMAL;
-    bridge->mutex = nimcp_mutex_create(&attr);
+    bridge->base.mutex = nimcp_mutex_create(&attr);
 
     return bridge;
 }
@@ -280,8 +281,8 @@ void hypo_brainstem_bridge_destroy(hypo_brainstem_bridge_t* bridge) {
         return;
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     free(bridge);
@@ -292,7 +293,7 @@ void hypo_brainstem_bridge_reset(hypo_brainstem_bridge_t* bridge) {
         return;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset pain/pleasure */
     bridge->pain_count = 0;
@@ -315,7 +316,7 @@ void hypo_brainstem_bridge_reset(hypo_brainstem_bridge_t* bridge) {
     bridge->arousal_requests_sent = 0;
     bridge->protection_requests_sent = 0;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 /*=============================================================================
@@ -329,7 +330,7 @@ hypo_arousal_request_t hypo_brainstem_bridge_update(hypo_brainstem_bridge_t* bri
         return request;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now = nimcp_time_get_us();
 
@@ -358,7 +359,7 @@ hypo_arousal_request_t hypo_brainstem_bridge_update(hypo_brainstem_bridge_t* bri
         bridge->pleasure_reward_contribution = bridge->total_pleasure * bridge->config.pleasure_reward_factor;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return request;
 }
@@ -371,7 +372,7 @@ float hypo_brainstem_bridge_process_pain(
         return 0.0f;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float reward_contribution = 0.0f;
 
@@ -401,7 +402,7 @@ float hypo_brainstem_bridge_process_pain(
 
     bridge->pain_signals_received++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return reward_contribution;
 }
@@ -414,7 +415,7 @@ float hypo_brainstem_bridge_process_pleasure(
         return 0.0f;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float reward_contribution = 0.0f;
 
@@ -437,7 +438,7 @@ float hypo_brainstem_bridge_process_pleasure(
 
     bridge->pleasure_signals_received++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return reward_contribution;
 }
@@ -450,7 +451,7 @@ void hypo_brainstem_bridge_process_arousal_state(
         return;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->current_arousal = state->current_arousal;
     bridge->current_protection = state->protection_level;
@@ -468,7 +469,7 @@ void hypo_brainstem_bridge_process_arousal_state(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 float hypo_brainstem_bridge_get_reward_contribution(

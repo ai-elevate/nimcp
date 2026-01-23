@@ -119,7 +119,7 @@ population_coding_sleep_bridge_t population_coding_sleep_bridge_create(
     bridge->effects.sparsity_target = 0.1f;
     bridge->effects.encoding_enabled = true;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "population_coding_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(nimcp_platform_mutex_t),
             "population_coding_sleep_bridge_create: failed to allocate mutex");
@@ -162,7 +162,7 @@ void population_coding_sleep_bridge_destroy(population_coding_sleep_bridge_t bri
         }
     }
 
-    if (bridge->base.mutex) nimcp_mutex_free(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

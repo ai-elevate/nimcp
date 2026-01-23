@@ -184,3 +184,39 @@ set_tests_properties(unit_exception_test_swarm_memory_macros
     LABELS "unit;exception;swarm;memory;hopfield;replay"
     TIMEOUT 120
 )
+
+#=============================================================================
+# Test 6: Comprehensive Exception Macro Tests
+#=============================================================================
+# WHAT: Comprehensive tests for all exception handling macros
+# WHY:  Full coverage of NIMCP_CHECK_THROW, NIMCP_TRY_CATCH, typed exceptions
+#=============================================================================
+
+add_executable(unit_exception_test_macro_comprehensive
+    test_exception_macro_comprehensive.cpp
+)
+
+target_include_directories(unit_exception_test_macro_comprehensive PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(unit_exception_test_macro_comprehensive
+    nimcp
+    GTest::gtest
+    GTest::gtest_main
+    pthread
+    m
+)
+
+target_compile_features(unit_exception_test_macro_comprehensive PRIVATE cxx_std_17)
+
+add_test(
+    NAME unit_exception_test_macro_comprehensive
+    COMMAND unit_exception_test_macro_comprehensive
+)
+
+set_tests_properties(unit_exception_test_macro_comprehensive
+    PROPERTIES
+    LABELS "unit;exception;macros;comprehensive"
+    TIMEOUT 180
+)

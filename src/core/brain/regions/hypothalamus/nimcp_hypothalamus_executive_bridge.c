@@ -11,6 +11,7 @@
  */
 
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_executive_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/time/nimcp_time.h"
@@ -379,8 +380,8 @@ hypo_exec_bridge_t* hypo_exec_bridge_create(
     mutex_attr_t attr = {
         .type = MUTEX_TYPE_NORMAL
     };
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_mutex_create(&attr);
+    if (!bridge->base.mutex) {
         free(bridge);
         return NULL;
     }
@@ -393,8 +394,8 @@ void hypo_exec_bridge_destroy(hypo_exec_bridge_t* bridge) {
         return;
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     free(bridge);
@@ -405,7 +406,7 @@ void hypo_exec_bridge_reset(hypo_exec_bridge_t* bridge) {
         return;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Clear goals */
     bridge->goal_count = 0;
@@ -421,7 +422,7 @@ void hypo_exec_bridge_reset(hypo_exec_bridge_t* bridge) {
     bridge->goals_blocked = 0;
     bridge->goals_boosted = 0;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 /*=============================================================================
@@ -443,7 +444,7 @@ uint32_t hypo_exec_bridge_register_goal(
         return 0;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t goal_id = next_goal_id(bridge);
     hypo_exec_goal_t* goal = &bridge->goals[bridge->goal_count];
@@ -466,7 +467,7 @@ uint32_t hypo_exec_bridge_register_goal(
 
     bridge->goal_count++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return goal_id;
 }
@@ -479,7 +480,7 @@ bool hypo_exec_bridge_unregister_goal(
         return false;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bool found = false;
     for (uint32_t i = 0; i < bridge->goal_count; i++) {
@@ -499,7 +500,7 @@ bool hypo_exec_bridge_unregister_goal(
         bridge->active_goal_id = 0;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return found;
 }
@@ -512,24 +513,24 @@ bool hypo_exec_bridge_activate_goal(
         return false;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     hypo_exec_goal_t* goal = find_goal(bridge, goal_id);
     if (!goal) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return false;
     }
 
     /* Check if blocked by interrupt */
     if (goal->blocked) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return false;
     }
 
     goal->activated_us = nimcp_time_get_us();
     bridge->active_goal_id = goal_id;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return true;
 }
@@ -543,11 +544,11 @@ bool hypo_exec_bridge_complete_goal(
         return false;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     hypo_exec_goal_t* goal = find_goal(bridge, goal_id);
     if (!goal) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return false;
     }
 
@@ -564,7 +565,7 @@ bool hypo_exec_bridge_complete_goal(
         bridge->active_goal_id = 0;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return true;
 }
@@ -578,17 +579,17 @@ bool hypo_exec_bridge_get_goal(
         return false;
     }
 
-    nimcp_mutex_lock(((hypo_exec_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((hypo_exec_bridge_t*)bridge)->base.mutex);
 
     const hypo_exec_goal_t* found = find_goal_const(bridge, goal_id);
     if (!found) {
-        nimcp_mutex_unlock(((hypo_exec_bridge_t*)bridge)->mutex);
+        nimcp_mutex_unlock(((hypo_exec_bridge_t*)bridge)->base.mutex);
         return false;
     }
 
     *goal = *found;
 
-    nimcp_mutex_unlock(((hypo_exec_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((hypo_exec_bridge_t*)bridge)->base.mutex);
 
     return true;
 }
@@ -606,7 +607,7 @@ hypo_exec_priority_update_t hypo_exec_bridge_update_priorities(
         return update;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute category boosts from drives */
     compute_category_boosts(bridge, update.category_boosts);
@@ -648,7 +649,7 @@ hypo_exec_priority_update_t hypo_exec_bridge_update_priorities(
     bridge->last_update = update;
     bridge->priority_updates++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return update;
 }
@@ -660,7 +661,7 @@ uint32_t hypo_exec_bridge_get_top_priority_goal(
         return 0;
     }
 
-    nimcp_mutex_lock(((hypo_exec_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((hypo_exec_bridge_t*)bridge)->base.mutex);
 
     float max_priority = -1.0f;
     uint32_t top_goal_id = 0;
@@ -675,7 +676,7 @@ uint32_t hypo_exec_bridge_get_top_priority_goal(
         }
     }
 
-    nimcp_mutex_unlock(((hypo_exec_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((hypo_exec_bridge_t*)bridge)->base.mutex);
 
     return top_goal_id;
 }
@@ -689,7 +690,7 @@ bool hypo_exec_bridge_get_priority_order(
         return false;
     }
 
-    nimcp_mutex_lock(((hypo_exec_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((hypo_exec_bridge_t*)bridge)->base.mutex);
 
     /* Collect active goals */
     typedef struct {
@@ -726,7 +727,7 @@ bool hypo_exec_bridge_get_priority_order(
     }
     *count = n;
 
-    nimcp_mutex_unlock(((hypo_exec_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((hypo_exec_bridge_t*)bridge)->base.mutex);
 
     return true;
 }
@@ -739,12 +740,12 @@ float hypo_exec_bridge_get_goal_priority(
         return -1.0f;
     }
 
-    nimcp_mutex_lock(((hypo_exec_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((hypo_exec_bridge_t*)bridge)->base.mutex);
 
     const hypo_exec_goal_t* goal = find_goal_const(bridge, goal_id);
     float priority = goal ? goal->effective_priority : -1.0f;
 
-    nimcp_mutex_unlock(((hypo_exec_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((hypo_exec_bridge_t*)bridge)->base.mutex);
 
     return priority;
 }
@@ -761,14 +762,14 @@ bool hypo_exec_bridge_check_interrupt(
         return false;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bool has_interrupt = bridge->interrupt_active;
     if (has_interrupt) {
         *interrupt = bridge->current_interrupt;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return has_interrupt;
 }
@@ -791,7 +792,7 @@ bool hypo_exec_bridge_clear_interrupt(
         return false;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->interrupt_active = false;
     memset(&bridge->current_interrupt, 0, sizeof(bridge->current_interrupt));
@@ -801,7 +802,7 @@ bool hypo_exec_bridge_clear_interrupt(
         bridge->goals[i].blocked = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return true;
 }
@@ -830,7 +831,7 @@ bool hypo_exec_bridge_get_goals_for_drive(
         return false;
     }
 
-    nimcp_mutex_lock(((hypo_exec_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((hypo_exec_bridge_t*)bridge)->base.mutex);
 
     *count = 0;
     for (uint32_t i = 0; i < bridge->goal_count && *count < HYPO_EXEC_MAX_GOALS; i++) {
@@ -841,7 +842,7 @@ bool hypo_exec_bridge_get_goals_for_drive(
         }
     }
 
-    nimcp_mutex_unlock(((hypo_exec_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((hypo_exec_bridge_t*)bridge)->base.mutex);
 
     return true;
 }

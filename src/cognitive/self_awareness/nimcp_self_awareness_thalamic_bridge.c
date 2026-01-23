@@ -32,7 +32,7 @@ self_awareness_thalamic_config_t self_awareness_thalamic_default_config(void) {
 self_awareness_thalamic_bridge_t* self_awareness_thalamic_bridge_create(void* self_awareness, thalamic_router_t* router, const self_awareness_thalamic_config_t* config) {
     self_awareness_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(self_awareness_thalamic_bridge_t));
     if (!bridge) return NULL;
-    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (bridge_base_init(&bridge->base, 0, "self_awareness_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -48,7 +48,7 @@ self_awareness_thalamic_bridge_t* self_awareness_thalamic_bridge_create(void* se
 void self_awareness_thalamic_bridge_destroy(self_awareness_thalamic_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
 }

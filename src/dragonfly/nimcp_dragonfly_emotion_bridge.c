@@ -11,6 +11,7 @@
  */
 
 #include "dragonfly/nimcp_dragonfly_emotion_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -39,6 +40,8 @@ static inline float clamp_f(float v, float min, float max) {
 //=============================================================================
 
 struct dragonfly_emotion_bridge_s {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     dragonfly_emotion_config_t config;
 
@@ -53,9 +56,6 @@ struct dragonfly_emotion_bridge_s {
 
     /* Statistics */
     dragonfly_emotion_stats_t stats;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 
     /* Timing */
     uint64_t creation_time_us;
@@ -296,8 +296,8 @@ dragonfly_emotion_bridge_t dragonfly_emotion_bridge_create(
     bridge->modulation.decision_speed = 1.0f;
     bridge->modulation.energy_investment = 0.5f;
 
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "dragonfly_emotion") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -308,8 +308,8 @@ dragonfly_emotion_bridge_t dragonfly_emotion_bridge_create(
 void dragonfly_emotion_bridge_destroy(dragonfly_emotion_bridge_t bridge) {
     if (!bridge) return;
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);
@@ -322,11 +322,11 @@ int dragonfly_emotion_bridge_connect(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->dragonfly = dragonfly;
     bridge->emotion = emotion;
     bridge->connected = (dragonfly != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -334,11 +334,11 @@ int dragonfly_emotion_bridge_connect(
 int dragonfly_emotion_bridge_disconnect(dragonfly_emotion_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->dragonfly = NULL;
     bridge->emotion = NULL;
     bridge->connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -353,7 +353,7 @@ int dragonfly_emotion_bridge_update(
 ) {
     if (!bridge || dt_s <= 0.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     emotional_state_t* state = &bridge->state;
 
@@ -424,7 +424,7 @@ int dragonfly_emotion_bridge_update(
     bridge->stats.avg_motivation = (bridge->stats.avg_motivation * (bridge->stats.emotional_events - 1) +
                                     state->motivation) / bridge->stats.emotional_events;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -435,7 +435,7 @@ int dragonfly_emotion_process_event(
 ) {
     if (!bridge || !event) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     emotional_state_t* state = &bridge->state;
 
@@ -485,7 +485,7 @@ int dragonfly_emotion_process_event(
         state->drives[DRIVE_AGGRESSION] = clamp_f(state->drives[DRIVE_AGGRESSION], 0.0f, 1.0f);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -500,7 +500,7 @@ int dragonfly_emotion_report_success(
     event.is_success = true;
     event.timestamp_us = get_time_us();
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state.drives[DRIVE_HUNGER] -= satisfaction_level * bridge->config.hunger_satisfaction;
     bridge->state.drives[DRIVE_HUNGER] = clamp_f(bridge->state.drives[DRIVE_HUNGER], 0.0f, 1.0f);
@@ -510,7 +510,7 @@ int dragonfly_emotion_report_success(
 
     bridge->stats.positive_events++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -523,7 +523,7 @@ int dragonfly_emotion_report_failure(
     if (!bridge) return -1;
     (void)reason;  /* For future logging */
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state.confidence -= bridge->config.failure_confidence_penalty * frustration_level;
     bridge->state.confidence = clamp_f(bridge->state.confidence, 0.0f, 1.0f);
@@ -533,7 +533,7 @@ int dragonfly_emotion_report_failure(
 
     bridge->stats.negative_events++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -546,7 +546,7 @@ int dragonfly_emotion_report_threat(
     if (!bridge) return -1;
     (void)threat_position;  /* For future spatial awareness */
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state.drives[DRIVE_FEAR] += threat_level * 0.5f;
     bridge->state.drives[DRIVE_FEAR] = clamp_f(bridge->state.drives[DRIVE_FEAR], 0.0f, 1.0f);
@@ -557,7 +557,7 @@ int dragonfly_emotion_report_threat(
 
     bridge->stats.negative_events++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -572,9 +572,9 @@ int dragonfly_emotion_get_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -585,9 +585,9 @@ int dragonfly_emotion_get_modulation(
 ) {
     if (!bridge || !modulation) return -1;
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *modulation = bridge->modulation;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -619,9 +619,9 @@ int dragonfly_emotion_get_stats(
 ) {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }

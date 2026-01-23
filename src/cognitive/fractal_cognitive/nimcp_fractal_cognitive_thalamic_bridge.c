@@ -32,7 +32,7 @@ fractal_cognitive_thalamic_config_t fractal_cognitive_thalamic_default_config(vo
 fractal_cognitive_thalamic_bridge_t* fractal_cognitive_thalamic_bridge_create(void* fractal_cognitive, thalamic_router_t* router, const fractal_cognitive_thalamic_config_t* config) {
     fractal_cognitive_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(fractal_cognitive_thalamic_bridge_t));
     if (!bridge) return NULL;
-    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (bridge_base_init(&bridge->base, 0, "fractal_cognitive_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -48,7 +48,7 @@ fractal_cognitive_thalamic_bridge_t* fractal_cognitive_thalamic_bridge_create(vo
 void fractal_cognitive_thalamic_bridge_destroy(fractal_cognitive_thalamic_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
 }

@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/attention/nimcp_attention_snn_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
@@ -20,6 +21,8 @@
 //=============================================================================
 
 struct attention_snn_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     attention_snn_config_t config;
 
@@ -55,8 +58,6 @@ struct attention_snn_bridge {
     /* Bio-async */
     bool bio_async_connected;
 
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 };
 
 //=============================================================================
@@ -219,11 +220,9 @@ attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* confi
         return NULL;
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "attention_snn_create: failed to create mutex");
+    /* Initialize bridge base infrastructure (includes mutex) */
+    if (bridge_base_init(&bridge->base, 0, "attention_snn") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "attention_snn_create: failed to initialize bridge base");
         nimcp_free(bridge);
         return NULL;
     }
@@ -246,7 +245,7 @@ attention_snn_bridge_t* attention_snn_create(const attention_snn_config_t* confi
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "attention_snn_create: failed to create SNN network");
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -371,9 +370,8 @@ void attention_snn_destroy(attention_snn_bridge_t* bridge) {
     if (bridge->attention.salience_map) nimcp_free(bridge->attention.salience_map);
     if (bridge->attention.top_k_indices) nimcp_free(bridge->attention.top_k_indices);
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }
@@ -384,7 +382,7 @@ int attention_snn_reset(attention_snn_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->snn) {
         snn_network_reset(bridge->snn);
@@ -417,7 +415,7 @@ int attention_snn_reset(attention_snn_bridge_t* bridge) {
     bridge->current_gate_mod = 0.5f;
     bridge->current_competition_strength = bridge->config.inhibition_strength;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -439,7 +437,7 @@ int attention_snn_encode_weights(
         num_heads = bridge->config.num_heads;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ATTENTION_SNN_STATE_ENCODING;
 
@@ -475,7 +473,7 @@ int attention_snn_encode_weights(
     int ret = snn_network_set_inputs(bridge->snn, bridge->head_buffer, head_buffer_size);
     if (ret != SNN_SUCCESS) {
         bridge->state = ATTENTION_SNN_STATE_IDLE;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -485,7 +483,7 @@ int attention_snn_encode_weights(
 
     bridge->state = ATTENTION_SNN_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return total_spikes;
 }
@@ -500,7 +498,7 @@ int attention_snn_encode_salience(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ATTENTION_SNN_STATE_ENCODING;
 
@@ -534,7 +532,7 @@ int attention_snn_encode_salience(
     bridge->stats.total_spikes_generated += (uint64_t)total_active;
     bridge->state = ATTENTION_SNN_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return total_active;
 }
@@ -550,7 +548,7 @@ int attention_snn_encode_multihead(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ATTENTION_SNN_STATE_ENCODING;
 
@@ -558,7 +556,7 @@ int attention_snn_encode_multihead(
     attention_stats_t mha_stats;
     if (!multihead_attention_get_stats(mha, &mha_stats)) {
         bridge->state = ATTENTION_SNN_STATE_IDLE;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -656,7 +654,7 @@ int attention_snn_encode_multihead(
 
     bridge->state = ATTENTION_SNN_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return total_spikes;
 }
@@ -671,14 +669,14 @@ int attention_snn_encode_gate(
     }
     if (!bridge->config.enable_gate_integration) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->current_gate_mod = clamp_f(gate_signal, 0.0f, 1.0f);
     bridge->attention.gate_activation = bridge->current_gate_mod;
 
     /* The gate modulates the competition layer excitability */
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -693,7 +691,7 @@ int attention_snn_simulate(attention_snn_bridge_t* bridge, float duration_ms) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ATTENTION_SNN_STATE_SIMULATING;
 
@@ -707,7 +705,7 @@ int attention_snn_simulate(attention_snn_bridge_t* bridge, float duration_ms) {
 
     bridge->state = ATTENTION_SNN_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -718,11 +716,11 @@ int attention_snn_step(attention_snn_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     snn_network_step(bridge->snn, bridge->config.dt_ms);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -734,7 +732,7 @@ int attention_snn_compete(attention_snn_bridge_t* bridge, float duration_ms) {
     }
     if (!bridge->config.enable_competition) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ATTENTION_SNN_STATE_COMPETING;
 
@@ -776,7 +774,7 @@ int attention_snn_compete(attention_snn_bridge_t* bridge, float duration_ms) {
 
     bridge->state = ATTENTION_SNN_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -795,7 +793,7 @@ int attention_snn_get_weights(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ATTENTION_SNN_STATE_DECODING;
 
@@ -865,7 +863,7 @@ int attention_snn_get_weights(
     bridge->stats.total_decodings++;
     bridge->state = ATTENTION_SNN_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -880,14 +878,14 @@ int attention_snn_get_salience(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t n = (sequence_length < bridge->config.sequence_length) ?
                   sequence_length : bridge->config.sequence_length;
 
     memcpy(salience, bridge->attention.salience_map, n * sizeof(float));
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -902,7 +900,7 @@ int attention_snn_get_top_k(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t actual_k = (k < bridge->config.top_k) ? k : bridge->config.top_k;
 
@@ -919,7 +917,7 @@ int attention_snn_get_top_k(
         if (indices[i] >= 0) count++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return (int)count;
 }
@@ -960,9 +958,9 @@ static float attention_snn_get_focus_strength_unlocked(attention_snn_bridge_t* b
 float attention_snn_get_focus_strength(attention_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float focus = attention_snn_get_focus_strength_unlocked(bridge);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return focus;
 }
@@ -988,9 +986,9 @@ static float attention_snn_get_sparsity_unlocked(attention_snn_bridge_t* bridge)
 float attention_snn_get_sparsity(attention_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float sparsity = attention_snn_get_sparsity_unlocked(bridge);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return sparsity;
 }
@@ -1004,7 +1002,7 @@ int attention_snn_get_attention_state(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update computed fields - use unlocked versions to avoid deadlock */
     attention_snn_get_focus_strength_unlocked(bridge);
@@ -1015,7 +1013,7 @@ int attention_snn_get_attention_state(
 
     /* Note: caller must NOT free the internal pointers */
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1036,7 +1034,7 @@ int attention_snn_get_state(
     /* Cast away const for mutex - safe as we're only reading */
     attention_snn_bridge_t* mutable_bridge = (attention_snn_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     state->state = bridge->state;
     state->attention = bridge->attention;
@@ -1060,7 +1058,7 @@ int attention_snn_get_state(
     state->competition_energy = bridge->stats.competition_convergence_rate;
     state->bio_async_connected = bridge->bio_async_connected;
 
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return 0;
 }
@@ -1076,7 +1074,7 @@ int attention_snn_get_stats(
 
     attention_snn_bridge_t* mutable_bridge = (attention_snn_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     *stats = bridge->stats;
 
@@ -1086,7 +1084,7 @@ int attention_snn_get_stats(
         stats->avg_sparsity /= (float)stats->total_forward_passes;
     }
 
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return 0;
 }
@@ -1094,11 +1092,11 @@ int attention_snn_get_stats(
 void attention_snn_reset_stats(attention_snn_bridge_t* bridge) {
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     memset(&bridge->stats, 0, sizeof(attention_snn_stats_t));
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 //=============================================================================
@@ -1112,7 +1110,7 @@ int attention_snn_connect_bio_async(attention_snn_bridge_t* bridge) {
     }
     if (!bridge->config.enable_bio_async) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Connect SNN to bio-async router */
     if (bridge->snn) {
@@ -1120,7 +1118,7 @@ int attention_snn_connect_bio_async(attention_snn_bridge_t* bridge) {
         bridge->bio_async_connected = true;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return bridge->bio_async_connected ? 0 : -1;
 }
@@ -1131,14 +1129,14 @@ int attention_snn_disconnect_bio_async(attention_snn_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->bio_async_connected) {
         /* Unregister from bio-async router */
         bridge->bio_async_connected = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1161,11 +1159,11 @@ int attention_snn_modulate_by_arousal(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->current_arousal_mod = clamp_f(arousal_level, 0.1f, 2.0f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1179,11 +1177,11 @@ int attention_snn_set_competition_strength(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->current_competition_strength = clamp_f(strength, 0.0f, 1.0f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1197,12 +1195,12 @@ int attention_snn_set_gate_modulation(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->current_gate_mod = clamp_f(gate_level, 0.0f, 1.0f);
     bridge->attention.gate_activation = bridge->current_gate_mod;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

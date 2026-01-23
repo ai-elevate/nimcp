@@ -12,6 +12,7 @@
  */
 
 #include "security/knowledge_graph/nimcp_security_kg_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/error/nimcp_error_codes.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -154,7 +155,7 @@ sec_kg_fep_bridge_t* sec_kg_fep_create(
     bridge->fep_system = fep_system;
 
     /* Initialize base bridge */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "security_kg_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Security KG FEP bridge: mutex creation failed");
         nimcp_free(bridge);
@@ -197,7 +198,7 @@ void sec_kg_fep_destroy(sec_kg_fep_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     /* Free structure */

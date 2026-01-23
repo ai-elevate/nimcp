@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/imagination/nimcp_hippocampus_imagination_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/imagination/nimcp_imagination_engine.h"
 #include "core/brain/regions/hippocampus/nimcp_hippocampus_adapter.h"
@@ -104,7 +105,7 @@ hippocampus_imagination_bridge_t* hippocampus_imagination_bridge_create(
     bridge->base.bridge_active = false;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (bridge_base_init(&bridge->base, 0, "hippocampus_imagination") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOG_ERROR("Failed to create bridge mutex");
         nimcp_free(bridge);
@@ -115,7 +116,7 @@ hippocampus_imagination_bridge_t* hippocampus_imagination_bridge_create(
     if (config) {
         if (hippocampus_imagination_validate_config(config) != 0) {
             NIMCP_LOG_ERROR("Invalid bridge configuration");
-            nimcp_mutex_free(bridge->base.mutex);
+            bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
             return NULL;
         }
@@ -168,7 +169,7 @@ void hippocampus_imagination_bridge_destroy(hippocampus_imagination_bridge_t* br
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

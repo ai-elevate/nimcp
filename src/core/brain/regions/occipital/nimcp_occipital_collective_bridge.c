@@ -10,6 +10,7 @@
  */
 
 #include "core/brain/regions/occipital/nimcp_occipital_collective_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/occipital/nimcp_occipital_adapter.h"
 #include "cognitive/collective_cognition/nimcp_collective_cognition.h"
 #include "async/nimcp_bio_router.h"
@@ -38,9 +39,7 @@
 //=============================================================================
 
 struct occipital_collective_bridge {
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
-
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /* Bio-async context */
     bio_module_context_t bio_ctx;
 
@@ -136,8 +135,8 @@ occipital_collective_bridge_t* occipital_collective_create(
     }
 
     /* Create mutex for thread safety */
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "occipital_collective") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         LOG_ERROR("Failed to create mutex for occipital-collective bridge");
         nimcp_free(bridge);
         return NULL;
@@ -194,8 +193,8 @@ void occipital_collective_destroy(occipital_collective_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     LOG_INFO("Occipital-collective bridge destroyed (local_id=%u)", bridge->local_instance_id);
@@ -206,7 +205,7 @@ void occipital_collective_destroy(occipital_collective_bridge_t* bridge) {
 int occipital_collective_reset(occipital_collective_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset targets and features */
     memset(bridge->targets, 0, sizeof(bridge->targets));
@@ -233,7 +232,7 @@ int occipital_collective_reset(occipital_collective_bridge_t* bridge) {
     bridge->last_update_ms = nimcp_time_get_ms();
     bridge->last_broadcast_ms = 0;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     LOG_DEBUG("Occipital-collective bridge reset");
 
@@ -538,31 +537,31 @@ static nimcp_error_t occipital_collective_message_handler(
             /* Handle joint attention from remote instance */
             if (payload_size < sizeof(joint_attention_target_t)) return -1;
             const joint_attention_target_t* target = (const joint_attention_target_t*)payload;
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
             if (bridge->target_count < OCCIPITAL_COLLECTIVE_MAX_TARGETS) {
                 bridge->targets[bridge->target_count++] = *target;
                 bridge->stats.attention_events_recv++;
             }
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return 0;
         }
         case BIO_MSG_OCCIPITAL_COLLECTIVE_FEATURE: {
             /* Handle shared feature from remote instance */
             if (payload_size < sizeof(shared_visual_feature_t)) return -1;
             const shared_visual_feature_t* feature = (const shared_visual_feature_t*)payload;
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
             if (bridge->feature_count < OCCIPITAL_COLLECTIVE_MAX_FEATURES) {
                 bridge->features[bridge->feature_count++] = *feature;
                 bridge->stats.features_received++;
             }
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return 0;
         }
         case BIO_MSG_OCCIPITAL_COLLECTIVE_STATE_UPDATE: {
             /* Handle visual state update from remote instance */
             if (payload_size < sizeof(collective_visual_state_t)) return -1;
             const collective_visual_state_t* state = (const collective_visual_state_t*)payload;
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
             int idx = find_instance_index(bridge, state->instance_id);
             if (idx < 0 && bridge->instance_count < OCCIPITAL_COLLECTIVE_MAX_INSTANCES) {
                 idx = (int)bridge->instance_count++;
@@ -570,7 +569,7 @@ static nimcp_error_t occipital_collective_message_handler(
             if (idx >= 0) {
                 bridge->instances[idx] = *state;
             }
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return 0;
         }
         default:
@@ -589,7 +588,7 @@ int occipital_collective_update(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     (void)delta_ms;
 
@@ -622,7 +621,7 @@ int occipital_collective_update(
 
     bridge->last_update_ms = now;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -640,10 +639,10 @@ int occipital_collective_initiate_attention(
 ) {
     if (!bridge || !target_id) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->target_count >= OCCIPITAL_COLLECTIVE_MAX_TARGETS) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         LOG_WARNING("Cannot initiate attention: max targets reached");
         return -1;
     }
@@ -673,7 +672,7 @@ int occipital_collective_initiate_attention(
     joint_attention_target_t target_copy = *target;
     bool should_broadcast = bridge->bio_async_connected && bridge->bio_ctx;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Broadcast attention via bio-async if connected */
     if (should_broadcast) {
@@ -705,11 +704,11 @@ int occipital_collective_follow_attention(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     int idx = find_target_index(bridge, target_id);
     if (idx < 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         LOG_WARNING("Cannot follow attention: target %u not found", target_id);
         return -1;
     }
@@ -724,7 +723,7 @@ int occipital_collective_follow_attention(
     bridge->stats.gaze_follows++;
     bridge->stats.attention_events_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     LOG_DEBUG("Following joint attention: target_id=%u", target_id);
 
@@ -737,11 +736,11 @@ int occipital_collective_release_attention(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     int idx = find_target_index(bridge, target_id);
     if (idx < 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -756,7 +755,7 @@ int occipital_collective_release_attention(
 
     bridge->stats.attention_events_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -769,7 +768,7 @@ int occipital_collective_get_targets(
 ) {
     if (!bridge || !targets || !count) return -1;
 
-    nimcp_mutex_lock(((occipital_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((occipital_collective_bridge_t*)bridge)->base.mutex);
 
     uint32_t copy_count = bridge->target_count;
     if (copy_count > max_targets) copy_count = max_targets;
@@ -777,7 +776,7 @@ int occipital_collective_get_targets(
     memcpy(targets, bridge->targets, copy_count * sizeof(joint_attention_target_t));
     *count = copy_count;
 
-    nimcp_mutex_unlock(((occipital_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((occipital_collective_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -792,7 +791,7 @@ int occipital_collective_share_feature(
 ) {
     if (!bridge || !feature) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->feature_count >= OCCIPITAL_COLLECTIVE_MAX_FEATURES) {
         LOG_DEBUG("Feature buffer full, evicting oldest feature");
@@ -814,7 +813,7 @@ int occipital_collective_share_feature(
     shared_visual_feature_t feature_copy = *stored;
     bool should_broadcast = bridge->bio_async_connected && bridge->bio_ctx;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Broadcast feature via bio-async if connected */
     if (should_broadcast) {
@@ -846,7 +845,7 @@ int occipital_collective_get_features(
 ) {
     if (!bridge || !features || !count) return -1;
 
-    nimcp_mutex_lock(((occipital_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((occipital_collective_bridge_t*)bridge)->base.mutex);
 
     uint32_t copied = 0;
     for (uint32_t i = 0; i < bridge->feature_count && copied < max_features; ++i) {
@@ -859,7 +858,7 @@ int occipital_collective_get_features(
 
     *count = copied;
 
-    nimcp_mutex_unlock(((occipital_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((occipital_collective_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -871,7 +870,7 @@ int occipital_collective_merge_features(
     if (!bridge) return -1;
     if (!bridge->config.enable_feature_merge) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     int merged = 0;
 
@@ -917,7 +916,7 @@ int occipital_collective_merge_features(
     }
     bridge->feature_count = write_idx;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return merged;
 }
@@ -932,7 +931,7 @@ int occipital_collective_get_summary(
 ) {
     if (!bridge || !summary) return -1;
 
-    nimcp_mutex_lock(((occipital_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((occipital_collective_bridge_t*)bridge)->base.mutex);
 
     memset(summary, 0, sizeof(*summary));
 
@@ -968,7 +967,7 @@ int occipital_collective_get_summary(
         }
     }
 
-    nimcp_mutex_unlock(((occipital_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((occipital_collective_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -980,17 +979,17 @@ int occipital_collective_get_instance_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(((occipital_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((occipital_collective_bridge_t*)bridge)->base.mutex);
 
     int idx = find_instance_index(bridge, instance_id);
     if (idx < 0) {
-        nimcp_mutex_unlock(((occipital_collective_bridge_t*)bridge)->mutex);
+        nimcp_mutex_unlock(((occipital_collective_bridge_t*)bridge)->base.mutex);
         return -1;
     }
 
     *state = bridge->instances[idx];
 
-    nimcp_mutex_unlock(((occipital_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((occipital_collective_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -1000,9 +999,9 @@ uint32_t occipital_collective_get_local_id(
 ) {
     if (!bridge) return 0;
 
-    nimcp_mutex_lock(((occipital_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((occipital_collective_bridge_t*)bridge)->base.mutex);
     uint32_t id = bridge->local_instance_id;
-    nimcp_mutex_unlock(((occipital_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((occipital_collective_bridge_t*)bridge)->base.mutex);
 
     return id;
 }
@@ -1012,9 +1011,9 @@ bool occipital_collective_is_attention_leader(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(((occipital_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((occipital_collective_bridge_t*)bridge)->base.mutex);
     bool is_leader = bridge->is_attention_leader;
-    nimcp_mutex_unlock(((occipital_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((occipital_collective_bridge_t*)bridge)->base.mutex);
 
     return is_leader;
 }
@@ -1024,9 +1023,9 @@ float occipital_collective_get_coherence(
 ) {
     if (!bridge) return 0.0f;
 
-    nimcp_mutex_lock(((occipital_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((occipital_collective_bridge_t*)bridge)->base.mutex);
     float coherence = bridge->attention_coherence;
-    nimcp_mutex_unlock(((occipital_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((occipital_collective_bridge_t*)bridge)->base.mutex);
 
     return coherence;
 }
@@ -1041,9 +1040,9 @@ int occipital_collective_get_stats(
 ) {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(((occipital_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((occipital_collective_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(((occipital_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((occipital_collective_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -1051,9 +1050,9 @@ int occipital_collective_get_stats(
 void occipital_collective_reset_stats(occipital_collective_bridge_t* bridge) {
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 //=============================================================================
@@ -1063,20 +1062,20 @@ void occipital_collective_reset_stats(occipital_collective_bridge_t* bridge) {
 int occipital_collective_connect_bio_async(occipital_collective_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* If already connected, disconnect first */
     if (bridge->bio_async_connected && bridge->bio_ctx) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         occipital_collective_disconnect_bio_async(bridge);
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     /* Check if router is initialized */
     if (!bio_router_is_initialized()) {
         LOG_WARNING("Bio-async router not initialized, skipping registration");
         bridge->bio_async_connected = false;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -1092,7 +1091,7 @@ int occipital_collective_connect_bio_async(occipital_collective_bridge_t* bridge
     if (!bridge->bio_ctx) {
         LOG_WARNING("Failed to register with bio-async router");
         bridge->bio_async_connected = false;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -1131,7 +1130,7 @@ int occipital_collective_connect_bio_async(occipital_collective_bridge_t* bridge
 
     bridge->bio_async_connected = true;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     LOG_INFO("Connected to bio-async router (module_id=0x%04X)", BIO_MODULE_OCCIPITAL_COLLECTIVE);
     return 0;
@@ -1140,7 +1139,7 @@ int occipital_collective_connect_bio_async(occipital_collective_bridge_t* bridge
 int occipital_collective_disconnect_bio_async(occipital_collective_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->bio_async_connected && bridge->bio_ctx) {
         /* Unregister handlers first */
@@ -1156,7 +1155,7 @@ int occipital_collective_disconnect_bio_async(occipital_collective_bridge_t* bri
 
     bridge->bio_async_connected = false;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     LOG_INFO("Disconnected from bio-async router");
     return 0;

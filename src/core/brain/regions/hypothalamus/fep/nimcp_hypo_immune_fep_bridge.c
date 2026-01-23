@@ -10,6 +10,7 @@
  */
 
 #include "core/brain/regions/hypothalamus/fep/nimcp_hypo_immune_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include "utils/error/nimcp_error_codes.h"
@@ -140,7 +141,7 @@ hypo_immune_fep_bridge_t* hypo_immune_fep_create(
     bridge->fep_system = fep_system;
 
     /* Initialize base bridge infrastructure */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "hypo_immune_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Hypo Immune FEP bridge: mutex creation failed");
         nimcp_free(bridge);
@@ -191,7 +192,7 @@ void hypo_immune_fep_destroy(hypo_immune_fep_bridge_t* bridge) {
     }
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
         bridge->base.mutex = NULL;
     }
 

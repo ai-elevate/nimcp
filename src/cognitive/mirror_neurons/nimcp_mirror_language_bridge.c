@@ -10,6 +10,7 @@
  * and embodied semantics.
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/mirror_neurons/nimcp_mirror_language_bridge.h"
 #include "cognitive/nimcp_mirror_neurons.h"
 #include "core/brain/regions/broca/nimcp_broca_adapter.h"
@@ -69,6 +70,7 @@ typedef struct binding_entry {
  * @brief Bridge internal structure
  */
 struct mirror_language_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /* Configuration */
     mirror_language_config_t config;
 

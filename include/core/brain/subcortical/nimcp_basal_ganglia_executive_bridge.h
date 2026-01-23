@@ -29,6 +29,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "core/brain/subcortical/nimcp_basal_ganglia.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/nimcp_executive.h"
 
 #ifdef __cplusplus
@@ -144,6 +145,8 @@ typedef struct {
  * @brief BG-Executive bridge instance
  */
 typedef struct bge_bridge {
+    bridge_base_t base;           /**< MUST be first: base bridge infrastructure */
+
     /* Connected components */
     basal_ganglia_t* bg;          /**< Connected basal ganglia */
     executive_controller_t* exec; /**< Connected executive controller */
@@ -168,10 +171,7 @@ typedef struct bge_bridge {
     bge_bridge_config_t config;   /**< Configuration */
 
     /* Statistics */
-    bge_bridge_stats_t stats;     /**< Runtime statistics */
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;         /**< Mutex for thread safety */
+    bge_bridge_stats_t stats;     /**< Runtime statistics *//**< Mutex for thread safety */
 } bge_bridge_t;
 
 /* ============================================================================

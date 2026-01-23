@@ -46,7 +46,7 @@ salience_thalamic_config_t salience_thalamic_default_config(void) {
 salience_thalamic_bridge_t* salience_thalamic_bridge_create(void* salience, thalamic_router_t* router, const salience_thalamic_config_t* config) {
     salience_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(salience_thalamic_bridge_t));
     if (!bridge) return NULL;
-    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (bridge_base_init(&bridge->base, 0, "salience_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -62,7 +62,7 @@ salience_thalamic_bridge_t* salience_thalamic_bridge_create(void* salience, thal
 void salience_thalamic_bridge_destroy(salience_thalamic_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
 }

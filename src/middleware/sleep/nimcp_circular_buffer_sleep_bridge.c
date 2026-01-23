@@ -119,7 +119,7 @@ circular_buffer_sleep_bridge_t circular_buffer_sleep_bridge_create(
     bridge->effects.overflow_strategy = OVERFLOW_OVERWRITE;
     bridge->effects.buffering_enabled = true;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "circular_buffer_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(nimcp_platform_mutex_t),
             "circular_buffer_sleep_bridge_create: failed to allocate mutex");
@@ -162,7 +162,7 @@ void circular_buffer_sleep_bridge_destroy(circular_buffer_sleep_bridge_t bridge)
         }
     }
 
-    if (bridge->base.mutex) nimcp_mutex_free(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

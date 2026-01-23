@@ -6,6 +6,7 @@
  * Enables embodied cognition and physical reasoning.
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/logic/nimcp_somatosensory_logic_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -41,6 +42,7 @@ typedef struct {
  * @brief Bridge internal structure
  */
 struct somato_logic_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* somatosensory;                    /**< Somatosensory cortex handle */
     void* logic;                            /**< Logic module handle */
     somato_logic_config_t config;           /**< Configuration */

@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/memory/nimcp_working_memory_plasticity_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
@@ -19,6 +20,8 @@
 //=============================================================================
 
 struct wm_plasticity_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     wm_plasticity_config_t config;
 
@@ -54,9 +57,6 @@ struct wm_plasticity_bridge {
 
     /* Bio-async */
     bool bio_async_connected;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 };
 
 //=============================================================================
@@ -206,10 +206,8 @@ wm_plasticity_bridge_t* wm_plasticity_create(const wm_plasticity_config_t* confi
         bridge->config = wm_plasticity_config_default();
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize bridge base infrastructure (includes mutex) */
+    if (bridge_base_init(&bridge->base, 0, "wm_plasticity") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -218,7 +216,7 @@ wm_plasticity_bridge_t* wm_plasticity_create(const wm_plasticity_config_t* confi
     bridge->synapse_capacity = WM_PLASTICITY_MAX_SYNAPSES;
     bridge->synapses = nimcp_calloc(bridge->synapse_capacity, sizeof(wm_plasticity_synapse_t));
     if (!bridge->synapses) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -229,7 +227,7 @@ wm_plasticity_bridge_t* wm_plasticity_create(const wm_plasticity_config_t* confi
     bridge->slot_states = nimcp_calloc(bridge->num_slots, sizeof(wm_slot_plasticity_t));
     if (!bridge->slot_states) {
         nimcp_free(bridge->synapses);
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -267,9 +265,8 @@ void wm_plasticity_destroy(wm_plasticity_bridge_t* bridge) {
     if (bridge->synapses) nimcp_free(bridge->synapses);
     if (bridge->slot_states) nimcp_free(bridge->slot_states);
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }
@@ -277,7 +274,7 @@ void wm_plasticity_destroy(wm_plasticity_bridge_t* bridge) {
 int wm_plasticity_reset(wm_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset all synapses to initial state */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
@@ -307,7 +304,7 @@ int wm_plasticity_reset(wm_plasticity_bridge_t* bridge) {
     bridge->global_learning_rate = 1.0f;
     bridge->pending_reward = 0.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -325,17 +322,17 @@ int wm_plasticity_register_synapse(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if already registered */
     if (find_synapse(bridge, synapse_id)) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     /* Check capacity */
     if (bridge->synapse_count >= bridge->synapse_capacity) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -357,7 +354,7 @@ int wm_plasticity_register_synapse(
 
     bridge->synapse_count++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -368,7 +365,7 @@ int wm_plasticity_unregister_synapse(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
         if (bridge->synapses[i].synapse_id == synapse_id) {
@@ -376,12 +373,12 @@ int wm_plasticity_unregister_synapse(
                 bridge->synapses[i] = bridge->synapses[bridge->synapse_count - 1];
             }
             bridge->synapse_count--;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return 0;
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return -1;
 }
 
@@ -392,17 +389,17 @@ int wm_plasticity_get_synapse(
 {
     if (!bridge || !synapse) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     wm_plasticity_synapse_t* found = find_synapse(bridge, synapse_id);
     if (!found) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     *synapse = *found;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -420,7 +417,7 @@ int wm_plasticity_encode(
     if (!bridge) return -1;
     if (slot_idx >= bridge->num_slots) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = WM_PLASTICITY_STATE_ENCODING;
 
@@ -466,7 +463,7 @@ int wm_plasticity_encode(
     bridge->stats.total_encodings++;
     bridge->state = WM_PLASTICITY_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -480,14 +477,14 @@ int wm_plasticity_maintain(
     if (!bridge) return -1;
     if (slot_idx >= bridge->num_slots) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = WM_PLASTICITY_STATE_MAINTAINING;
 
     wm_slot_plasticity_t* slot = &bridge->slot_states[slot_idx];
     if (!slot->occupied) {
         bridge->state = WM_PLASTICITY_STATE_IDLE;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -532,7 +529,7 @@ int wm_plasticity_maintain(
     bridge->stats.total_maintenance_cycles++;
     bridge->state = WM_PLASTICITY_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -546,7 +543,7 @@ int wm_plasticity_retrieve(
     if (!bridge) return -1;
     if (slot_idx >= bridge->num_slots) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = WM_PLASTICITY_STATE_RETRIEVING;
 
@@ -584,7 +581,7 @@ int wm_plasticity_retrieve(
     bridge->stats.total_retrievals++;
     bridge->state = WM_PLASTICITY_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -597,7 +594,7 @@ int wm_plasticity_evict(
     if (!bridge) return -1;
     if (slot_idx >= bridge->num_slots) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     wm_slot_plasticity_t* slot = &bridge->slot_states[slot_idx];
     slot->occupied = false;
@@ -624,7 +621,7 @@ int wm_plasticity_evict(
 
     bridge->stats.total_evictions++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -638,7 +635,7 @@ int wm_plasticity_decay(
     if (!bridge) return -1;
     if (slot_idx >= bridge->num_slots) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     wm_slot_plasticity_t* slot = &bridge->slot_states[slot_idx];
     float decay_amount = slot->current_strength - new_strength;
@@ -672,7 +669,7 @@ int wm_plasticity_decay(
         slot->occupied = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -684,7 +681,7 @@ int wm_plasticity_reward(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->pending_reward = reward;
     bridge->last_reward_time_us = timestamp_us;
@@ -706,7 +703,7 @@ int wm_plasticity_reward(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -721,7 +718,7 @@ int wm_plasticity_update(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now_us = nimcp_time_get_us();
 
@@ -773,7 +770,7 @@ int wm_plasticity_update(
         syn->avg_activity = (1.0f - alpha) * syn->avg_activity + alpha * recent_activity;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -785,7 +782,7 @@ int wm_plasticity_consolidate_slot(
     if (!bridge) return -1;
     if (slot_idx >= bridge->num_slots) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = WM_PLASTICITY_STATE_CONSOLIDATING;
 
@@ -823,7 +820,7 @@ int wm_plasticity_consolidate_slot(
 
     bridge->state = WM_PLASTICITY_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -832,16 +829,16 @@ int wm_plasticity_consolidate_all(wm_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_sleep_consolidation) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = WM_PLASTICITY_STATE_CONSOLIDATING;
 
     /* Consolidate all occupied slots */
     for (uint32_t s = 0; s < bridge->num_slots; s++) {
         if (bridge->slot_states[s].occupied) {
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             wm_plasticity_consolidate_slot(bridge, s);
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
         }
     }
 
@@ -852,7 +849,7 @@ int wm_plasticity_consolidate_all(wm_plasticity_bridge_t* bridge) {
 
     bridge->state = WM_PLASTICITY_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -868,11 +865,11 @@ float wm_plasticity_get_encoding_strength(
     if (!bridge) return -1.0f;
     if (slot_idx >= bridge->num_slots) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float strength = bridge->slot_states[slot_idx].encoding_strength;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return strength;
 }
@@ -884,11 +881,11 @@ float wm_plasticity_get_consolidation_level(
     if (!bridge) return -1.0f;
     if (slot_idx >= bridge->num_slots) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float level = bridge->slot_states[slot_idx].consolidation_progress;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return level;
 }
@@ -900,7 +897,7 @@ float wm_plasticity_get_retrieval_priority(
     if (!bridge) return -1.0f;
     if (slot_idx >= bridge->num_slots) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     wm_slot_plasticity_t* slot = &bridge->slot_states[slot_idx];
 
@@ -909,7 +906,7 @@ float wm_plasticity_get_retrieval_priority(
                     slot->consolidation_progress * 0.3f +
                     slot->current_strength * 0.3f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return priority;
 }
@@ -921,7 +918,7 @@ int wm_plasticity_get_maintenance_modulation(
 {
     if (!bridge || !modulation) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t n = (num_slots < bridge->num_slots) ? num_slots : bridge->num_slots;
 
@@ -933,7 +930,7 @@ int wm_plasticity_get_maintenance_modulation(
         modulation[s] = clamp_f(modulation[s], 0.0f, 2.0f);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -950,7 +947,7 @@ int wm_plasticity_get_state(
 
     wm_plasticity_bridge_t* mutable_bridge = (wm_plasticity_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     state->state = bridge->state;
     state->registered_synapses = bridge->synapse_count;
@@ -966,7 +963,7 @@ int wm_plasticity_get_state(
     state->current_salience_mod = bridge->current_salience_mod;
     state->bio_async_connected = bridge->bio_async_connected;
 
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return 0;
 }
@@ -979,7 +976,7 @@ int wm_plasticity_get_stats(
 
     wm_plasticity_bridge_t* mutable_bridge = (wm_plasticity_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     *stats = bridge->stats;
 
@@ -988,7 +985,7 @@ int wm_plasticity_get_stats(
         stats->avg_weight_change /= (float)total_events;
     }
 
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return 0;
 }
@@ -996,11 +993,11 @@ int wm_plasticity_get_stats(
 void wm_plasticity_reset_stats(wm_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     memset(&bridge->stats, 0, sizeof(wm_plasticity_stats_t));
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 //=============================================================================
@@ -1014,12 +1011,12 @@ int wm_plasticity_set_weight_callback(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->weight_callback = callback;
     bridge->weight_callback_data = user_data;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1031,12 +1028,12 @@ int wm_plasticity_set_consolidation_callback(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->consolidation_callback = callback;
     bridge->consolidation_callback_data = user_data;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1051,11 +1048,11 @@ int wm_plasticity_set_capacity_pressure(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->current_capacity_pressure = clamp_f(pressure, 0.0f, 1.0f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1066,11 +1063,11 @@ int wm_plasticity_set_salience_modulation(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->current_salience_mod = clamp_f(salience_level, 0.0f, 2.0f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1083,11 +1080,11 @@ int wm_plasticity_connect_bio_async(wm_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->bio_async_connected = true;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return bridge->bio_async_connected ? 0 : -1;
 }
@@ -1095,13 +1092,13 @@ int wm_plasticity_connect_bio_async(wm_plasticity_bridge_t* bridge) {
 int wm_plasticity_disconnect_bio_async(wm_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->bio_async_connected) {
         bridge->bio_async_connected = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

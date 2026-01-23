@@ -41,7 +41,7 @@ bcm_fep_bridge_t* bcm_fep_bridge_create(const bcm_fep_config_t* config) {
         bcm_fep_bridge_default_config(&bridge->config);
     }
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "bcm_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         LOG_ERROR("BCM-FEP bridge mutex creation failed");
@@ -58,7 +58,7 @@ bcm_fep_bridge_t* bcm_fep_bridge_create(const bcm_fep_config_t* config) {
 void bcm_fep_bridge_destroy(bcm_fep_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.bio_async_enabled) bcm_fep_bridge_disconnect_bio_async(bridge);
-    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("BCM-FEP bridge destroyed");
 }

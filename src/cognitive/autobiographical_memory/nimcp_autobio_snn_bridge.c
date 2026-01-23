@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/autobiographical_memory/nimcp_autobio_snn_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_config.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
@@ -25,9 +26,10 @@
 //=============================================================================
 
 struct autobio_snn_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     autobio_snn_config_t config;
     snn_network_t* snn;
-    nimcp_mutex_t* mutex;
 
     /* State */
     autobio_snn_state_t state;
@@ -149,10 +151,8 @@ autobio_snn_bridge_t* autobio_snn_create(const autobio_snn_config_t* config) {
         return NULL;
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize bridge base infrastructure (includes mutex) */
+    if (bridge_base_init(&bridge->base, 0, "autobio_snn") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -169,7 +169,7 @@ autobio_snn_bridge_t* autobio_snn_create(const autobio_snn_config_t* config) {
 
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -223,21 +223,21 @@ void autobio_snn_destroy(autobio_snn_bridge_t* bridge) {
         snn_network_destroy(bridge->snn);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
-
     nimcp_free(bridge->encoding_buffer);
     nimcp_free(bridge->output_buffer);
     nimcp_free(bridge->recall_buffer);
     nimcp_free(bridge->prev_state);
+
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
+
     nimcp_free(bridge);
 }
 
 int autobio_snn_reset(autobio_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset SNN network */
     if (bridge->snn) {
@@ -270,7 +270,7 @@ int autobio_snn_reset(autobio_snn_bridge_t* bridge) {
     bridge->temporal_signal = 0.0f;
     bridge->emotional_signal = 0.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -286,7 +286,7 @@ int autobio_snn_encode_state(
     if (!bridge || !dimensions) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = AUTOBIO_SNN_STATE_ENCODING;
 
     uint32_t neurons_per_dim = bridge->config.neurons_per_dim;
@@ -332,7 +332,7 @@ int autobio_snn_encode_state(
     bridge->stats.total_spikes += total_spikes;
     bridge->stats.total_encodings++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return total_spikes;
 }
 
@@ -344,7 +344,7 @@ int autobio_snn_encode_episodic(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[AUTOBIO_DIM_COUNT] = {0};
     dims[AUTOBIO_DIM_IMPORTANCE] = clamp_f(importance, 0.0f, 1.0f);
@@ -352,7 +352,7 @@ int autobio_snn_encode_episodic(
     dims[AUTOBIO_DIM_VIVIDNESS] = clamp_f(vividness, 0.0f, 1.0f);
     dims[AUTOBIO_DIM_ENCODING_DEPTH] = (importance + vividness) / 2.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return autobio_snn_encode_state(bridge, dims, 4);
 }
@@ -364,7 +364,7 @@ int autobio_snn_encode_temporal(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[AUTOBIO_DIM_COUNT] = {0};
     dims[AUTOBIO_DIM_TEMPORAL_CONTEXT] = clamp_f(recency, 0.0f, 1.0f);
@@ -373,7 +373,7 @@ int autobio_snn_encode_temporal(
     bridge->temporal_signal = recency;
     (void)temporal_tag; /* Could be used for temporal ordering */
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return autobio_snn_encode_state(bridge, dims, 2);
 }
@@ -386,7 +386,7 @@ int autobio_snn_encode_emotional(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[AUTOBIO_DIM_COUNT] = {0};
     /* Convert valence from [-1,1] to [0,1] for encoding */
@@ -407,7 +407,7 @@ int autobio_snn_encode_emotional(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return autobio_snn_encode_state(bridge, dims, 3);
 }
@@ -420,7 +420,7 @@ int autobio_snn_simulate(autobio_snn_bridge_t* bridge, float duration_ms) {
     if (!bridge) return -1;
     if (duration_ms <= 0.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = AUTOBIO_SNN_STATE_SIMULATING;
 
     float dt = bridge->config.dt_ms;
@@ -483,7 +483,7 @@ int autobio_snn_simulate(autobio_snn_bridge_t* bridge, float duration_ms) {
         bridge->encoded_callback(bridge, &bridge->last_recall, bridge->encoded_callback_data);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -519,9 +519,9 @@ int autobio_snn_get_recall(
 ) {
     if (!bridge || !recall) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *recall = bridge->last_recall;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -534,11 +534,11 @@ int autobio_snn_get_activations(
     if (!bridge || !activations) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t d = 0; d < num_dims; d++) {
         activations[d] = bridge->dim_states[d].activation;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -549,13 +549,13 @@ bool autobio_snn_check_recall(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float strength = bridge->last_recall.vividness;
     if (recall_strength) {
         *recall_strength = strength;
     }
     bool successful = strength > bridge->config.recall_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return successful;
 }
@@ -566,13 +566,13 @@ bool autobio_snn_check_emotional(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float intensity = bridge->last_recall.emotional_intensity;
     if (emotional_intensity) {
         *emotional_intensity = intensity;
     }
     bool detected = intensity > bridge->config.vividness_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return detected;
 }
@@ -583,7 +583,7 @@ bool autobio_snn_check_state_change(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     /* Calculate magnitude from prev_state differences */
     float mag = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
@@ -596,7 +596,7 @@ bool autobio_snn_check_state_change(
         *change_magnitude = mag;
     }
     bool changed = mag > bridge->config.state_change_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return changed;
 }
@@ -613,9 +613,9 @@ int autobio_snn_get_dim_state(
     if (!bridge || !state) return -1;
     if (dim >= bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -626,7 +626,7 @@ int autobio_snn_get_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
     state->mean_recall_strength = bridge->last_recall.vividness;
@@ -643,16 +643,16 @@ int autobio_snn_get_state(
         state->total_activity += bridge->dim_states[d].activation;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int autobio_snn_get_stats(autobio_snn_bridge_t* bridge, autobio_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -660,9 +660,9 @@ int autobio_snn_get_stats(autobio_snn_bridge_t* bridge, autobio_snn_stats_t* sta
 int autobio_snn_reset_stats(autobio_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(autobio_snn_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -670,9 +670,9 @@ int autobio_snn_reset_stats(autobio_snn_bridge_t* bridge) {
 float autobio_snn_get_recall_strength(autobio_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float strength = bridge->last_recall.vividness;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return strength;
 }
@@ -680,12 +680,12 @@ float autobio_snn_get_recall_strength(autobio_snn_bridge_t* bridge) {
 float autobio_snn_get_total_activity(autobio_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float total = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
         total += bridge->dim_states[d].activation;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return total;
 }
@@ -701,10 +701,10 @@ int autobio_snn_register_recall_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->recall_callback = callback;
     bridge->recall_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -716,10 +716,10 @@ int autobio_snn_register_encoded_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->encoded_callback = callback;
     bridge->encoded_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -731,10 +731,10 @@ int autobio_snn_register_emotional_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->emotional_callback = callback;
     bridge->emotional_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -747,10 +747,10 @@ int autobio_snn_bio_async_connect(autobio_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -758,9 +758,9 @@ int autobio_snn_bio_async_connect(autobio_snn_bridge_t* bridge) {
 int autobio_snn_bio_async_disconnect(autobio_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -768,9 +768,9 @@ int autobio_snn_bio_async_disconnect(autobio_snn_bridge_t* bridge) {
 bool autobio_snn_is_bio_async_connected(autobio_snn_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
 }

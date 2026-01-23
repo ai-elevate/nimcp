@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/mirror_neurons/nimcp_mirror_plasticity_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
@@ -26,6 +27,8 @@
 //=============================================================================
 
 struct mirror_plasticity_bridge {
+    bridge_base_t base;                  /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     mirror_plasticity_config_t config;
 
@@ -68,9 +71,6 @@ struct mirror_plasticity_bridge {
     /* Timing */
     uint64_t last_update_us;
     uint64_t last_consolidation_us;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 };
 
 //=============================================================================
@@ -320,10 +320,8 @@ mirror_plasticity_bridge_t* mirror_plasticity_create(
     plasticity_orchestrator_register_event_callback(
         bridge->orchestrator, PLASTICITY_EVENT_ENERGY_RESTORED, on_energy_restored, bridge);
 
-    /* Create mutex */
-    mutex_attr_t attr = { .type = MUTEX_TYPE_NORMAL };
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
+    /* Initialize bridge base infrastructure (includes mutex) */
+    if (bridge_base_init(&bridge->base, 0, "mirror_plasticity") != 0) {
         plasticity_orchestrator_destroy(bridge->orchestrator);
         nimcp_free(bridge->synapses);
         nimcp_free(bridge);
@@ -371,9 +369,8 @@ mirror_plasticity_bridge_t* mirror_plasticity_create_with_orchestrator(
     plasticity_orchestrator_register_event_callback(
         bridge->orchestrator, PLASTICITY_EVENT_HOMEOSTATIC_SCALE, on_homeostatic_event, bridge);
 
-    mutex_attr_t attr = { .type = MUTEX_TYPE_NORMAL };
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
+    /* Initialize bridge base infrastructure (includes mutex) */
+    if (bridge_base_init(&bridge->base, 0, "mirror_plasticity") != 0) {
         nimcp_free(bridge->synapses);
         nimcp_free(bridge);
         return NULL;
@@ -395,9 +392,8 @@ void mirror_plasticity_destroy(mirror_plasticity_bridge_t* bridge) {
         plasticity_orchestrator_destroy(bridge->orchestrator);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
     if (bridge->synapses) nimcp_free(bridge->synapses);
     nimcp_free(bridge);
 
@@ -417,7 +413,7 @@ uint32_t mirror_plasticity_register_synapse(
     if (!bridge || bridge->num_synapses >= bridge->max_synapses) return UINT32_MAX;
     if (action_id >= MIRROR_PLASTICITY_MAX_ACTIONS) return UINT32_MAX;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t id = bridge->next_synapse_id++;
     mirror_plasticity_synapse_t* s = &bridge->synapses[bridge->num_synapses++];
@@ -425,7 +421,7 @@ uint32_t mirror_plasticity_register_synapse(
 
     bridge->action_synapse_counts[action_id]++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return id;
 }
 
@@ -435,7 +431,7 @@ int mirror_plasticity_unregister_synapse(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
         if (bridge->synapses[i].synapse_id == synapse_id) {
@@ -447,12 +443,12 @@ int mirror_plasticity_unregister_synapse(
             memmove(&bridge->synapses[i], &bridge->synapses[i + 1],
                     (bridge->num_synapses - i - 1) * sizeof(mirror_plasticity_synapse_t));
             bridge->num_synapses--;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return 0;
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return -1;
 }
 
@@ -463,14 +459,14 @@ int mirror_plasticity_get_synapse(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(((mirror_plasticity_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((mirror_plasticity_bridge_t*)bridge)->base.mutex);
     mirror_plasticity_synapse_t* s = find_synapse((mirror_plasticity_bridge_t*)bridge, synapse_id);
     if (s) {
         *state = *s;
-        nimcp_mutex_unlock(((mirror_plasticity_bridge_t*)bridge)->mutex);
+        nimcp_mutex_unlock(((mirror_plasticity_bridge_t*)bridge)->base.mutex);
         return 0;
     }
-    nimcp_mutex_unlock(((mirror_plasticity_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((mirror_plasticity_bridge_t*)bridge)->base.mutex);
     return -1;
 }
 
@@ -480,10 +476,10 @@ float mirror_plasticity_get_weight(
 ) {
     if (!bridge) return NAN;
 
-    nimcp_mutex_lock(((mirror_plasticity_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((mirror_plasticity_bridge_t*)bridge)->base.mutex);
     mirror_plasticity_synapse_t* s = find_synapse((mirror_plasticity_bridge_t*)bridge, synapse_id);
     float w = s ? s->weight : NAN;
-    nimcp_mutex_unlock(((mirror_plasticity_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((mirror_plasticity_bridge_t*)bridge)->base.mutex);
     return w;
 }
 
@@ -495,7 +491,7 @@ int mirror_plasticity_get_action_weights(
 ) {
     if (!bridge || !weights) return -1;
 
-    nimcp_mutex_lock(((mirror_plasticity_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((mirror_plasticity_bridge_t*)bridge)->base.mutex);
 
     uint32_t count = 0;
     for (uint32_t i = 0; i < bridge->num_synapses && count < max_weights; i++) {
@@ -504,7 +500,7 @@ int mirror_plasticity_get_action_weights(
         }
     }
 
-    nimcp_mutex_unlock(((mirror_plasticity_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((mirror_plasticity_bridge_t*)bridge)->base.mutex);
     return (int)count;
 }
 
@@ -633,9 +629,9 @@ float mirror_plasticity_pre_spike(
 ) {
     if (!bridge) return 0.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float dw = pre_spike_unlocked(bridge, synapse_id, timestamp_us);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return dw;
 }
 
@@ -646,9 +642,9 @@ float mirror_plasticity_post_spike(
 ) {
     if (!bridge) return 0.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float dw = post_spike_unlocked(bridge, synapse_id, timestamp_us);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return dw;
 }
 
@@ -660,7 +656,7 @@ int mirror_plasticity_observation(
 ) {
     if (!bridge || action_id >= MIRROR_PLASTICITY_MAX_ACTIONS) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Trigger pre-spike for all synapses of this action */
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
@@ -673,7 +669,7 @@ int mirror_plasticity_observation(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -685,7 +681,7 @@ int mirror_plasticity_execution(
 ) {
     if (!bridge || action_id >= MIRROR_PLASTICITY_MAX_ACTIONS) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Trigger post-spike for all synapses of this action */
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
@@ -696,7 +692,7 @@ int mirror_plasticity_execution(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -711,7 +707,7 @@ int mirror_plasticity_reward(
 ) {
     if (!bridge || bridge->learning_blocked) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = MIRROR_PLASTICITY_STATE_LEARNING;
 
     int updated = 0;
@@ -744,7 +740,7 @@ int mirror_plasticity_reward(
     plasticity_orchestrator_reward(bridge->orchestrator, reward, timestamp_us / 1000);
 
     bridge->state = MIRROR_PLASTICITY_STATE_IDLE;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return updated;
 }
 
@@ -755,7 +751,7 @@ int mirror_plasticity_reward_action(
 ) {
     if (!bridge || action_id >= MIRROR_PLASTICITY_MAX_ACTIONS) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     int updated = 0;
     float scaled_reward = reward * bridge->config.reward_modulation_gain;
@@ -772,14 +768,14 @@ int mirror_plasticity_reward_action(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return updated;
 }
 
 int mirror_plasticity_consolidate(mirror_plasticity_bridge_t* bridge) {
     if (!bridge) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = MIRROR_PLASTICITY_STATE_CONSOLIDATING;
 
     int consolidated = 0;
@@ -801,7 +797,7 @@ int mirror_plasticity_consolidate(mirror_plasticity_bridge_t* bridge) {
     bridge->last_consolidation_us = get_time_us();
 
     bridge->state = MIRROR_PLASTICITY_STATE_IDLE;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return consolidated;
 }
 
@@ -816,7 +812,7 @@ int mirror_plasticity_get_action_modulation(
 ) {
     if (!bridge || !modulation || action_id >= MIRROR_PLASTICITY_MAX_ACTIONS) return -1;
 
-    nimcp_mutex_lock(((mirror_plasticity_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((mirror_plasticity_bridge_t*)bridge)->base.mutex);
 
     /* Compute average weight for action as modulation */
     float sum = 0.0f;
@@ -830,7 +826,7 @@ int mirror_plasticity_get_action_modulation(
 
     *modulation = count > 0 ? (sum / count) : 0.5f;
 
-    nimcp_mutex_unlock(((mirror_plasticity_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((mirror_plasticity_bridge_t*)bridge)->base.mutex);
     return 0;
 }
 
@@ -852,10 +848,10 @@ int mirror_plasticity_connect_immune(
 ) {
     if (!bridge || !immune_system) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->immune_system = immune_system;
     plasticity_orchestrator_connect_immune(bridge->orchestrator, immune_system);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -865,20 +861,20 @@ int mirror_plasticity_connect_sleep(
 ) {
     if (!bridge || !sleep_system) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->sleep_system = sleep_system;
     plasticity_orchestrator_connect_sleep(bridge->orchestrator, sleep_system);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int mirror_plasticity_connect_bio_async(mirror_plasticity_bridge_t* bridge) {
     if (!bridge || bridge->bio_async_connected) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     int ret = plasticity_orchestrator_connect_bio_async(bridge->orchestrator);
     if (ret == 0) bridge->bio_async_connected = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return ret;
 }
 
@@ -902,10 +898,10 @@ int mirror_plasticity_register_weight_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->weight_callback = callback;
     bridge->weight_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -915,10 +911,10 @@ int mirror_plasticity_register_consolidation_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->consolidation_callback = callback;
     bridge->consolidation_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -928,10 +924,10 @@ int mirror_plasticity_register_homeostatic_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->homeostatic_callback = callback;
     bridge->homeostatic_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -941,10 +937,10 @@ int mirror_plasticity_register_energy_callback(
     void* user_data
 ) {
     if (!bridge) return -1;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->energy_callback = callback;
     bridge->energy_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -958,7 +954,7 @@ int mirror_plasticity_get_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(((mirror_plasticity_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((mirror_plasticity_bridge_t*)bridge)->base.mutex);
 
     state->state = bridge->state;
     state->total_synapses = bridge->num_synapses;
@@ -995,7 +991,7 @@ int mirror_plasticity_get_state(
     state->immune_modulation = 1.0f;  /* Would query from orchestrator */
     state->sleep_modulation = 1.0f;
 
-    nimcp_mutex_unlock(((mirror_plasticity_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((mirror_plasticity_bridge_t*)bridge)->base.mutex);
     return 0;
 }
 
@@ -1004,17 +1000,17 @@ int mirror_plasticity_get_stats(
     mirror_plasticity_stats_t* stats
 ) {
     if (!bridge || !stats) return -1;
-    nimcp_mutex_lock(((mirror_plasticity_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((mirror_plasticity_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(((mirror_plasticity_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((mirror_plasticity_bridge_t*)bridge)->base.mutex);
     return 0;
 }
 
 void mirror_plasticity_reset_stats(mirror_plasticity_bridge_t* bridge) {
     if (!bridge) return;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 float mirror_plasticity_get_atp_level(const mirror_plasticity_bridge_t* bridge) {
@@ -1029,14 +1025,14 @@ float mirror_plasticity_get_atp_level(const mirror_plasticity_bridge_t* bridge) 
 int mirror_plasticity_update(mirror_plasticity_bridge_t* bridge, float dt_ms) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now = get_time_us();
     float elapsed = (float)(now - bridge->last_update_us) / 1000.0f;
 
     /* Rate limiting */
     if (elapsed < bridge->config.update_interval_ms) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -1065,14 +1061,14 @@ int mirror_plasticity_update(mirror_plasticity_bridge_t* bridge, float dt_ms) {
     bridge->learning_blocked = atp < 0.1f;
 
     bridge->last_update_us = now;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int mirror_plasticity_reset(mirror_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
         mirror_plasticity_synapse_t* s = &bridge->synapses[i];
@@ -1089,7 +1085,7 @@ int mirror_plasticity_reset(mirror_plasticity_bridge_t* bridge) {
     bridge->current_lr_modulation = 1.0f;
     bridge->learning_blocked = false;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

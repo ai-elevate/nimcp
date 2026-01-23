@@ -34,7 +34,7 @@ explanations_fep_bridge_t* explanations_fep_bridge_create(const explanations_fep
     memset(bridge, 0, sizeof(explanations_fep_bridge_t));
     if (config) bridge->config = *config;
     else explanations_fep_bridge_default_config(&bridge->config);
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "explanations_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
     return bridge;
 }
@@ -43,7 +43,7 @@ void explanations_fep_bridge_destroy(explanations_fep_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.bio_async_enabled) explanations_fep_bridge_disconnect_bio_async(bridge);
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
 }

@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/fault_tolerance/nimcp_health_self_repair_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
@@ -33,6 +34,7 @@ typedef struct {
  * @brief Health self-repair bridge internal state
  */
 struct health_self_repair_bridge {
+    bridge_base_t base;                         /**< MUST be first: base bridge infrastructure */
     uint32_t magic;                             /**< Magic number for validation */
     health_self_repair_bridge_config_t config;  /**< Configuration */
 
@@ -68,9 +70,6 @@ struct health_self_repair_bridge {
     /* Timing for stats */
     uint64_t total_repair_time_ms;
     uint64_t repair_count_for_avg;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 
     /* Bio-async integration */
     bio_module_context_t bio_ctx;
@@ -368,10 +367,8 @@ health_self_repair_bridge_t* health_self_repair_bridge_create(
     }
 
     /* Create mutex */
-    mutex_attr_t attr = {0};
-    attr.type = MUTEX_TYPE_NORMAL;
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
+    /* Initialize base bridge */
+    if (bridge_base_init(&bridge->base, 0, "health_self_repair") != 0) {
         health_self_repair_bridge_destroy(bridge);
         return NULL;
     }
@@ -432,9 +429,9 @@ void health_self_repair_bridge_destroy(health_self_repair_bridge_t* bridge) {
         nimcp_free(bridge->tracking);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-        bridge->mutex = NULL;
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
+        bridge->base.mutex = NULL;
     }
 
     nimcp_free(bridge);
@@ -448,9 +445,9 @@ int health_self_repair_bridge_connect_health_agent(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->health_agent = health_agent;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -535,25 +532,25 @@ int health_self_repair_bridge_trigger_from_diagnostic(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check trigger policy */
     if (!should_trigger_by_policy(bridge->config.trigger_policy, diagnostic->severity)) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         bridge->stats.repairs_skipped++;
         return 1; /* Skipped due to policy */
     }
 
     /* Check confidence threshold */
     if (diagnostic->confidence < bridge->config.min_confidence) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         bridge->stats.repairs_skipped++;
         return 1; /* Skipped due to low confidence */
     }
 
     /* Check rate limit */
     if (check_and_update_rate_limit(bridge, diagnostic->error_type)) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         bridge->stats.repairs_skipped++;
         return 1; /* Rate limited */
     }
@@ -593,7 +590,7 @@ int health_self_repair_bridge_trigger_from_diagnostic(
             bridge->stats.repairs_triggered++;
             bridge->stats.by_severity[diagnostic->severity]++;
 
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return 0;
         }
     }
@@ -625,7 +622,7 @@ int health_self_repair_bridge_trigger_from_diagnostic(
     /* Free diagnostic - self_repair copies data, doesn't take ownership */
     diagnostics_free_result(diagnostic);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return ret;
 }
@@ -643,7 +640,7 @@ int health_self_repair_bridge_force_trigger(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Create tracking record (bypass all checks) */
     health_repair_tracking_t* tracking = add_tracking_record(bridge, diagnostic);
@@ -673,7 +670,7 @@ int health_self_repair_bridge_force_trigger(
     /* Free diagnostic - self_repair copies data, doesn't take ownership */
     diagnostics_free_result(diagnostic);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return ret;
 }
@@ -695,13 +692,13 @@ bool health_self_repair_bridge_is_rate_limited(
     /* Cast away const for mutex - safe as we're just reading */
     health_self_repair_bridge_t* mutable_bridge = (health_self_repair_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     uint64_t now = nimcp_time_get_ms();
 
     /* Check cooldown */
     if (bridge->cooldown_until_ms > 0 && now < bridge->cooldown_until_ms) {
-        nimcp_mutex_unlock(mutable_bridge->mutex);
+        nimcp_mutex_unlock(mutable_bridge->base.mutex);
         return true;
     }
 
@@ -709,7 +706,7 @@ bool health_self_repair_bridge_is_rate_limited(
     bool in_window = (now < bridge->window_start_ms + bridge->config.rate_limit.window_duration_ms);
     bool at_limit = (bridge->window_repair_count >= bridge->config.rate_limit.max_repairs_per_window);
 
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return in_window && at_limit;
 }
@@ -721,12 +718,12 @@ void health_self_repair_bridge_reset_rate_limit(
         return;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->window_start_ms = nimcp_time_get_ms();
     bridge->window_repair_count = 0;
     bridge->cooldown_until_ms = 0;
     bridge->stats.current_window_count = 0;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 /* ============================================================================
@@ -744,9 +741,9 @@ const health_repair_tracking_t* health_self_repair_bridge_get_tracking(
     /* Cast away const for mutex */
     health_self_repair_bridge_t* mutable_bridge = (health_self_repair_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
     const health_repair_tracking_t* record = find_tracking_record(mutable_bridge, request_id);
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return record;
 }
@@ -762,7 +759,7 @@ uint32_t health_self_repair_bridge_get_recent_tracking(
 
     health_self_repair_bridge_t* mutable_bridge = (health_self_repair_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     uint32_t count = bridge->tracking_count;
     if (count > max_records) {
@@ -775,7 +772,7 @@ uint32_t health_self_repair_bridge_get_recent_tracking(
         memcpy(records, &bridge->tracking[start], count * sizeof(health_repair_tracking_t));
     }
 
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return count;
 }
@@ -789,7 +786,7 @@ uint32_t health_self_repair_bridge_get_pending_count(
 
     health_self_repair_bridge_t* mutable_bridge = (health_self_repair_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     uint32_t pending = 0;
     for (uint32_t i = 0; i < bridge->tracking_count; i++) {
@@ -798,7 +795,7 @@ uint32_t health_self_repair_bridge_get_pending_count(
         }
     }
 
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return pending;
 }
@@ -816,10 +813,10 @@ int health_self_repair_bridge_set_trigger_callback(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->trigger_callback = callback;
     bridge->callback_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -833,10 +830,10 @@ int health_self_repair_bridge_set_outcome_callback(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->outcome_callback = callback;
     bridge->callback_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -855,7 +852,7 @@ int health_self_repair_bridge_get_stats(
 
     health_self_repair_bridge_t* mutable_bridge = (health_self_repair_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
     *stats = bridge->stats;
 
     /* Calculate success rate */
@@ -866,7 +863,7 @@ int health_self_repair_bridge_get_stats(
         stats->success_rate = 0.0f;
     }
 
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return 0;
 }
@@ -878,11 +875,11 @@ void health_self_repair_bridge_reset_stats(
         return;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     bridge->total_repair_time_ms = 0;
     bridge->repair_count_for_avg = 0;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 /* ============================================================================
@@ -897,7 +894,7 @@ uint32_t health_self_repair_bridge_process_outcomes(
         return 0;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t processed = 0;
 
@@ -951,7 +948,7 @@ uint32_t health_self_repair_bridge_process_outcomes(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return processed;
 }
@@ -963,10 +960,10 @@ uint32_t health_self_repair_bridge_process_aggregation(
         return 0;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->aggregation_count == 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -978,7 +975,7 @@ uint32_t health_self_repair_bridge_process_aggregation(
                          (bridge->aggregation_count >= bridge->config.aggregation.max_batch_size);
 
     if (!should_submit) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -1027,7 +1024,7 @@ uint32_t health_self_repair_bridge_process_aggregation(
     bridge->aggregation_count = 0;
     bridge->aggregation_window_start_ms = 0;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return submitted;
 }
@@ -1094,14 +1091,14 @@ int health_self_repair_bridge_broadcast_outcome(
 
     /* Find tracking record for duration */
     const health_repair_tracking_t* tracking = NULL;
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t i = 0; i < bridge->tracking_count; i++) {
         if (bridge->tracking[i].request_id == request_id) {
             tracking = &bridge->tracking[i];
             break;
         }
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Build outcome message */
     bio_msg_health_repair_outcome_t msg = {0};

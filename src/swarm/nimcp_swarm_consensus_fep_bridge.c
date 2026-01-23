@@ -29,7 +29,7 @@ swarm_consensus_fep_bridge_t* swarm_consensus_fep_create(const swarm_consensus_f
     else swarm_consensus_fep_default_config(&bridge->config);
     bridge->fep_system = fep_system;
     bridge->consensus_ctx = consensus_ctx;
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "swarm_consensus_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
     return bridge;
 }
@@ -37,7 +37,7 @@ swarm_consensus_fep_bridge_t* swarm_consensus_fep_create(const swarm_consensus_f
 void swarm_consensus_fep_destroy(swarm_consensus_fep_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.bio_async_enabled) swarm_consensus_fep_disconnect_bio_async(bridge);
-    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

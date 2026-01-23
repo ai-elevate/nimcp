@@ -15,6 +15,7 @@
  * @author NIMCP Development Team
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/gustatory/bridges/nimcp_gust_bio_async_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
@@ -30,6 +31,7 @@
  * @brief Internal bridge structure
  */
 struct gust_bio_async_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /* Configuration */
     gust_bio_async_config_t config;
 

@@ -122,7 +122,7 @@ medulla_immune_bridge_t medulla_immune_create(
     bridge->immune = immune;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "medulla_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create bridge mutex");
         nimcp_free(bridge);
@@ -163,7 +163,7 @@ void medulla_immune_destroy(medulla_immune_bridge_t bridge) {
     }
 
     /* Destroy mutex */
-    nimcp_platform_mutex_destroy(bridge->base.mutex);
+    bridge_base_cleanup(&bridge->base);
 
     /* Free bridge */
     nimcp_free(bridge);

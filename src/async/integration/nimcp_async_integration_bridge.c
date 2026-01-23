@@ -12,6 +12,7 @@
  */
 
 #include "async/integration/nimcp_async_integration_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
@@ -373,7 +374,7 @@ static nimcp_error_t handle_async_message(
 
     const bio_message_header_t* header = (const bio_message_header_t*)msg;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.messages_received++;
 
     /* Handle coordination messages */
@@ -395,7 +396,7 @@ static nimcp_error_t handle_async_message(
             break;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -469,8 +470,8 @@ async_integration_t* async_integration_create(
     memcpy(&bridge->config, config, sizeof(async_integration_config_t));
 
     /* Create mutex */
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "async_integration") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -478,7 +479,7 @@ async_integration_t* async_integration_create(
     /* Create task registry */
     bridge->task_registry = task_registry_create(config->max_tasks);
     if (!bridge->task_registry) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -487,7 +488,7 @@ async_integration_t* async_integration_create(
     bridge->promise_registry = promise_registry_create(config->max_promises);
     if (!bridge->promise_registry) {
         task_registry_destroy((task_registry_t*)bridge->task_registry);
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -497,7 +498,7 @@ async_integration_t* async_integration_create(
     if (!bridge->future_registry) {
         promise_registry_destroy((promise_registry_t*)bridge->promise_registry);
         task_registry_destroy((task_registry_t*)bridge->task_registry);
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -508,7 +509,7 @@ async_integration_t* async_integration_create(
         future_registry_destroy((future_registry_t*)bridge->future_registry);
         promise_registry_destroy((promise_registry_t*)bridge->promise_registry);
         task_registry_destroy((task_registry_t*)bridge->task_registry);
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -526,7 +527,7 @@ async_integration_t* async_integration_create(
             future_registry_destroy((future_registry_t*)bridge->future_registry);
             promise_registry_destroy((promise_registry_t*)bridge->promise_registry);
             task_registry_destroy((task_registry_t*)bridge->task_registry);
-            nimcp_mutex_free(bridge->mutex);
+            bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
             return NULL;
         }
@@ -575,8 +576,8 @@ void async_integration_destroy(async_integration_t* bridge)
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);
@@ -588,7 +589,7 @@ int async_integration_start(async_integration_t* bridge)
     if (!bridge->initialized) return ASYNC_INTEGRATION_ERROR_NOT_INITIALIZED;
     if (bridge->running) return ASYNC_INTEGRATION_ERROR_ALREADY_RUNNING;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->start_time_ms = get_time_ms();
     bridge->last_update_ms = bridge->start_time_ms;
@@ -602,7 +603,7 @@ int async_integration_start(async_integration_t* bridge)
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     if (bridge->config.enable_logging) {
         NIMCP_LOG_INFO(LOG_TAG, "Async integration bridge started");
@@ -616,9 +617,9 @@ int async_integration_stop(async_integration_t* bridge)
     if (!bridge) return -1;
     if (!bridge->running) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->running = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     if (bridge->config.enable_logging) {
         NIMCP_LOG_INFO(LOG_TAG, "Async integration bridge stopped");
@@ -644,11 +645,11 @@ uint64_t async_integration_submit_task(
     if (!bridge || !callback) return 0;
     if (priority >= ASYNC_INTEGRATION_PRIORITY_LEVELS) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     task_registry_t* reg = (task_registry_t*)bridge->task_registry;
     if (reg->count >= reg->capacity) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -662,7 +663,7 @@ uint64_t async_integration_submit_task(
     }
 
     if (!entry) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -671,7 +672,7 @@ uint64_t async_integration_submit_task(
     if (task_data && task_size > 0) {
         data_copy = nimcp_malloc(task_size);
         if (!data_copy) {
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return 0;
         }
         memcpy(data_copy, task_data, task_size);
@@ -700,14 +701,14 @@ uint64_t async_integration_submit_task(
         if (data_copy) nimcp_free(data_copy);
         entry->active = false;
         reg->count--;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
     bridge->stats.tasks_submitted++;
 
     uint64_t task_id = entry->task_id;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return task_id;
 }
@@ -718,19 +719,19 @@ int async_integration_cancel_task(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     task_registry_t* reg = (task_registry_t*)bridge->task_registry;
     task_entry_t* entry = task_registry_find(reg, task_id);
 
     if (!entry) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     /* Can only cancel pending tasks */
     if (entry->state != ASYNC_OP_STATE_PENDING) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -751,7 +752,7 @@ int async_integration_cancel_task(
     reg->count--;
     bridge->stats.tasks_cancelled++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -780,20 +781,20 @@ int async_integration_update_task_priority(
     if (!bridge) return -1;
     if (new_priority >= ASYNC_INTEGRATION_PRIORITY_LEVELS) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     task_registry_t* reg = (task_registry_t*)bridge->task_registry;
     task_entry_t* entry = task_registry_find(reg, task_id);
 
     if (!entry || entry->state != ASYNC_OP_STATE_PENDING) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     entry->priority = new_priority;
     /* Note: Task remains in original queue - priority used at dispatch time */
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -808,11 +809,11 @@ uint64_t async_integration_register_promise(
 {
     if (!bridge || !promise) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     promise_registry_t* reg = (promise_registry_t*)bridge->promise_registry;
     if (reg->count >= reg->capacity) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -826,7 +827,7 @@ uint64_t async_integration_register_promise(
     }
 
     if (!entry) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -840,7 +841,7 @@ uint64_t async_integration_register_promise(
     bridge->stats.promises_created++;
 
     uint64_t promise_id = entry->promise_id;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return promise_id;
 }
@@ -851,11 +852,11 @@ uint64_t async_integration_register_future(
 {
     if (!bridge || !future) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     future_registry_t* reg = (future_registry_t*)bridge->future_registry;
     if (reg->count >= reg->capacity) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -869,7 +870,7 @@ uint64_t async_integration_register_future(
     }
 
     if (!entry) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -882,7 +883,7 @@ uint64_t async_integration_register_future(
     reg->count++;
 
     uint64_t future_id = entry->future_id;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return future_id;
 }
@@ -953,11 +954,11 @@ uint32_t async_integration_create_sync_group(
 {
     if (!bridge) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     sync_group_registry_t* reg = (sync_group_registry_t*)bridge->phase_sync_groups;
     if (reg->count >= reg->capacity) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -971,14 +972,14 @@ uint32_t async_integration_create_sync_group(
     }
 
     if (!group) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
     /* Create phase sync */
     nimcp_phase_sync_t phase_sync = nimcp_phase_sync_create(band);
     if (!phase_sync) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -987,7 +988,7 @@ uint32_t async_integration_create_sync_group(
     group->future_ids = (uint64_t*)nimcp_calloc(max_futures, sizeof(uint64_t));
     if (!group->future_ids) {
         nimcp_phase_sync_destroy(phase_sync);
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -1001,7 +1002,7 @@ uint32_t async_integration_create_sync_group(
     reg->count++;
 
     uint32_t group_id = group->group_id;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return group_id;
 }
@@ -1013,7 +1014,7 @@ int async_integration_add_to_sync_group(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     sync_group_registry_t* sync_reg = (sync_group_registry_t*)bridge->phase_sync_groups;
     future_registry_t* future_reg = (future_registry_t*)bridge->future_registry;
@@ -1028,7 +1029,7 @@ int async_integration_add_to_sync_group(
     }
 
     if (!group) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -1042,13 +1043,13 @@ int async_integration_add_to_sync_group(
     }
 
     if (!future_entry || !future_entry->bio_future) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     /* Check capacity */
     if (group->future_count >= group->max_futures) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -1056,14 +1057,14 @@ int async_integration_add_to_sync_group(
     nimcp_error_t err = nimcp_phase_sync_add_future(
         group->phase_sync, future_entry->bio_future);
     if (err != NIMCP_SUCCESS) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     /* Track future ID */
     group->future_ids[group->future_count++] = future_id;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -1075,7 +1076,7 @@ int async_integration_wait_coherence(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     sync_group_registry_t* reg = (sync_group_registry_t*)bridge->phase_sync_groups;
 
@@ -1089,12 +1090,12 @@ int async_integration_wait_coherence(
     }
 
     if (!group || !group->phase_sync) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     nimcp_phase_sync_t phase_sync = group->phase_sync;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Use default timeout if not specified */
     if (timeout_ms == 0) {
@@ -1149,7 +1150,7 @@ int async_integration_destroy_sync_group(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     sync_group_registry_t* reg = (sync_group_registry_t*)bridge->phase_sync_groups;
 
@@ -1163,7 +1164,7 @@ int async_integration_destroy_sync_group(
     }
 
     if (!group) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -1178,7 +1179,7 @@ int async_integration_destroy_sync_group(
     memset(group, 0, sizeof(sync_group_t));
     reg->count--;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -1302,7 +1303,7 @@ int async_integration_update(
     uint64_t start_time = get_time_ms();
     int operations = 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     task_registry_t* task_reg = (task_registry_t*)bridge->task_registry;
 
@@ -1325,12 +1326,12 @@ int async_integration_update(
                 entry->start_time_ms = get_time_ms();
                 bridge->active_task_count++;
 
-                nimcp_mutex_unlock(bridge->mutex);
+                nimcp_mutex_unlock(bridge->base.mutex);
 
                 int result = entry->callback(
                     task_id, entry->data, entry->data_size, entry->user_data);
 
-                nimcp_mutex_lock(bridge->mutex);
+                nimcp_mutex_lock(bridge->base.mutex);
 
                 /* Update state based on result */
                 if (result == 0) {
@@ -1409,7 +1410,7 @@ int async_integration_update(
         bridge->stats.max_update_time_us = update_time_us;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return operations;
 }
@@ -1433,10 +1434,10 @@ int async_integration_set_event_callback(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->event_callback = callback;
     bridge->event_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1513,9 +1514,9 @@ void async_integration_reset_stats(async_integration_t* bridge)
 {
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(async_integration_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 uint32_t async_integration_get_queue_depth(

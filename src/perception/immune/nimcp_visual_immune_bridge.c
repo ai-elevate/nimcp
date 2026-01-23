@@ -209,7 +209,7 @@ visual_immune_bridge_t* visual_immune_bridge_create(
     }
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "visual_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -229,7 +229,7 @@ void visual_immune_bridge_destroy(visual_immune_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */

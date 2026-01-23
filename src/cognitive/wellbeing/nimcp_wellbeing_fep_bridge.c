@@ -52,7 +52,7 @@ wellbeing_fep_bridge_t* wellbeing_fep_bridge_create(const wellbeing_fep_config_t
     } else {
         wellbeing_fep_bridge_default_config(&bridge->config);
     }
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "wellbeing_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
@@ -68,7 +68,7 @@ void wellbeing_fep_bridge_destroy(wellbeing_fep_bridge_t* bridge) {
         wellbeing_fep_bridge_disconnect_bio_async(bridge);
     }
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed wellbeing FEP bridge");

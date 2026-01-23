@@ -50,7 +50,7 @@ sm_fep_bridge_t* sm_fep_bridge_create(const sm_fep_config_t* config, uint32_t ne
     memset(&bridge->sm_effects, 0, sizeof(sm_fep_feedback_t));
     memset(&bridge->stats, 0, sizeof(sm_fep_stats_t));
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "second_messengers_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to create mutex");
         nimcp_free(bridge);
@@ -67,7 +67,7 @@ sm_fep_bridge_t* sm_fep_bridge_create(const sm_fep_config_t* config, uint32_t ne
 void sm_fep_bridge_destroy(sm_fep_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.bio_async_enabled) sm_fep_bridge_disconnect_bio_async(bridge);
-    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

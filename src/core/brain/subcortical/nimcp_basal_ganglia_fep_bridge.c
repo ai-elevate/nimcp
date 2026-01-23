@@ -6,6 +6,7 @@
  * Maps dopamine reward prediction error to FEP surprise signals.
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/subcortical/nimcp_basal_ganglia_fep_bridge.h"
 #include "core/brain/subcortical/nimcp_basal_ganglia.h"
 #include "utils/memory/nimcp_memory.h"
@@ -28,6 +29,7 @@
 //=============================================================================
 
 struct bg_fep_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /* Configuration */
     bg_fep_config_t config;
 

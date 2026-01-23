@@ -181,7 +181,7 @@ qa_immune_bridge_t* qa_immune_create(
     bridge->immune_system = immune_system;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "quantum_annealing_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         NIMCP_THROW_THREADING(NIMCP_ERROR_MUTEX_INIT, 0, "Failed to create mutex for QA immune bridge");
@@ -198,7 +198,7 @@ qa_immune_bridge_t* qa_immune_create(
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, history_size,
                           "Failed to allocate history buffer for QA immune bridge (capacity=%zu)",
                           bridge->history_capacity);
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -213,7 +213,7 @@ qa_immune_bridge_t* qa_immune_create(
                           "Failed to allocate event buffer for QA immune bridge (capacity=%zu)",
                           bridge->event_capacity);
         nimcp_free(bridge->history);
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -253,7 +253,7 @@ void qa_immune_destroy(qa_immune_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     /* Free bridge */

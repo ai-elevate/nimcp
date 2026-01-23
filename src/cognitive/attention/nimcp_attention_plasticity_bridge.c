@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/attention/nimcp_attention_plasticity_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
@@ -19,6 +20,8 @@
 //=============================================================================
 
 struct attention_plasticity_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     attention_plasticity_config_t config;
 
@@ -56,8 +59,6 @@ struct attention_plasticity_bridge {
     /* Bio-async */
     bool bio_async_connected;
 
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 };
 
 //=============================================================================
@@ -210,11 +211,9 @@ attention_plasticity_bridge_t* attention_plasticity_create(
         bridge->config = attention_plasticity_config_default();
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "attention_plasticity_create: failed to create mutex");
+    /* Initialize bridge base infrastructure (includes mutex) */
+    if (bridge_base_init(&bridge->base, 0, "attention_plasticity") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "attention_plasticity_create: failed to initialize bridge base");
         nimcp_free(bridge);
         return NULL;
     }
@@ -224,7 +223,7 @@ attention_plasticity_bridge_t* attention_plasticity_create(
     bridge->synapses = nimcp_calloc(bridge->synapse_capacity, sizeof(attention_plasticity_synapse_t));
     if (!bridge->synapses) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_plasticity_create: failed to allocate synapses");
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -236,7 +235,7 @@ attention_plasticity_bridge_t* attention_plasticity_create(
     if (!bridge->head_states) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_plasticity_create: failed to allocate head_states");
         nimcp_free(bridge->synapses);
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -273,9 +272,8 @@ void attention_plasticity_destroy(attention_plasticity_bridge_t* bridge) {
     if (bridge->synapses) nimcp_free(bridge->synapses);
     if (bridge->head_states) nimcp_free(bridge->head_states);
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }
@@ -286,7 +284,7 @@ int attention_plasticity_reset(attention_plasticity_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset all synapses to initial state */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
@@ -316,7 +314,7 @@ int attention_plasticity_reset(attention_plasticity_bridge_t* bridge) {
     bridge->global_learning_rate = 1.0f;
     bridge->pending_reward = 0.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -337,17 +335,17 @@ int attention_plasticity_register_synapse(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if already registered */
     if (find_synapse(bridge, synapse_id)) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;  /* Already exists */
     }
 
     /* Check capacity */
     if (bridge->synapse_count >= bridge->synapse_capacity) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;  /* Full */
     }
 
@@ -370,7 +368,7 @@ int attention_plasticity_register_synapse(
 
     bridge->synapse_count++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -384,7 +382,7 @@ int attention_plasticity_unregister_synapse(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Find synapse */
     for (uint32_t i = 0; i < bridge->synapse_count; i++) {
@@ -394,12 +392,12 @@ int attention_plasticity_unregister_synapse(
                 bridge->synapses[i] = bridge->synapses[bridge->synapse_count - 1];
             }
             bridge->synapse_count--;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return 0;
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return -1;  /* Not found */
 }
 
@@ -413,17 +411,17 @@ int attention_plasticity_get_synapse(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     attention_plasticity_synapse_t* found = find_synapse(bridge, synapse_id);
     if (!found) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     *synapse = *found;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -447,7 +445,7 @@ int attention_plasticity_focus(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ATTENTION_PLASTICITY_STATE_OBSERVING;
 
@@ -480,7 +478,7 @@ int attention_plasticity_focus(
     bridge->stats.total_focus_events++;
     bridge->state = ATTENTION_PLASTICITY_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -501,7 +499,7 @@ int attention_plasticity_shift(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ATTENTION_PLASTICITY_STATE_UPDATING;
 
@@ -568,7 +566,7 @@ int attention_plasticity_shift(
     bridge->stats.total_shift_events++;
     bridge->state = ATTENTION_PLASTICITY_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -584,7 +582,7 @@ int attention_plasticity_salience(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute average salience */
     float avg_salience = 0.0f;
@@ -602,7 +600,7 @@ int attention_plasticity_salience(
         bridge->global_learning_rate = clamp_f(bridge->global_learning_rate, 0.5f, 2.0f);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -617,7 +615,7 @@ int attention_plasticity_reward(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->pending_reward = reward;
     bridge->last_reward_time_us = timestamp_us;
@@ -652,7 +650,7 @@ int attention_plasticity_reward(
         bridge->stats.total_reward += reward;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -672,7 +670,7 @@ int attention_plasticity_habituation_trial(
     }
     if (!bridge->config.enable_habituation) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     attention_head_plasticity_t* head = &bridge->head_states[head_idx];
 
@@ -701,7 +699,7 @@ int attention_plasticity_habituation_trial(
 
     bridge->stats.habituation_events++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -722,7 +720,7 @@ int attention_plasticity_novelty(
     }
     if (!bridge->config.enable_novelty_detection) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     attention_head_plasticity_t* head = &bridge->head_states[head_idx];
 
@@ -765,7 +763,7 @@ int attention_plasticity_novelty(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -783,7 +781,7 @@ int attention_plasticity_update(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ATTENTION_PLASTICITY_STATE_UPDATING;
 
@@ -849,7 +847,7 @@ int attention_plasticity_update(
 
     bridge->state = ATTENTION_PLASTICITY_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -861,7 +859,7 @@ int attention_plasticity_consolidate(attention_plasticity_bridge_t* bridge) {
     }
     if (!bridge->config.enable_sleep_consolidation) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ATTENTION_PLASTICITY_STATE_CONSOLIDATING;
 
@@ -896,7 +894,7 @@ int attention_plasticity_consolidate(attention_plasticity_bridge_t* bridge) {
 
     bridge->state = ATTENTION_PLASTICITY_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -919,11 +917,11 @@ int attention_plasticity_get_bias(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     *bias = bridge->head_states[head_idx].attention_bias;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -938,7 +936,7 @@ int attention_plasticity_get_modulation(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t n = (num_heads < bridge->num_heads) ? num_heads : bridge->num_heads;
 
@@ -952,7 +950,7 @@ int attention_plasticity_get_modulation(
         modulation[h] = clamp_f(modulation[h], 0.0f, 2.0f);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -964,11 +962,11 @@ float attention_plasticity_get_habituation(
     if (!bridge) return -1.0f;
     if (head_idx >= bridge->num_heads) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float hab = bridge->head_states[head_idx].habituation_level;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return hab;
 }
@@ -980,11 +978,11 @@ float attention_plasticity_get_novelty_score(
     if (!bridge) return -1.0f;
     if (head_idx >= bridge->num_heads) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float nov = bridge->head_states[head_idx].novelty_score;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return nov;
 }
@@ -996,7 +994,7 @@ float attention_plasticity_get_sensitivity(
     if (!bridge) return -1.0f;
     if (head_idx >= bridge->num_heads) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute sensitivity as average weight of head's synapses */
     float sum = 0.0f;
@@ -1011,7 +1009,7 @@ float attention_plasticity_get_sensitivity(
 
     float sensitivity = (count > 0) ? (sum / (float)count) : 0.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return sensitivity;
 }
@@ -1031,7 +1029,7 @@ int attention_plasticity_get_state(
 
     attention_plasticity_bridge_t* mutable_bridge = (attention_plasticity_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     state->state = bridge->state;
     state->registered_synapses = bridge->synapse_count;
@@ -1041,7 +1039,7 @@ int attention_plasticity_get_state(
     state->current_novelty_mod = bridge->current_novelty_mod;
     state->bio_async_connected = bridge->bio_async_connected;
 
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return 0;
 }
@@ -1057,7 +1055,7 @@ int attention_plasticity_get_stats(
 
     attention_plasticity_bridge_t* mutable_bridge = (attention_plasticity_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     *stats = bridge->stats;
 
@@ -1071,7 +1069,7 @@ int attention_plasticity_get_stats(
         stats->avg_attention_modulation = bridge->current_attention_mod;
     }
 
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return 0;
 }
@@ -1079,11 +1077,11 @@ int attention_plasticity_get_stats(
 void attention_plasticity_reset_stats(attention_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     memset(&bridge->stats, 0, sizeof(attention_plasticity_stats_t));
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 //=============================================================================
@@ -1100,12 +1098,12 @@ int attention_plasticity_set_weight_callback(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->weight_callback = callback;
     bridge->weight_callback_data = user_data;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1120,12 +1118,12 @@ int attention_plasticity_set_shift_callback(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->shift_callback = callback;
     bridge->shift_callback_data = user_data;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1143,11 +1141,11 @@ int attention_plasticity_set_attention_modulation(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->current_attention_mod = clamp_f(attention_level, 0.1f, 2.0f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1161,11 +1159,11 @@ int attention_plasticity_set_salience_modulation(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->current_salience_mod = clamp_f(salience_level, 0.0f, 2.0f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1181,12 +1179,12 @@ int attention_plasticity_connect_bio_async(attention_plasticity_bridge_t* bridge
     }
     if (!bridge->config.enable_bio_async) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Registration would happen here via bio-async API */
     bridge->bio_async_connected = true;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return bridge->bio_async_connected ? 0 : -1;
 }
@@ -1197,13 +1195,13 @@ int attention_plasticity_disconnect_bio_async(attention_plasticity_bridge_t* bri
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->bio_async_connected) {
         bridge->bio_async_connected = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

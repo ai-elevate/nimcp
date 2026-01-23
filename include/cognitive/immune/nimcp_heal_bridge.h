@@ -68,6 +68,7 @@
 #include "cognitive/immune/nimcp_self_heal.h"
 #include "cognitive/immune/nimcp_code_immune.h"
 #include "cognitive/immune/nimcp_heal_patterns.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -284,6 +285,7 @@ typedef struct {
  * @brief Heal bridge state
  */
 struct heal_bridge_s {
+    bridge_base_t base;                   /**< MUST be first: base bridge infrastructure */
     heal_bridge_config_t config;          /**< Configuration */
 
     /* Connected systems */
@@ -313,9 +315,6 @@ struct heal_bridge_s {
 
     /* Statistics */
     heal_bridge_stats_t stats;
-
-    /* Thread safety */
-    void* mutex;
 
     /* State */
     bool initialized;

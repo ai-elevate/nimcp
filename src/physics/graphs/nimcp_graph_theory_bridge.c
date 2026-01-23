@@ -9,6 +9,7 @@
  * @date 2026-01-16
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "physics/graphs/nimcp_graph_theory_bridge.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/exception/nimcp_exception_handlers.h"
@@ -43,6 +44,7 @@
  * @brief Internal bridge state
  */
 struct graph_theory_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /** Configuration */
     graph_theory_bridge_config_t config;
 

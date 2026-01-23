@@ -59,7 +59,7 @@ adaptive_fep_bridge_t* adaptive_fep_bridge_create(const adaptive_fep_config_t* c
         adaptive_fep_bridge_default_config(&bridge->config);
     }
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "adaptive_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
@@ -82,7 +82,7 @@ void adaptive_fep_bridge_destroy(adaptive_fep_bridge_t* bridge) {
     }
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

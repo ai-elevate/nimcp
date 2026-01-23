@@ -14,6 +14,7 @@
  *      and periodic updates.
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/integration/nimcp_utils_bio_async_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -57,6 +58,7 @@ typedef struct {
  * ============================================================================ */
 
 struct utils_bio_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     utils_bio_bridge_config_t config;
     bio_router_t router;
 

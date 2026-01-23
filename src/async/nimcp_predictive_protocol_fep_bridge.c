@@ -77,7 +77,7 @@ predictive_protocol_fep_bridge_t* predictive_protocol_fep_create(
     bridge->fep_effects.exploration_factor = 0.1f;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "predictive_protocol_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "predictive_protocol_fep_create: Failed to create mutex");
         NIMCP_LOGGING_ERROR("predictive_protocol_fep_create: Failed to create mutex");
@@ -102,7 +102,7 @@ void predictive_protocol_fep_destroy(predictive_protocol_fep_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

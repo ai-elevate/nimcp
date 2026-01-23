@@ -571,7 +571,7 @@ cognitive_training_bridge_t* cognitive_training_create(
     memcpy(&bridge->config, config, sizeof(cognitive_training_config_t));
 
     /* Create mutex for thread safety */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "cognitive_training") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
@@ -584,7 +584,7 @@ cognitive_training_bridge_t* cognitive_training_create(
     );
     if (!bridge->loss_history) {
         NIMCP_LOGGING_ERROR("Failed to allocate history buffer");
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -617,7 +617,7 @@ void cognitive_training_destroy(cognitive_training_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     /* Free bridge */

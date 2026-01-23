@@ -156,7 +156,7 @@ distributed_immune_bridge_t* distributed_immune_bridge_create(
     bridge->last_congestion_check_time = get_time_ms();
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "distributed_immune") != 0) { nimcp_free(bridge); return NULL; }
 
     NIMCP_LOGGING_INFO("distributed_immune_bridge: created successfully");
     return bridge;
@@ -174,7 +174,7 @@ void distributed_immune_bridge_destroy(distributed_immune_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

@@ -3,6 +3,7 @@
  * @brief Implementation of Dragonfly-to-CNN Training Bridge
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "dragonfly/nimcp_dragonfly_cnn_bridge.h"
 #include "utils/rng/nimcp_rand.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -15,6 +16,7 @@
 //=============================================================================
 
 struct dragonfly_cnn_bridge_s {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     dragonfly_cnn_config_t config;
     dragonfly_system_t* dragonfly;
     void* cnn_trainer;

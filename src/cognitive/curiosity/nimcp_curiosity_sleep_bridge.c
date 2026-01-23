@@ -110,7 +110,7 @@ curiosity_sleep_bridge_t curiosity_sleep_bridge_create(
     bridge->effects.learning_potential_factor = 1.0f;
     bridge->effects.exploration_offline = false;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "curiosity_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
 
     /* Register callback for automatic state updates */
@@ -148,7 +148,7 @@ void curiosity_sleep_bridge_destroy(curiosity_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->base.mutex) nimcp_mutex_free(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

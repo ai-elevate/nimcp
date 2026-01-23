@@ -6,6 +6,7 @@
  * Enables visual concept grounding and perception-based inference.
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/logic/nimcp_visual_logic_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -42,6 +43,7 @@ typedef struct {
  * @brief Bridge internal structure
  */
 struct visual_logic_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* visual;                           /**< Visual cortex handle */
     void* logic;                            /**< Logic module handle */
     visual_logic_config_t config;           /**< Configuration */

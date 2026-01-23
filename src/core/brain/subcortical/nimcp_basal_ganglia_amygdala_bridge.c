@@ -4,6 +4,7 @@
  */
 
 #include "core/brain/subcortical/nimcp_basal_ganglia_amygdala_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
@@ -93,7 +94,7 @@ bga_bridge_t* bga_bridge_create(const bga_bridge_config_t* config) {
     bridge->stn_boost = 0.0f;
 
     /* Create mutex */
-    bridge->mutex = nimcp_mutex_create(NULL);
+    if (bridge_base_init(&bridge->base, 0, "basal_ganglia_amygdala") != 0) { nimcp_free(bridge); return NULL; }
 
     return bridge;
 }
@@ -101,7 +102,7 @@ bga_bridge_t* bga_bridge_create(const bga_bridge_config_t* config) {
 void bga_bridge_destroy(bga_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->mutex) nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     if (bridge->modulations) nimcp_free(bridge->modulations);
 
     nimcp_free(bridge);

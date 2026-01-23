@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/curiosity/nimcp_curiosity_snn_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_config.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
@@ -25,9 +26,9 @@
 //=============================================================================
 
 struct curiosity_snn_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
     curiosity_snn_config_t config;
     snn_network_t* snn;
-    nimcp_mutex_t* mutex;
 
     /* State */
     curiosity_snn_state_t state;
@@ -149,10 +150,8 @@ curiosity_snn_bridge_t* curiosity_snn_create(const curiosity_snn_config_t* confi
         return NULL;
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize base bridge */
+    if (bridge_base_init(&bridge->base, 0, "curiosity_snn") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -169,7 +168,7 @@ curiosity_snn_bridge_t* curiosity_snn_create(const curiosity_snn_config_t* confi
 
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -223,8 +222,8 @@ void curiosity_snn_destroy(curiosity_snn_bridge_t* bridge) {
         snn_network_destroy(bridge->snn);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge->encoding_buffer);
@@ -237,7 +236,7 @@ void curiosity_snn_destroy(curiosity_snn_bridge_t* bridge) {
 int curiosity_snn_reset(curiosity_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset SNN network */
     if (bridge->snn) {
@@ -270,7 +269,7 @@ int curiosity_snn_reset(curiosity_snn_bridge_t* bridge) {
     bridge->novelty_signal = 0.0f;
     bridge->information_signal = 0.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -286,7 +285,7 @@ int curiosity_snn_encode_state(
     if (!bridge || !dimensions) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = CURIOSITY_SNN_STATE_ENCODING;
 
     uint32_t neurons_per_dim = bridge->config.neurons_per_dim;
@@ -331,7 +330,7 @@ int curiosity_snn_encode_state(
 
     bridge->stats.total_spikes += total_spikes;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return total_spikes;
 }
 
@@ -342,7 +341,7 @@ int curiosity_snn_encode_novelty(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[CURIOSITY_DIM_COUNT] = {0};
     dims[CURIOSITY_DIM_NOVELTY] = clamp_f(novelty, 0.0f, 1.0f);
@@ -351,7 +350,7 @@ int curiosity_snn_encode_novelty(
 
     bridge->novelty_signal = novelty;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return curiosity_snn_encode_state(bridge, dims, 3);
 }
@@ -363,13 +362,13 @@ int curiosity_snn_encode_knowledge_gap(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[CURIOSITY_DIM_COUNT] = {0};
     dims[CURIOSITY_DIM_KNOWLEDGE_GAP] = clamp_f(gap_size, 0.0f, 1.0f);
     dims[CURIOSITY_DIM_SEEKING] = clamp_f((float)gap_count / 10.0f, 0.0f, 1.0f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return curiosity_snn_encode_state(bridge, dims, 2);
 }
@@ -381,7 +380,7 @@ int curiosity_snn_encode_info_gain(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[CURIOSITY_DIM_COUNT] = {0};
     dims[CURIOSITY_DIM_INFORMATION_GAIN] = clamp_f(info_gain, 0.0f, 1.0f);
@@ -400,7 +399,7 @@ int curiosity_snn_encode_info_gain(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return curiosity_snn_encode_state(bridge, dims, 2);
 }
@@ -413,7 +412,7 @@ int curiosity_snn_simulate(curiosity_snn_bridge_t* bridge, float duration_ms) {
     if (!bridge) return -1;
     if (duration_ms <= 0.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = CURIOSITY_SNN_STATE_SIMULATING;
 
     float dt = bridge->config.dt_ms;
@@ -476,7 +475,7 @@ int curiosity_snn_simulate(curiosity_snn_bridge_t* bridge, float duration_ms) {
         bridge->drive_callback(bridge, &bridge->last_drive, bridge->drive_callback_data);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -512,9 +511,9 @@ int curiosity_snn_get_drive(
 ) {
     if (!bridge || !drive) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *drive = bridge->last_drive;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -527,11 +526,11 @@ int curiosity_snn_get_activations(
     if (!bridge || !activations) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t d = 0; d < num_dims; d++) {
         activations[d] = bridge->dim_states[d].activation;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -542,13 +541,13 @@ bool curiosity_snn_check_novelty(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_drive.novelty_level;
     if (novelty_level) {
         *novelty_level = level;
     }
     bool detected = level > bridge->config.novelty_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return detected;
 }
@@ -559,13 +558,13 @@ bool curiosity_snn_check_interest(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_drive.interest_magnitude;
     if (interest_level) {
         *interest_level = level;
     }
     bool detected = level > bridge->config.novelty_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return detected;
 }
@@ -576,7 +575,7 @@ bool curiosity_snn_check_state_change(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     /* Calculate magnitude from prev_state differences */
     float mag = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
@@ -589,7 +588,7 @@ bool curiosity_snn_check_state_change(
         *change_magnitude = mag;
     }
     bool changed = mag > bridge->config.state_change_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return changed;
 }
@@ -606,9 +605,9 @@ int curiosity_snn_get_dim_state(
     if (!bridge || !state) return -1;
     if (dim >= bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -619,7 +618,7 @@ int curiosity_snn_get_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
     state->mean_exploration = bridge->last_drive.exploration_drive;
@@ -636,16 +635,16 @@ int curiosity_snn_get_state(
         state->total_activity += bridge->dim_states[d].activation;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int curiosity_snn_get_stats(curiosity_snn_bridge_t* bridge, curiosity_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -653,9 +652,9 @@ int curiosity_snn_get_stats(curiosity_snn_bridge_t* bridge, curiosity_snn_stats_
 int curiosity_snn_reset_stats(curiosity_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(curiosity_snn_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -663,9 +662,9 @@ int curiosity_snn_reset_stats(curiosity_snn_bridge_t* bridge) {
 float curiosity_snn_get_exploration(curiosity_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float exploration = bridge->last_drive.exploration_drive;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return exploration;
 }
@@ -673,12 +672,12 @@ float curiosity_snn_get_exploration(curiosity_snn_bridge_t* bridge) {
 float curiosity_snn_get_total_activity(curiosity_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float total = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
         total += bridge->dim_states[d].activation;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return total;
 }
@@ -694,10 +693,10 @@ int curiosity_snn_register_novelty_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->novelty_callback = callback;
     bridge->novelty_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -709,10 +708,10 @@ int curiosity_snn_register_drive_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->drive_callback = callback;
     bridge->drive_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -724,10 +723,10 @@ int curiosity_snn_register_interest_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->interest_callback = callback;
     bridge->interest_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -740,10 +739,10 @@ int curiosity_snn_bio_async_connect(curiosity_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -751,9 +750,9 @@ int curiosity_snn_bio_async_connect(curiosity_snn_bridge_t* bridge) {
 int curiosity_snn_bio_async_disconnect(curiosity_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -761,9 +760,9 @@ int curiosity_snn_bio_async_disconnect(curiosity_snn_bridge_t* bridge) {
 bool curiosity_snn_is_bio_async_connected(curiosity_snn_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
 }

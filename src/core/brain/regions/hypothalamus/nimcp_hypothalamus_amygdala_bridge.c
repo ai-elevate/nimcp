@@ -7,6 +7,7 @@
  */
 
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_amygdala_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -118,7 +119,7 @@ hypo_amyg_bridge_t* hypo_amyg_bridge_create(
     /* Create mutex */
     mutex_attr_t attr;
     attr.type = MUTEX_TYPE_NORMAL;
-    bridge->mutex = nimcp_mutex_create(&attr);
+    bridge->base.mutex = nimcp_mutex_create(&attr);
 
     NIMCP_LOG_INFO("Hypothalamus-Amygdala bridge created");
     return bridge;
@@ -128,8 +129,8 @@ void hypo_amyg_bridge_destroy(hypo_amyg_bridge_t* bridge) {
     if (!bridge) return;
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);
@@ -139,7 +140,7 @@ void hypo_amyg_bridge_destroy(hypo_amyg_bridge_t* bridge) {
 void hypo_amyg_bridge_reset(hypo_amyg_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset state */
     memset(&bridge->current_stress, 0, sizeof(bridge->current_stress));
@@ -168,7 +169,7 @@ void hypo_amyg_bridge_reset(hypo_amyg_bridge_t* bridge) {
     bridge->chronic_stress_episodes = 0;
     bridge->safety_drive_boosts = 0;
 
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOG_DEBUG("Hypothalamus-Amygdala bridge reset");
 }
@@ -180,7 +181,7 @@ void hypo_amyg_bridge_reset(hypo_amyg_bridge_t* bridge) {
 int hypo_amyg_bridge_update(hypo_amyg_bridge_t* bridge, float dt_ms) {
     if (!bridge || !bridge->drives) return -1;
 
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now_us = nimcp_time_now_us();
 
@@ -249,7 +250,7 @@ int hypo_amyg_bridge_update(hypo_amyg_bridge_t* bridge, float dt_ms) {
         hypo_amyg_bridge_broadcast_drive_context(bridge);
     }
 
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -515,7 +516,7 @@ bool hypo_amyg_bridge_connect(
 
     if (!bridge) return false;
 
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->amygdala = amygdala;
 
@@ -524,7 +525,7 @@ bool hypo_amyg_bridge_connect(
         amygdala_connect_hypothalamus(amygdala, bridge->drives);
     }
 
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOG_INFO("Amygdala connected to hypothalamus bridge");
     return true;

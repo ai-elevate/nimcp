@@ -4,6 +4,7 @@
  */
 
 #include "core/brain/subcortical/nimcp_basal_ganglia_thalamus_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
@@ -71,7 +72,7 @@ bgt_bridge_t* bgt_bridge_create(const bgt_bridge_config_t* config) {
     bgt_bridge_create_default_mapping(bridge);
 
     /* Create mutex */
-    bridge->mutex = nimcp_mutex_create(NULL);
+    if (bridge_base_init(&bridge->base, 0, "basal_ganglia_thalamus") != 0) { nimcp_free(bridge); return NULL; }
 
     return bridge;
 
@@ -83,7 +84,7 @@ fail:
 void bgt_bridge_destroy(bgt_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->mutex) nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     if (bridge->channels) nimcp_free(bridge->channels);
     if (bridge->bg_output_buffer) nimcp_free(bridge->bg_output_buffer);
     if (bridge->thal_input_buffer) nimcp_free(bridge->thal_input_buffer);

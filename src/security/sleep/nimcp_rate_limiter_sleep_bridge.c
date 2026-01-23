@@ -104,7 +104,7 @@ rate_limiter_sleep_bridge_t rate_limiter_sleep_bridge_create(
     memcpy(&bridge->config, config, sizeof(rate_limiter_sleep_config_t));
     bridge->sleep_system = sleep_system;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "rate_limiter_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for rate limiter sleep bridge");
         nimcp_free(bridge);
@@ -140,7 +140,7 @@ void rate_limiter_sleep_bridge_destroy(rate_limiter_sleep_bridge_t bridge)
     }
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

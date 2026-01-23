@@ -9,6 +9,7 @@
  */
 
 #include "cognitive/mirror_neurons/nimcp_mirror_attention_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -26,6 +27,8 @@
 //=============================================================================
 
 struct mirror_attention_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     mirror_attention_config_t config;
     mirror_attention_state_t state;
 
@@ -38,9 +41,6 @@ struct mirror_attention_bridge {
 
     /* Statistics */
     mirror_attention_stats_t stats;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 
     /* Bio-async */
     bool bio_async_registered;
@@ -294,12 +294,9 @@ mirror_attention_bridge_t* mirror_attention_create(
     bridge->saliency.attention_sigma = 0.1f;
     bridge->saliency.attention_strength = 1.0f;
 
-    /* Create mutex */
-    mutex_attr_t attr = {0};
-    attr.type = MUTEX_TYPE_NORMAL;
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
-        nimcp_log(LOG_LEVEL_ERROR, "Mirror-Attention: Failed to create mutex");
+    /* Initialize bridge base infrastructure (includes mutex) */
+    if (bridge_base_init(&bridge->base, 0, "mirror_attention") != 0) {
+        nimcp_log(LOG_LEVEL_ERROR, "Mirror-Attention: Failed to initialize bridge base");
         nimcp_free(bridge);
         return NULL;
     }
@@ -322,9 +319,8 @@ void mirror_attention_destroy(mirror_attention_bridge_t* bridge) {
         mirror_attention_unregister_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
     nimcp_log(LOG_LEVEL_DEBUG, "Mirror-Attention: Destroyed bridge");
@@ -337,7 +333,7 @@ bool mirror_attention_process_gaze(
 ) {
     if (!bridge || !observation || !cue) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     memset(cue, 0, sizeof(mirror_attention_cue_t));
     cue->timestamp_us = nimcp_time_now_us();
@@ -445,7 +441,7 @@ bool mirror_attention_process_gaze(
 
     bridge->state = MIRROR_ATTENTION_STATE_CUE_DETECTED;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Bio-async message sending would happen here when integrated
      * into a full bio-async context with proper router registration */
@@ -512,7 +508,7 @@ joint_attention_state_t mirror_attention_get_joint_state(
 ) {
     if (!bridge) return JOINT_ATTENTION_NONE;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     joint_attention_state_t state = JOINT_ATTENTION_NONE;
     for (uint32_t i = 0; i < MIRROR_ATTENTION_MAX_AGENTS; i++) {
@@ -522,7 +518,7 @@ joint_attention_state_t mirror_attention_get_joint_state(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return state;
 }
 
@@ -534,17 +530,17 @@ bool mirror_attention_initiate_joint(
     if (!bridge || !target) return false;
     if (!bridge->config.enable_joint_attention_initiation) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     mirror_attention_agent_t* agent = get_or_create_agent(bridge, agent_id);
     if (!agent) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return false;
     }
 
     /* Can only initiate from NONE state */
     if (agent->joint_state != JOINT_ATTENTION_NONE) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return false;
     }
 
@@ -554,7 +550,7 @@ bool mirror_attention_initiate_joint(
 
     bridge->state = MIRROR_ATTENTION_STATE_JOINT;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     nimcp_log(LOG_LEVEL_DEBUG, "Mirror-Attention: Initiated joint attention with agent %u", agent_id);
 
@@ -567,7 +563,7 @@ bool mirror_attention_respond_to_joint(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     mirror_attention_agent_t* agent = NULL;
     for (uint32_t i = 0; i < MIRROR_ATTENTION_MAX_AGENTS; i++) {
@@ -578,7 +574,7 @@ bool mirror_attention_respond_to_joint(
     }
 
     if (!agent || agent->joint_state != JOINT_ATTENTION_RESPONDING) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return false;
     }
 
@@ -588,7 +584,7 @@ bool mirror_attention_respond_to_joint(
     bridge->stats.joint_attention_episodes++;
     bridge->state = MIRROR_ATTENTION_STATE_JOINT;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     nimcp_log(LOG_LEVEL_DEBUG, "Mirror-Attention: Joint attention established with agent %u", agent_id);
 
@@ -601,7 +597,7 @@ void mirror_attention_break_joint(
 ) {
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < MIRROR_ATTENTION_MAX_AGENTS; i++) {
         if (bridge->agents[i].active && bridge->agents[i].agent_id == agent_id) {
@@ -622,7 +618,7 @@ void mirror_attention_break_joint(
 
     bridge->state = MIRROR_ATTENTION_STATE_INDEPENDENT;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 float mirror_attention_get_sensitivity_at(
@@ -631,7 +627,7 @@ float mirror_attention_get_sensitivity_at(
 ) {
     if (!bridge || !position) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute distance from attention focus */
     float dist = vec3_distance(&bridge->saliency.attention_focus, position);
@@ -643,7 +639,7 @@ float mirror_attention_get_sensitivity_at(
     /* Apply mirror-attention gain */
     sensitivity = 1.0f + sensitivity * bridge->config.attention_mirror_gain;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return sensitivity;
 }
 
@@ -655,13 +651,13 @@ void mirror_attention_set_focus(
 ) {
     if (!bridge || !focus) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->saliency.attention_focus = *focus;
     bridge->saliency.attention_strength = strength;
     bridge->saliency.attention_sigma = sigma;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 float mirror_attention_get_saliency_boost(
@@ -671,7 +667,7 @@ float mirror_attention_get_saliency_boost(
 ) {
     if (!bridge) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Decay saliency */
     decay_saliency(&bridge->saliency, bridge->config.saliency_decay_rate);
@@ -685,7 +681,7 @@ float mirror_attention_get_saliency_boost(
 
     float boost = 1.0f + bridge->saliency.saliency_boost[iy][ix];
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return boost;
 }
 
@@ -751,9 +747,9 @@ mirror_attention_agent_t* mirror_attention_get_agent(
 ) {
     if (!bridge) return NULL;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     mirror_attention_agent_t* agent = get_or_create_agent(bridge, agent_id);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return agent;
 }
@@ -765,7 +761,7 @@ void mirror_attention_update_validity(
 ) {
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < MIRROR_ATTENTION_MAX_AGENTS; i++) {
         if (bridge->agents[i].active && bridge->agents[i].agent_id == agent_id) {
@@ -785,7 +781,7 @@ void mirror_attention_update_validity(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 bool mirror_attention_register_bio_async(mirror_attention_bridge_t* bridge) {
@@ -809,7 +805,7 @@ bool mirror_attention_get_stats(
 ) {
     if (!bridge || !stats) return false;
 
-    nimcp_mutex_lock(((mirror_attention_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((mirror_attention_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
 
     /* Count active agents */
@@ -839,14 +835,14 @@ bool mirror_attention_get_stats(
         stats->avg_joint_attention_duration_ms = total_duration / (float)duration_count;
     }
 
-    nimcp_mutex_unlock(((mirror_attention_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((mirror_attention_bridge_t*)bridge)->base.mutex);
     return true;
 }
 
 void mirror_attention_reset_stats(mirror_attention_bridge_t* bridge) {
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(mirror_attention_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }

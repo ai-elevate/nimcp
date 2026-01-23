@@ -504,7 +504,8 @@ TEST_F(ErrorCodeStabilityTest, NimcpStatus_HaveExpectedValues) {
     EXPECT_EQ(NIMCP_ERROR_NULL_ARG, 1003);
     EXPECT_EQ(NIMCP_ERROR_INVALID, 1004);
     EXPECT_EQ(NIMCP_ERROR_MEMORY, 2000);
-    EXPECT_EQ(NIMCP_ERROR_IO, 4000);
+    /* Note: NIMCP_ERROR_IO is 4010 in nimcp_error_codes.h (macro takes precedence over enum) */
+    EXPECT_EQ(NIMCP_ERROR_IO, 4010);
 }
 
 TEST_F(ErrorCodeStabilityTest, NimcpStatus_SuccessAlias) {

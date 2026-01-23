@@ -1234,7 +1234,9 @@ TEST_F(ExceptionImmuneE2ETest, ExceptionFormatting) {
     printf("  Formatted exception (%zu bytes):\n%s\n", len, buffer);
 
     // Verify key information is present
-    EXPECT_NE(strstr(buffer, "forward pass"), nullptr);
+    // Error code 3006 is NIMCP_ERROR_FORWARD_PASS - verify code or category present
+    EXPECT_NE(strstr(buffer, "3006"), nullptr) << "Expected error code 3006 in output";
+    EXPECT_NE(strstr(buffer, "BRAIN"), nullptr) << "Expected BRAIN category in output";
     EXPECT_NE(strstr(buffer, "CRITICAL"), nullptr);
 
     nimcp_exception_unref(&ex->base);

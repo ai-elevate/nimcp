@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/ethics/nimcp_ethics_snn_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_config.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
@@ -25,9 +26,9 @@
 //=============================================================================
 
 struct ethics_snn_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
     ethics_snn_config_t config;
     snn_network_t* snn;
-    nimcp_mutex_t* mutex;
 
     /* State */
     ethics_snn_state_t state;
@@ -146,10 +147,8 @@ ethics_snn_bridge_t* ethics_snn_create(const ethics_snn_config_t* config) {
         return NULL;
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize base bridge */
+    if (bridge_base_init(&bridge->base, 0, "ethics_snn") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -166,7 +165,7 @@ ethics_snn_bridge_t* ethics_snn_create(const ethics_snn_config_t* config) {
 
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -214,7 +213,7 @@ void ethics_snn_destroy(ethics_snn_bridge_t* bridge) {
     if (bridge->encoding_buffer) nimcp_free(bridge->encoding_buffer);
     if (bridge->output_buffer) nimcp_free(bridge->output_buffer);
     if (bridge->judgment_buffer) nimcp_free(bridge->judgment_buffer);
-    if (bridge->mutex) nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }
@@ -222,7 +221,7 @@ void ethics_snn_destroy(ethics_snn_bridge_t* bridge) {
 int ethics_snn_reset(ethics_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset SNN */
     if (bridge->snn) {
@@ -257,7 +256,7 @@ int ethics_snn_reset(ethics_snn_bridge_t* bridge) {
     bridge->conflict_signal = 0.0f;
     bridge->state = ETHICS_SNN_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -273,7 +272,7 @@ int ethics_snn_encode_context(
 {
     if (!bridge || !dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ETHICS_SNN_STATE_ENCODING;
 
@@ -321,7 +320,7 @@ int ethics_snn_encode_context(
     bridge->stats.total_evaluations++;
     bridge->state = ETHICS_SNN_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return total_spikes;
 }
@@ -333,7 +332,7 @@ int ethics_snn_encode_harm(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ETHICS_SNN_STATE_ENCODING;
 
@@ -356,10 +355,10 @@ int ethics_snn_encode_harm(
         /* Fire harm callback */
         if (bridge->harm_callback) {
             uint64_t latency = nimcp_time_get_us() - bridge->current_time_us;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             bridge->harm_callback(bridge, effective_harm, latency,
                                  bridge->harm_callback_data);
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
         }
     }
 
@@ -375,7 +374,7 @@ int ethics_snn_encode_harm(
 
     bridge->state = ETHICS_SNN_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return spike_count;
 }
@@ -388,7 +387,7 @@ int ethics_snn_encode_golden_rule(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ETHICS_SNN_STATE_ENCODING;
 
@@ -427,7 +426,7 @@ int ethics_snn_encode_golden_rule(
 
     bridge->state = ETHICS_SNN_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return spike_count;
 }
@@ -439,7 +438,7 @@ int ethics_snn_encode_golden_rule(
 int ethics_snn_simulate(ethics_snn_bridge_t* bridge, float duration_ms) {
     if (!bridge || duration_ms <= 0) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ETHICS_SNN_STATE_SIMULATING;
 
@@ -452,7 +451,7 @@ int ethics_snn_simulate(ethics_snn_bridge_t* bridge, float duration_ms) {
 
     bridge->state = ETHICS_SNN_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return ret >= 0 ? 0 : -1;
 }
@@ -460,7 +459,7 @@ int ethics_snn_simulate(ethics_snn_bridge_t* bridge, float duration_ms) {
 int ethics_snn_step(ethics_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ETHICS_SNN_STATE_SIMULATING;
 
@@ -473,7 +472,7 @@ int ethics_snn_step(ethics_snn_bridge_t* bridge) {
 
     bridge->state = ETHICS_SNN_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return ret >= 0 ? 0 : -1;
 }
@@ -485,7 +484,7 @@ int ethics_snn_forward(
 {
     if (!bridge || !inputs) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ETHICS_SNN_STATE_PROCESSING;
 
@@ -499,7 +498,7 @@ int ethics_snn_forward(
 
     bridge->state = ETHICS_SNN_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return spikes;
 }
@@ -514,7 +513,7 @@ int ethics_snn_get_judgment(
 {
     if (!bridge || !judgment) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = ETHICS_SNN_STATE_DECODING;
 
@@ -588,10 +587,10 @@ int ethics_snn_get_judgment(
             bridge->stats.conflict_detections++;
 
             if (bridge->conflict_callback) {
-                nimcp_mutex_unlock(bridge->mutex);
+                nimcp_mutex_unlock(bridge->base.mutex);
                 bridge->conflict_callback(bridge, bridge->conflict_signal,
                                          0, 1, bridge->conflict_callback_data);
-                nimcp_mutex_lock(bridge->mutex);
+                nimcp_mutex_lock(bridge->base.mutex);
             }
         }
     }
@@ -600,15 +599,15 @@ int ethics_snn_get_judgment(
 
     /* Fire judgment callback if registered */
     if (bridge->judgment_callback) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         bridge->judgment_callback(bridge, &bridge->last_judgment,
                                  bridge->judgment_callback_data);
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     bridge->state = ETHICS_SNN_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -620,7 +619,7 @@ int ethics_snn_get_activations(
 {
     if (!bridge || !activations) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t n = (num_dims < bridge->config.num_dimensions) ?
                   num_dims : bridge->config.num_dimensions;
@@ -629,7 +628,7 @@ int ethics_snn_get_activations(
         activations[i] = bridge->dim_states[i].activation;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -640,14 +639,14 @@ bool ethics_snn_check_harm(
 {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bool detected = bridge->harm_signal > bridge->config.harm_threshold;
     if (harm_level) {
         *harm_level = bridge->harm_signal;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return detected;
 }
@@ -658,14 +657,14 @@ bool ethics_snn_check_conflict(
 {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bool detected = bridge->conflict_signal > bridge->config.conflict_threshold;
     if (conflict_level) {
         *conflict_level = bridge->conflict_signal;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return detected;
 }
@@ -681,9 +680,9 @@ int ethics_snn_get_dim_state(
 {
     if (!bridge || !state || dim >= bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -694,7 +693,7 @@ int ethics_snn_get_state(
 {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
     state->harm_signal = bridge->harm_signal;
@@ -711,7 +710,7 @@ int ethics_snn_get_state(
         state->total_activity += bridge->dim_states[i].activation;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -719,9 +718,9 @@ int ethics_snn_get_state(
 int ethics_snn_get_stats(ethics_snn_bridge_t* bridge, ethics_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -729,9 +728,9 @@ int ethics_snn_get_stats(ethics_snn_bridge_t* bridge, ethics_snn_stats_t* stats)
 int ethics_snn_reset_stats(ethics_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(ethics_snn_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -739,9 +738,9 @@ int ethics_snn_reset_stats(ethics_snn_bridge_t* bridge) {
 float ethics_snn_get_confidence(ethics_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float conf = bridge->last_judgment.confidence;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return conf;
 }
@@ -749,14 +748,14 @@ float ethics_snn_get_confidence(ethics_snn_bridge_t* bridge) {
 float ethics_snn_get_total_activity(ethics_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float total = 0.0f;
     for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
         total += bridge->dim_states[i].activation;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return total;
 }
@@ -772,10 +771,10 @@ int ethics_snn_register_harm_callback(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->harm_callback = callback;
     bridge->harm_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -787,10 +786,10 @@ int ethics_snn_register_judgment_callback(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->judgment_callback = callback;
     bridge->judgment_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -802,10 +801,10 @@ int ethics_snn_register_conflict_callback(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->conflict_callback = callback;
     bridge->conflict_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -818,10 +817,10 @@ int ethics_snn_bio_async_connect(ethics_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -829,9 +828,9 @@ int ethics_snn_bio_async_connect(ethics_snn_bridge_t* bridge) {
 int ethics_snn_bio_async_disconnect(ethics_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -839,9 +838,9 @@ int ethics_snn_bio_async_disconnect(ethics_snn_bridge_t* bridge) {
 bool ethics_snn_is_bio_async_connected(ethics_snn_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
 }

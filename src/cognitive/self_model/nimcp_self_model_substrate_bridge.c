@@ -3,6 +3,7 @@
  * @brief Self-Model-Neural Substrate Bridge Implementation
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/self_model/nimcp_self_model_substrate_bridge.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
@@ -13,6 +14,7 @@
 #include <string.h>
 
 struct self_model_substrate_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* self_model;
     neural_substrate_t* substrate;
     self_model_substrate_config_t config;

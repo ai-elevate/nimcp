@@ -5,6 +5,7 @@
  * @date 2026-01-13
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "language/integration/nimcp_language_bio_async_bridge.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -18,6 +19,7 @@
  * ============================================================================ */
 
 struct language_bio_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     language_bio_bridge_config_t config;
     language_orchestrator_t* orchestrator;
     bio_router_t router;

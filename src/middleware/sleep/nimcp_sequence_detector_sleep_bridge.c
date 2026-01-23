@@ -128,7 +128,7 @@ sequence_detector_sleep_bridge_t sequence_detector_sleep_bridge_create(
     bridge->effects.replay_detection_enhanced = false;
     bridge->effects.detection_enabled = true;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "sequence_detector_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(nimcp_platform_mutex_t),
             "sequence_detector_sleep_bridge_create: failed to allocate mutex");
@@ -171,7 +171,7 @@ void sequence_detector_sleep_bridge_destroy(sequence_detector_sleep_bridge_t bri
         }
     }
 
-    if (bridge->base.mutex) nimcp_mutex_free(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

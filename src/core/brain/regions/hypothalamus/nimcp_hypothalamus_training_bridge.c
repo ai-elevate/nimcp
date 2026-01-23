@@ -5,6 +5,7 @@
  * @date 2026-01-10
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_training_bridge.h"
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_orchestrator.h"
 #include "training/integration/nimcp_training_integration_hub.h"
@@ -24,6 +25,7 @@
  * @brief Internal bridge structure
  */
 struct hypo_training_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /* Configuration */
     hypo_training_bridge_config_t config;
 

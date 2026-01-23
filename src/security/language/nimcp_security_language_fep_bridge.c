@@ -14,6 +14,7 @@
  */
 
 #include "security/language/nimcp_security_language_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/platform/nimcp_platform.h"
 #include "utils/platform/nimcp_platform_time.h"
 #include "utils/error/nimcp_error_codes.h"
@@ -173,7 +174,7 @@ sec_lang_fep_bridge_t* sec_lang_fep_create(
     bridge->fep_system = fep_system;
 
     /* Initialize base bridge */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "security_language_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Security Language FEP bridge: mutex creation failed");
         nimcp_free(bridge);
@@ -228,7 +229,7 @@ void sec_lang_fep_destroy(sec_lang_fep_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     /* Free structure */

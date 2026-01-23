@@ -11,6 +11,7 @@
  * @version 1.0.0
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "security/lgss/bridges/nimcp_lgss_ethics_bridge.h"
 #include "security/lgss/nimcp_lgss.h"
 #include "utils/logging/nimcp_logging.h"
@@ -42,6 +43,7 @@
  * @brief Ethics bridge context structure
  */
 struct lgss_ethics_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     uint32_t magic;
     lgss_ethics_bridge_config_t config;
 

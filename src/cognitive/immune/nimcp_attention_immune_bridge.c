@@ -133,7 +133,7 @@ attention_immune_bridge_t* attention_immune_bridge_create(
     bridge->last_update_time = get_time_ms();
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "attention_immune") != 0) { nimcp_free(bridge); return NULL; }
 
     LOG_INFO("attention_immune_bridge: created successfully");
     return bridge;
@@ -151,7 +151,7 @@ void attention_immune_bridge_destroy(attention_immune_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

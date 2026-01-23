@@ -19,6 +19,7 @@
  */
 
 #include "cognitive/integration/nimcp_collective_hub_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/integration/nimcp_cognitive_integration_hub.h"
 #include "cognitive/integration/nimcp_cognitive_event_types.h"
 #include "cognitive/collective_cognition/nimcp_collective_cognition.h"
@@ -56,12 +57,12 @@ typedef struct {
  * @brief Collective-Hub bridge internal structure
  */
 struct collective_hub_bridge {
+    bridge_base_t base;                        /**< MUST be first: base bridge infrastructure */
     collective_hub_bridge_config_t config;     /**< Bridge configuration */
     cognitive_integration_hub_t hub;           /**< Connected hub */
     collective_cognition_t* collective;        /**< Connected collective */
     cached_collective_state_t cached_state;    /**< Cached state for change detection */
     collective_hub_bridge_stats_t stats;       /**< Bridge statistics */
-    nimcp_mutex_t* mutex;                      /**< Thread synchronization */
     bool connected;                            /**< Connection status */
     bool initialized;                          /**< Initialization flag */
 };
@@ -193,14 +194,14 @@ static int collective_query_handler(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->collective) {
         result->status = -1;
         strncpy(result->error_message, "Bridge not connected",
                 sizeof(result->error_message) - 1);
         bridge->stats.query_errors++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -223,7 +224,7 @@ static int collective_query_handler(
                 strncpy(result->error_message, "Memory allocation failed",
                         sizeof(result->error_message) - 1);
                 bridge->stats.query_errors++;
-                nimcp_mutex_unlock(bridge->mutex);
+                nimcp_mutex_unlock(bridge->base.mutex);
                 return -1;
             }
 
@@ -234,7 +235,7 @@ static int collective_query_handler(
                 strncpy(result->error_message, "Failed to get collective state",
                         sizeof(result->error_message) - 1);
                 bridge->stats.query_errors++;
-                nimcp_mutex_unlock(bridge->mutex);
+                nimcp_mutex_unlock(bridge->base.mutex);
                 return -1;
             }
 
@@ -254,7 +255,7 @@ static int collective_query_handler(
                 strncpy(result->error_message, "Memory allocation failed",
                         sizeof(result->error_message) - 1);
                 bridge->stats.query_errors++;
-                nimcp_mutex_unlock(bridge->mutex);
+                nimcp_mutex_unlock(bridge->base.mutex);
                 return -1;
             }
 
@@ -265,7 +266,7 @@ static int collective_query_handler(
                 strncpy(result->error_message, "Failed to get collective stats",
                         sizeof(result->error_message) - 1);
                 bridge->stats.query_errors++;
-                nimcp_mutex_unlock(bridge->mutex);
+                nimcp_mutex_unlock(bridge->base.mutex);
                 return -1;
             }
 
@@ -280,12 +281,12 @@ static int collective_query_handler(
             strncpy(result->error_message, "Unsupported query type",
                     sizeof(result->error_message) - 1);
             bridge->stats.query_errors++;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return -1;
     }
 
     bridge->stats.queries_handled++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -338,8 +339,8 @@ collective_hub_bridge_t* collective_hub_bridge_create(
     }
 
     /* Create mutex for thread safety */
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "collective_hub") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -367,9 +368,9 @@ void collective_hub_bridge_destroy(collective_hub_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-        bridge->mutex = NULL;
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
+        bridge->base.mutex = NULL;
     }
 
     bridge->initialized = false;
@@ -395,10 +396,10 @@ int collective_hub_bridge_connect(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;  /* Already connected */
     }
 
@@ -411,7 +412,7 @@ int collective_hub_bridge_connect(
         bridge
     );
     if (ret != 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -426,7 +427,7 @@ int collective_hub_bridge_connect(
         );
         if (ret != 0) {
             cognitive_hub_unregister_module(hub, bridge->config.module_id);
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return -1;
         }
     }
@@ -446,7 +447,7 @@ int collective_hub_bridge_connect(
                                           COG_EVENT_SOCIAL_SIGNAL);
             }
             cognitive_hub_unregister_module(hub, bridge->config.module_id);
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return -1;
         }
     }
@@ -470,7 +471,7 @@ int collective_hub_bridge_connect(
                                           COG_EVENT_SOCIAL_SIGNAL);
             }
             cognitive_hub_unregister_module(hub, bridge->config.module_id);
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return -1;
         }
     }
@@ -497,7 +498,7 @@ int collective_hub_bridge_connect(
                                           COG_EVENT_SOCIAL_SIGNAL);
             }
             cognitive_hub_unregister_module(hub, bridge->config.module_id);
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return -1;
         }
     }
@@ -517,7 +518,7 @@ int collective_hub_bridge_connect(
         bridge->cached_state.last_update_us = get_timestamp_us();
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -527,10 +528,10 @@ int collective_hub_bridge_disconnect(collective_hub_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -556,7 +557,7 @@ int collective_hub_bridge_disconnect(collective_hub_bridge_t* bridge) {
     bridge->collective = NULL;
     bridge->connected = false;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -566,9 +567,9 @@ bool collective_hub_bridge_is_connected(const collective_hub_bridge_t* bridge) {
         return false;
     }
 
-    nimcp_mutex_lock(((collective_hub_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((collective_hub_bridge_t*)bridge)->base.mutex);
     bool connected = bridge->connected;
-    nimcp_mutex_unlock(((collective_hub_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((collective_hub_bridge_t*)bridge)->base.mutex);
 
     return connected;
 }
@@ -588,10 +589,10 @@ int collective_hub_on_event(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -619,7 +620,7 @@ int collective_hub_on_event(
             break;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -636,10 +637,10 @@ int collective_hub_publish_consensus(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -665,7 +666,7 @@ int collective_hub_publish_consensus(
         bridge->stats.consensus_reached++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return ret;
 }
@@ -678,10 +679,10 @@ int collective_hub_publish_state_change(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -718,7 +719,7 @@ int collective_hub_publish_state_change(
         );
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return ret;
 }
@@ -733,10 +734,10 @@ int collective_hub_publish_event(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -766,7 +767,7 @@ int collective_hub_publish_event(
             break;
 
         default:
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return -1;
     }
 
@@ -803,7 +804,7 @@ int collective_hub_publish_event(
         bridge->stats.events_published++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return ret;
 }
@@ -817,15 +818,15 @@ int collective_hub_bridge_update(collective_hub_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->collective) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     if (!bridge->config.enable_auto_publish) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -833,7 +834,7 @@ int collective_hub_bridge_update(collective_hub_bridge_t* bridge) {
     collective_cognition_state_t state;
     int ret = collective_cognition_get_state(bridge->collective, &state);
     if (ret != 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -917,7 +918,7 @@ int collective_hub_bridge_update(collective_hub_bridge_t* bridge) {
     bridge->cached_state.is_entrained = state.hyperscanning.is_entrained;
     bridge->cached_state.last_update_us = get_timestamp_us();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -938,11 +939,11 @@ int collective_hub_bridge_get_stats(
         return -1;
     }
 
-    nimcp_mutex_lock(((collective_hub_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((collective_hub_bridge_t*)bridge)->base.mutex);
 
     *stats = bridge->stats;
 
-    nimcp_mutex_unlock(((collective_hub_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((collective_hub_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -956,11 +957,11 @@ int collective_hub_bridge_reset_stats(collective_hub_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     memset(&bridge->stats, 0, sizeof(collective_hub_bridge_stats_t));
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

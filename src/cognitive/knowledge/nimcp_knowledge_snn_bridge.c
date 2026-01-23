@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/knowledge/nimcp_knowledge_snn_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_config.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
@@ -25,9 +26,9 @@
 //=============================================================================
 
 struct knowledge_snn_bridge {
+    bridge_base_t base;
     knowledge_snn_config_t config;
     snn_network_t* snn;
-    nimcp_mutex_t* mutex;
 
     /* State */
     knowledge_snn_state_t state;
@@ -149,10 +150,8 @@ knowledge_snn_bridge_t* knowledge_snn_create(const knowledge_snn_config_t* confi
         return NULL;
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize bridge base */
+    if (bridge_base_init(&bridge->base, 0, "knowledge_snn") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -169,7 +168,7 @@ knowledge_snn_bridge_t* knowledge_snn_create(const knowledge_snn_config_t* confi
 
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -223,10 +222,7 @@ void knowledge_snn_destroy(knowledge_snn_bridge_t* bridge) {
         snn_network_destroy(bridge->snn);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
-
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge->encoding_buffer);
     nimcp_free(bridge->output_buffer);
     nimcp_free(bridge->retrieval_buffer);
@@ -237,7 +233,7 @@ void knowledge_snn_destroy(knowledge_snn_bridge_t* bridge) {
 int knowledge_snn_reset(knowledge_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset SNN network */
     if (bridge->snn) {
@@ -270,7 +266,7 @@ int knowledge_snn_reset(knowledge_snn_bridge_t* bridge) {
     bridge->semantic_signal = 0.0f;
     bridge->retrieval_signal = 0.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -286,7 +282,7 @@ int knowledge_snn_encode_state(
     if (!bridge || !dimensions) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = KNOWLEDGE_SNN_STATE_ENCODING;
 
     uint32_t neurons_per_dim = bridge->config.neurons_per_dim;
@@ -331,7 +327,7 @@ int knowledge_snn_encode_state(
 
     bridge->stats.total_spikes += total_spikes;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return total_spikes;
 }
 
@@ -342,7 +338,7 @@ int knowledge_snn_encode_semantic(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[KNOWLEDGE_DIM_COUNT] = {0};
     dims[KNOWLEDGE_DIM_SEMANTIC] = clamp_f(semantic, 0.0f, 1.0f);
@@ -351,7 +347,7 @@ int knowledge_snn_encode_semantic(
 
     bridge->semantic_signal = semantic;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return knowledge_snn_encode_state(bridge, dims, 3);
 }
@@ -363,13 +359,13 @@ int knowledge_snn_encode_retrieval(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[KNOWLEDGE_DIM_COUNT] = {0};
     dims[KNOWLEDGE_DIM_RETRIEVAL] = clamp_f(retrieval_strength, 0.0f, 1.0f);
     dims[KNOWLEDGE_DIM_CATEGORICAL] = clamp_f((float)concept_count / 10.0f, 0.0f, 1.0f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return knowledge_snn_encode_state(bridge, dims, 2);
 }
@@ -381,7 +377,7 @@ int knowledge_snn_encode_association(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[KNOWLEDGE_DIM_COUNT] = {0};
     dims[KNOWLEDGE_DIM_ASSOCIATION] = clamp_f(association, 0.0f, 1.0f);
@@ -400,7 +396,7 @@ int knowledge_snn_encode_association(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return knowledge_snn_encode_state(bridge, dims, 2);
 }
@@ -413,7 +409,7 @@ int knowledge_snn_simulate(knowledge_snn_bridge_t* bridge, float duration_ms) {
     if (!bridge) return -1;
     if (duration_ms <= 0.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = KNOWLEDGE_SNN_STATE_SIMULATING;
 
     float dt = bridge->config.dt_ms;
@@ -476,7 +472,7 @@ int knowledge_snn_simulate(knowledge_snn_bridge_t* bridge, float duration_ms) {
         bridge->retrieval_callback(bridge, &bridge->last_retrieval, bridge->retrieval_callback_data);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -512,9 +508,9 @@ int knowledge_snn_get_retrieval(
 ) {
     if (!bridge || !retrieval) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *retrieval = bridge->last_retrieval;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -527,11 +523,11 @@ int knowledge_snn_get_activations(
     if (!bridge || !activations) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t d = 0; d < num_dims; d++) {
         activations[d] = bridge->dim_states[d].activation;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -542,13 +538,13 @@ bool knowledge_snn_check_activation(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_retrieval.activation_level;
     if (activation_level) {
         *activation_level = level;
     }
     bool activated = level > bridge->config.activation_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return activated;
 }
@@ -559,13 +555,13 @@ bool knowledge_snn_check_retrieval(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_retrieval.retrieval_strength;
     if (retrieval_level) {
         *retrieval_level = level;
     }
     bool success = level > bridge->config.retrieval_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return success;
 }
@@ -576,7 +572,7 @@ bool knowledge_snn_check_state_change(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     /* Calculate magnitude from prev_state differences */
     float mag = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
@@ -589,7 +585,7 @@ bool knowledge_snn_check_state_change(
         *change_magnitude = mag;
     }
     bool changed = mag > bridge->config.state_change_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return changed;
 }
@@ -606,9 +602,9 @@ int knowledge_snn_get_dim_state(
     if (!bridge || !state) return -1;
     if (dim >= bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -619,7 +615,7 @@ int knowledge_snn_get_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
     state->mean_activation = bridge->last_retrieval.activation_level;
@@ -636,16 +632,16 @@ int knowledge_snn_get_state(
         state->total_activity += bridge->dim_states[d].activation;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int knowledge_snn_get_stats(knowledge_snn_bridge_t* bridge, knowledge_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -653,9 +649,9 @@ int knowledge_snn_get_stats(knowledge_snn_bridge_t* bridge, knowledge_snn_stats_
 int knowledge_snn_reset_stats(knowledge_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(knowledge_snn_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -663,9 +659,9 @@ int knowledge_snn_reset_stats(knowledge_snn_bridge_t* bridge) {
 float knowledge_snn_get_activation(knowledge_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float activation = bridge->last_retrieval.activation_level;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return activation;
 }
@@ -673,12 +669,12 @@ float knowledge_snn_get_activation(knowledge_snn_bridge_t* bridge) {
 float knowledge_snn_get_total_activity(knowledge_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float total = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
         total += bridge->dim_states[d].activation;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return total;
 }
@@ -694,10 +690,10 @@ int knowledge_snn_register_activation_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->activation_callback = callback;
     bridge->activation_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -709,10 +705,10 @@ int knowledge_snn_register_retrieval_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->retrieval_callback = callback;
     bridge->retrieval_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -724,10 +720,10 @@ int knowledge_snn_register_association_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->association_callback = callback;
     bridge->association_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -740,10 +736,10 @@ int knowledge_snn_bio_async_connect(knowledge_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -751,9 +747,9 @@ int knowledge_snn_bio_async_connect(knowledge_snn_bridge_t* bridge) {
 int knowledge_snn_bio_async_disconnect(knowledge_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -761,9 +757,9 @@ int knowledge_snn_bio_async_disconnect(knowledge_snn_bridge_t* bridge) {
 bool knowledge_snn_is_bio_async_connected(knowledge_snn_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
 }

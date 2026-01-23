@@ -10,6 +10,7 @@
  * @date 2025-01-01
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/occipital/nimcp_occipital_thalamic_bridge.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "utils/memory/nimcp_memory.h"
@@ -22,6 +23,7 @@
  *===========================================================================*/
 
 struct occipital_thalamic_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* occipital;                          /**< Occipital adapter handle */
     thalamic_router_t* router;                /**< Thalamic router handle */
     occipital_thalamic_config_t config;       /**< Bridge configuration */

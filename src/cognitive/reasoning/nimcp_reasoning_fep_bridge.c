@@ -41,7 +41,7 @@ reasoning_fep_bridge_t* reasoning_fep_bridge_create(const reasoning_fep_config_t
     memset(bridge, 0, sizeof(reasoning_fep_bridge_t));
     if (config) bridge->config = *config;
     else reasoning_fep_bridge_default_config(&bridge->config);
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "reasoning_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
     return bridge;
 }
@@ -50,7 +50,7 @@ void reasoning_fep_bridge_destroy(reasoning_fep_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.bio_async_enabled) reasoning_fep_bridge_disconnect_bio_async(bridge);
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
 }

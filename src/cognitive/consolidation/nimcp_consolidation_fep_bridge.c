@@ -46,7 +46,7 @@ consolidation_fep_bridge_t* consolidation_fep_bridge_create(const consolidation_
     } else {
         consolidation_fep_bridge_default_config(&bridge->config);
     }
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "consolidation_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
@@ -62,7 +62,7 @@ void consolidation_fep_bridge_destroy(consolidation_fep_bridge_t* bridge) {
         consolidation_fep_bridge_disconnect_bio_async(bridge);
     }
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed consolidation FEP bridge");

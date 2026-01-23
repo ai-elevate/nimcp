@@ -115,7 +115,7 @@ self_model_sleep_bridge_t self_model_sleep_bridge_create(
     bridge->effects.self_monitoring_factor = 1.0f;
     bridge->effects.self_awareness_offline = false;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "self_model_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
 
     /* Register callback for automatic state updates */
@@ -153,7 +153,7 @@ void self_model_sleep_bridge_destroy(self_model_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->base.mutex) nimcp_mutex_free(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

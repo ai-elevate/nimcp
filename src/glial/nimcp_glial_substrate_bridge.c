@@ -104,7 +104,7 @@ glial_substrate_bridge_t* glial_substrate_bridge_create(
     bridge->myelin_network = myelin_network;
 
     /* Create mutex using platform API (allocates + initializes internally) */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "glial_substrate") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         LOG_ERROR("glial_substrate_bridge_create: mutex creation failed");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "glial_substrate_bridge_create: mutex creation failed");
@@ -156,7 +156,7 @@ void glial_substrate_bridge_destroy(glial_substrate_bridge_t* bridge) {
     }
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

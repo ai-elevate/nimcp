@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/imagination/nimcp_prefrontal_imagination_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/imagination/nimcp_imagination_engine.h"
 #include "core/brain/regions/prefrontal/nimcp_prefrontal_adapter.h"
@@ -106,7 +107,7 @@ prefrontal_imagination_bridge_t* prefrontal_imagination_bridge_create(
     bridge->base.bridge_active = false;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (bridge_base_init(&bridge->base, 0, "prefrontal_imagination") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         LOG_ERROR("Failed to create bridge mutex");
         nimcp_free(bridge);
@@ -117,7 +118,7 @@ prefrontal_imagination_bridge_t* prefrontal_imagination_bridge_create(
     if (config) {
         if (prefrontal_imagination_validate_config(config) != 0) {
             LOG_ERROR("Invalid bridge configuration");
-            nimcp_mutex_free(bridge->base.mutex);
+            bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
             return NULL;
         }
@@ -180,7 +181,7 @@ void prefrontal_imagination_bridge_destroy(prefrontal_imagination_bridge_t* brid
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

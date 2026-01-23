@@ -3,6 +3,7 @@
  * @brief JEPA-Thalamic Bridge Implementation
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/jepa/nimcp_jepa_thalamic_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
@@ -10,6 +11,7 @@
 #include <string.h>
 
 struct jepa_thalamic_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* jepa;
     thalamic_router_t* router;
     jepa_thalamic_config_t config;

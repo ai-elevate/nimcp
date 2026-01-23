@@ -215,7 +215,7 @@ oscillations_immune_bridge_t* oscillations_immune_bridge_create(
     bridge->persistence_threshold = config->persistence_threshold;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "oscillations_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -230,7 +230,7 @@ void oscillations_immune_bridge_destroy(oscillations_immune_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */

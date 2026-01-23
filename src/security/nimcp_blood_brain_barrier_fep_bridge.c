@@ -73,7 +73,7 @@ bbb_fep_bridge_t* bbb_fep_create(
     bridge->fep_system = fep_system;
     bridge->bbb_system = bbb_system;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "blood_brain_barrier_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("BBB FEP bridge: mutex creation failed");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "Failed to create BBB FEP bridge mutex");
@@ -99,7 +99,7 @@ void bbb_fep_destroy(bbb_fep_bridge_t* bridge) {
     }
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

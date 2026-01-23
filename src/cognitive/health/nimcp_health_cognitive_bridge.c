@@ -8,8 +8,9 @@
  */
 
 /* Enable POSIX clock functions */
-#define _POSIX_C_SOURCE 199309L
+#define _POSIX_C_SOURCE 200809L
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/health/nimcp_health_cognitive_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -48,6 +49,7 @@ typedef struct {
  * @brief Health cognitive bridge internal state
  */
 struct health_cognitive_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /* Configuration */
     cognitive_bridge_config_t config;
 

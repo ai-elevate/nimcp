@@ -3,6 +3,7 @@
  * @brief Explanations-Neural Substrate Bridge Implementation
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/explanations/nimcp_explanations_substrate_bridge.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "async/nimcp_bio_messages.h"
@@ -12,6 +13,7 @@
 #include <string.h>
 
 struct explanations_substrate_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* explanations;
     neural_substrate_t* substrate;
     explanations_substrate_config_t config;

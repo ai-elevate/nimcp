@@ -7,6 +7,7 @@
  */
 
 #include "cognitive/memory/core/nimcp_pr_visual_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -132,10 +133,10 @@ static float compute_attention_intensity(const pr_visual_feature_vector_t* featu
  * @brief Lock bridge mutex
  */
 static pr_visual_bridge_error_t lock_bridge(pr_visual_bridge_t* bridge) {
-    if (!bridge || !bridge->mutex) {
+    if (!bridge || !bridge->base.mutex) {
         return PR_VISUAL_ERROR_NULL_PARAM;
     }
-    if (nimcp_mutex_lock(bridge->mutex) != 0) {
+    if (nimcp_mutex_lock(bridge->base.mutex) != 0) {
         return PR_VISUAL_ERROR_MUTEX;
     }
     return PR_VISUAL_OK;
@@ -145,8 +146,8 @@ static pr_visual_bridge_error_t lock_bridge(pr_visual_bridge_t* bridge) {
  * @brief Unlock bridge mutex
  */
 static void unlock_bridge(pr_visual_bridge_t* bridge) {
-    if (bridge && bridge->mutex) {
-        nimcp_mutex_unlock(bridge->mutex);
+    if (bridge && bridge->base.mutex) {
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 }
 
@@ -244,11 +245,8 @@ NIMCP_EXPORT pr_visual_bridge_t* pr_visual_bridge_create(
         return NULL;
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {0};
-    mutex_attr.type = MUTEX_TYPE_RECURSIVE;
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "pr_visual") != 0) {
         nimcp_free(bridge);
         set_error(NULL, PR_VISUAL_ERROR_MUTEX);
         return NULL;
@@ -258,7 +256,7 @@ NIMCP_EXPORT pr_visual_bridge_t* pr_visual_bridge_create(
     bridge->memory_pool = nimcp_calloc(bridge->config.max_memories,
                                         sizeof(pr_memory_node_t*));
     if (!bridge->memory_pool) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         set_error(NULL, PR_VISUAL_ERROR_ALLOCATION);
         return NULL;
@@ -274,7 +272,7 @@ NIMCP_EXPORT pr_visual_bridge_t* pr_visual_bridge_create(
     bridge->visual_entanglement = entangle_graph_create(&entangle_config);
     if (!bridge->visual_entanglement) {
         nimcp_free(bridge->memory_pool);
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         set_error(NULL, PR_VISUAL_ERROR_ALLOCATION);
         return NULL;
@@ -327,10 +325,8 @@ NIMCP_EXPORT void pr_visual_bridge_destroy(pr_visual_bridge_t* bridge) {
 
     unlock_bridge(bridge);
 
-    /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 

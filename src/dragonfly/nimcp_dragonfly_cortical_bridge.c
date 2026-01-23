@@ -3,6 +3,7 @@
  * @brief Implementation of Dragonfly-to-Cortical Column Bridge
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "dragonfly/nimcp_dragonfly_cortical_bridge.h"
 #include "dragonfly/nimcp_dragonfly_tsdn.h"
 #include "dragonfly/nimcp_dragonfly.h"
@@ -22,6 +23,7 @@
 //=============================================================================
 
 struct dragonfly_cortical_bridge_s {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     bool initialized;
 
     /* References to source systems */

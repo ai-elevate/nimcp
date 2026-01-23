@@ -117,7 +117,7 @@ knowledge_sleep_bridge_t knowledge_sleep_bridge_create(
     bridge->effects.association_strength_factor = 0.2f;
     bridge->effects.consolidation_active = false;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "knowledge_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
 
     /* Register callback for automatic state updates */
@@ -155,7 +155,7 @@ void knowledge_sleep_bridge_destroy(knowledge_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->base.mutex) nimcp_mutex_free(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

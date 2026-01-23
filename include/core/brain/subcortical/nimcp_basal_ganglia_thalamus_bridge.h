@@ -27,6 +27,7 @@
 #include <stdbool.h>
 #include "core/brain/subcortical/nimcp_basal_ganglia.h"
 #include "core/brain/subcortical/nimcp_thalamus.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -124,6 +125,8 @@ typedef struct {
  * @brief BG-Thalamus bridge instance
  */
 typedef struct bgt_bridge {
+    bridge_base_t base;           /**< MUST be first: base bridge infrastructure */
+
     /* Connected components */
     basal_ganglia_t* bg;          /**< Connected basal ganglia */
     thalamus_t* thalamus;         /**< Connected thalamus */
@@ -149,8 +152,6 @@ typedef struct bgt_bridge {
     /* Statistics */
     bgt_bridge_stats_t stats;     /**< Runtime statistics */
 
-    /* Thread safety */
-    nimcp_mutex_t* mutex;         /**< Mutex for thread safety */
 } bgt_bridge_t;
 
 /* ============================================================================

@@ -5,8 +5,9 @@
  * @date 2026-01-12
  */
 
-#define _POSIX_C_SOURCE 199309L
+#define _POSIX_C_SOURCE 200809L
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "integration/inter/neuromod_attention/nimcp_neuromod_attention_bridge.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -21,6 +22,7 @@
  * ============================================================================ */
 
 struct neuromod_attention_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     uint32_t magic;
     neuromod_attention_config_t config;
     neuromod_attention_state_t state;

@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/reasoning/nimcp_reasoning_snn_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_config.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
@@ -25,9 +26,9 @@
 //=============================================================================
 
 struct reasoning_snn_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     reasoning_snn_config_t config;
     snn_network_t* snn;
-    nimcp_mutex_t* mutex;
 
     /* State */
     reasoning_snn_state_t state;
@@ -149,10 +150,8 @@ reasoning_snn_bridge_t* reasoning_snn_create(const reasoning_snn_config_t* confi
         return NULL;
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "reasoning_snn") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -169,7 +168,7 @@ reasoning_snn_bridge_t* reasoning_snn_create(const reasoning_snn_config_t* confi
 
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -225,9 +224,8 @@ void reasoning_snn_destroy(reasoning_snn_bridge_t* bridge) {
         snn_network_destroy(bridge->snn);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge->encoding_buffer);
     nimcp_free(bridge->output_buffer);
@@ -239,7 +237,7 @@ void reasoning_snn_destroy(reasoning_snn_bridge_t* bridge) {
 int reasoning_snn_reset(reasoning_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset SNN network */
     if (bridge->snn) {
@@ -272,7 +270,7 @@ int reasoning_snn_reset(reasoning_snn_bridge_t* bridge) {
     bridge->conflict_signal = 0.0f;
     bridge->causal_signal = 0.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -288,7 +286,7 @@ int reasoning_snn_encode_state(
     if (!bridge || !dimensions) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = REASONING_SNN_STATE_ENCODING;
 
     uint32_t neurons_per_dim = bridge->config.neurons_per_dim;
@@ -337,7 +335,7 @@ int reasoning_snn_encode_state(
 
     bridge->stats.total_spikes += total_spikes;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return total_spikes;
 }
 
@@ -348,13 +346,13 @@ int reasoning_snn_encode_deduction(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[REASON_DIM_COUNT] = {0};
     dims[REASON_DIM_DEDUCTION] = clamp_f(premise_strength * rule_validity, 0.0f, 1.0f);
     dims[REASON_DIM_LOGICAL_VALIDITY] = clamp_f(rule_validity, 0.0f, 1.0f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return reasoning_snn_encode_state(bridge, dims, 2);
 }
@@ -366,7 +364,7 @@ int reasoning_snn_encode_causal(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[REASON_DIM_COUNT] = {0};
     dims[REASON_DIM_CAUSAL] = clamp_f(cause_strength * effect_probability, 0.0f, 1.0f);
@@ -375,7 +373,7 @@ int reasoning_snn_encode_causal(
     bridge->causal_signal = dims[REASON_DIM_CAUSAL];
     bridge->stats.causal_chains++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return reasoning_snn_encode_state(bridge, dims, 2);
 }
@@ -387,13 +385,13 @@ int reasoning_snn_encode_evidence(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[REASON_DIM_COUNT] = {0};
     dims[REASON_DIM_EVIDENCE_WEIGHT] = clamp_f(evidence_strength, 0.0f, 1.0f);
     dims[REASON_DIM_INFERENCE_DEPTH] = clamp_f((float)evidence_count / 10.0f, 0.0f, 1.0f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return reasoning_snn_encode_state(bridge, dims, 2);
 }
@@ -406,7 +404,7 @@ int reasoning_snn_simulate(reasoning_snn_bridge_t* bridge, float duration_ms) {
     if (!bridge) return -1;
     if (duration_ms <= 0.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = REASONING_SNN_STATE_SIMULATING;
 
     float dt = bridge->config.dt_ms;
@@ -489,7 +487,7 @@ int reasoning_snn_simulate(reasoning_snn_bridge_t* bridge, float duration_ms) {
                                    0, bridge->conclusion_callback_data);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -525,9 +523,9 @@ int reasoning_snn_get_inference(
 ) {
     if (!bridge || !inference) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *inference = bridge->last_inference;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -540,11 +538,11 @@ int reasoning_snn_get_activations(
     if (!bridge || !activations) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t d = 0; d < num_dims; d++) {
         activations[d] = bridge->dim_states[d].activation;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -555,13 +553,13 @@ bool reasoning_snn_check_conflict(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->conflict_signal;
     if (conflict_level) {
         *conflict_level = level;
     }
     bool detected = level > bridge->config.conflict_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return detected;
 }
@@ -572,13 +570,13 @@ bool reasoning_snn_check_conclusion(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_inference.logical_validity;
     if (validity) {
         *validity = level;
     }
     bool valid = bridge->last_inference.conclusion_valid;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return valid;
 }
@@ -589,13 +587,13 @@ bool reasoning_snn_check_causal(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->causal_signal;
     if (causal_strength) {
         *causal_strength = level;
     }
     bool detected = level > 0.3f;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return detected;
 }
@@ -612,9 +610,9 @@ int reasoning_snn_get_dim_state(
     if (!bridge || !state) return -1;
     if (dim >= bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -625,7 +623,7 @@ int reasoning_snn_get_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
     state->mean_inference = (bridge->last_inference.deduction_strength +
@@ -643,16 +641,16 @@ int reasoning_snn_get_state(
         state->total_activity += bridge->dim_states[d].activation;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int reasoning_snn_get_stats(reasoning_snn_bridge_t* bridge, reasoning_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -660,9 +658,9 @@ int reasoning_snn_get_stats(reasoning_snn_bridge_t* bridge, reasoning_snn_stats_
 int reasoning_snn_reset_stats(reasoning_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(reasoning_snn_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -670,11 +668,11 @@ int reasoning_snn_reset_stats(reasoning_snn_bridge_t* bridge) {
 float reasoning_snn_get_inference_strength(reasoning_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float strength = (bridge->last_inference.deduction_strength +
                      bridge->last_inference.induction_strength +
                      bridge->last_inference.logical_validity) / 3.0f;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return strength;
 }
@@ -682,12 +680,12 @@ float reasoning_snn_get_inference_strength(reasoning_snn_bridge_t* bridge) {
 float reasoning_snn_get_total_activity(reasoning_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float total = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
         total += bridge->dim_states[d].activation;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return total;
 }
@@ -703,10 +701,10 @@ int reasoning_snn_register_conflict_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->conflict_callback = callback;
     bridge->conflict_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -718,10 +716,10 @@ int reasoning_snn_register_inference_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->inference_callback = callback;
     bridge->inference_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -733,10 +731,10 @@ int reasoning_snn_register_conclusion_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->conclusion_callback = callback;
     bridge->conclusion_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -749,10 +747,10 @@ int reasoning_snn_bio_async_connect(reasoning_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -760,9 +758,9 @@ int reasoning_snn_bio_async_connect(reasoning_snn_bridge_t* bridge) {
 int reasoning_snn_bio_async_disconnect(reasoning_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -770,9 +768,9 @@ int reasoning_snn_bio_async_disconnect(reasoning_snn_bridge_t* bridge) {
 bool reasoning_snn_is_bio_async_connected(reasoning_snn_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
 }

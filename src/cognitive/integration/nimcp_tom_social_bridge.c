@@ -18,6 +18,7 @@
  */
 
 #include "cognitive/integration/nimcp_tom_social_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -53,12 +54,12 @@ typedef struct agent_model {
  * HOW: Array of agent models with thread-safe access
  */
 struct tom_social_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
     tom_social_config_t config;
     agent_model_t* agents;
     size_t agent_capacity;
     size_t agent_count;
     tom_social_stats_t stats;
-    nimcp_mutex_t* mutex;
     bool initialized;
 };
 
@@ -185,8 +186,8 @@ tom_social_bridge_t* tom_social_bridge_create(const tom_social_config_t* config)
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "tom_social") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         nimcp_free(bridge->agents);
         nimcp_free(bridge);
         return NULL;
@@ -200,8 +201,8 @@ tom_social_bridge_t* tom_social_bridge_create(const tom_social_config_t* config)
 void tom_social_bridge_destroy(tom_social_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     if (bridge->agents) {
@@ -223,12 +224,12 @@ int tom_social_infer_for_response(
     if (!bridge || !mental_state_out) return -1;
     if (!bridge->initialized) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     agent_model_t* agent = find_agent_unlocked(bridge, agent_id);
     if (!agent) {
         bridge->stats.inference_failures++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -277,7 +278,7 @@ int tom_social_infer_for_response(
     /* Update statistics */
     bridge->stats.inferences_made++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -290,7 +291,7 @@ int tom_social_on_social_cue(
     if (!bridge) return -1;
     if (!bridge->initialized) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Process social cue to update relevant agent models */
     /* The cue_data interpretation depends on cue_type */
@@ -300,7 +301,7 @@ int tom_social_on_social_cue(
     agent_model_t* agent = find_or_create_agent_unlocked(bridge, 0);
     if (!agent) {
         bridge->stats.cue_failures++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -361,7 +362,7 @@ int tom_social_on_social_cue(
     agent->last_update = get_current_time_ms();
     bridge->stats.social_cues_processed++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -374,11 +375,11 @@ int tom_social_update_agent_model(
     if (!bridge || !belief_update) return -1;
     if (!bridge->initialized) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     agent_model_t* agent = find_or_create_agent_unlocked(bridge, agent_id);
     if (!agent) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -423,7 +424,7 @@ int tom_social_update_agent_model(
     agent->last_update = get_current_time_ms();
     bridge->stats.agent_models_updated++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -436,11 +437,11 @@ int tom_social_get_agent_state(
     if (!bridge || !state_out) return -1;
     if (!bridge->initialized) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     agent_model_t* agent = find_agent_unlocked(bridge, agent_id);
     if (!agent) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -492,7 +493,7 @@ int tom_social_get_agent_state(
     state_out->is_observed = (state_out->time_since_observation < 5000);  /* Observed if updated within 5s */
     state_out->is_valid = agent->valid;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -508,9 +509,9 @@ int tom_social_get_stats(
     if (!bridge || !stats_out) return -1;
     if (!bridge->initialized) return -1;
 
-    nimcp_mutex_lock(((tom_social_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((tom_social_bridge_t*)bridge)->base.mutex);
     *stats_out = bridge->stats;
-    nimcp_mutex_unlock(((tom_social_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((tom_social_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }

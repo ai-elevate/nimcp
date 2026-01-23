@@ -7,6 +7,7 @@
  */
 
 #include "cognitive/memory/core/nimcp_pr_cognitive_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -22,6 +23,8 @@
  * @brief Internal bridge structure
  */
 struct pr_cognitive_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     // Configuration
     pr_cognitive_config_t config;
 
@@ -47,9 +50,6 @@ struct pr_cognitive_bridge_struct {
 
     // Statistics
     pr_cognitive_stats_t stats;
-
-    // Thread safety
-    nimcp_mutex_t* mutex;
 
     // State
     bool initialized;
@@ -165,7 +165,7 @@ static int hub_event_handler(
     pr_cognitive_bridge_t bridge = (pr_cognitive_bridge_t)user_data;
     if (!bridge || !event) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->hub.events_received++;
 
     // Process event based on type
@@ -194,7 +194,7 @@ static int hub_event_handler(
             break;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -276,9 +276,8 @@ pr_cognitive_bridge_t pr_cognitive_bridge_create(
     pr_cognitive_bridge_t bridge = calloc(1, sizeof(struct pr_cognitive_bridge_struct));
     if (!bridge) return NULL;
 
-    // Initialize mutex
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    // Initialize base bridge infrastructure
+    if (bridge_base_init(&bridge->base, 0, "pr_cognitive") != 0) {
         free(bridge);
         return NULL;
     }
@@ -307,7 +306,7 @@ pr_cognitive_bridge_t pr_cognitive_bridge_create(
 void pr_cognitive_bridge_destroy(pr_cognitive_bridge_t bridge) {
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Disconnect all links
     if (bridge->hub.state == PR_COG_LINK_CONNECTED && bridge->hub.hub) {
@@ -323,8 +322,8 @@ void pr_cognitive_bridge_destroy(pr_cognitive_bridge_t bridge) {
 
     bridge->initialized = false;
 
-    nimcp_mutex_unlock(bridge->mutex);
-    nimcp_mutex_free(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
+    bridge_base_cleanup(&bridge->base);
 
     free(bridge);
 }
@@ -333,7 +332,7 @@ pr_cognitive_error_t pr_cognitive_bridge_reset(pr_cognitive_bridge_t bridge) {
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Disconnect hub if connected
     if (bridge->hub.state == PR_COG_LINK_CONNECTED && bridge->hub.hub) {
@@ -350,7 +349,7 @@ pr_cognitive_error_t pr_cognitive_bridge_reset(pr_cognitive_bridge_t bridge) {
     // Reset statistics
     memset(&bridge->stats, 0, sizeof(bridge->stats));
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -366,10 +365,10 @@ pr_cognitive_error_t pr_cognitive_bridge_connect_attention(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->attention.state == PR_COG_LINK_CONNECTED) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_COG_ERROR_ALREADY_CONNECTED;
     }
 
@@ -377,7 +376,7 @@ pr_cognitive_error_t pr_cognitive_bridge_connect_attention(
     bridge->attention.state = PR_COG_LINK_CONNECTED;
     bridge->attention.last_update_ms = get_current_time_ms();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -388,12 +387,12 @@ pr_cognitive_error_t pr_cognitive_bridge_disconnect_attention(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->attention.state = PR_COG_LINK_DISCONNECTED;
     bridge->attention.attention_context = NULL;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -406,10 +405,10 @@ pr_cognitive_error_t pr_cognitive_bridge_update_attention(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->attention.state != PR_COG_LINK_CONNECTED) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_COG_ERROR_NOT_CONNECTED;
     }
 
@@ -417,7 +416,7 @@ pr_cognitive_error_t pr_cognitive_bridge_update_attention(
     bridge->attention.filter_threshold = clamp_float(filter_threshold, 0.0f, 1.0f);
     bridge->attention.last_update_ms = get_current_time_ms();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -429,17 +428,17 @@ float pr_cognitive_bridge_apply_attention_boost(
 ) {
     if (!bridge || !bridge->initialized) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->attention.state != PR_COG_LINK_CONNECTED) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1.0f;
     }
 
     // Find node in z_ladder
     pr_memory_node_t* node = z_ladder_find(bridge->z_ladder, node_id);
     if (!node) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1.0f;
     }
 
@@ -467,13 +466,13 @@ float pr_cognitive_bridge_apply_attention_boost(
 
     // Invoke callback if registered
     if (bridge->attention_cb) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         bridge->attention_cb(bridge, node_id, old_salience, new_salience,
                             bridge->attention_cb_data);
         return new_salience;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return new_salience;
 }
 
@@ -484,9 +483,9 @@ pr_cognitive_error_t pr_cognitive_bridge_get_attention_state(
     if (!bridge || !link_state) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *link_state = bridge->attention;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -502,10 +501,10 @@ pr_cognitive_error_t pr_cognitive_bridge_connect_emotion(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->emotion.state == PR_COG_LINK_CONNECTED) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_COG_ERROR_ALREADY_CONNECTED;
     }
 
@@ -513,7 +512,7 @@ pr_cognitive_error_t pr_cognitive_bridge_connect_emotion(
     bridge->emotion.state = PR_COG_LINK_CONNECTED;
     bridge->emotion.last_update_ms = get_current_time_ms();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -524,12 +523,12 @@ pr_cognitive_error_t pr_cognitive_bridge_disconnect_emotion(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->emotion.state = PR_COG_LINK_DISCONNECTED;
     bridge->emotion.emotion_context = NULL;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -542,10 +541,10 @@ pr_cognitive_error_t pr_cognitive_bridge_update_emotion(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->emotion.state != PR_COG_LINK_CONNECTED) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_COG_ERROR_NOT_CONNECTED;
     }
 
@@ -553,7 +552,7 @@ pr_cognitive_error_t pr_cognitive_bridge_update_emotion(
     bridge->emotion.current_arousal = clamp_float(arousal, 0.0f, 1.0f);
     bridge->emotion.last_update_ms = get_current_time_ms();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -567,17 +566,17 @@ pr_cognitive_error_t pr_cognitive_bridge_apply_emotion_tag(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->emotion.state != PR_COG_LINK_CONNECTED) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_COG_ERROR_NOT_CONNECTED;
     }
 
     // Find node
     pr_memory_node_t* node = z_ladder_find(bridge->z_ladder, node_id);
     if (!node) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_COG_ERROR_NULL_POINTER;
     }
 
@@ -606,13 +605,13 @@ pr_cognitive_error_t pr_cognitive_bridge_apply_emotion_tag(
 
     // Invoke callback if registered
     if (bridge->emotion_cb) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         bridge->emotion_cb(bridge, node_id, clamped_valence, clamped_arousal,
                           bridge->emotion_cb_data);
         return PR_COG_SUCCESS;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return PR_COG_SUCCESS;
 }
 
@@ -623,9 +622,9 @@ pr_cognitive_error_t pr_cognitive_bridge_get_emotion_state(
     if (!bridge || !link_state) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *link_state = bridge->emotion;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -641,10 +640,10 @@ pr_cognitive_error_t pr_cognitive_bridge_connect_executive(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->executive.state == PR_COG_LINK_CONNECTED) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_COG_ERROR_ALREADY_CONNECTED;
     }
 
@@ -652,7 +651,7 @@ pr_cognitive_error_t pr_cognitive_bridge_connect_executive(
     bridge->executive.state = PR_COG_LINK_CONNECTED;
     bridge->executive.last_update_ms = get_current_time_ms();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -663,7 +662,7 @@ pr_cognitive_error_t pr_cognitive_bridge_disconnect_executive(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->executive.state = PR_COG_LINK_DISCONNECTED;
     bridge->executive.executive_context = NULL;
@@ -675,7 +674,7 @@ pr_cognitive_error_t pr_cognitive_bridge_disconnect_executive(
     bridge->executive.encoding_permitted = true;
     bridge->executive.retrieval_permitted = true;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -689,10 +688,10 @@ pr_cognitive_error_t pr_cognitive_bridge_update_executive(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->executive.state != PR_COG_LINK_CONNECTED) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_COG_ERROR_NOT_CONNECTED;
     }
 
@@ -713,7 +712,7 @@ pr_cognitive_error_t pr_cognitive_bridge_update_executive(
         (bridge->stats.avg_executive_gate * bridge->stats.update_count +
          (encoding_gate + retrieval_gate) / 2.0f) / (bridge->stats.update_count + 1);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -721,7 +720,7 @@ pr_cognitive_error_t pr_cognitive_bridge_update_executive(
 bool pr_cognitive_bridge_encoding_permitted(pr_cognitive_bridge_t bridge) {
     if (!bridge || !bridge->initialized) return true;  // Default to permitted
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bool permitted = true;
     if (bridge->executive.state == PR_COG_LINK_CONNECTED) {
@@ -731,7 +730,7 @@ bool pr_cognitive_bridge_encoding_permitted(pr_cognitive_bridge_t bridge) {
 
             // Invoke callback if registered
             if (bridge->executive_cb) {
-                nimcp_mutex_unlock(bridge->mutex);
+                nimcp_mutex_unlock(bridge->base.mutex);
                 bridge->executive_cb(bridge, true, permitted,
                                     bridge->executive.encoding_gate,
                                     bridge->executive_cb_data);
@@ -740,14 +739,14 @@ bool pr_cognitive_bridge_encoding_permitted(pr_cognitive_bridge_t bridge) {
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return permitted;
 }
 
 bool pr_cognitive_bridge_retrieval_permitted(pr_cognitive_bridge_t bridge) {
     if (!bridge || !bridge->initialized) return true;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bool permitted = true;
     if (bridge->executive.state == PR_COG_LINK_CONNECTED) {
@@ -756,7 +755,7 @@ bool pr_cognitive_bridge_retrieval_permitted(pr_cognitive_bridge_t bridge) {
             bridge->stats.executive_blocks++;
 
             if (bridge->executive_cb) {
-                nimcp_mutex_unlock(bridge->mutex);
+                nimcp_mutex_unlock(bridge->base.mutex);
                 bridge->executive_cb(bridge, false, permitted,
                                     bridge->executive.retrieval_gate,
                                     bridge->executive_cb_data);
@@ -765,7 +764,7 @@ bool pr_cognitive_bridge_retrieval_permitted(pr_cognitive_bridge_t bridge) {
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return permitted;
 }
 
@@ -776,9 +775,9 @@ pr_cognitive_error_t pr_cognitive_bridge_get_executive_state(
     if (!bridge || !link_state) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *link_state = bridge->executive;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -794,7 +793,7 @@ pr_cognitive_error_t pr_cognitive_bridge_sync_working_memory(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Connect WM if not already
     if (bridge->wm.state == PR_COG_LINK_DISCONNECTED) {
@@ -836,7 +835,7 @@ pr_cognitive_error_t pr_cognitive_bridge_sync_working_memory(
     bridge->wm.last_sync_ms = get_current_time_ms();
     bridge->stats.wm_syncs++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -849,17 +848,17 @@ pr_cognitive_error_t pr_cognitive_bridge_map_wm_slot(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (wm_slot_index >= bridge->config.max_wm_slots) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_COG_ERROR_CAPACITY;
     }
 
     // Verify node exists
     pr_memory_node_t* node = z_ladder_find(bridge->z_ladder, node_id);
     if (!node) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_COG_ERROR_NULL_POINTER;
     }
 
@@ -875,7 +874,7 @@ pr_cognitive_error_t pr_cognitive_bridge_map_wm_slot(
     }
     bridge->wm.active_slots = active;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -887,10 +886,10 @@ pr_cognitive_error_t pr_cognitive_bridge_unmap_wm_slot(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (wm_slot_index >= bridge->config.max_wm_slots) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_COG_ERROR_CAPACITY;
     }
 
@@ -904,7 +903,7 @@ pr_cognitive_error_t pr_cognitive_bridge_unmap_wm_slot(
     }
     bridge->wm.active_slots = active;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -916,9 +915,9 @@ pr_cognitive_error_t pr_cognitive_bridge_get_wm_state(
     if (!bridge || !link_state) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *link_state = bridge->wm;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -934,10 +933,10 @@ pr_cognitive_error_t pr_cognitive_bridge_connect_hub(
     if (!bridge || !hub) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->hub.state == PR_COG_LINK_CONNECTED) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_COG_ERROR_ALREADY_CONNECTED;
     }
 
@@ -950,7 +949,7 @@ pr_cognitive_error_t pr_cognitive_bridge_connect_hub(
         bridge
     );
     if (ret != 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_COG_ERROR_HUB_FAILED;
     }
 
@@ -978,7 +977,7 @@ pr_cognitive_error_t pr_cognitive_bridge_connect_hub(
                            hub_event_handler, bridge);
     bridge->hub.subscribed_memory = true;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -989,10 +988,10 @@ pr_cognitive_error_t pr_cognitive_bridge_disconnect_hub(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->hub.state != PR_COG_LINK_CONNECTED || !bridge->hub.hub) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_COG_ERROR_NOT_CONNECTED;
     }
 
@@ -1019,7 +1018,7 @@ pr_cognitive_error_t pr_cognitive_bridge_disconnect_hub(
     bridge->hub.subscribed_emotion = false;
     bridge->hub.subscribed_memory = false;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -1033,10 +1032,10 @@ pr_cognitive_error_t pr_cognitive_bridge_broadcast_memory_event(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->hub.state != PR_COG_LINK_CONNECTED || !bridge->hub.hub) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_COG_ERROR_NOT_CONNECTED;
     }
 
@@ -1101,7 +1100,7 @@ pr_cognitive_error_t pr_cognitive_bridge_broadcast_memory_event(
         bridge->stats.events_broadcast++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return (ret == 0) ? PR_COG_SUCCESS : PR_COG_ERROR_HUB_FAILED;
 }
@@ -1113,9 +1112,9 @@ pr_cognitive_error_t pr_cognitive_bridge_get_hub_state(
     if (!bridge || !link_state) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *link_state = bridge->hub;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -1130,7 +1129,7 @@ pr_cognitive_error_t pr_cognitive_bridge_update(pr_cognitive_bridge_t bridge) {
 
     uint64_t start_time = get_current_time_ms();
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Update attention link if connected
     if (bridge->attention.state == PR_COG_LINK_CONNECTED) {
@@ -1182,7 +1181,7 @@ pr_cognitive_error_t pr_cognitive_bridge_update(pr_cognitive_bridge_t bridge) {
     bridge->stats.update_count++;
     bridge->stats.last_update_ms = start_time;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -1195,7 +1194,7 @@ pr_cognitive_error_t pr_cognitive_bridge_apply_salience_decay(
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
     if (dt_seconds <= 0.0f) return PR_COG_SUCCESS;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Get all Z0 and Z1 nodes
     pr_memory_node_t* nodes[256];
@@ -1227,7 +1226,7 @@ pr_cognitive_error_t pr_cognitive_bridge_apply_salience_decay(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -1244,10 +1243,10 @@ pr_cognitive_error_t pr_cognitive_bridge_set_attention_callback(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_cb = callback;
     bridge->attention_cb_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -1260,10 +1259,10 @@ pr_cognitive_error_t pr_cognitive_bridge_set_emotion_callback(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->emotion_cb = callback;
     bridge->emotion_cb_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -1276,10 +1275,10 @@ pr_cognitive_error_t pr_cognitive_bridge_set_executive_callback(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->executive_cb = callback;
     bridge->executive_cb_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -1295,9 +1294,9 @@ pr_cognitive_error_t pr_cognitive_bridge_get_stats(
     if (!bridge || !stats) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -1308,9 +1307,9 @@ pr_cognitive_error_t pr_cognitive_bridge_reset_stats(
     if (!bridge) return PR_COG_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_COG_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_COG_SUCCESS;
 }
@@ -1318,7 +1317,7 @@ pr_cognitive_error_t pr_cognitive_bridge_reset_stats(
 bool pr_cognitive_bridge_is_connected(pr_cognitive_bridge_t bridge) {
     if (!bridge || !bridge->initialized) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bool all_connected = true;
 
@@ -1343,7 +1342,7 @@ bool pr_cognitive_bridge_is_connected(pr_cognitive_bridge_t bridge) {
         all_connected = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return all_connected;
 }

@@ -110,7 +110,7 @@ void sleep_wellbeing_bridge_destroy(sleep_wellbeing_bridge_t* bridge) {
     }
 
     if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

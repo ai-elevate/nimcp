@@ -60,7 +60,7 @@ stdp_fep_bridge_t* stdp_fep_bridge_create(const stdp_fep_config_t* config) {
         stdp_fep_bridge_default_config(&bridge->config);
     }
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "stdp_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         LOG_ERROR("STDP-FEP bridge mutex creation failed");
@@ -99,7 +99,7 @@ void stdp_fep_bridge_destroy(stdp_fep_bridge_t* bridge) {
     }
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

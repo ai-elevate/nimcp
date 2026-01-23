@@ -13,6 +13,7 @@
  * @author NIMCP Development Team
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/wernicke/nimcp_wernicke_nlp_bridge.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
@@ -29,6 +30,7 @@
  * ============================================================================ */
 
 struct wernicke_nlp_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /* Configuration */
     wernicke_nlp_config_t config;
 

@@ -6,6 +6,7 @@
  * Full implementation pending.
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/parietal/nimcp_fep_parietal_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -17,6 +18,7 @@
  * ============================================================================ */
 
 struct fep_parietal_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     fep_parietal_config_t config;
     bool enabled;
     float inflammation_level;

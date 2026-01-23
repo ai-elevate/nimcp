@@ -130,7 +130,7 @@ gpu_neuron_immune_bridge_t* gpu_neuron_immune_create(
     bridge->error_window_start = bridge->last_update_time;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "gpu_neuron_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_WARN("gpu_neuron_immune_create: mutex creation failed");
     }
@@ -151,7 +151,7 @@ void gpu_neuron_immune_destroy(gpu_neuron_immune_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

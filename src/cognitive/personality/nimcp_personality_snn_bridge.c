@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/personality/nimcp_personality_snn_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_config.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
@@ -25,9 +26,9 @@
 //=============================================================================
 
 struct personality_snn_bridge {
+    bridge_base_t base;
     personality_snn_config_t config;
     snn_network_t* snn;
-    nimcp_mutex_t* mutex;
 
     /* State */
     personality_snn_state_t state;
@@ -149,10 +150,8 @@ personality_snn_bridge_t* personality_snn_create(const personality_snn_config_t*
         return NULL;
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize bridge base */
+    if (bridge_base_init(&bridge->base, 0, "personality_snn") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -169,7 +168,7 @@ personality_snn_bridge_t* personality_snn_create(const personality_snn_config_t*
 
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -225,9 +224,7 @@ void personality_snn_destroy(personality_snn_bridge_t* bridge) {
         snn_network_destroy(bridge->snn);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge->encoding_buffer);
     nimcp_free(bridge->output_buffer);
@@ -239,7 +236,7 @@ void personality_snn_destroy(personality_snn_bridge_t* bridge) {
 int personality_snn_reset(personality_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset SNN network */
     if (bridge->snn) {
@@ -276,7 +273,7 @@ int personality_snn_reset(personality_snn_bridge_t* bridge) {
     bridge->stability_signal = 1.0f;
     bridge->behavioral_signal = 0.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -292,7 +289,7 @@ int personality_snn_encode_state(
     if (!bridge || !dimensions) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = PERSONALITY_SNN_STATE_ENCODING;
 
     uint32_t neurons_per_dim = bridge->config.neurons_per_dim;
@@ -337,7 +334,7 @@ int personality_snn_encode_state(
 
     bridge->stats.total_spikes += total_spikes;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return total_spikes;
 }
 
@@ -351,7 +348,7 @@ int personality_snn_encode_ocean(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[PERSONALITY_DIM_COUNT] = {0};
     dims[PERSONALITY_DIM_OPENNESS] = clamp_f(openness, 0.0f, 1.0f);
@@ -364,7 +361,7 @@ int personality_snn_encode_ocean(
     dims[PERSONALITY_DIM_APPROACH] = (extraversion + (1.0f - neuroticism)) / 2.0f;
     dims[PERSONALITY_DIM_AVOIDANCE] = (neuroticism + (1.0f - extraversion)) / 2.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return personality_snn_encode_state(bridge, dims, 7);
 }
@@ -376,14 +373,14 @@ int personality_snn_encode_temperament(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[PERSONALITY_DIM_COUNT] = {0};
     dims[PERSONALITY_DIM_APPROACH] = clamp_f(approach, 0.0f, 1.0f);
     dims[PERSONALITY_DIM_AVOIDANCE] = clamp_f(avoidance, 0.0f, 1.0f);
     dims[PERSONALITY_DIM_IMPULSIVITY] = approach * (1.0f - avoidance);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return personality_snn_encode_state(bridge, dims, 3);
 }
@@ -395,7 +392,7 @@ int personality_snn_encode_behavioral(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[PERSONALITY_DIM_COUNT] = {0};
     dims[PERSONALITY_DIM_SOCIABILITY] = clamp_f(sociability, 0.0f, 1.0f);
@@ -413,7 +410,7 @@ int personality_snn_encode_behavioral(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return personality_snn_encode_state(bridge, dims, 2);
 }
@@ -426,7 +423,7 @@ int personality_snn_simulate(personality_snn_bridge_t* bridge, float duration_ms
     if (!bridge) return -1;
     if (duration_ms <= 0.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = PERSONALITY_SNN_STATE_SIMULATING;
 
     float dt = bridge->config.dt_ms;
@@ -519,7 +516,7 @@ int personality_snn_simulate(personality_snn_bridge_t* bridge, float duration_ms
         bridge->tendency_callback(bridge, &bridge->last_tendency, bridge->tendency_callback_data);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -555,9 +552,9 @@ int personality_snn_get_tendency(
 ) {
     if (!bridge || !tendency) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *tendency = bridge->last_tendency;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -570,11 +567,11 @@ int personality_snn_get_activations(
     if (!bridge || !activations) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t d = 0; d < num_dims; d++) {
         activations[d] = bridge->dim_states[d].activation;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -585,13 +582,13 @@ bool personality_snn_check_stability(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->stability_signal;
     if (stability_level) {
         *stability_level = level;
     }
     bool stable = level > bridge->config.stability_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return stable;
 }
@@ -602,13 +599,13 @@ bool personality_snn_check_fluctuation(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_tendency.fluctuation_magnitude;
     if (fluctuation_level) {
         *fluctuation_level = level;
     }
     bool detected = level > bridge->config.fluctuation_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return detected;
 }
@@ -619,7 +616,7 @@ bool personality_snn_check_state_change(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     /* Calculate magnitude from prev_state differences */
     float mag = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
@@ -632,7 +629,7 @@ bool personality_snn_check_state_change(
         *change_magnitude = mag;
     }
     bool changed = mag > bridge->config.state_change_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return changed;
 }
@@ -649,9 +646,9 @@ int personality_snn_get_dim_state(
     if (!bridge || !state) return -1;
     if (dim >= bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -662,7 +659,7 @@ int personality_snn_get_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
     state->mean_trait_level = (bridge->last_tendency.openness_level +
@@ -683,16 +680,16 @@ int personality_snn_get_state(
         state->total_activity += bridge->dim_states[d].activation;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int personality_snn_get_stats(personality_snn_bridge_t* bridge, personality_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -700,9 +697,9 @@ int personality_snn_get_stats(personality_snn_bridge_t* bridge, personality_snn_
 int personality_snn_reset_stats(personality_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(personality_snn_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -710,9 +707,9 @@ int personality_snn_reset_stats(personality_snn_bridge_t* bridge) {
 float personality_snn_get_stability(personality_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float stability = bridge->stability_signal;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return stability;
 }
@@ -720,12 +717,12 @@ float personality_snn_get_stability(personality_snn_bridge_t* bridge) {
 float personality_snn_get_total_activity(personality_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float total = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
         total += bridge->dim_states[d].activation;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return total;
 }
@@ -741,10 +738,10 @@ int personality_snn_register_stability_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stability_callback = callback;
     bridge->stability_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -756,10 +753,10 @@ int personality_snn_register_tendency_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->tendency_callback = callback;
     bridge->tendency_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -771,10 +768,10 @@ int personality_snn_register_fluctuation_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->fluctuation_callback = callback;
     bridge->fluctuation_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -787,10 +784,10 @@ int personality_snn_bio_async_connect(personality_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -798,9 +795,9 @@ int personality_snn_bio_async_connect(personality_snn_bridge_t* bridge) {
 int personality_snn_bio_async_disconnect(personality_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -808,9 +805,9 @@ int personality_snn_bio_async_disconnect(personality_snn_bridge_t* bridge) {
 bool personality_snn_is_bio_async_connected(personality_snn_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
 }

@@ -2,6 +2,7 @@
 // nimcp_physics_training_bridge.c - Physics Layer to Training Layer Bridge
 //=============================================================================
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "physics/bridges/nimcp_physics_training_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -15,6 +16,7 @@
 //=============================================================================
 
 struct physics_train_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     physics_train_config_t config;
     nimcp_thermodynamic_state_t* thermo;
     nimcp_hh_population_t* hh_pop;

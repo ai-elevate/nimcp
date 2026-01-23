@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/mirror_neurons/nimcp_mirror_omni_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -88,7 +89,7 @@ mirror_omni_bridge_t* mirror_omni_bridge_create(
     /* Initialize base */
     bridge->base.module_id = BIO_MODULE_MIRROR_OMNI_BRIDGE;
     bridge->base.module_name = "mirror_omni_bridge";
-    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (bridge_base_init(&bridge->base, 0, "mirror_omni") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for mirror-omni bridge");
         nimcp_free(bridge);
@@ -100,7 +101,7 @@ mirror_omni_bridge_t* mirror_omni_bridge_create(
     bridge->agent_states = (mirror_omni_agent_state_t*)nimcp_calloc(
         bridge->agent_states_capacity, sizeof(mirror_omni_agent_state_t));
     if (!bridge->agent_states) {
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -112,7 +113,7 @@ mirror_omni_bridge_t* mirror_omni_bridge_create(
         bridge->action_priors_capacity, sizeof(mirror_omni_action_prior_t));
     if (!bridge->action_priors) {
         nimcp_free(bridge->agent_states);
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -160,7 +161,7 @@ void mirror_omni_bridge_destroy(mirror_omni_bridge_t* bridge) {
 
     /* Cleanup base */
     if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

@@ -41,7 +41,7 @@ myelin_sheath_fep_bridge_t* myelin_sheath_fep_create(
     bridge->myelin_network = myelin_network;
     bridge->fep_system = fep_system;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "myelin_sheath_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("myelin_sheath_fep_create: mutex creation failed");
         nimcp_free(bridge);
@@ -59,7 +59,7 @@ void myelin_sheath_fep_destroy(myelin_sheath_fep_bridge_t* bridge) {
         myelin_sheath_fep_disconnect_bio_async(bridge);
     }
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Myelin sheath-FEP bridge destroyed");

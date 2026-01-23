@@ -4,6 +4,7 @@
  */
 
 #include "cognitive/recursive/nimcp_omni_rcog_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/jepa/nimcp_jepa_bidirectional.h"
 #include "cognitive/predictive/nimcp_predictive_hierarchy.h"
 #include "utils/thread/nimcp_thread.h"
@@ -88,8 +89,8 @@ omni_rcog_bridge_t* omni_rcog_bridge_create(const omni_rcog_config_t* config) {
         omni_rcog_default_config(&bridge->config);
     }
 
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "omni_rcog") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -109,8 +110,8 @@ void omni_rcog_bridge_destroy(omni_rcog_bridge_t* bridge) {
         nimcp_free(bridge->rcog_effects.goal_embedding);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);
@@ -123,36 +124,36 @@ void omni_rcog_bridge_destroy(omni_rcog_bridge_t* bridge) {
 int omni_rcog_connect_jepa(omni_rcog_bridge_t* bridge,
                             jepa_bidirectional_t* jepa) {
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->jepa = jepa;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
 int omni_rcog_connect_pred_hier(omni_rcog_bridge_t* bridge,
                                  predictive_hierarchy_t* pred_hier) {
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->pred_hier = pred_hier;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
 int omni_rcog_connect_orchestrator(omni_rcog_bridge_t* bridge,
                                     rcog_orchestrator_t* orchestrator) {
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->orchestrator = orchestrator;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
 int omni_rcog_connect_engine(omni_rcog_bridge_t* bridge,
                               rcog_engine_t* engine) {
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->engine = engine;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -163,7 +164,7 @@ int omni_rcog_connect_engine(omni_rcog_bridge_t* bridge,
 int omni_rcog_update(omni_rcog_bridge_t* bridge) {
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get prediction error from connected systems */
     float pe = 0.0f;
@@ -213,7 +214,7 @@ int omni_rcog_update(omni_rcog_bridge_t* bridge) {
     bridge->stats.avg_depth =
         (bridge->stats.avg_depth * (n - 1) + bridge->omni_effects.suggested_depth) / n;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -283,9 +284,9 @@ int omni_rcog_get_stats(const omni_rcog_bridge_t* bridge,
 
 int omni_rcog_reset_stats(omni_rcog_bridge_t* bridge) {
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(omni_rcog_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 

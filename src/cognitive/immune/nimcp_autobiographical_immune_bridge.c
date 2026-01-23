@@ -193,7 +193,7 @@ autobio_immune_bridge_t* autobio_immune_bridge_create(
     }
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "autobiographical_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge->sickness_landmarks);
         nimcp_free(bridge);    return NULL;
@@ -208,7 +208,7 @@ void autobio_immune_bridge_destroy(autobio_immune_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     /* Free sickness landmarks */

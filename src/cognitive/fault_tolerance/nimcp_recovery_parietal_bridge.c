@@ -10,6 +10,7 @@
  * @version 1.0.0
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/fault_tolerance/nimcp_recovery_parietal_bridge.h"
 #include "cognitive/parietal/nimcp_parietal.h"
 #include "cognitive/parietal/nimcp_software_engineering.h"
@@ -45,6 +46,7 @@ typedef struct {
  * @brief Parietal-recovery bridge internal structure
  */
 struct recovery_parietal_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /* Configuration */
     recovery_parietal_config_t config;
 

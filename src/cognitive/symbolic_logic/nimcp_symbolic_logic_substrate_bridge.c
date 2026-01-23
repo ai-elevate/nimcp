@@ -3,6 +3,7 @@
  * @brief Symbolic Logic-Neural Substrate Bridge Implementation
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/symbolic_logic/nimcp_symbolic_logic_substrate_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
@@ -12,6 +13,7 @@
 #include <string.h>
 
 struct symbolic_logic_substrate_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* symbolic_logic;
     neural_substrate_t* substrate;
     symbolic_logic_substrate_config_t config;

@@ -114,7 +114,7 @@ audio_sleep_bridge_t audio_sleep_bridge_create(
     bridge->effects.processing_speed_factor = 1.0f;
     bridge->effects.audio_processing_enabled = true;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "audio_cortex_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -155,7 +155,7 @@ void audio_sleep_bridge_destroy(audio_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->base.mutex) nimcp_mutex_free(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

@@ -5,6 +5,7 @@
  * @date 2026-01-13
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "perception/integration/nimcp_perception_bio_async_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -18,6 +19,7 @@
  * ============================================================================ */
 
 struct perception_bio_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     perception_bio_bridge_config_t config;
     bio_router_t router;
 

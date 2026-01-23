@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/recursive/nimcp_rcog_imagination_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/platform/nimcp_platform_time.h"
@@ -22,6 +23,8 @@
  * @brief Imagination bridge internal structure
  */
 struct rcog_imagination_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     rcog_imagination_bridge_config_t config;
 
@@ -44,9 +47,6 @@ struct rcog_imagination_bridge {
 
     /* Statistics */
     rcog_imagination_bridge_stats_t stats;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 };
 
 /*=============================================================================
@@ -87,10 +87,8 @@ rcog_imagination_bridge_t* rcog_imagination_bridge_create(
         bridge->config = rcog_imagination_bridge_default_config();
     }
 
-    mutex_attr_t attr = {0};
-    attr.type = MUTEX_TYPE_NORMAL;
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
+    /* Initialize bridge base infrastructure (includes mutex) */
+    if (bridge_base_init(&bridge->base, 0, "rcog_imagination") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -107,9 +105,8 @@ void rcog_imagination_bridge_destroy(rcog_imagination_bridge_t* bridge) {
         return;
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }
@@ -126,10 +123,10 @@ int rcog_imagination_bridge_connect(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->imagination = imagination;
     bridge->connected = (bridge->imagination != NULL && bridge->engine != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -142,10 +139,10 @@ int rcog_imagination_bridge_connect_engine(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->engine = engine;
     bridge->connected = (bridge->imagination != NULL && bridge->engine != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -168,7 +165,7 @@ int rcog_imagination_bridge_update(
 
     (void)delta_time_ms;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset request flags */
     bridge->outgoing_effects.request_decomposition_simulation = false;
@@ -176,7 +173,7 @@ int rcog_imagination_bridge_update(
     bridge->outgoing_effects.request_counterfactual = false;
     bridge->outgoing_effects.request_answer_prediction = false;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -196,10 +193,10 @@ int rcog_imagination_bridge_simulate_decompositions(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_IMAGINATION_FAILED;
     }
 
@@ -219,7 +216,7 @@ int rcog_imagination_bridge_simulate_decompositions(
     bridge->stats.simulations_requested++;
     bridge->stats.simulations_completed++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -234,10 +231,10 @@ int rcog_imagination_bridge_rehearse_subtasks(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_IMAGINATION_FAILED;
     }
 
@@ -254,7 +251,7 @@ int rcog_imagination_bridge_rehearse_subtasks(
     bridge->stats.rehearsals_requested++;
     bridge->stats.rehearsals_completed++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -270,10 +267,10 @@ int rcog_imagination_bridge_counterfactual_analysis(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_IMAGINATION_FAILED;
     }
 
@@ -284,7 +281,7 @@ int rcog_imagination_bridge_counterfactual_analysis(
 
     bridge->stats.counterfactuals_analyzed++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -299,10 +296,10 @@ int rcog_imagination_bridge_predict_answer(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_IMAGINATION_FAILED;
     }
 
@@ -313,7 +310,7 @@ int rcog_imagination_bridge_predict_answer(
     bridge->incoming_effects.predicted_final_confidence = *predicted_confidence;
     bridge->incoming_effects.predicted_steps_remaining = *predicted_steps;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -333,15 +330,15 @@ int rcog_imagination_bridge_generate_creative_strategy(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_IMAGINATION_FAILED;
     }
 
     if (!bridge->config.enable_creative_mode) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_TOOL_ACCESS_DENIED;
     }
 
@@ -352,7 +349,7 @@ int rcog_imagination_bridge_generate_creative_strategy(
 
     bridge->stats.creative_strategies_generated++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -369,9 +366,9 @@ int rcog_imagination_bridge_get_outgoing_effects(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(((rcog_imagination_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((rcog_imagination_bridge_t*)bridge)->base.mutex);
     *effects = bridge->outgoing_effects;
-    nimcp_mutex_unlock(((rcog_imagination_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((rcog_imagination_bridge_t*)bridge)->base.mutex);
 
     return RCOG_OK;
 }
@@ -384,9 +381,9 @@ int rcog_imagination_bridge_get_incoming_effects(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(((rcog_imagination_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((rcog_imagination_bridge_t*)bridge)->base.mutex);
     *effects = bridge->incoming_effects;
-    nimcp_mutex_unlock(((rcog_imagination_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((rcog_imagination_bridge_t*)bridge)->base.mutex);
 
     return RCOG_OK;
 }
@@ -403,9 +400,9 @@ int rcog_imagination_bridge_get_stats(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(((rcog_imagination_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((rcog_imagination_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(((rcog_imagination_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((rcog_imagination_bridge_t*)bridge)->base.mutex);
 
     return RCOG_OK;
 }
@@ -415,9 +412,9 @@ void rcog_imagination_bridge_reset_stats(rcog_imagination_bridge_t* bridge) {
         return;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(rcog_imagination_bridge_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 /* ============================================================================

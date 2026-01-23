@@ -44,6 +44,7 @@ extern "C" {
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_drives.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 
 /*=============================================================================
  * CONSTANTS
@@ -214,6 +215,8 @@ typedef struct {
  * @brief Executive bridge context
  */
 typedef struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     hypo_exec_bridge_config_t config;
 
@@ -242,8 +245,6 @@ typedef struct {
     uint64_t goals_blocked;
     uint64_t goals_boosted;
 
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 } hypo_exec_bridge_t;
 
 /*=============================================================================

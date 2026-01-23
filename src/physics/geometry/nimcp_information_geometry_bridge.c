@@ -5,6 +5,7 @@
  * @date 2026-01-16
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "physics/geometry/nimcp_information_geometry_bridge.h"
 #include "utils/logging/nimcp_logging.h"
 #include "api/nimcp_api_exception.h"
@@ -20,6 +21,7 @@
 //=============================================================================
 
 struct info_geom_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     info_geom_bridge_config_t config;
     brain_kg_t* kg;
     void* exception_handler;

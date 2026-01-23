@@ -37,7 +37,7 @@ neuromod_fep_bridge_t* neuromod_fep_bridge_create(const neuromod_fep_config_t* c
     memset(&bridge->neuromod_effects, 0, sizeof(neuromod_fep_feedback_t));
     memset(&bridge->stats, 0, sizeof(neuromod_fep_stats_t));
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "neuromodulators_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -52,7 +52,7 @@ neuromod_fep_bridge_t* neuromod_fep_bridge_create(const neuromod_fep_config_t* c
 void neuromod_fep_bridge_destroy(neuromod_fep_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.bio_async_enabled) neuromod_fep_bridge_disconnect_bio_async(bridge);
-    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

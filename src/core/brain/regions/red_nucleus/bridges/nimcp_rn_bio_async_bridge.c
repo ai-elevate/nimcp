@@ -5,6 +5,7 @@
  * @date 2026-01-13
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/red_nucleus/bridges/nimcp_rn_bio_async_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -17,6 +18,7 @@
  * ============================================================================ */
 
 struct rn_bio_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     rn_bio_bridge_config_t config;
     nimcp_red_nucleus_t* rn;
     bio_router_t router;

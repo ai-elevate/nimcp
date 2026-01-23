@@ -25,6 +25,7 @@
  */
 
 #include "cognitive/integration/nimcp_gw_cognitive_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -72,6 +73,7 @@ typedef struct competition_entry {
  * @brief Full GW-Cognitive bridge structure
  */
 struct gw_cognitive_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
     gw_cognitive_config_t config;
     gw_content_t current_content;
     broadcast_receiver_t* receivers;
@@ -81,7 +83,6 @@ struct gw_cognitive_bridge {
     size_t competitor_capacity;
     size_t competitor_count;
     gw_cognitive_stats_t stats;
-    nimcp_mutex_t* mutex;
     bool initialized;
 };
 
@@ -178,8 +179,8 @@ gw_cognitive_bridge_t* gw_cognitive_bridge_create(
     bridge->competitor_count = 0;
 
     /* Create mutex */
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "gw_cognitive") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         nimcp_free(bridge->competitors);
         nimcp_free(bridge->receivers);
         nimcp_free(bridge);
@@ -219,8 +220,8 @@ void gw_cognitive_bridge_destroy(gw_cognitive_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     bridge->initialized = false;
@@ -242,7 +243,7 @@ int gw_cognitive_broadcast(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update current content */
     free_current_content(bridge);
@@ -250,7 +251,7 @@ int gw_cognitive_broadcast(
     if (content_data && content_size > 0) {
         bridge->current_content.data = nimcp_malloc(content_size);
         if (!bridge->current_content.data) {
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return -1;
         }
         memcpy(bridge->current_content.data, content_data, content_size);
@@ -274,7 +275,7 @@ int gw_cognitive_broadcast(
     /* Increment statistics */
     bridge->stats.broadcasts_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -289,17 +290,17 @@ int gw_cognitive_compete_for_access(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if priority meets threshold */
     if (priority < bridge->config.broadcast_threshold) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;  /* Rejected - priority too low */
     }
 
     /* Check if priority meets minimum competition priority */
     if (priority < bridge->config.min_competition_priority) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;  /* Rejected */
     }
 
@@ -327,7 +328,7 @@ int gw_cognitive_compete_for_access(
 
     if (slot < 0) {
         /* No room for new competitors */
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;  /* Rejected - competition full */
     }
 
@@ -374,14 +375,14 @@ int gw_cognitive_compete_for_access(
 
     if (is_winner && bridge->config.enable_auto_broadcast) {
         /* Winner gets broadcast immediately */
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
 
         /* Resolve competition (which will broadcast) */
         gw_cognitive_resolve_competition(bridge);
         return 0;  /* Won */
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 1;  /* Pending - waiting for competition resolution */
 }
@@ -396,7 +397,7 @@ int gw_cognitive_register_receiver(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if already registered */
     for (size_t i = 0; i < bridge->receiver_capacity; i++) {
@@ -405,7 +406,7 @@ int gw_cognitive_register_receiver(
             /* Update existing registration */
             bridge->receivers[i].callback = callback;
             bridge->receivers[i].user_data = user_data;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return 0;
         }
     }
@@ -419,12 +420,12 @@ int gw_cognitive_register_receiver(
             bridge->receivers[i].active = true;
             bridge->receiver_count++;
             bridge->stats.registered_receivers = (uint32_t)bridge->receiver_count;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return 0;
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return -1;  /* No room for more receivers */
 }
 
@@ -436,7 +437,7 @@ int gw_cognitive_unregister_receiver(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Find and deactivate receiver */
     for (size_t i = 0; i < bridge->receiver_capacity; i++) {
@@ -449,12 +450,12 @@ int gw_cognitive_unregister_receiver(
                 bridge->receiver_count--;
             }
             bridge->stats.registered_receivers = (uint32_t)bridge->receiver_count;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return 0;
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return -1;  /* Not found */
 }
 
@@ -466,12 +467,12 @@ int gw_cognitive_get_conscious_content(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if there is content */
     if (!bridge->current_content.data && bridge->current_content.data_size == 0) {
         content_out->has_content = false;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;  /* No content */
     }
 
@@ -497,7 +498,7 @@ int gw_cognitive_get_conscious_content(
         content_out->content_size = bridge->current_content.data_size;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -507,7 +508,7 @@ int gw_cognitive_resolve_competition(gw_cognitive_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Find highest priority competitor */
     int winner_slot = -1;
@@ -524,7 +525,7 @@ int gw_cognitive_resolve_competition(gw_cognitive_bridge_t* bridge) {
 
     if (winner_slot < 0) {
         /* No competitors */
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -597,7 +598,7 @@ int gw_cognitive_resolve_competition(gw_cognitive_bridge_t* bridge) {
     }
     bridge->stats.broadcasts_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Free temporary broadcast data */
     if (broadcast_data) {
@@ -622,11 +623,11 @@ int gw_cognitive_get_stats(
     /* Note: For const correctness, we cast away const for mutex lock.
      * This is acceptable because the mutex operation doesn't modify
      * the logical state of the bridge. */
-    nimcp_mutex_lock(((gw_cognitive_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((gw_cognitive_bridge_t*)bridge)->base.mutex);
 
     *stats_out = bridge->stats;
 
-    nimcp_mutex_unlock(((gw_cognitive_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((gw_cognitive_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -636,7 +637,7 @@ int gw_cognitive_reset_stats(gw_cognitive_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     memset(&bridge->stats, 0, sizeof(gw_cognitive_stats_t));
 
@@ -644,7 +645,7 @@ int gw_cognitive_reset_stats(gw_cognitive_bridge_t* bridge) {
     bridge->stats.registered_receivers = (uint32_t)bridge->receiver_count;
     bridge->stats.active_competitors = (uint32_t)bridge->competitor_count;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

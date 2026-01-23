@@ -3,6 +3,7 @@
  * @brief Ethics-Thalamic Bridge Implementation
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/ethics/nimcp_ethics_thalamic_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
@@ -10,6 +11,7 @@
 #include <string.h>
 
 struct ethics_thalamic_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* ethics;
     thalamic_router_t* router;
     ethics_thalamic_config_t config;

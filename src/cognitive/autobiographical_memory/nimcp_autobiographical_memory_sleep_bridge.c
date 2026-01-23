@@ -116,7 +116,7 @@ autobio_sleep_bridge_t autobio_sleep_bridge_create(
     bridge->effects.narrative_integration_factor = 0.2f;
     bridge->effects.consolidation_active = false;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "autobiographical_memory_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
 
     /* Register callback for automatic state updates */
@@ -154,7 +154,7 @@ void autobio_sleep_bridge_destroy(autobio_sleep_bridge_t bridge) {
         }
     }
 
-    if (bridge->base.mutex) nimcp_mutex_free(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

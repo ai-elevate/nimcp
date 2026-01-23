@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/meta_learning/nimcp_meta_learning_snn_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_config.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
@@ -25,9 +26,10 @@
 //=============================================================================
 
 struct meta_learning_snn_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     meta_learning_snn_config_t config;
     snn_network_t* snn;
-    nimcp_mutex_t* mutex;
 
     /* State */
     meta_learning_snn_state_t state;
@@ -149,10 +151,8 @@ meta_learning_snn_bridge_t* meta_learning_snn_create(const meta_learning_snn_con
         return NULL;
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize bridge base infrastructure (includes mutex) */
+    if (bridge_base_init(&bridge->base, 0, "meta_learning_snn") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -169,7 +169,7 @@ meta_learning_snn_bridge_t* meta_learning_snn_create(const meta_learning_snn_con
 
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -223,9 +223,8 @@ void meta_learning_snn_destroy(meta_learning_snn_bridge_t* bridge) {
         snn_network_destroy(bridge->snn);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge->encoding_buffer);
     nimcp_free(bridge->output_buffer);
@@ -237,7 +236,7 @@ void meta_learning_snn_destroy(meta_learning_snn_bridge_t* bridge) {
 int meta_learning_snn_reset(meta_learning_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset SNN network */
     if (bridge->snn) {
@@ -270,7 +269,7 @@ int meta_learning_snn_reset(meta_learning_snn_bridge_t* bridge) {
     bridge->transfer_signal = 0.0f;
     bridge->strategy_signal = 0.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -286,7 +285,7 @@ int meta_learning_snn_encode_state(
     if (!bridge || !dimensions) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = META_LEARNING_SNN_STATE_ENCODING;
 
     uint32_t neurons_per_dim = bridge->config.neurons_per_dim;
@@ -334,7 +333,7 @@ int meta_learning_snn_encode_state(
 
     bridge->stats.total_spikes += total_spikes;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return total_spikes;
 }
 
@@ -345,13 +344,13 @@ int meta_learning_snn_encode_learning_rate(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[META_DIM_COUNT] = {0};
     dims[META_DIM_LEARNING_RATE] = clamp_f(current_rate, 0.0f, 1.0f);
     dims[META_DIM_ADAPTATION_SPEED] = clamp_f(fabsf(target_rate - current_rate), 0.0f, 1.0f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return meta_learning_snn_encode_state(bridge, dims, 2);
 }
@@ -363,14 +362,14 @@ int meta_learning_snn_encode_task_similarity(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[META_DIM_COUNT] = {0};
     dims[META_DIM_TASK_SIMILARITY] = clamp_f(similarity, 0.0f, 1.0f);
     dims[META_DIM_TRANSFER] = clamp_f(similarity * 0.8f, 0.0f, 1.0f);
     dims[META_DIM_PRIOR_KNOWLEDGE] = clamp_f(similarity * 0.6f, 0.0f, 1.0f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return meta_learning_snn_encode_state(bridge, dims, 3);
 }
@@ -382,7 +381,7 @@ int meta_learning_snn_encode_transfer(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[META_DIM_COUNT] = {0};
     dims[META_DIM_TRANSFER] = clamp_f(transfer_potential, 0.0f, 1.0f);
@@ -401,7 +400,7 @@ int meta_learning_snn_encode_transfer(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return meta_learning_snn_encode_state(bridge, dims, 2);
 }
@@ -414,7 +413,7 @@ int meta_learning_snn_simulate(meta_learning_snn_bridge_t* bridge, float duratio
     if (!bridge) return -1;
     if (duration_ms <= 0.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = META_LEARNING_SNN_STATE_SIMULATING;
 
     float dt = bridge->config.dt_ms;
@@ -473,7 +472,7 @@ int meta_learning_snn_simulate(meta_learning_snn_bridge_t* bridge, float duratio
         bridge->insight_callback(bridge, &bridge->last_insight, bridge->insight_callback_data);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -509,9 +508,9 @@ int meta_learning_snn_get_insight(
 ) {
     if (!bridge || !insight) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *insight = bridge->last_insight;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -524,11 +523,11 @@ int meta_learning_snn_get_activations(
     if (!bridge || !activations) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t d = 0; d < num_dims; d++) {
         activations[d] = bridge->dim_states[d].activation;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -539,13 +538,13 @@ bool meta_learning_snn_check_adaptation(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_insight.adaptation_level;
     if (adaptation_level) {
         *adaptation_level = level;
     }
     bool detected = level > bridge->config.adaptation_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return detected;
 }
@@ -556,13 +555,13 @@ bool meta_learning_snn_check_transfer(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->transfer_signal;
     if (transfer_level) {
         *transfer_level = level;
     }
     bool detected = level > bridge->config.transfer_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return detected;
 }
@@ -573,7 +572,7 @@ bool meta_learning_snn_check_state_change(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool changed = bridge->last_insight.strategy_change_detected;
     if (change_magnitude && changed) {
         /* Calculate magnitude from prev_state differences */
@@ -584,7 +583,7 @@ bool meta_learning_snn_check_state_change(
         }
         *change_magnitude = sqrtf(mag / bridge->config.num_dimensions);
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return changed;
 }
@@ -601,9 +600,9 @@ int meta_learning_snn_get_dim_state(
     if (!bridge || !state) return -1;
     if (dim >= bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -614,7 +613,7 @@ int meta_learning_snn_get_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
     state->mean_adaptation = bridge->last_insight.adaptation_level;
@@ -631,16 +630,16 @@ int meta_learning_snn_get_state(
         state->total_activity += bridge->dim_states[d].activation;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int meta_learning_snn_get_stats(meta_learning_snn_bridge_t* bridge, meta_learning_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -648,9 +647,9 @@ int meta_learning_snn_get_stats(meta_learning_snn_bridge_t* bridge, meta_learnin
 int meta_learning_snn_reset_stats(meta_learning_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(meta_learning_snn_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -658,9 +657,9 @@ int meta_learning_snn_reset_stats(meta_learning_snn_bridge_t* bridge) {
 float meta_learning_snn_get_adaptation(meta_learning_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float adaptation = bridge->last_insight.adaptation_level;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return adaptation;
 }
@@ -668,12 +667,12 @@ float meta_learning_snn_get_adaptation(meta_learning_snn_bridge_t* bridge) {
 float meta_learning_snn_get_total_activity(meta_learning_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float total = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
         total += bridge->dim_states[d].activation;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return total;
 }
@@ -689,10 +688,10 @@ int meta_learning_snn_register_adaptation_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->adaptation_callback = callback;
     bridge->adaptation_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -704,10 +703,10 @@ int meta_learning_snn_register_insight_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->insight_callback = callback;
     bridge->insight_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -719,10 +718,10 @@ int meta_learning_snn_register_transfer_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->transfer_callback = callback;
     bridge->transfer_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -735,10 +734,10 @@ int meta_learning_snn_bio_async_connect(meta_learning_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -746,9 +745,9 @@ int meta_learning_snn_bio_async_connect(meta_learning_snn_bridge_t* bridge) {
 int meta_learning_snn_bio_async_disconnect(meta_learning_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -756,9 +755,9 @@ int meta_learning_snn_bio_async_disconnect(meta_learning_snn_bridge_t* bridge) {
 bool meta_learning_snn_is_bio_async_connected(meta_learning_snn_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
 }

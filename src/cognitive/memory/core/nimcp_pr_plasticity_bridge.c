@@ -13,6 +13,7 @@
  */
 
 #include "cognitive/memory/core/nimcp_pr_plasticity_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
@@ -33,6 +34,8 @@
  * WHY:  Encapsulate all bridge data for thread safety
  */
 struct pr_plasticity_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     pr_plasticity_bridge_config_t config;
 
@@ -64,8 +67,6 @@ struct pr_plasticity_bridge_struct {
     /* Structural plasticity timing */
     uint64_t last_remodel_time_ms;
 
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 };
 
 //=============================================================================
@@ -287,10 +288,8 @@ pr_plasticity_bridge_t pr_plasticity_bridge_create(
         bridge->config = pr_plasticity_config_default();
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "pr_plasticity") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -299,7 +298,7 @@ pr_plasticity_bridge_t pr_plasticity_bridge_create(
     bridge->bcm_node_capacity = 256;
     bridge->bcm_nodes = nimcp_calloc(bridge->bcm_node_capacity, sizeof(pr_bcm_node_state_t));
     if (!bridge->bcm_nodes) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -311,7 +310,7 @@ pr_plasticity_bridge_t pr_plasticity_bridge_create(
         bridge->events = nimcp_calloc(bridge->event_capacity, sizeof(pr_plasticity_event_t));
         if (!bridge->events) {
             nimcp_free(bridge->bcm_nodes);
-            nimcp_mutex_free(bridge->mutex);
+            bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
             return NULL;
         }
@@ -347,9 +346,8 @@ void pr_plasticity_bridge_destroy(pr_plasticity_bridge_t bridge) {
     if (bridge->events) nimcp_free(bridge->events);
     if (bridge->node_activity_history) nimcp_free(bridge->node_activity_history);
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }
@@ -357,7 +355,7 @@ void pr_plasticity_bridge_destroy(pr_plasticity_bridge_t bridge) {
 int pr_plasticity_bridge_reset(pr_plasticity_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset BCM nodes */
     for (uint32_t i = 0; i < bridge->bcm_node_count; i++) {
@@ -381,7 +379,7 @@ int pr_plasticity_bridge_reset(pr_plasticity_bridge_t bridge) {
     /* Reset statistics */
     memset(&bridge->stats, 0, sizeof(pr_plasticity_bridge_stats_t));
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -436,19 +434,19 @@ float pr_stdp_apply_to_entanglement(
     if (!bridge || !graph) return -1.0f;
     if (!bridge->config.enable_stdp) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get current edge */
     entangle_edge_t edge;
     if (!entangle_get_edge(graph, from_id, to_id, &edge)) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1.0f;
     }
 
     /* Compute STDP delta */
     float delta = pr_stdp_compute_delta(bridge, pre_time_ms, post_time_ms, resonance);
     if (fabsf(delta) < PR_PLASTICITY_EPSILON) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return edge.weight;
     }
 
@@ -486,7 +484,7 @@ float pr_stdp_apply_to_entanglement(
     }
     bridge->stats.total_weight_change += fabsf(delta);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return edge.weight;
 }
@@ -536,17 +534,17 @@ float pr_bcm_compute_threshold(
 {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     pr_bcm_node_state_t* node = find_bcm_node(bridge, node_id);
     if (!node) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return bridge->config.bcm.theta_initial;
     }
 
     float theta = node->theta;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return theta;
 }
@@ -559,11 +557,11 @@ int pr_bcm_update_history(
     if (!bridge) return -1;
     if (!bridge->config.enable_bcm) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     pr_bcm_node_state_t* node = get_or_create_bcm_node(bridge, node_id);
     if (!node) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -591,7 +589,7 @@ int pr_bcm_update_history(
 
     bridge->stats.bcm_updates++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -605,12 +603,12 @@ int pr_bcm_apply_to_node(
     if (!bridge || !graph) return -1;
     if (!bridge->config.enable_bcm) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get BCM state */
     pr_bcm_node_state_t* bcm_node = get_or_create_bcm_node(bridge, node_id);
     if (!bcm_node) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -621,7 +619,7 @@ int pr_bcm_apply_to_node(
     entangle_edge_t edges[256];
     size_t edge_count;
     if (!entangle_get_outgoing(graph, node_id, edges, 256, &edge_count)) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -660,7 +658,7 @@ int pr_bcm_apply_to_node(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return updated;
 }
@@ -701,11 +699,11 @@ float pr_homeostatic_apply_to_edge(
     if (!bridge || !graph) return -1.0f;
     if (scale <= 0.0f) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     entangle_edge_t edge;
     if (!entangle_get_edge(graph, from_id, to_id, &edge)) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1.0f;
     }
 
@@ -733,7 +731,7 @@ float pr_homeostatic_apply_to_edge(
         bridge->stats.homeostatic_scalings++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return edge.weight;
 }
@@ -749,7 +747,7 @@ uint32_t pr_homeostatic_scale_tier(
     if (!bridge->config.enable_homeostatic) return 0;
     if (tier >= PR_PLASTICITY_NUM_TIERS) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Calculate current tier activity */
     float total_activity = 0.0f;
@@ -768,7 +766,7 @@ uint32_t pr_homeostatic_scale_tier(
     /* Compute scaling factor */
     float scale = pr_homeostatic_get_scaling(bridge, 0, avg_activity, tier);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Apply to all edges in tier */
     uint32_t scaled = 0;
@@ -793,12 +791,12 @@ uint32_t pr_homeostatic_scale_tier(
 int pr_homeostatic_update_targets(pr_plasticity_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Could adaptively update targets based on global network state */
     /* For now, keep configured targets */
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -814,11 +812,11 @@ float pr_metaplasticity_adjust_stdp(
     if (!bridge) return 1.0f;
     if (!bridge->config.enable_metaplasticity) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     pr_bcm_node_state_t* node = find_bcm_node(bridge, node_id);
     if (!node) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 1.0f;
     }
 
@@ -833,7 +831,7 @@ float pr_metaplasticity_adjust_stdp(
 
     bridge->stats.metaplasticity_events++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return rate_scale;
 }
@@ -873,7 +871,7 @@ bool pr_structural_create_edge(
     /* Check if edge already exists */
     if (entangle_has_edge(graph, from_id, to_id)) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Create new edge */
     entangle_edge_t edge = {
@@ -910,7 +908,7 @@ bool pr_structural_create_edge(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return success;
 }
@@ -931,7 +929,7 @@ bool pr_structural_prune_edge(
     /* Check if weight is below prune threshold */
     if (edge.weight >= bridge->config.structural.prune_threshold) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bool success = entangle_remove_edge(graph, from_id, to_id);
 
@@ -954,7 +952,7 @@ bool pr_structural_prune_edge(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return success;
 }
@@ -1142,11 +1140,11 @@ float pr_plasticity_update_resonance(
 {
     if (!bridge || !graph) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     entangle_edge_t edge;
     if (!entangle_get_edge(graph, from_id, to_id, &edge)) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1.0f;
     }
 
@@ -1156,7 +1154,7 @@ float pr_plasticity_update_resonance(
 
     entangle_update_edge(graph, &edge);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return edge.resonance_score;
 }
@@ -1173,9 +1171,9 @@ int pr_plasticity_get_tier_params(
     if (!bridge || !params) return -1;
     if (tier >= PR_PLASTICITY_NUM_TIERS) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *params = bridge->config.tier[tier];
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1205,14 +1203,14 @@ int pr_plasticity_apply_tier_rules(
     }
 
     /* Update tier activity tracking */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     pr_bcm_node_state_t* node = find_bcm_node(bridge, node_id);
     if (node) {
         bridge->stats.events_per_tier[tier]++;
         bridge->stats.avg_activity_per_tier[tier] =
             (bridge->stats.avg_activity_per_tier[tier] * 0.99f) + (activity * 0.01f);
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return modifications;
 }
@@ -1228,9 +1226,9 @@ int pr_plasticity_log_event(
     if (!bridge || !event) return -1;
     if (!bridge->config.enable_event_logging) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     add_event(bridge, event);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1243,7 +1241,7 @@ int pr_plasticity_get_events(
 {
     if (!bridge || !events || !event_count) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t to_copy = (max_events < bridge->event_count) ? max_events : bridge->event_count;
 
@@ -1264,7 +1262,7 @@ int pr_plasticity_get_events(
 
     *event_count = to_copy;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1272,10 +1270,10 @@ int pr_plasticity_get_events(
 int pr_plasticity_clear_events(pr_plasticity_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->event_count = 0;
     bridge->event_write_idx = 0;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1286,7 +1284,7 @@ int pr_plasticity_get_stats(
 {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
 
     /* Compute averages */
@@ -1295,7 +1293,7 @@ int pr_plasticity_get_stats(
         stats->avg_weight_change = stats->total_weight_change / (float)total_events;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1318,9 +1316,9 @@ int pr_plasticity_connect_bio_async(pr_plasticity_bridge_t bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1328,9 +1326,9 @@ int pr_plasticity_connect_bio_async(pr_plasticity_bridge_t bridge) {
 int pr_plasticity_disconnect_bio_async(pr_plasticity_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1353,7 +1351,7 @@ int pr_plasticity_bridge_update(
 
     uint64_t start_time_us = nimcp_time_get_us();
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update all BCM nodes */
     if (bridge->config.enable_bcm) {
@@ -1388,7 +1386,7 @@ int pr_plasticity_bridge_update(
     bridge->stats.avg_update_time_us =
         (bridge->stats.avg_update_time_us * 0.99f) + (update_time_us * 0.01f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Sync with coordinator if enabled */
     if (bridge->config.enable_coordinator_sync) {

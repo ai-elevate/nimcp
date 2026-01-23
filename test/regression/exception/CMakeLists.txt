@@ -478,3 +478,40 @@ add_custom_target(test_exception_performance_only
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     COMMENT "Running exception performance benchmarks"
 )
+
+# =============================================================================
+# Exception API Comprehensive Regression Tests (NEW)
+# Comprehensive regression tests for complete exception handling API stability:
+# - Error code values remain stable
+# - Exception structure layout compatibility
+# - Function signatures unchanged
+# - Callback interface stability
+# - Thread-safety guarantees
+# - Memory layout of exception types
+# =============================================================================
+
+add_executable(regression_exception_api_comprehensive
+    test_exception_api_comprehensive.cpp
+)
+
+target_link_libraries(regression_exception_api_comprehensive
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        pthread
+        m
+)
+
+target_compile_features(regression_exception_api_comprehensive PRIVATE cxx_std_17)
+
+add_test(
+    NAME regression_exception_api_comprehensive
+    COMMAND regression_exception_api_comprehensive
+)
+
+set_tests_properties(regression_exception_api_comprehensive
+    PROPERTIES
+    LABELS "regression;exception;api;comprehensive"
+    TIMEOUT 180
+)

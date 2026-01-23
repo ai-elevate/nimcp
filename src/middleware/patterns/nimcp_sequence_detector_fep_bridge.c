@@ -55,7 +55,7 @@ sequence_detector_fep_bridge_t* sequence_detector_fep_bridge_create(
     bridge->effects.temporal_tolerance = SEQUENCE_TEMPORAL_TOLERANCE_MS;
     bridge->state.current_precision = 0.5f;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "sequence_detector_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         sequence_detector_fep_bridge_destroy(bridge);
         return NULL;
@@ -75,7 +75,7 @@ void sequence_detector_fep_bridge_destroy(
     }
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

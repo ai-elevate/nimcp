@@ -13,6 +13,7 @@
  */
 
 #include "cognitive/memory/core/nimcp_pr_curriculum_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
@@ -86,6 +87,8 @@ typedef struct {
  * WHY:  Encapsulate all bridge data for thread safety
  */
 struct pr_curriculum_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     pr_curriculum_config_t config;
 
@@ -118,9 +121,6 @@ struct pr_curriculum_bridge_struct {
 
     /* Statistics */
     pr_curriculum_stats_t stats;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 
     /* Random state for exploration */
     uint32_t random_state;
@@ -501,10 +501,8 @@ pr_curriculum_bridge_t pr_curriculum_bridge_create(
         bridge->config = pr_curriculum_config_default();
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "pr_curriculum") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -515,7 +513,7 @@ pr_curriculum_bridge_t pr_curriculum_bridge_create(
         bridge->difficulty_cache = nimcp_calloc(bridge->cache_capacity,
                                                  sizeof(difficulty_cache_entry_t));
         if (!bridge->difficulty_cache) {
-            nimcp_mutex_free(bridge->mutex);
+            bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
             return NULL;
         }
@@ -528,7 +526,7 @@ pr_curriculum_bridge_t pr_curriculum_bridge_create(
                                                   sizeof(consolidation_event_t));
     if (!bridge->consolidation_history) {
         if (bridge->difficulty_cache) nimcp_free(bridge->difficulty_cache);
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -543,7 +541,7 @@ pr_curriculum_bridge_t pr_curriculum_bridge_create(
         if (!bridge->events) {
             nimcp_free(bridge->consolidation_history);
             if (bridge->difficulty_cache) nimcp_free(bridge->difficulty_cache);
-            nimcp_mutex_free(bridge->mutex);
+            bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
             return NULL;
         }
@@ -573,9 +571,8 @@ void pr_curriculum_bridge_destroy(pr_curriculum_bridge_t bridge) {
     if (bridge->consolidation_history) nimcp_free(bridge->consolidation_history);
     if (bridge->events) nimcp_free(bridge->events);
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }
@@ -583,7 +580,7 @@ void pr_curriculum_bridge_destroy(pr_curriculum_bridge_t bridge) {
 int pr_curriculum_bridge_reset(pr_curriculum_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Clear difficulty cache */
     if (bridge->difficulty_cache) {
@@ -615,7 +612,7 @@ int pr_curriculum_bridge_reset(pr_curriculum_bridge_t bridge) {
     /* Reset statistics */
     memset(&bridge->stats, 0, sizeof(pr_curriculum_stats_t));
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -634,7 +631,7 @@ int pr_curriculum_compute_difficulty(
 
     uint64_t start_time_us = nimcp_time_get_us();
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check cache first */
     difficulty_cache_entry_t* cached = find_cache_entry(bridge, sample->sample_id);
@@ -643,7 +640,7 @@ int pr_curriculum_compute_difficulty(
         if (now_ms - cached->computed_time_ms < bridge->config.cache_ttl_ms) {
             *result = cached->result;
             bridge->stats.cache_hits++;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return 0;
         }
     }
@@ -739,7 +736,7 @@ int pr_curriculum_compute_difficulty(
         add_event(bridge, &event);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -771,19 +768,19 @@ bool pr_curriculum_get_cached_difficulty(
     if (!bridge || !result) return false;
     if (!bridge->config.enable_difficulty_cache) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     difficulty_cache_entry_t* cached = find_cache_entry(bridge, sample_id);
     if (cached) {
         uint64_t now_ms = nimcp_time_get_ms();
         if (now_ms - cached->computed_time_ms < bridge->config.cache_ttl_ms) {
             *result = cached->result;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return true;
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return false;
 }
 
@@ -793,7 +790,7 @@ int pr_curriculum_invalidate_difficulty(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     difficulty_cache_entry_t* cached = find_cache_entry(bridge, sample_id);
     if (cached) {
@@ -801,7 +798,7 @@ int pr_curriculum_invalidate_difficulty(
         bridge->cache_count--;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -821,7 +818,7 @@ int pr_curriculum_order_by_resonance(
     sample_score_t* scores = nimcp_malloc(count * sizeof(sample_score_t));
     if (!scores) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute resonance scores (using 1 - difficulty = resonance) */
     for (uint32_t i = 0; i < count; i++) {
@@ -840,7 +837,7 @@ int pr_curriculum_order_by_resonance(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Sort by resonance descending (high resonance = easy = first) */
     qsort(scores, count, sizeof(sample_score_t), compare_scores_desc);
@@ -875,7 +872,7 @@ int pr_curriculum_order_by_difficulty(
     sample_score_t* scores = nimcp_malloc(count * sizeof(sample_score_t));
     if (!scores) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute difficulty scores */
     for (uint32_t i = 0; i < count; i++) {
@@ -895,7 +892,7 @@ int pr_curriculum_order_by_difficulty(
     }
 
     bool ascending = bridge->config.ascending_difficulty;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Sort by difficulty */
     if (ascending) {
@@ -934,7 +931,7 @@ int pr_curriculum_order_by_curiosity(
     sample_score_t* scores = nimcp_malloc(count * sizeof(sample_score_t));
     if (!scores) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute curiosity scores */
     for (uint32_t i = 0; i < count; i++) {
@@ -953,7 +950,7 @@ int pr_curriculum_order_by_curiosity(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Sort by curiosity descending (high curiosity first) */
     qsort(scores, count, sizeof(sample_score_t), compare_scores_desc);
@@ -996,12 +993,12 @@ int pr_curriculum_select_next_batch(
 
     uint64_t start_time_us = nimcp_time_get_us();
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute difficulties and scores for all samples */
     sample_score_t* scores = nimcp_malloc(sample_count * sizeof(sample_score_t));
     if (!scores) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -1124,7 +1121,7 @@ int pr_curriculum_select_next_batch(
     }
 
     nimcp_free(scores);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1144,7 +1141,7 @@ int pr_curriculum_select_balanced_batch(
 
     if (batch_size > sample_count) batch_size = sample_count;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Calculate target counts per tier */
     uint32_t tier_targets[PR_CURRICULUM_NUM_TIERS];
@@ -1169,7 +1166,7 @@ int pr_curriculum_select_balanced_batch(
         tier_indices[t] = nimcp_malloc(sample_count * sizeof(uint32_t));
         if (!tier_indices[t]) {
             for (int j = 0; j < t; j++) nimcp_free(tier_indices[j]);
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return -1;
         }
     }
@@ -1228,7 +1225,7 @@ int pr_curriculum_select_balanced_batch(
         nimcp_free(tier_indices[t]);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1304,7 +1301,7 @@ int pr_curriculum_consolidation_pace(
 {
     if (!bridge || !pacing) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now_ms = nimcp_time_get_ms();
     uint64_t window_start = now_ms - bridge->config.pacing_window_ms;
@@ -1382,7 +1379,7 @@ int pr_curriculum_consolidation_pace(
         add_event(bridge, &event);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1419,7 +1416,7 @@ int pr_curriculum_record_consolidation(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     add_consolidation_event(bridge, is_promotion, from_tier, to_tier);
 
@@ -1430,7 +1427,7 @@ int pr_curriculum_record_consolidation(
         bridge->recent_demotions++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1446,13 +1443,13 @@ int pr_curriculum_tier_distribution(
 {
     if (!bridge || !distribution) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check cache */
     uint64_t now_ms = nimcp_time_get_ms();
     if (now_ms - bridge->tier_cache_time_ms < 1000) {  /* 1 second cache */
         *distribution = bridge->tier_cache;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -1504,7 +1501,7 @@ int pr_curriculum_tier_distribution(
     bridge->tier_cache = *distribution;
     bridge->tier_cache_time_ms = now_ms;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1556,7 +1553,7 @@ int pr_curriculum_update_after_step(
 {
     if (!bridge || !results || count == 0) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float total_loss = 0.0f;
     uint32_t correct_count = 0;
@@ -1600,7 +1597,7 @@ int pr_curriculum_update_after_step(
     bridge->stats.avg_pacing =
         bridge->stats.avg_pacing * 0.99f + bridge->current_pacing * 0.01f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1613,11 +1610,11 @@ float pr_curriculum_update_difficulty_from_loss(
 {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     difficulty_cache_entry_t* cached = find_cache_entry(bridge, sample_id);
     if (!cached || !cached->valid) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1.0f;
     }
 
@@ -1634,7 +1631,7 @@ float pr_curriculum_update_difficulty_from_loss(
 
     float new_difficulty = cached->result.total_difficulty;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return new_difficulty;
 }
@@ -1649,9 +1646,9 @@ int pr_curriculum_get_stats(
 {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1659,9 +1656,9 @@ int pr_curriculum_get_stats(
 int pr_curriculum_reset_stats(pr_curriculum_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(pr_curriculum_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1674,7 +1671,7 @@ int pr_curriculum_get_events(
 {
     if (!bridge || !events || !event_count) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t to_copy = (max_events < bridge->event_count) ? max_events : bridge->event_count;
 
@@ -1694,7 +1691,7 @@ int pr_curriculum_get_events(
 
     *event_count = to_copy;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1710,7 +1707,7 @@ int pr_curriculum_set_strategy(
     if (!bridge) return -1;
     if (type >= PR_CURRICULUM_TYPE_COUNT) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     pr_curriculum_type_t old_type = bridge->config.type;
     bridge->config.type = type;
@@ -1728,7 +1725,7 @@ int pr_curriculum_set_strategy(
         add_event(bridge, &event);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1745,9 +1742,9 @@ int pr_curriculum_set_exploration(
     if (!bridge) return -1;
     if (epsilon < 0.0f || epsilon > 1.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.exploration_epsilon = epsilon;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1758,9 +1755,9 @@ int pr_curriculum_set_ascending_difficulty(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.ascending_difficulty = ascending;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

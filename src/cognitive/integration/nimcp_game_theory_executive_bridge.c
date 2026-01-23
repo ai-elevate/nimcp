@@ -17,6 +17,7 @@
  */
 
 #include "cognitive/integration/nimcp_game_theory_executive_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/integration/nimcp_cognitive_integration_hub.h"
 #include "cognitive/integration/nimcp_cognitive_event_types.h"
 #include "utils/thread/nimcp_thread.h"
@@ -41,6 +42,7 @@
  * @brief Internal game theory-executive bridge structure
  */
 struct game_theory_executive_bridge {
+    bridge_base_t base;                       /**< MUST be first: base bridge infrastructure */
     game_theory_executive_config_t config;    /**< Bridge configuration */
     cognitive_integration_hub_t hub;          /**< Connected cognitive hub */
 
@@ -64,9 +66,6 @@ struct game_theory_executive_bridge {
 
     /* Statistics */
     game_theory_executive_stats_t stats;      /**< Bridge statistics */
-
-    /* Synchronization */
-    nimcp_mutex_t* mutex;                     /**< Thread safety mutex */
 };
 
 /* ============================================================================
@@ -145,19 +144,19 @@ static int gt_exec_on_event(const cognitive_event_data_t* event, void* user_data
 
     game_theory_executive_bridge_t* bridge = (game_theory_executive_bridge_t*)user_data;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update statistics */
     bridge->stats.events_received++;
     bridge->stats.total_events++;
     bridge->stats.last_event_timestamp = get_timestamp_ms();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Dispatch based on event type */
     switch (event->event_type) {
         case COG_EVENT_DECISION_MADE: {
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
             bridge->stats.decisions_received++;
 
             /* Check if recommendation was followed */
@@ -173,23 +172,23 @@ static int gt_exec_on_event(const cognitive_event_data_t* event, void* user_data
             }
 
             bridge->state = GT_EXEC_STATE_UPDATING;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             break;
         }
 
         case COG_EVENT_ATTENTION_SHIFT: {
             /* Attention shift might require strategy re-evaluation */
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
             /* Could trigger re-analysis based on new attention focus */
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             break;
         }
 
         case COG_EVENT_STATE_CHANGE: {
             /* Strategy state update from game theory module */
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
             bridge->stats.strategic_decisions++;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             break;
         }
 
@@ -215,9 +214,9 @@ static int gt_exec_query_handler(
 
     game_theory_executive_bridge_t* bridge = (game_theory_executive_bridge_t*)context;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.queries_handled++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Initialize result */
     result->status = 0;
@@ -227,9 +226,9 @@ static int gt_exec_query_handler(
 
     switch (query->query_type) {
         case COG_QUERY_STATUS: {
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
             game_theory_executive_state_t state = bridge->state;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
 
             const char* state_names[] = {
                 "IDLE", "ANALYZING", "RECOMMENDING",
@@ -248,7 +247,7 @@ static int gt_exec_query_handler(
         }
 
         case COG_QUERY_STATE: {
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
             gt_strategic_recommendation_t* rec = NULL;
             if (bridge->has_pending_recommendation) {
                 rec = nimcp_malloc(sizeof(gt_strategic_recommendation_t));
@@ -256,7 +255,7 @@ static int gt_exec_query_handler(
                     *rec = bridge->pending_recommendation;
                 }
             }
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
 
             if (rec) {
                 result->result_data = rec;
@@ -272,9 +271,9 @@ static int gt_exec_query_handler(
             game_theory_executive_stats_t* stats =
                 nimcp_malloc(sizeof(game_theory_executive_stats_t));
             if (stats) {
-                nimcp_mutex_lock(bridge->mutex);
+                nimcp_mutex_lock(bridge->base.mutex);
                 *stats = bridge->stats;
-                nimcp_mutex_unlock(bridge->mutex);
+                nimcp_mutex_unlock(bridge->base.mutex);
                 result->result_data = stats;
                 result->result_size = sizeof(game_theory_executive_stats_t);
             }
@@ -340,8 +339,8 @@ game_theory_executive_bridge_t* game_theory_executive_bridge_create(
     }
 
     /* Create mutex for thread safety */
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "game_theory_executive") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -381,9 +380,9 @@ void game_theory_executive_bridge_destroy(game_theory_executive_bridge_t* bridge
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-        bridge->mutex = NULL;
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
+        bridge->base.mutex = NULL;
     }
 
     bridge->initialized = false;
@@ -403,18 +402,18 @@ int game_theory_executive_bridge_connect(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if already connected */
     if (bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     /* Store hub reference */
     bridge->hub = hub;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Register module with hub */
     int result = cognitive_hub_register_module(
@@ -426,9 +425,9 @@ int game_theory_executive_bridge_connect(
     );
 
     if (result != 0) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->hub = NULL;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -472,9 +471,9 @@ int game_theory_executive_bridge_connect(
         );
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->connected = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -484,17 +483,17 @@ int game_theory_executive_bridge_disconnect(game_theory_executive_bridge_t* brid
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->hub) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     cognitive_integration_hub_t hub = bridge->hub;
     uint32_t module_id = bridge->config.module_id;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Unsubscribe from events */
     if (bridge->config.auto_subscribe_decision) {
@@ -510,11 +509,11 @@ int game_theory_executive_bridge_disconnect(game_theory_executive_bridge_t* brid
     /* Unregister module from hub */
     cognitive_hub_unregister_module(hub, module_id);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->hub = NULL;
     bridge->connected = false;
     bridge->state = GT_EXEC_STATE_IDLE;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -530,9 +529,9 @@ bool game_theory_executive_bridge_is_connected(
     game_theory_executive_bridge_t* mutable_bridge =
         (game_theory_executive_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
     bool connected = bridge->connected;
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return connected;
 }
@@ -555,7 +554,7 @@ int game_theory_executive_analyze_options(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = GT_EXEC_STATE_ANALYZING;
 
@@ -569,7 +568,7 @@ int game_theory_executive_analyze_options(
     bridge->current_utilities = nimcp_malloc(utilities_size);
     if (!bridge->current_utilities) {
         bridge->state = GT_EXEC_STATE_ERROR;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -579,7 +578,7 @@ int game_theory_executive_analyze_options(
 
     bridge->stats.strategies_analyzed += num_actions;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -592,10 +591,10 @@ int game_theory_executive_get_recommendation(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->current_utilities || bridge->current_num_actions == 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -667,7 +666,7 @@ int game_theory_executive_get_recommendation(
     bridge->stats.avg_expected_utility =
         ((n - 1.0f) * bridge->stats.avg_expected_utility + best_utility) / n;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -680,7 +679,7 @@ int game_theory_executive_notify_outcome(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->stats.decisions_received++;
 
@@ -719,7 +718,7 @@ int game_theory_executive_notify_outcome(
 
     bridge->state = GT_EXEC_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -732,17 +731,17 @@ int game_theory_executive_publish_recommendation(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->hub) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     cognitive_integration_hub_t hub = bridge->hub;
     uint32_t module_id = bridge->config.module_id;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Create event data */
     cognitive_event_data_t event;
@@ -758,9 +757,9 @@ int game_theory_executive_publish_recommendation(
     int result = cognitive_hub_publish(hub, module_id, COG_EVENT_OUTPUT_READY, &event);
 
     if (result == 0) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.events_published++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return result;
@@ -782,7 +781,7 @@ int game_theory_executive_request_risk_assessment(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Initialize assessment */
     memset(assessment, 0, sizeof(gt_exec_risk_assessment_t));
@@ -862,7 +861,7 @@ int game_theory_executive_request_risk_assessment(
         ((n - 1.0f) * bridge->stats.avg_risk_score +
          assessment->overall_risk) / n;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -909,13 +908,13 @@ int game_theory_executive_request_opponent_model(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     gt_exec_opponent_model_t* internal_model =
         find_or_create_opponent_model(bridge, opponent_id);
 
     if (!internal_model) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -924,7 +923,7 @@ int game_theory_executive_request_opponent_model(
 
     bridge->stats.opponent_model_requests++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -939,13 +938,13 @@ int game_theory_executive_update_opponent_model(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     gt_exec_opponent_model_t* model =
         find_or_create_opponent_model(bridge, opponent_id);
 
     if (!model || observed_strategy >= model->num_strategies) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -997,7 +996,7 @@ int game_theory_executive_update_opponent_model(
     model->last_update = get_timestamp_ms();
     model->interaction_count++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1045,9 +1044,9 @@ game_theory_executive_state_t game_theory_executive_bridge_get_state(
     game_theory_executive_bridge_t* mutable_bridge =
         (game_theory_executive_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
     game_theory_executive_state_t state = bridge->state;
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return state;
 }
@@ -1072,9 +1071,9 @@ uint32_t game_theory_executive_bridge_get_pending_count(
     game_theory_executive_bridge_t* mutable_bridge =
         (game_theory_executive_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
     uint32_t count = bridge->has_pending_recommendation ? 1 : 0;
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return count;
 }
@@ -1094,9 +1093,9 @@ int game_theory_executive_bridge_get_stats(
     game_theory_executive_bridge_t* mutable_bridge =
         (game_theory_executive_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return 0;
 }
@@ -1106,9 +1105,9 @@ int game_theory_executive_bridge_reset_stats(game_theory_executive_bridge_t* bri
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(game_theory_executive_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1118,7 +1117,7 @@ int game_theory_executive_bridge_force_update(game_theory_executive_bridge_t* br
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Force state transition if stuck */
     if (bridge->state == GT_EXEC_STATE_AWAITING_DECISION) {
@@ -1127,7 +1126,7 @@ int game_theory_executive_bridge_force_update(game_theory_executive_bridge_t* br
         bridge->state = GT_EXEC_STATE_IDLE;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

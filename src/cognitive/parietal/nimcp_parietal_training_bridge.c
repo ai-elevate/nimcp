@@ -5,6 +5,7 @@
  * @date 2026-01-20
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/parietal/nimcp_parietal_training_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
@@ -40,6 +41,7 @@ typedef struct {
  * @brief Parietal-Training bridge structure
  */
 struct parietal_training_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     uint32_t magic;
     parietal_train_state_t state;
 
@@ -202,8 +204,8 @@ parietal_training_bridge_t* parietal_training_create(
     /* Create mutex */
     mutex_attr_t attr;
     attr.type = MUTEX_TYPE_NORMAL;
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_mutex_create(&attr);
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -214,7 +216,7 @@ parietal_training_bridge_t* parietal_training_create(
         bridge->pending_updates = nimcp_calloc(bridge->pending_capacity,
                                                sizeof(pending_update_t));
         if (!bridge->pending_updates) {
-            nimcp_mutex_destroy(bridge->mutex);
+            nimcp_mutex_destroy(bridge->base.mutex);
             nimcp_free(bridge);
             return NULL;
         }
@@ -256,8 +258,8 @@ void parietal_training_destroy(parietal_training_bridge_t* bridge) {
         nimcp_free(bridge->pending_updates);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_destroy(bridge->base.mutex);
     }
 
     bridge->magic = 0;
@@ -276,7 +278,7 @@ int parietal_training_connect(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->training = training;
 
@@ -290,7 +292,7 @@ int parietal_training_connect(
         bridge->state = PARIETAL_TRAIN_STATE_CONNECTED;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -300,7 +302,7 @@ int parietal_training_disconnect(parietal_training_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Flush any pending updates */
     if (bridge->pending_count > 0) {
@@ -315,7 +317,7 @@ int parietal_training_disconnect(parietal_training_bridge_t* bridge) {
         bridge->state = PARIETAL_TRAIN_STATE_INITIALIZED;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -328,10 +330,10 @@ int parietal_training_connect_plasticity(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->plasticity = plasticity;
     bridge->stats.plasticity_connected = (plasticity != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -344,10 +346,10 @@ int parietal_training_connect_bio_async(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_router = router;
     bridge->stats.bio_async_connected = (router != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -364,14 +366,14 @@ parietal_train_response_t parietal_training_process_signal(
         return PARIETAL_TRAIN_RESPONSE_NONE;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     parietal_train_response_t response = PARIETAL_TRAIN_RESPONSE_NONE;
 
     /* Check if domain is enabled */
     if (signal->domain >= PARIETAL_DOMAIN_COUNT ||
         !bridge->config.domains[signal->domain].enabled) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return response;
     }
 
@@ -426,14 +428,14 @@ parietal_train_response_t parietal_training_process_signal(
 
     /* Invoke callback */
     if (bridge->learning_callback) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         bridge->learning_callback(signal, bridge->learning_callback_data);
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     bridge->state = PARIETAL_TRAIN_STATE_LEARNING;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return response;
 }
@@ -451,9 +453,9 @@ int parietal_training_update_weights(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     int result = apply_weight_update(bridge, domain, learning_rate);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -482,9 +484,9 @@ int parietal_training_flush_batch(parietal_training_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     int updates_applied = flush_batch_unlocked(bridge);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return updates_applied;
 }
@@ -502,9 +504,9 @@ int parietal_training_set_domain_lr(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.domains[domain].learning_rate = learning_rate;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -522,9 +524,9 @@ int parietal_training_set_domain_enabled(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.domains[domain].enabled = enabled;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -542,10 +544,10 @@ int parietal_training_set_learning_callback(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->learning_callback = callback;
     bridge->learning_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -559,10 +561,10 @@ int parietal_training_set_update_callback(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->update_callback = callback;
     bridge->update_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -588,9 +590,9 @@ int parietal_training_get_stats(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -600,7 +602,7 @@ void parietal_training_reset_stats(parietal_training_bridge_t* bridge) {
         return;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Preserve connection status */
     bool training_connected = bridge->stats.training_connected;
@@ -615,7 +617,7 @@ void parietal_training_reset_stats(parietal_training_bridge_t* bridge) {
     bridge->stats.best_loss = INFINITY;
     bridge->stats.current_loss = INFINITY;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 bool parietal_training_is_connected(const parietal_training_bridge_t* bridge) {

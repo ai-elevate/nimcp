@@ -188,7 +188,7 @@ pattern_db_immune_bridge_t* pattern_db_immune_create(
     memset(bridge->mappings, 0, sizeof(pattern_immune_mapping_t) * bridge->mapping_capacity);
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "pattern_db_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for pattern DB immune bridge");
         nimcp_free(bridge->mappings);
@@ -215,7 +215,7 @@ void pattern_db_immune_destroy(pattern_db_immune_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

@@ -97,7 +97,7 @@ snn_stdp_bridge_t* snn_stdp_bridge_create(
            sizeof(weight_change_record_t) * bridge->weight_change_capacity);
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "snn_stdp") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_WARN("Failed to create mutex for SNN-STDP bridge");
         /* Continue without mutex */
@@ -142,7 +142,7 @@ void snn_stdp_bridge_destroy(snn_stdp_bridge_t* bridge) {
     }
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
         bridge->base.mutex = NULL;
     }
 

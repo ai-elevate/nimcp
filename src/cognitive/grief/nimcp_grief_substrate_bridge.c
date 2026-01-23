@@ -5,6 +5,7 @@
  * Uses shared metabolic modulation utilities from nimcp_metabolic_modulation.h
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/grief/nimcp_grief_substrate_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
@@ -14,6 +15,7 @@
 #include <string.h>
 
 struct grief_substrate_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* grief;
     neural_substrate_t* substrate;
     grief_substrate_config_t config;

@@ -7,6 +7,7 @@
  * HOW: Monitors ATP/fatigue; modulates response, antibody production, memory
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/immune/nimcp_brain_immune_substrate_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
@@ -19,6 +20,7 @@
 #include <math.h>
 
 struct brain_immune_substrate_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* brain_immune;
     neural_substrate_t* substrate;
     brain_immune_substrate_config_t config;

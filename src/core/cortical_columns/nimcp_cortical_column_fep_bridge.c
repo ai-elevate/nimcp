@@ -98,7 +98,7 @@ cortical_column_fep_bridge_t* cortical_column_fep_create(
     bridge->state.prior_precision = FEP_DEFAULT_PRECISION;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "cortical_column_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         cortical_column_fep_destroy(bridge);
         return NULL;
@@ -120,7 +120,7 @@ void cortical_column_fep_destroy(cortical_column_fep_bridge_t* bridge) {
     if (bridge->state.prior_distribution) nimcp_free(bridge->state.prior_distribution);
     if (bridge->state.prediction_errors) nimcp_free(bridge->state.prediction_errors);
 
-    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed cortical column FEP bridge");

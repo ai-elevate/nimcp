@@ -41,7 +41,7 @@ oligodendrocytes_fep_bridge_t* oligodendrocytes_fep_create(
     bridge->oligodendrocyte_network = oligodendrocyte_network;
     bridge->fep_system = fep_system;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "oligodendrocytes_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("oligodendrocytes_fep_create: mutex creation failed");
         nimcp_free(bridge);
@@ -59,7 +59,7 @@ void oligodendrocytes_fep_destroy(oligodendrocytes_fep_bridge_t* bridge) {
         oligodendrocytes_fep_disconnect_bio_async(bridge);
     }
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Oligodendrocytes-FEP bridge destroyed");

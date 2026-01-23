@@ -37,7 +37,7 @@ self_awareness_extended_fep_bridge_t* self_awareness_extended_fep_bridge_create(
     memset(bridge, 0, sizeof(self_awareness_extended_fep_bridge_t));
     if (config) bridge->config = *config;
     else self_awareness_extended_fep_bridge_default_config(&bridge->config);
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "self_awareness_extended_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
     return bridge;
 }
@@ -46,7 +46,7 @@ void self_awareness_extended_fep_bridge_destroy(self_awareness_extended_fep_brid
     if (!bridge) return;
     if (bridge->base.bio_async_enabled) self_awareness_extended_fep_bridge_disconnect_bio_async(bridge);
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
 }

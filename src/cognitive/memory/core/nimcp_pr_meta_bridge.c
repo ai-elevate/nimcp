@@ -13,6 +13,7 @@
  */
 
 #include "cognitive/memory/core/nimcp_pr_meta_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
@@ -46,6 +47,8 @@ typedef struct {
  * WHY:  Encapsulate all bridge data for thread safety
  */
 struct pr_meta_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     pr_meta_config_t config;
 
@@ -74,9 +77,6 @@ struct pr_meta_bridge_struct {
 
     /* Statistics */
     pr_meta_bridge_stats_t stats;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 };
 
 //=============================================================================
@@ -332,10 +332,8 @@ pr_meta_bridge_t pr_meta_bridge_create(const pr_meta_config_t* config) {
         bridge->config = pr_meta_config_default();
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "pr_meta") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -344,7 +342,7 @@ pr_meta_bridge_t pr_meta_bridge_create(const pr_meta_config_t* config) {
     bridge->task_capacity = bridge->config.max_task_memory;
     bridge->task_memory = nimcp_calloc(bridge->task_capacity, sizeof(pr_meta_task_entry_t));
     if (!bridge->task_memory) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -358,7 +356,7 @@ pr_meta_bridge_t pr_meta_bridge_create(const pr_meta_config_t* config) {
         if (bridge->task_id_index) nimcp_free(bridge->task_id_index);
         if (bridge->task_slot_index) nimcp_free(bridge->task_slot_index);
         nimcp_free(bridge->task_memory);
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -370,7 +368,7 @@ pr_meta_bridge_t pr_meta_bridge_create(const pr_meta_config_t* config) {
         nimcp_free(bridge->task_slot_index);
         nimcp_free(bridge->task_id_index);
         nimcp_free(bridge->task_memory);
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -407,9 +405,8 @@ void pr_meta_bridge_destroy(pr_meta_bridge_t bridge) {
     if (bridge->task_id_index) nimcp_free(bridge->task_id_index);
     if (bridge->task_memory) nimcp_free(bridge->task_memory);
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }
@@ -417,7 +414,7 @@ void pr_meta_bridge_destroy(pr_meta_bridge_t bridge) {
 int pr_meta_bridge_reset(pr_meta_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Free adapted parameters */
     for (uint32_t i = 0; i < bridge->task_count; i++) {
@@ -448,7 +445,7 @@ int pr_meta_bridge_reset(pr_meta_bridge_t bridge) {
     /* Reset statistics */
     memset(&bridge->stats, 0, sizeof(pr_meta_bridge_stats_t));
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -468,7 +465,7 @@ int pr_meta_maml_inner_loop(
 
     uint64_t start_time_us = nimcp_time_get_us();
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Initialize result */
     memset(result, 0, sizeof(pr_meta_result_t));
@@ -591,7 +588,7 @@ int pr_meta_maml_inner_loop(
             (bridge->stats.avg_recall_similarity * 0.99f) + (avg_sim * 0.01f);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     uint64_t end_time_us = nimcp_time_get_us();
     result->adaptation_time_ms = (float)(end_time_us - start_time_us) / 1000.0f;
@@ -637,9 +634,9 @@ int pr_meta_maml_outer_step(
     }
 
     /* Update outer loop statistics */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.total_outer_steps++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -654,7 +651,7 @@ int pr_meta_memory_init(
     if (!bridge || !task || !base_params || !init_params) return -1;
     if (num_params == 0) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Start with base parameters */
     memcpy(init_params, base_params, num_params * sizeof(float));
@@ -662,7 +659,7 @@ int pr_meta_memory_init(
     int tasks_used = 0;
 
     if (bridge->task_count == 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -670,7 +667,7 @@ int pr_meta_memory_init(
     float total_weight = 1.0f;  /* Base parameters have weight 1.0 */
     float* weighted_sum = nimcp_calloc(num_params, sizeof(float));
     if (!weighted_sum) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -705,7 +702,7 @@ int pr_meta_memory_init(
     }
 
     nimcp_free(weighted_sum);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return tasks_used;
 }
@@ -717,7 +714,7 @@ float pr_meta_memory_lr(
 {
     if (!bridge || !task) return base_lr;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float max_sim = 0.0f;
 
@@ -730,7 +727,7 @@ float pr_meta_memory_lr(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Higher similarity -> lower LR */
     float modulation = 1.0f - 0.5f * max_sim;
@@ -823,28 +820,28 @@ int pr_meta_recall_similar_tasks(
 {
     if (!bridge || !task || !recalls || !num_found) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check recall cache */
     if (bridge->recall_cache_task_id == task->task_id && bridge->task_count > 0) {
         uint32_t to_copy = k < bridge->recall_cache_size ? k : bridge->recall_cache_size;
         memcpy(recalls, bridge->recall_cache, to_copy * sizeof(pr_meta_recall_t));
         *num_found = to_copy;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
     *num_found = 0;
 
     if (bridge->task_count == 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
     /* Collect all similarities */
     pr_meta_recall_t* all_recalls = nimcp_calloc(bridge->task_count, sizeof(pr_meta_recall_t));
     if (!all_recalls) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -892,7 +889,7 @@ int pr_meta_recall_similar_tasks(
             (bridge->stats.avg_recall_similarity * 0.95f) + (avg_sim * 0.05f);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -950,11 +947,11 @@ int pr_meta_adapt_quaternion(
     }
 
     /* Update statistics */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float distance = quat_geodesic_distance(base_quat, *adapted_quat);
     bridge->stats.avg_quat_adaptation =
         (bridge->stats.avg_quat_adaptation * 0.99f) + (distance * 0.01f);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -982,7 +979,7 @@ int pr_meta_task_to_quaternion(
     quat->z = 0.5f + 0.3f * tier_factor;
 
     /* Adjust based on memory similarity */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float max_sim = 0.0f;
     nimcp_quaternion_t most_similar_quat = *quat;
@@ -996,7 +993,7 @@ int pr_meta_task_to_quaternion(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Blend with most similar task's quaternion */
     if (max_sim > 0.5f) {
@@ -1129,14 +1126,14 @@ uint32_t pr_meta_transfer_entanglement(
     }
 
     /* Update statistics */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.tasks_transferred++;
     bridge->stats.edges_transferred += transferred;
     if (transferred > 0) {
         bridge->stats.avg_transfer_weight =
             (bridge->stats.avg_transfer_weight * 0.95f) + (weight_scale * 0.05f);
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return transferred;
 }
@@ -1274,7 +1271,7 @@ int pr_meta_get_tier_params(
     if (!bridge || !params) return -1;
     if (tier >= PR_META_NUM_TIERS) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     params->adaptation_rate = bridge->config.tier_adaptation_rate[tier];
 
@@ -1287,7 +1284,7 @@ int pr_meta_get_tier_params(
     /* Max inner steps increase with tier (more careful adaptation) */
     params->max_inner_steps = bridge->config.inner_steps * (1 + tier);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1342,11 +1339,11 @@ int pr_meta_move_tier(
     if (!bridge) return -1;
     if (new_tier >= PR_META_NUM_TIERS) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     int32_t slot = find_task_slot(bridge, task_id);
     if (slot < 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -1365,7 +1362,7 @@ int pr_meta_move_tier(
         entry->task.tier = new_tier;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1381,7 +1378,7 @@ int pr_meta_store_task_memory(
 {
     if (!bridge || !task) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if task already exists */
     int32_t existing_slot = find_task_slot(bridge, task->task_id);
@@ -1403,16 +1400,16 @@ int pr_meta_store_task_memory(
             entry->has_result = true;
         }
 
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
     /* Check if memory is full */
     if (bridge->task_count >= bridge->task_capacity) {
         /* Evict least relevant task */
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         pr_meta_evict_tasks(bridge, 1);
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     /* Find empty slot */
@@ -1425,7 +1422,7 @@ int pr_meta_store_task_memory(
     }
 
     if (slot >= bridge->task_capacity) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -1459,7 +1456,7 @@ int pr_meta_store_task_memory(
     /* Invalidate recall cache */
     bridge->recall_cache_task_id = 0;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1472,11 +1469,11 @@ bool pr_meta_recall_task(
 {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     int32_t slot = find_task_slot(bridge, task_id);
     if (slot < 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return false;
     }
 
@@ -1498,7 +1495,7 @@ bool pr_meta_recall_task(
         result->adapted_params = NULL;  /* Don't expose internal pointer */
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return true;
 }
@@ -1509,11 +1506,11 @@ bool pr_meta_forget_task(
 {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     int32_t slot = find_task_slot(bridge, task_id);
     if (slot < 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return false;
     }
 
@@ -1537,7 +1534,7 @@ bool pr_meta_forget_task(
     /* Invalidate recall cache */
     bridge->recall_cache_task_id = 0;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return true;
 }
@@ -1553,10 +1550,10 @@ uint32_t pr_meta_evict_tasks(
 {
     if (!bridge || count == 0) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->task_count == 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -1568,7 +1565,7 @@ uint32_t pr_meta_evict_tasks(
 
     evict_candidate_t* candidates = nimcp_calloc(bridge->task_count, sizeof(evict_candidate_t));
     if (!candidates) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -1636,7 +1633,7 @@ uint32_t pr_meta_evict_tasks(
     /* Invalidate recall cache */
     bridge->recall_cache_task_id = 0;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return evicted;
 }
@@ -1651,9 +1648,9 @@ int pr_meta_get_stats(
 {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1661,9 +1658,9 @@ int pr_meta_get_stats(
 int pr_meta_reset_stats(pr_meta_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(pr_meta_bridge_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1731,9 +1728,9 @@ int pr_meta_connect_meta_ctx(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->meta_ctx = meta_ctx;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1744,9 +1741,9 @@ int pr_meta_connect_graph(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->graph = graph;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1757,7 +1754,7 @@ int pr_meta_bridge_update(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now_ms = nimcp_time_get_ms();
 
@@ -1779,7 +1776,7 @@ int pr_meta_bridge_update(
     /* Update bridge statistics */
     bridge->stats.total_bridge_updates++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     (void)now_ms;  /* Suppress unused warning */
 

@@ -12,6 +12,7 @@
  * @date 2026-01-05
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/wernicke/nimcp_wernicke_quantum_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -41,6 +42,7 @@
  * @brief Wernicke quantum bridge context
  */
 struct wernicke_quantum_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     wernicke_quantum_config_t config;
 
     /* Connected Wernicke adapter */

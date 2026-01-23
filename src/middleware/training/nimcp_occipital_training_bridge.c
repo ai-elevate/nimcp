@@ -6,6 +6,7 @@
  * @date 2025-01-01
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "middleware/training/nimcp_occipital_training_bridge.h"
 #include "core/brain/regions/occipital/nimcp_occipital_adapter.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
@@ -20,6 +21,7 @@
  *===========================================================================*/
 
 struct occipital_training_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     occipital_adapter_t* occipital;           /**< Connected occipital adapter */
     nimcp_brain_training_ctx_t* training;     /**< Connected training context */
     occipital_training_config_t config;       /**< Bridge configuration */

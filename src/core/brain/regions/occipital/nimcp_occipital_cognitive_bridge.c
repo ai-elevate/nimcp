@@ -11,6 +11,7 @@
  * @date 2025-12-31
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/occipital/nimcp_occipital_cognitive_bridge.h"
 #include "core/brain/regions/occipital/nimcp_occipital_adapter.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
@@ -74,6 +75,7 @@ typedef struct {
  * @brief Internal bridge structure
  */
 struct occipital_cognitive_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /* Configuration */
     occipital_cognitive_config_t config;
 

@@ -13,6 +13,7 @@
  */
 
 #include "cognitive/memory/core/nimcp_pr_loss_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
@@ -34,6 +35,8 @@
  * WHY:  Encapsulate all bridge data for thread safety
  */
 struct pr_loss_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     pr_loss_config_t config;
 
@@ -46,9 +49,6 @@ struct pr_loss_bridge_struct {
     /* Caches for batch operations */
     float* loss_cache;
     size_t loss_cache_capacity;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 };
 
 //=============================================================================
@@ -248,10 +248,8 @@ pr_loss_bridge_t pr_loss_bridge_create(const pr_loss_config_t* config) {
         bridge->config = pr_loss_config_default();
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "pr_loss") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -263,7 +261,7 @@ pr_loss_bridge_t pr_loss_bridge_create(const pr_loss_config_t* config) {
     bridge->loss_cache_capacity = 256;
     bridge->loss_cache = nimcp_calloc(bridge->loss_cache_capacity, sizeof(float));
     if (!bridge->loss_cache) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -282,9 +280,8 @@ void pr_loss_bridge_destroy(pr_loss_bridge_t bridge) {
         nimcp_free(bridge->loss_cache);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }
@@ -292,13 +289,13 @@ void pr_loss_bridge_destroy(pr_loss_bridge_t bridge) {
 int pr_loss_bridge_reset(pr_loss_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset statistics */
     memset(&bridge->stats, 0, sizeof(pr_loss_stats_t));
     bridge->stats.min_combined_loss = FLT_MAX;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -310,9 +307,9 @@ int pr_loss_bridge_set_config(
     if (!bridge || !config) return -1;
     if (!pr_loss_config_validate(config)) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->config = *config;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -323,9 +320,9 @@ int pr_loss_bridge_get_config(
 {
     if (!bridge || !config) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *config = bridge->config;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -365,11 +362,11 @@ float pr_loss_geodesic(
 
     /* Update statistics */
     if (bridge) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.geodesic_computations++;
         bridge->stats.total_geodesic_loss += loss;
         bridge->stats.total_compute_time_ns += (get_time_ns() - start_time);
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return loss;
@@ -426,11 +423,11 @@ float pr_loss_geodesic_batch(
 
     /* Update statistics */
     if (bridge) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.geodesic_computations += count;
         bridge->stats.total_geodesic_loss += sum;
         bridge->stats.total_compute_time_ns += (get_time_ns() - start_time);
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return result;
@@ -489,7 +486,7 @@ int pr_loss_gradient_geodesic(
 
     /* Update statistics */
     if (bridge) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.gradient_computations++;
         float norm = pr_loss_gradient_norm(grad);
         bridge->stats.avg_gradient_norm =
@@ -498,7 +495,7 @@ int pr_loss_gradient_geodesic(
         if (norm > bridge->stats.max_gradient_norm) {
             bridge->stats.max_gradient_norm = norm;
         }
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return 0;
@@ -586,7 +583,7 @@ float pr_loss_resonance_triplet(
 
     /* Update statistics */
     if (bridge) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.triplet_computations++;
         bridge->stats.total_triplet_loss += loss;
         if (loss > 0.0f) {
@@ -598,7 +595,7 @@ float pr_loss_resonance_triplet(
             bridge->stats.inactive_triplets++;
         }
         bridge->stats.total_compute_time_ns += (get_time_ns() - start_time);
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return loss;
@@ -624,7 +621,7 @@ float pr_loss_resonance_triplet_quat(
 
     /* Update statistics */
     if (bridge) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.triplet_computations++;
         bridge->stats.total_triplet_loss += loss;
         if (loss > 0.0f) {
@@ -632,7 +629,7 @@ float pr_loss_resonance_triplet_quat(
         } else {
             bridge->stats.inactive_triplets++;
         }
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return loss;
@@ -782,11 +779,11 @@ float pr_loss_consolidation_weighted(
 
     /* Update statistics */
     if (bridge) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.consolidation_computations += count;
         bridge->stats.total_consolidation_loss += loss;
         bridge->stats.total_compute_time_ns += (get_time_ns() - start_time);
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return loss;
@@ -854,11 +851,11 @@ float pr_loss_entanglement_reg(
 
     /* Update statistics */
     if (bridge) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.entanglement_computations++;
         bridge->stats.total_entanglement_reg += reg;
         bridge->stats.total_compute_time_ns += (get_time_ns() - start_time);
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return reg;
@@ -974,11 +971,11 @@ float pr_loss_tier_aware(
 
     /* Update statistics */
     if (bridge) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         for (int t = 0; t < PR_LOSS_NUM_TIERS; t++) {
             bridge->stats.samples_per_tier[t] += tier_counts[t];
         }
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return loss;
@@ -1012,9 +1009,9 @@ int pr_loss_set_tier_weight(
     if (!bridge || tier >= PR_LOSS_NUM_TIERS) return -1;
     if (weight < 0.0f || weight > 1.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.tier_weights[tier] = weight;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1042,9 +1039,9 @@ int pr_loss_combined(
     pr_loss_result_init(result);
     result->sample_count = (uint32_t)count;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     pr_loss_config_t config = bridge->config;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* 1. Geodesic loss */
     if (config.geodesic_weight > 0.0f) {
@@ -1103,7 +1100,7 @@ int pr_loss_combined(
     result->compute_time_ns = get_time_ns() - start_time;
 
     /* Update statistics */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.combined_computations++;
 
     /* Update running average */
@@ -1121,7 +1118,7 @@ int pr_loss_combined(
     bridge->stats.total_compute_time_ns += result->compute_time_ns;
     bridge->stats.avg_compute_time_us =
         (float)bridge->stats.total_compute_time_ns / (1000.0f * n);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1165,9 +1162,9 @@ int pr_loss_combined_with_triplets(
 
         float triplet_weight = PR_LOSS_DEFAULT_TRIPLET_WEIGHT;
         if (bridge) {
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
             triplet_weight = bridge->config.triplet_weight;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
         }
 
         result->triplet_loss = triplet_weight * triplet_sum / (float)triplet_count;
@@ -1187,9 +1184,9 @@ int pr_loss_get_stats(
 {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1197,10 +1194,10 @@ int pr_loss_get_stats(
 int pr_loss_reset_stats(pr_loss_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(pr_loss_stats_t));
     bridge->stats.min_combined_loss = FLT_MAX;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

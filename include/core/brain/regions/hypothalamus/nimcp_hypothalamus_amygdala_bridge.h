@@ -45,6 +45,7 @@ extern "C" {
 #include "core/brain/subcortical/nimcp_amygdala.h"
 #include "async/nimcp_bio_async.h"
 #include "async/nimcp_bio_router.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 
 /*=============================================================================
  * CONSTANTS
@@ -179,6 +180,8 @@ typedef struct {
  * @brief Amygdala bridge context
  */
 typedef struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     hypo_amyg_bridge_config_t config;
 
@@ -218,8 +221,6 @@ typedef struct {
     uint64_t chronic_stress_episodes;
     uint64_t safety_drive_boosts;
 
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 } hypo_amyg_bridge_t;
 
 /*=============================================================================

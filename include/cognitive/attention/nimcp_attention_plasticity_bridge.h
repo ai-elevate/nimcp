@@ -61,8 +61,7 @@ extern "C" {
 /** @brief Default STDP time window (ms) */
 #define ATTENTION_PLASTICITY_STDP_WINDOW      40.0f
 
-/** @brief Bio-async module ID */
-#define BIO_MODULE_ATTENTION_PLASTICITY       0x0C10
+/* Note: Bio-async module ID is defined in nimcp_bio_messages.h as BIO_MODULE_ATTENTION_PLASTICITY */
 
 /** @brief Maximum attention heads for plasticity tracking */
 #define ATTENTION_PLASTICITY_MAX_HEADS        16

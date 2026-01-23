@@ -34,7 +34,7 @@ emotion_tensor_thalamic_bridge_t* emotion_tensor_thalamic_bridge_create(void* em
     if (!bridge) return NULL;
 
     /* Initialize mutex for thread safety */
-    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (bridge_base_init(&bridge->base, 0, "emotion_tensor_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -51,7 +51,7 @@ emotion_tensor_thalamic_bridge_t* emotion_tensor_thalamic_bridge_create(void* em
 void emotion_tensor_thalamic_bridge_destroy(emotion_tensor_thalamic_bridge_t* bridge) {
     if (bridge) {
         if (bridge->base.mutex) {
-            nimcp_mutex_free(bridge->base.mutex);
+            bridge_base_cleanup(&bridge->base);
         }
         nimcp_free(bridge);
     }

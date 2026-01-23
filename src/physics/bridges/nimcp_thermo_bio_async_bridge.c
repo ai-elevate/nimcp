@@ -5,6 +5,7 @@
  * @date 2026-01-12
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "physics/bridges/nimcp_thermo_bio_async_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "api/nimcp_api_exception.h"
@@ -31,6 +32,7 @@ typedef struct {
  * ============================================================================ */
 
 struct thermo_bio_async_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     thermo_bio_async_config_t config;
     nimcp_thermodynamic_state_t* state;
     bio_router_t router;

@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/recursive/nimcp_rcog_snn_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_config.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
@@ -25,9 +26,9 @@
 //=============================================================================
 
 struct rcog_snn_bridge {
+    bridge_base_t base;
     rcog_snn_config_t config;
     snn_network_t* snn;
-    nimcp_mutex_t* mutex;
 
     /* State */
     rcog_snn_state_t state;
@@ -150,10 +151,8 @@ rcog_snn_bridge_t* rcog_snn_create(const rcog_snn_config_t* config) {
         return NULL;
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize bridge base */
+    if (bridge_base_init(&bridge->base, 0, "rcog_snn") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -171,7 +170,7 @@ rcog_snn_bridge_t* rcog_snn_create(const rcog_snn_config_t* config) {
 
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -226,9 +225,7 @@ void rcog_snn_destroy(rcog_snn_bridge_t* bridge) {
         snn_network_destroy(bridge->snn);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge->encoding_buffer);
     nimcp_free(bridge->output_buffer);
@@ -240,7 +237,7 @@ void rcog_snn_destroy(rcog_snn_bridge_t* bridge) {
 int rcog_snn_reset(rcog_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset SNN network */
     if (bridge->snn) {
@@ -274,7 +271,7 @@ int rcog_snn_reset(rcog_snn_bridge_t* bridge) {
     bridge->meta_cognitive_signal = 0.0f;
     bridge->self_reference_signal = 0.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -290,7 +287,7 @@ int rcog_snn_encode_state(
     if (!bridge || !dimensions) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = RCOG_SNN_STATE_ENCODING;
 
     uint32_t neurons_per_dim = bridge->config.neurons_per_dim;
@@ -337,7 +334,7 @@ int rcog_snn_encode_state(
 
     bridge->stats.total_spikes += total_spikes;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return total_spikes;
 }
 
@@ -349,7 +346,7 @@ int rcog_snn_encode_depth(
     if (!bridge) return -1;
     if (max_depth == 0) max_depth = 1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float normalized_depth = clamp_f(depth / (float)max_depth, 0.0f, 1.0f);
     float dims[RCOG_DIM_COUNT] = {0};
@@ -361,7 +358,7 @@ int rcog_snn_encode_depth(
 
     bridge->depth_signal = normalized_depth;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return rcog_snn_encode_state(bridge, dims, 3);
 }
@@ -373,7 +370,7 @@ int rcog_snn_encode_meta_cognitive(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[RCOG_DIM_COUNT] = {0};
     dims[RCOG_DIM_META_COGNITIVE_LEVEL] = clamp_f(awareness, 0.0f, 1.0f);
@@ -382,7 +379,7 @@ int rcog_snn_encode_meta_cognitive(
 
     bridge->meta_cognitive_signal = awareness;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return rcog_snn_encode_state(bridge, dims, 3);
 }
@@ -394,7 +391,7 @@ int rcog_snn_encode_self_reference(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[RCOG_DIM_COUNT] = {0};
     dims[RCOG_DIM_SELF_REFERENCE] = clamp_f(intensity, 0.0f, 1.0f);
@@ -411,7 +408,7 @@ int rcog_snn_encode_self_reference(
         bridge->stats.self_reference_events++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return rcog_snn_encode_state(bridge, dims, 2);
 }
@@ -424,7 +421,7 @@ int rcog_snn_encode_hierarchy(
     if (!bridge) return -1;
     if (total_levels == 0) total_levels = 1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float normalized_level = clamp_f((float)level / (float)total_levels, 0.0f, 1.0f);
     float dims[RCOG_DIM_COUNT] = {0};
@@ -432,7 +429,7 @@ int rcog_snn_encode_hierarchy(
     /* Decomposition progress correlates with level */
     dims[RCOG_DIM_DECOMPOSITION_PROGRESS] = normalized_level;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return rcog_snn_encode_state(bridge, dims, 2);
 }
@@ -445,7 +442,7 @@ int rcog_snn_simulate(rcog_snn_bridge_t* bridge, float duration_ms) {
     if (!bridge) return -1;
     if (duration_ms <= 0.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = RCOG_SNN_STATE_SIMULATING;
 
     float dt = bridge->config.dt_ms;
@@ -515,7 +512,7 @@ int rcog_snn_simulate(rcog_snn_bridge_t* bridge, float duration_ms) {
         bridge->state_callback(bridge, &bridge->last_cognitive_state, bridge->state_callback_data);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -551,9 +548,9 @@ int rcog_snn_get_cognitive_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->last_cognitive_state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -566,11 +563,11 @@ int rcog_snn_get_activations(
     if (!bridge || !activations) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t d = 0; d < num_dims; d++) {
         activations[d] = bridge->dim_states[d].activation;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -581,13 +578,13 @@ bool rcog_snn_check_deep_recursion(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_cognitive_state.recursion_depth;
     if (depth_level) {
         *depth_level = level;
     }
     bool detected = level > bridge->config.depth_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return detected;
 }
@@ -598,13 +595,13 @@ bool rcog_snn_check_self_reference(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_cognitive_state.self_reference_intensity;
     if (intensity) {
         *intensity = level;
     }
     bool detected = level > bridge->config.depth_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return detected;
 }
@@ -615,7 +612,7 @@ bool rcog_snn_check_state_change(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     /* Calculate magnitude from prev_state differences */
     float mag = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
@@ -628,7 +625,7 @@ bool rcog_snn_check_state_change(
         *change_magnitude = mag;
     }
     bool changed = mag > bridge->config.state_change_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return changed;
 }
@@ -645,9 +642,9 @@ int rcog_snn_get_dim_state(
     if (!bridge || !state) return -1;
     if (dim >= bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -658,7 +655,7 @@ int rcog_snn_get_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
     state->mean_depth = bridge->last_cognitive_state.recursion_depth;
@@ -675,16 +672,16 @@ int rcog_snn_get_state(
         state->total_activity += bridge->dim_states[d].activation;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int rcog_snn_get_stats(rcog_snn_bridge_t* bridge, rcog_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -692,9 +689,9 @@ int rcog_snn_get_stats(rcog_snn_bridge_t* bridge, rcog_snn_stats_t* stats) {
 int rcog_snn_reset_stats(rcog_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(rcog_snn_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -702,9 +699,9 @@ int rcog_snn_reset_stats(rcog_snn_bridge_t* bridge) {
 float rcog_snn_get_depth(rcog_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float depth = bridge->last_cognitive_state.recursion_depth;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return depth;
 }
@@ -712,12 +709,12 @@ float rcog_snn_get_depth(rcog_snn_bridge_t* bridge) {
 float rcog_snn_get_total_activity(rcog_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float total = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
         total += bridge->dim_states[d].activation;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return total;
 }
@@ -733,10 +730,10 @@ int rcog_snn_register_depth_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->depth_callback = callback;
     bridge->depth_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -748,10 +745,10 @@ int rcog_snn_register_state_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state_callback = callback;
     bridge->state_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -763,10 +760,10 @@ int rcog_snn_register_self_ref_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->self_ref_callback = callback;
     bridge->self_ref_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -779,10 +776,10 @@ int rcog_snn_bio_async_connect(rcog_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -790,9 +787,9 @@ int rcog_snn_bio_async_connect(rcog_snn_bridge_t* bridge) {
 int rcog_snn_bio_async_disconnect(rcog_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -800,9 +797,9 @@ int rcog_snn_bio_async_disconnect(rcog_snn_bridge_t* bridge) {
 bool rcog_snn_is_bio_async_connected(rcog_snn_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
 }

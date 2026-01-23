@@ -12,6 +12,7 @@
  */
 
 #include "core/brain/regions/ofc/bridges/nimcp_ofc_bio_async_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
@@ -25,6 +26,8 @@
  * ============================================================================ */
 
 struct ofc_bio_async_bridge_struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     ofc_bio_async_config_t config;
 
@@ -45,8 +48,6 @@ struct ofc_bio_async_bridge_struct {
     /* Statistics */
     ofc_bio_async_stats_t stats;
 
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 };
 
 /* ============================================================================
@@ -148,8 +149,8 @@ ofc_bio_async_bridge_t* ofc_bio_async_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "ofc_bio_async") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -167,8 +168,8 @@ void ofc_bio_async_bridge_destroy(ofc_bio_async_bridge_t* bridge)
     }
 
     /* Free mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);
@@ -185,10 +186,10 @@ int ofc_bio_async_connect(
 {
     if (!bridge || !router) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1; /* Already connected */
     }
 
@@ -206,14 +207,14 @@ int ofc_bio_async_connect(
 
     bridge->module_ctx = bio_router_register_module(&info);
     if (!bridge->module_ctx) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     bridge->connected = true;
     bridge->last_broadcast_us = get_time_us();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -221,10 +222,10 @@ int ofc_bio_async_disconnect(ofc_bio_async_bridge_t* bridge)
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0; /* Already disconnected */
     }
 
@@ -238,7 +239,7 @@ int ofc_bio_async_disconnect(ofc_bio_async_bridge_t* bridge)
     bridge->ofc = NULL;
     bridge->router = NULL;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -258,7 +259,7 @@ int ofc_bio_async_process_inbox(
 {
     if (!bridge || !bridge->connected) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t processed = bio_router_process_inbox(
         bridge->module_ctx,
@@ -267,7 +268,7 @@ int ofc_bio_async_process_inbox(
 
     bridge->stats.messages_received += processed;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return (int)processed;
 }
 
@@ -277,7 +278,7 @@ int ofc_bio_async_update(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->time_since_broadcast_ms += delta_ms;
 
@@ -288,7 +289,7 @@ int ofc_bio_async_update(
         bridge->last_broadcast_us = get_time_us();
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -305,7 +306,7 @@ int ofc_bio_async_broadcast_value(
     if (!bridge || !bridge->connected) return -1;
     if (!bridge->config.enable_value_broadcast) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     ofc_bio_value_msg_t msg;
     memset(&msg, 0, sizeof(msg));
@@ -328,7 +329,7 @@ int ofc_bio_async_broadcast_value(
         bridge->stats.routing_errors++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return (err == NIMCP_SUCCESS) ? 0 : -1;
 }
 
@@ -342,7 +343,7 @@ int ofc_bio_async_broadcast_decision(
     if (!bridge || !bridge->connected) return -1;
     if (!bridge->config.enable_decision_broadcast) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     ofc_bio_decision_msg_t msg;
     memset(&msg, 0, sizeof(msg));
@@ -367,7 +368,7 @@ int ofc_bio_async_broadcast_decision(
         bridge->stats.routing_errors++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return (err == NIMCP_SUCCESS) ? 0 : -1;
 }
 
@@ -387,7 +388,7 @@ int ofc_bio_async_broadcast_rpe(
         return 0;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     ofc_bio_rpe_msg_t msg;
     memset(&msg, 0, sizeof(msg));
@@ -414,7 +415,7 @@ int ofc_bio_async_broadcast_rpe(
         bridge->stats.routing_errors++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return (err == NIMCP_SUCCESS) ? 0 : -1;
 }
 
@@ -427,7 +428,7 @@ int ofc_bio_async_broadcast_reversal(
     if (!bridge || !bridge->connected) return -1;
     if (!bridge->config.enable_reversal_broadcast) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     ofc_bio_reversal_msg_t msg;
     memset(&msg, 0, sizeof(msg));
@@ -453,7 +454,7 @@ int ofc_bio_async_broadcast_reversal(
         bridge->stats.routing_errors++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return (err == NIMCP_SUCCESS) ? 0 : -1;
 }
 
@@ -465,7 +466,7 @@ int ofc_bio_async_broadcast_expected_value(
 {
     if (!bridge || !bridge->connected) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     ofc_bio_expected_value_msg_t msg;
     memset(&msg, 0, sizeof(msg));
@@ -487,7 +488,7 @@ int ofc_bio_async_broadcast_expected_value(
         bridge->stats.routing_errors++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return (err == NIMCP_SUCCESS) ? 0 : -1;
 }
 
@@ -500,7 +501,7 @@ int ofc_bio_async_broadcast_context_change(
     if (!bridge || !bridge->connected) return -1;
     if (!bridge->config.enable_context_broadcast) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     ofc_bio_context_msg_t msg;
     memset(&msg, 0, sizeof(msg));
@@ -527,7 +528,7 @@ int ofc_bio_async_broadcast_context_change(
         bridge->stats.routing_errors++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return (err == NIMCP_SUCCESS) ? 0 : -1;
 }
 
@@ -542,21 +543,21 @@ int ofc_bio_async_subscribe_module(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check for existing subscription */
     for (uint32_t i = 0; i < bridge->subscription_count; i++) {
         if (bridge->subscriptions[i].module_id == module_id) {
             bridge->subscriptions[i].msg_type_mask = msg_types;
             bridge->subscriptions[i].active = true;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return 0;
         }
     }
 
     /* Add new subscription */
     if (bridge->subscription_count >= bridge->config.max_subscriptions) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -573,7 +574,7 @@ int ofc_bio_async_subscribe_module(
         bridge->stats.peak_subscriptions = bridge->subscription_count;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -583,7 +584,7 @@ int ofc_bio_async_unsubscribe_module(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->subscription_count; i++) {
         if (bridge->subscriptions[i].module_id == module_id) {
@@ -593,12 +594,12 @@ int ofc_bio_async_unsubscribe_module(
             }
             bridge->subscription_count--;
             bridge->stats.active_subscriptions = bridge->subscription_count;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return 0;
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return -1; /* Not found */
 }
 
@@ -609,17 +610,17 @@ int ofc_bio_async_update_subscription(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->subscription_count; i++) {
         if (bridge->subscriptions[i].module_id == module_id) {
             bridge->subscriptions[i].msg_type_mask = msg_types;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return 0;
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return -1; /* Not found */
 }
 
@@ -660,10 +661,10 @@ int ofc_bio_async_reset_stats(ofc_bio_async_bridge_t* bridge)
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     bridge->stats.active_subscriptions = bridge->subscription_count;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

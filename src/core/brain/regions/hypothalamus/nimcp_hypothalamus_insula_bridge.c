@@ -10,6 +10,7 @@
  * @date 2026-01-04
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_insula_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -23,6 +24,7 @@
  *===========================================================================*/
 
 struct hypo_insula_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     hypo_drive_system_handle_t* drives;
     hypo_insula_config_t config;
 

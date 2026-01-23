@@ -235,7 +235,7 @@ knowledge_immune_bridge_t* knowledge_immune_bridge_create(
     bridge->current_retrieval_latency_ms = bridge->baseline_retrieval_latency_ms;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "knowledge_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);    return NULL;
     }
@@ -249,7 +249,7 @@ void knowledge_immune_bridge_destroy(knowledge_immune_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     /* Free bridge (don't destroy linked systems - we don't own them) */

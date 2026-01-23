@@ -4,6 +4,7 @@
  */
 
 #include "core/brain/subcortical/nimcp_basal_ganglia_training_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
@@ -74,7 +75,7 @@ bgtr_bridge_t* bgtr_bridge_create(
     bridge->last_action_time = 0;
 
     /* Create mutex */
-    bridge->mutex = nimcp_mutex_create(NULL);
+    if (bridge_base_init(&bridge->base, 0, "basal_ganglia_training") != 0) { nimcp_free(bridge); return NULL; }
 
     return bridge;
 }
@@ -93,7 +94,7 @@ void bgtr_bridge_destroy(bgtr_bridge_t* bridge) {
         nimcp_training_free_weights(bridge->training, &bridge->habit_weights);
     }
 
-    if (bridge->mutex) nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     if (bridge->traces) nimcp_free(bridge->traces);
 
     nimcp_free(bridge);

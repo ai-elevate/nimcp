@@ -104,7 +104,7 @@ biological_timescales_fep_bridge_t* biological_timescales_fep_create(
     }
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "biological_timescales_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "biological_timescales_fep_create: Failed to create mutex");
         NIMCP_LOGGING_ERROR("biological_timescales_fep_create: Failed to create mutex");
@@ -129,7 +129,7 @@ void biological_timescales_fep_destroy(biological_timescales_fep_bridge_t* bridg
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

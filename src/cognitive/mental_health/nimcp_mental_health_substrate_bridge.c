@@ -3,6 +3,7 @@
  * @brief Mental Health-Neural Substrate Bridge Implementation
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/mental_health/nimcp_mental_health_substrate_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
@@ -12,6 +13,7 @@
 #include <string.h>
 
 struct mental_health_substrate_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* mental_health;
     neural_substrate_t* substrate;
     mental_health_substrate_config_t config;

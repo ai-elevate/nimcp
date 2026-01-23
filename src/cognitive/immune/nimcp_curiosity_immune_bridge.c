@@ -213,7 +213,7 @@ curiosity_immune_bridge_t* curiosity_immune_bridge_create(
     bridge->max_suppression_observed = 0.0f;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "curiosity_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         LOG_MODULE_ERROR(LOG_MODULE, "Mutex creation failed");
         nimcp_free(bridge);
@@ -237,7 +237,7 @@ void curiosity_immune_bridge_destroy(curiosity_immune_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     /* Free bridge */

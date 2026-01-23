@@ -6,6 +6,7 @@
  * modulation of insight depth, pattern recognition, and creative leaps.
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/parietal/nimcp_intuition_substrate_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
@@ -14,6 +15,7 @@
 #include <string.h>
 
 struct intuition_substrate_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     intuition_system_t* intuition;
     neural_substrate_t* substrate;
     intuition_substrate_config_t config;

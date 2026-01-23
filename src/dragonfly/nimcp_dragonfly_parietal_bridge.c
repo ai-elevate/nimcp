@@ -9,6 +9,7 @@
  */
 
 #include "dragonfly/nimcp_dragonfly_parietal_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -38,6 +39,8 @@ static inline uint64_t get_time_us(void) {
  * @brief Parietal bridge internal state
  */
 struct dragonfly_parietal_bridge_s {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Connected systems */
     dragonfly_system_t* dragonfly;
     spatial_reasoning_t* spatial_reasoning;
@@ -48,7 +51,6 @@ struct dragonfly_parietal_bridge_s {
 
     /* State */
     bool initialized;
-    nimcp_mutex_t* mutex;
 
     /* Observer state */
     observer_state_t observer;
@@ -230,11 +232,8 @@ dragonfly_parietal_bridge_t* dragonfly_parietal_bridge_create(
         bridge->config = parietal_bridge_default_config();
     }
 
-    /* Create mutex */
-    mutex_attr_t attr = {0};
-    attr.type = MUTEX_TYPE_NORMAL;
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "dragonfly_parietal") != 0) {
         free(bridge);
         return NULL;
     }
@@ -267,17 +266,14 @@ void dragonfly_parietal_bridge_destroy(dragonfly_parietal_bridge_t* bridge) {
         parietal_attention_map_destroy(bridge->internal_attention);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
-
+    bridge_base_cleanup(&bridge->base);
     free(bridge);
 }
 
 int dragonfly_parietal_bridge_reset(dragonfly_parietal_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     memset(bridge->targets, 0, sizeof(bridge->targets));
     bridge->num_targets = 0;
@@ -291,7 +287,7 @@ int dragonfly_parietal_bridge_reset(dragonfly_parietal_bridge_t* bridge) {
         bridge->internal_attention->peak_weight = 0;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -305,10 +301,10 @@ int dragonfly_parietal_bridge_set_observer(
 ) {
     if (!bridge || !bridge->initialized || !observer) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->observer = *observer;
     bridge->observer_set = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -319,9 +315,9 @@ int dragonfly_parietal_bridge_get_observer(
 ) {
     if (!bridge || !bridge->initialized || !observer) return -1;
 
-    nimcp_mutex_lock(((dragonfly_parietal_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((dragonfly_parietal_bridge_t*)bridge)->base.mutex);
     *observer = bridge->observer;
-    nimcp_mutex_unlock(((dragonfly_parietal_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((dragonfly_parietal_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -340,7 +336,7 @@ int dragonfly_parietal_bridge_transform_position(
     if (from_frame == to_frame) return 0;  /* No transform needed */
 
     dragonfly_parietal_bridge_t* mutable_bridge = (dragonfly_parietal_bridge_t*)bridge;
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     /* Get observer state */
     observer_state_t obs = bridge->observer;
@@ -382,7 +378,7 @@ int dragonfly_parietal_bridge_transform_position(
     *position = world_pos;
     mutable_bridge->stats.transforms_computed++;
 
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
     return 0;
 }
 
@@ -396,7 +392,7 @@ int dragonfly_parietal_bridge_compute_angles(
     if (!bridge || !bridge->initialized || !position) return -1;
 
     dragonfly_parietal_bridge_t* mutable_bridge = (dragonfly_parietal_bridge_t*)bridge;
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     /* Compute relative position in body frame */
     parietal_vec3_t rel_pos = vec3_sub(position, &bridge->observer.position);
@@ -419,7 +415,7 @@ int dragonfly_parietal_bridge_compute_angles(
         if (elevation) *elevation = 0;
     }
 
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
     return 0;
 }
 
@@ -439,7 +435,7 @@ int dragonfly_parietal_bridge_transform_target(
     /* Transform velocity (rotation only, no translation) */
     if (target->frame != target_frame) {
         dragonfly_parietal_bridge_t* mutable_bridge = (dragonfly_parietal_bridge_t*)bridge;
-        nimcp_mutex_lock(mutable_bridge->mutex);
+        nimcp_mutex_lock(mutable_bridge->base.mutex);
 
         if (target_frame == COORD_FRAME_BODY || target_frame == COORD_FRAME_HEAD) {
             parietal_quat_t inv_orient = quat_conjugate(&bridge->observer.orientation);
@@ -448,7 +444,7 @@ int dragonfly_parietal_bridge_transform_target(
             target->velocity = dragonfly_parietal_quat_rotate_vec(&bridge->observer.orientation, &target->velocity);
         }
 
-        nimcp_mutex_unlock(mutable_bridge->mutex);
+        nimcp_mutex_unlock(mutable_bridge->base.mutex);
     }
 
     /* Recompute angles */
@@ -466,7 +462,7 @@ int dragonfly_parietal_bridge_transform_target(
 int dragonfly_parietal_bridge_sync_targets(dragonfly_parietal_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now = get_time_us();
     bridge->num_targets = 0;
@@ -512,7 +508,7 @@ int dragonfly_parietal_bridge_sync_targets(dragonfly_parietal_bridge_t* bridge) 
 
     bridge->stats.targets_processed += bridge->num_targets;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return (int)bridge->num_targets;
 }
 
@@ -524,7 +520,7 @@ int dragonfly_parietal_bridge_get_targets(
     if (!bridge || !bridge->initialized || !targets) return -1;
 
     dragonfly_parietal_bridge_t* mutable_bridge = (dragonfly_parietal_bridge_t*)bridge;
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     /* Copy and transform targets */
     for (uint32_t i = 0; i < bridge->num_targets; i++) {
@@ -535,7 +531,7 @@ int dragonfly_parietal_bridge_get_targets(
     }
 
     int count = (int)bridge->num_targets;
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
     return count;
 }
 
@@ -547,7 +543,7 @@ int dragonfly_parietal_bridge_get_primary_target(
     if (!bridge || !bridge->initialized || !target) return -1;
 
     dragonfly_parietal_bridge_t* mutable_bridge = (dragonfly_parietal_bridge_t*)bridge;
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     /* Find primary target */
     bool found = false;
@@ -560,7 +556,7 @@ int dragonfly_parietal_bridge_get_primary_target(
     }
 
     if (!found) {
-        nimcp_mutex_unlock(mutable_bridge->mutex);
+        nimcp_mutex_unlock(mutable_bridge->base.mutex);
         return 1;  /* No primary target */
     }
 
@@ -569,7 +565,7 @@ int dragonfly_parietal_bridge_get_primary_target(
         dragonfly_parietal_bridge_transform_target(bridge, target, frame);
     }
 
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
     return 0;
 }
 
@@ -708,7 +704,7 @@ int dragonfly_parietal_bridge_update_attention(
 ) {
     if (!bridge || !bridge->initialized || !map) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Decay existing attention */
     float decay = bridge->config.attention_decay;
@@ -733,7 +729,7 @@ int dragonfly_parietal_bridge_update_attention(
 
     bridge->stats.attention_updates++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -748,7 +744,7 @@ int dragonfly_parietal_bridge_generate_motor_command(
 ) {
     if (!bridge || !bridge->initialized || !command) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Find target */
     parietal_target_t* target = NULL;
@@ -760,7 +756,7 @@ int dragonfly_parietal_bridge_generate_motor_command(
     }
 
     if (!target) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -792,7 +788,7 @@ int dragonfly_parietal_bridge_generate_motor_command(
     command->urgency = target->attention_weight;
     bridge->stats.motor_commands_generated++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -804,7 +800,7 @@ int dragonfly_parietal_bridge_generate_saccade(
 ) {
     if (!bridge || !bridge->initialized || !command) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     memset(command, 0, sizeof(motor_command_t));
     command->type = MOTOR_CMD_SACCADE;
@@ -821,7 +817,7 @@ int dragonfly_parietal_bridge_generate_saccade(
 
     bridge->stats.motor_commands_generated++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -832,7 +828,7 @@ int dragonfly_parietal_bridge_generate_pursuit(
 ) {
     if (!bridge || !bridge->initialized || !command) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Find target */
     parietal_target_t* target = NULL;
@@ -844,7 +840,7 @@ int dragonfly_parietal_bridge_generate_pursuit(
     }
 
     if (!target) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -860,7 +856,7 @@ int dragonfly_parietal_bridge_generate_pursuit(
 
     bridge->stats.motor_commands_generated++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -876,18 +872,18 @@ int dragonfly_parietal_bridge_compute_intercept_path(
 ) {
     if (!bridge || !bridge->initialized || !waypoints || max_waypoints == 0) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get intercept solution from dragonfly */
     if (!bridge->dragonfly) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
     intercept_solution_t solution;
     if (dragonfly_get_intercept_solution(bridge->dragonfly, &solution) != 0 ||
         solution.feasibility != INTERCEPT_FEASIBLE) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -929,7 +925,7 @@ int dragonfly_parietal_bridge_compute_intercept_path(
         waypoints[i].confidence = solution.confidence;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return (int)num_waypoints;
 }
 
@@ -999,10 +995,10 @@ int dragonfly_parietal_bridge_get_stats(
 ) {
     if (!bridge || !bridge->initialized || !stats) return -1;
 
-    nimcp_mutex_lock(((dragonfly_parietal_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((dragonfly_parietal_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
     stats->current_targets = bridge->num_targets;
-    nimcp_mutex_unlock(((dragonfly_parietal_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((dragonfly_parietal_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -1010,10 +1006,10 @@ int dragonfly_parietal_bridge_get_stats(
 int dragonfly_parietal_bridge_reset_stats(dragonfly_parietal_bridge_t* bridge) {
     if (!bridge || !bridge->initialized) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(parietal_bridge_stats_t));
     bridge->transform_time_sum = 0;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1029,9 +1025,9 @@ int dragonfly_parietal_bridge_set_config(
     if (!bridge || !bridge->initialized || !config) return -1;
     if (!parietal_bridge_validate_config(config)) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->config = *config;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1042,9 +1038,9 @@ int dragonfly_parietal_bridge_get_config(
 ) {
     if (!bridge || !bridge->initialized || !config) return -1;
 
-    nimcp_mutex_lock(((dragonfly_parietal_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((dragonfly_parietal_bridge_t*)bridge)->base.mutex);
     *config = bridge->config;
-    nimcp_mutex_unlock(((dragonfly_parietal_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((dragonfly_parietal_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }

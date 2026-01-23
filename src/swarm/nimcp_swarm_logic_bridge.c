@@ -396,7 +396,7 @@ swarm_logic_bridge_t* swarm_logic_bridge_create(const swarm_logic_bridge_config_
     }
 
     // Create mutex
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "swarm_logic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         LOG_ERROR("Failed to create mutex");
         nimcp_free(bridge->cache);
@@ -419,7 +419,7 @@ swarm_logic_bridge_t* swarm_logic_bridge_create(const swarm_logic_bridge_config_
     bridge->logic_network = neural_logic_create(&logic_config);
     if (!bridge->logic_network) {
         LOG_ERROR("Failed to create neural logic network");
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge->cache);
         nimcp_free(bridge->rules);
         nimcp_free(bridge);
@@ -506,7 +506,7 @@ void swarm_logic_bridge_destroy(swarm_logic_bridge_t* bridge) {
 
     // Destroy mutex
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

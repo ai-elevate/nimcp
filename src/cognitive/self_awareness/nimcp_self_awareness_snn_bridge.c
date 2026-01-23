@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/self_awareness/nimcp_self_awareness_snn_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_config.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
@@ -25,9 +26,9 @@
 //=============================================================================
 
 struct self_awareness_snn_bridge {
+    bridge_base_t base;
     self_awareness_snn_config_t config;
     snn_network_t* snn;
-    nimcp_mutex_t* mutex;
 
     /* State */
     self_awareness_snn_state_t state;
@@ -149,10 +150,8 @@ self_awareness_snn_bridge_t* self_awareness_snn_create(const self_awareness_snn_
         return NULL;
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize bridge base */
+    if (bridge_base_init(&bridge->base, 0, "self_awareness_snn") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -169,7 +168,7 @@ self_awareness_snn_bridge_t* self_awareness_snn_create(const self_awareness_snn_
 
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -223,9 +222,7 @@ void self_awareness_snn_destroy(self_awareness_snn_bridge_t* bridge) {
         snn_network_destroy(bridge->snn);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge->encoding_buffer);
     nimcp_free(bridge->output_buffer);
@@ -237,7 +234,7 @@ void self_awareness_snn_destroy(self_awareness_snn_bridge_t* bridge) {
 int self_awareness_snn_reset(self_awareness_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset SNN network */
     if (bridge->snn) {
@@ -270,7 +267,7 @@ int self_awareness_snn_reset(self_awareness_snn_bridge_t* bridge) {
     bridge->recognition_signal = 0.0f;
     bridge->agency_signal = 0.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -286,7 +283,7 @@ int self_awareness_snn_encode_state(
     if (!bridge || !dimensions) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = SELF_SNN_STATE_ENCODING;
 
     uint32_t neurons_per_dim = bridge->config.neurons_per_dim;
@@ -331,7 +328,7 @@ int self_awareness_snn_encode_state(
 
     bridge->stats.total_spikes += total_spikes;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return total_spikes;
 }
 
@@ -342,7 +339,7 @@ int self_awareness_snn_encode_self_recognition(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[SELF_DIM_COUNT] = {0};
     dims[SELF_DIM_SELF_RECOGNITION] = clamp_f(recognition, 0.0f, 1.0f);
@@ -351,7 +348,7 @@ int self_awareness_snn_encode_self_recognition(
 
     bridge->recognition_signal = recognition;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return self_awareness_snn_encode_state(bridge, dims, 3);
 }
@@ -363,7 +360,7 @@ int self_awareness_snn_encode_agency(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[SELF_DIM_COUNT] = {0};
     dims[SELF_DIM_AGENCY_SENSE] = clamp_f(agency_level, 0.0f, 1.0f);
@@ -372,7 +369,7 @@ int self_awareness_snn_encode_agency(
 
     bridge->agency_signal = agency_level;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return self_awareness_snn_encode_state(bridge, dims, 2);
 }
@@ -384,7 +381,7 @@ int self_awareness_snn_encode_metacognitive(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[SELF_DIM_COUNT] = {0};
     dims[SELF_DIM_METACOGNITIVE] = clamp_f(metacog_level, 0.0f, 1.0f);
@@ -401,7 +398,7 @@ int self_awareness_snn_encode_metacognitive(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return self_awareness_snn_encode_state(bridge, dims, 2);
 }
@@ -414,7 +411,7 @@ int self_awareness_snn_simulate(self_awareness_snn_bridge_t* bridge, float durat
     if (!bridge) return -1;
     if (duration_ms <= 0.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = SELF_SNN_STATE_SIMULATING;
 
     float dt = bridge->config.dt_ms;
@@ -485,7 +482,7 @@ int self_awareness_snn_simulate(self_awareness_snn_bridge_t* bridge, float durat
         bridge->state_callback(bridge, &bridge->last_awareness_state, bridge->state_callback_data);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -521,9 +518,9 @@ int self_awareness_snn_get_awareness_state(
 ) {
     if (!bridge || !awareness_state) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *awareness_state = bridge->last_awareness_state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -536,11 +533,11 @@ int self_awareness_snn_get_activations(
     if (!bridge || !activations) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t d = 0; d < num_dims; d++) {
         activations[d] = bridge->dim_states[d].activation;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -551,13 +548,13 @@ bool self_awareness_snn_check_recognition(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_awareness_state.self_recognition;
     if (recognition_level) {
         *recognition_level = level;
     }
     bool detected = level > bridge->config.recognition_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return detected;
 }
@@ -568,13 +565,13 @@ bool self_awareness_snn_check_agency(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_awareness_state.agency_sense;
     if (agency_level) {
         *agency_level = level;
     }
     bool detected = level > bridge->config.agency_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return detected;
 }
@@ -585,7 +582,7 @@ bool self_awareness_snn_check_state_change(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     /* Calculate magnitude from prev_state differences */
     float mag = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
@@ -598,7 +595,7 @@ bool self_awareness_snn_check_state_change(
         *change_magnitude = mag;
     }
     bool changed = mag > bridge->config.state_change_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return changed;
 }
@@ -615,9 +612,9 @@ int self_awareness_snn_get_dim_state(
     if (!bridge || !state) return -1;
     if (dim >= bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -628,7 +625,7 @@ int self_awareness_snn_get_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
     state->mean_self_awareness = bridge->last_awareness_state.self_recognition;
@@ -645,16 +642,16 @@ int self_awareness_snn_get_state(
         state->total_activity += bridge->dim_states[d].activation;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int self_awareness_snn_get_stats(self_awareness_snn_bridge_t* bridge, self_awareness_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -662,9 +659,9 @@ int self_awareness_snn_get_stats(self_awareness_snn_bridge_t* bridge, self_aware
 int self_awareness_snn_reset_stats(self_awareness_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(self_awareness_snn_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -672,9 +669,9 @@ int self_awareness_snn_reset_stats(self_awareness_snn_bridge_t* bridge) {
 float self_awareness_snn_get_awareness_level(self_awareness_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float awareness = bridge->last_awareness_state.self_recognition;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return awareness;
 }
@@ -682,12 +679,12 @@ float self_awareness_snn_get_awareness_level(self_awareness_snn_bridge_t* bridge
 float self_awareness_snn_get_total_activity(self_awareness_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float total = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
         total += bridge->dim_states[d].activation;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return total;
 }
@@ -703,10 +700,10 @@ int self_awareness_snn_register_recognition_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->recognition_callback = callback;
     bridge->recognition_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -718,10 +715,10 @@ int self_awareness_snn_register_state_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state_callback = callback;
     bridge->state_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -733,10 +730,10 @@ int self_awareness_snn_register_agency_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->agency_callback = callback;
     bridge->agency_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -749,10 +746,10 @@ int self_awareness_snn_bio_async_connect(self_awareness_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -760,9 +757,9 @@ int self_awareness_snn_bio_async_connect(self_awareness_snn_bridge_t* bridge) {
 int self_awareness_snn_bio_async_disconnect(self_awareness_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -770,9 +767,9 @@ int self_awareness_snn_bio_async_disconnect(self_awareness_snn_bridge_t* bridge)
 bool self_awareness_snn_is_bio_async_connected(self_awareness_snn_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
 }

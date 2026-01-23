@@ -17,8 +17,9 @@
  * @date 2025-12-31
  */
 
-#define _POSIX_C_SOURCE 199309L
+#define _POSIX_C_SOURCE 200809L
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/occipital/nimcp_occipital_audiovisual_bridge.h"
 #include "core/brain/regions/occipital/nimcp_occipital_adapter.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
@@ -109,6 +110,7 @@ typedef struct {
  * @brief Internal bridge structure
  */
 struct occipital_audiovisual_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /* Configuration */
     occipital_av_config_t config;
 

@@ -9,6 +9,7 @@
  * @date 2026-01-04
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -41,6 +42,7 @@ typedef struct {
  * @brief Bridge internal state
  */
 struct wernicke_broca_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     wbb_config_t config;
 
     /* Endpoint connections */

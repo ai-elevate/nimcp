@@ -6,6 +6,7 @@
  * @brief Implementation of physics-immune bidirectional bridge
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "physics/bridges/nimcp_physics_immune_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -19,6 +20,7 @@
 //=============================================================================
 
 struct physics_immune_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /** Configuration */
     physics_immune_config_t config;
 

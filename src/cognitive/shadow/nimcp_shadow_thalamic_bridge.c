@@ -46,7 +46,7 @@ shadow_thalamic_config_t shadow_thalamic_default_config(void) {
 shadow_thalamic_bridge_t* shadow_thalamic_bridge_create(void* shadow, thalamic_router_t* router, const shadow_thalamic_config_t* config) {
     shadow_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(shadow_thalamic_bridge_t));
     if (!bridge) return NULL;
-    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (bridge_base_init(&bridge->base, 0, "shadow_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -62,7 +62,7 @@ shadow_thalamic_bridge_t* shadow_thalamic_bridge_create(void* shadow, thalamic_r
 void shadow_thalamic_bridge_destroy(shadow_thalamic_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
 }

@@ -18,6 +18,7 @@
  * @author NIMCP Development Team
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/integration/nimcp_emotion_memory_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/platform/nimcp_platform_mutex.h"
@@ -51,6 +52,7 @@ typedef struct emotional_tag {
  * @brief Emotion-Memory bridge internal structure
  */
 struct emotion_memory_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     emotion_memory_config_t config;      /**< Bridge configuration */
     emotional_tag_t* tags;               /**< Array of emotional tags */
     size_t tag_capacity;                 /**< Allocated capacity */
@@ -208,8 +210,8 @@ emotion_memory_bridge_t* emotion_memory_bridge_create(
     bridge->tag_count = 0;
 
     /* Create mutex for thread safety */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         nimcp_free(bridge->tags);
         nimcp_free(bridge);
         return NULL;
@@ -229,9 +231,9 @@ void emotion_memory_bridge_destroy(emotion_memory_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
-        bridge->mutex = NULL;
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge->base.mutex = NULL;
     }
 
     /* Free tags array */
@@ -264,7 +266,7 @@ int emotion_memory_tag_memory(
     valence = clamp_float(valence, EMOTION_MEMORY_VALENCE_MIN, EMOTION_MEMORY_VALENCE_MAX);
     arousal = clamp_float(arousal, EMOTION_MEMORY_AROUSAL_MIN, EMOTION_MEMORY_AROUSAL_MAX);
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Check if memory already has a tag */
     emotional_tag_t* tag = find_tag_unlocked(bridge, memory_id);
@@ -281,7 +283,7 @@ int emotion_memory_tag_memory(
         if (!tag) {
             /* Check capacity limit */
             if (bridge->tag_count >= EMOTION_MEMORY_MAX_MEMORIES) {
-                nimcp_platform_mutex_unlock(bridge->mutex);
+                nimcp_platform_mutex_unlock(bridge->base.mutex);
                 return -1;
             }
 
@@ -296,7 +298,7 @@ int emotion_memory_tag_memory(
                 new_capacity * sizeof(emotional_tag_t)
             );
             if (!new_tags) {
-                nimcp_platform_mutex_unlock(bridge->mutex);
+                nimcp_platform_mutex_unlock(bridge->base.mutex);
                 return -1;
             }
 
@@ -323,7 +325,7 @@ int emotion_memory_tag_memory(
     bridge->stats.memories_tagged++;
     update_averages_unlocked(bridge, valence, arousal);
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -340,14 +342,14 @@ int emotion_memory_modulate_consolidation(
     /* Clamp intensity to valid range */
     emotional_intensity = clamp_float(emotional_intensity, 0.0f, 1.0f);
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Find the tag for this memory */
     emotional_tag_t* tag = find_tag_unlocked(bridge, memory_id);
 
     if (!tag) {
         /* Memory not tagged - still return success, just no boost */
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -360,7 +362,7 @@ int emotion_memory_modulate_consolidation(
         bridge->stats.consolidation_boosts++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -382,14 +384,14 @@ int emotion_memory_on_retrieval(
     memset(emotion_out, 0, sizeof(emotion_memory_emotion_out_t));
     emotion_out->has_emotion = false;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Find the tag for this memory */
     emotional_tag_t* tag = find_tag_unlocked(bridge, memory_id);
 
     if (!tag) {
         /* No emotional tag for this memory - not an error, just no emotion */
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0;  /* Success - emotion_out initialized with has_emotion = false */
     }
 
@@ -413,7 +415,7 @@ int emotion_memory_on_retrieval(
     /* Update statistics */
     bridge->stats.retrievals_with_emotion++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -444,7 +446,7 @@ int emotion_memory_get_emotional_memories(
         valence_max = temp;
     }
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     size_t found_count = 0;
 
@@ -459,7 +461,7 @@ int emotion_memory_get_emotional_memories(
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return (int)found_count;
 }
@@ -479,11 +481,11 @@ int emotion_memory_bridge_get_stats(
     /* Cast away const for mutex lock (safe - mutex protects data, not bridge ptr) */
     emotion_memory_bridge_t* mutable_bridge = (emotion_memory_bridge_t*)bridge;
 
-    nimcp_platform_mutex_lock(mutable_bridge->mutex);
+    nimcp_platform_mutex_lock(mutable_bridge->base.mutex);
 
     *stats = bridge->stats;
 
-    nimcp_platform_mutex_unlock(mutable_bridge->mutex);
+    nimcp_platform_mutex_unlock(mutable_bridge->base.mutex);
 
     return 0;
 }

@@ -5,6 +5,7 @@
  * @date 2026-01-11
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/nimcp_neuromodulatory_logging_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -23,6 +24,7 @@
  * ============================================================================ */
 
 struct neuromod_logging_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     uint32_t magic;
     neuromod_logging_bridge_config_t config;
 

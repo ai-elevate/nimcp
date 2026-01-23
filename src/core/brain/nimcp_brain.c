@@ -188,17 +188,7 @@ extern void nimcp_health_agent_heartbeat_ex(struct nimcp_health_agent* agent,
                                              const char* operation,
                                              float progress);
 
-/**
- * @brief Send heartbeat from brain operation
- * @param brain Brain context with health agent
- * @param operation Operation name
- * @param progress Progress value [0.0-1.0]
- */
-static inline void brain_heartbeat(brain_t brain, const char* operation, float progress) {
-    if (brain && brain->health_agent_enabled && brain->health_agent) {
-        nimcp_health_agent_heartbeat_ex(brain->health_agent, operation, progress);
-    }
-}
+/* brain_heartbeat is defined in nimcp_brain_internal.h */
 
 //=============================================================================
 // Bio-Async Message Handlers and Integration

@@ -2,6 +2,7 @@
 // nimcp_language_cerebellum_bridge.c - Language-Cerebellum Timing Bridge
 //=============================================================================
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "language/bridges/nimcp_language_cerebellum_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -16,6 +17,7 @@
 #define MAX_PHONEME_DURATIONS 64
 
 struct language_cerebellum_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     language_orchestrator_t* language;
     cerebellum_adapter_t* cerebellum;
     language_cerebellum_config_t config;

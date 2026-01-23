@@ -3,6 +3,7 @@
  * @brief Game Theory-Thalamic Bridge Implementation
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/game_theory/nimcp_game_theory_thalamic_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
@@ -10,6 +11,7 @@
 #include <string.h>
 
 struct game_theory_thalamic_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* game_theory;
     thalamic_router_t* router;
     game_theory_thalamic_config_t config;

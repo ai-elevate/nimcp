@@ -7,6 +7,7 @@
  * HOW: Monitors ATP/fatigue; modulates mirroring fidelity, empathy, imitation
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/mirror_neurons/nimcp_mirror_substrate_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
@@ -18,6 +19,7 @@
 #include <math.h>
 
 struct mirror_substrate_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* mirror;
     neural_substrate_t* substrate;
     mirror_substrate_config_t config;

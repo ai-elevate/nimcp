@@ -9,6 +9,7 @@
  * HOW:  Encode evidence quality, source reliability, and bias signals as spike patterns
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/epistemic/nimcp_epistemic_snn_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -41,6 +42,7 @@ typedef struct {
 } epistemic_neuron_t;
 
 struct epistemic_snn_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     epistemic_snn_config_t config;
     epistemic_snn_state_t state;
 

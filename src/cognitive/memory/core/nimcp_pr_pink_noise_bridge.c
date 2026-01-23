@@ -15,6 +15,7 @@
  * @author NIMCP Development Team
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/memory/core/nimcp_pr_pink_noise_bridge.h"
 #include "cognitive/memory/core/nimcp_pr_memory_node.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -106,6 +107,7 @@ typedef struct {
  * WHY:  Contains all generators, timing, history, and statistics
  */
 struct pr_pink_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /* Magic number for validation */
     uint32_t magic;
 
@@ -192,11 +194,11 @@ static inline bool is_valid_target(pr_pink_target_t target) {
  */
 static inline bool bridge_lock(pr_pink_bridge_t bridge) {
     if (!bridge->mutex_initialized) return true;
-    int result = pthread_mutex_trylock(&bridge->mutex);
+    int result = pthread_mutex_trylock(&bridge->base.mutex);
     if (result == 0) return true;
     /* Contention detected */
     atomic_fetch_add(&bridge->mutex_contentions, 1);
-    return pthread_mutex_lock(&bridge->mutex) == 0;
+    return pthread_mutex_lock(&bridge->base.mutex) == 0;
 }
 
 /**
@@ -204,7 +206,7 @@ static inline bool bridge_lock(pr_pink_bridge_t bridge) {
  */
 static inline void bridge_unlock(pr_pink_bridge_t bridge) {
     if (bridge->mutex_initialized) {
-        pthread_mutex_unlock(&bridge->mutex);
+        pthread_mutex_unlock(&bridge->base.mutex);
     }
 }
 
@@ -601,7 +603,7 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
     pthread_mutexattr_t attr;
     pthread_mutexattr_init(&attr);
     pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
-    if (pthread_mutex_init(&bridge->mutex, &attr) != 0) {
+    if (pthread_mutex_init(&bridge->base.mutex, &attr) != 0) {
         pthread_mutexattr_destroy(&attr);
         free(bridge);
         pr_pink_bridge_set_error("Failed to initialize mutex");
@@ -628,7 +630,7 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
             for (int j = 0; j < i; j++) {
                 destroy_target_generator(&bridge->targets[j]);
             }
-            pthread_mutex_destroy(&bridge->mutex);
+            pthread_mutex_destroy(&bridge->base.mutex);
             free(bridge);
             pr_pink_bridge_set_error("Failed to initialize target %d generator", i);
             return NULL;
@@ -650,7 +652,7 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
         for (int i = 0; i < PR_PINK_NUM_TARGETS; i++) {
             destroy_target_generator(&bridge->targets[i]);
         }
-        pthread_mutex_destroy(&bridge->mutex);
+        pthread_mutex_destroy(&bridge->base.mutex);
         free(bridge);
         pr_pink_bridge_set_error("Failed to create quaternion generator");
         return NULL;
@@ -666,7 +668,7 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
         for (int i = 0; i < PR_PINK_NUM_TARGETS; i++) {
             destroy_target_generator(&bridge->targets[i]);
         }
-        pthread_mutex_destroy(&bridge->mutex);
+        pthread_mutex_destroy(&bridge->base.mutex);
         free(bridge);
         pr_pink_bridge_set_error("Failed to create consolidation timer");
         return NULL;
@@ -687,7 +689,7 @@ NIMCP_EXPORT pr_pink_bridge_t pr_pink_bridge_create(
         for (int i = 0; i < PR_PINK_NUM_TARGETS; i++) {
             destroy_target_generator(&bridge->targets[i]);
         }
-        pthread_mutex_destroy(&bridge->mutex);
+        pthread_mutex_destroy(&bridge->base.mutex);
         free(bridge);
         pr_pink_bridge_set_error("Failed to create promotion timer");
         return NULL;
@@ -749,7 +751,7 @@ NIMCP_EXPORT void pr_pink_bridge_destroy(pr_pink_bridge_t bridge) {
 
     /* Destroy mutex */
     if (bridge->mutex_initialized) {
-        pthread_mutex_destroy(&bridge->mutex);
+        pthread_mutex_destroy(&bridge->base.mutex);
     }
 
     /* Clear magic and free */

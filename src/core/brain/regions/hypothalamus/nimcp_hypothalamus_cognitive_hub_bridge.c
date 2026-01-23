@@ -17,6 +17,7 @@
  */
 
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_cognitive_hub_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_orchestrator.h"
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_drives.h"
 #include "cognitive/integration/nimcp_cognitive_integration_hub.h"
@@ -46,6 +47,8 @@
  * @brief Internal hypothalamus-cognitive hub bridge structure
  */
 struct hypo_cognitive_hub_bridge {
+    bridge_base_t base;                       /**< MUST be first: base bridge infrastructure */
+
     hypo_cognitive_hub_config_t config;       /**< Bridge configuration */
 
     /* External connections */
@@ -79,8 +82,6 @@ struct hypo_cognitive_hub_bridge {
     /* Statistics */
     hypo_cognitive_hub_stats_t stats;         /**< Bridge statistics */
 
-    /* Synchronization */
-    nimcp_mutex_t* mutex;                     /**< Thread safety mutex */
 };
 
 /* ============================================================================
@@ -143,18 +144,18 @@ static int hypo_cog_on_event(const cognitive_event_data_t* event, void* user_dat
 
     hypo_cognitive_hub_bridge_t* bridge = (hypo_cognitive_hub_bridge_t*)user_data;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update statistics */
     bridge->stats.events_received++;
     bridge->stats.last_receive_timestamp = get_timestamp_ms();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Dispatch based on event type */
     switch (event->event_type) {
         case COG_EVENT_EMOTION_UPDATE: {
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
 
             /* Update cognitive state */
             if (event->payload && event->payload_size >= sizeof(float) * 2) {
@@ -171,7 +172,7 @@ static int hypo_cog_on_event(const cognitive_event_data_t* event, void* user_dat
 
                 bridge->stats.emotion_updates_received++;
 
-                nimcp_mutex_unlock(bridge->mutex);
+                nimcp_mutex_unlock(bridge->base.mutex);
 
                 /* Invoke callback outside lock */
                 if (callback) {
@@ -180,13 +181,13 @@ static int hypo_cog_on_event(const cognitive_event_data_t* event, void* user_dat
                     callback(valence, arousal, emotion_type, cb_data);
                 }
             } else {
-                nimcp_mutex_unlock(bridge->mutex);
+                nimcp_mutex_unlock(bridge->base.mutex);
             }
             break;
         }
 
         case COG_EVENT_ATTENTION_SHIFT: {
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
 
             /* Update cognitive state */
             float attention_level = clamp_float(
@@ -200,7 +201,7 @@ static int hypo_cog_on_event(const cognitive_event_data_t* event, void* user_dat
 
             bridge->stats.attention_updates_received++;
 
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
 
             /* Invoke callback outside lock */
             if (callback && event->payload) {
@@ -211,7 +212,7 @@ static int hypo_cog_on_event(const cognitive_event_data_t* event, void* user_dat
         }
 
         case COG_EVENT_DECISION_MADE: {
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
 
             /* Update cognitive state - decision indicates executive activity */
             bridge->cognitive_state.executive_control = 0.8f;  /* High control during decision */
@@ -223,7 +224,7 @@ static int hypo_cog_on_event(const cognitive_event_data_t* event, void* user_dat
 
             bridge->stats.decision_updates_received++;
 
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
 
             /* Invoke callback outside lock */
             if (callback && event->payload && event->payload_size >= sizeof(uint64_t) + sizeof(bool)) {
@@ -239,7 +240,7 @@ static int hypo_cog_on_event(const cognitive_event_data_t* event, void* user_dat
         }
 
         case COG_EVENT_LEARNING_COMPLETE: {
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
 
             /* Update cognitive state */
             bridge->cognitive_state.learning_activity = 0.9f;  /* High learning activity */
@@ -251,7 +252,7 @@ static int hypo_cog_on_event(const cognitive_event_data_t* event, void* user_dat
 
             bridge->stats.learning_updates_received++;
 
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
 
             /* Invoke callback outside lock */
             if (callback && event->payload && event->payload_size >= sizeof(uint64_t)) {
@@ -268,13 +269,13 @@ static int hypo_cog_on_event(const cognitive_event_data_t* event, void* user_dat
         }
 
         case COG_EVENT_CONSOLIDATION: {
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
 
             /* Update cognitive state - memory consolidation pressure */
             bridge->cognitive_state.memory_consolidation = 0.8f;
             bridge->cognitive_state.last_update_timestamp = get_timestamp_ms();
 
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             break;
         }
 
@@ -300,10 +301,10 @@ static int hypo_cog_query_handler(
 
     hypo_cognitive_hub_bridge_t* bridge = (hypo_cognitive_hub_bridge_t*)context;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.queries_handled++;
     hypo_orchestrator_t orch = bridge->orch;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Initialize result */
     result->status = 0;
@@ -427,25 +428,25 @@ static int hypo_cog_on_orch_event(const hypo_event_data_t* event, void* user_dat
 
     hypo_cognitive_hub_bridge_t* bridge = (hypo_cognitive_hub_bridge_t*)user_data;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if broadcasting is enabled */
     if (!bridge->config.enable_drive_broadcast || !bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
     /* Check if we should broadcast based on urgency filter */
     if (bridge->config.broadcast_urgency_only &&
         event->urgency < HYPO_URGENCY_ELEVATED) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
     cognitive_integration_hub_t hub = bridge->cog_hub;
     uint32_t module_id = bridge->config.module_id;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Handle significant events */
     switch (event->event_type) {
@@ -478,19 +479,19 @@ static int hypo_cog_on_orch_event(const hypo_event_data_t* event, void* user_dat
             /* Publish asynchronously to avoid blocking */
             cognitive_hub_publish_async(hub, module_id, COG_EVENT_STATE_CHANGE, &cog_event);
 
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
             bridge->stats.events_published++;
             bridge->stats.drive_broadcasts++;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             break;
         }
 
         case HYPO_EVENT_STRESS_RESPONSE: {
             /* Propagate stress if enabled */
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
             bool propagate = bridge->config.enable_stress_propagation &&
                              event->stress.stress_level >= bridge->config.stress_propagation_threshold;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
 
             if (propagate) {
                 hypo_cognitive_hub_propagate_stress(bridge, event->stress.stress_level);
@@ -563,8 +564,8 @@ hypo_cognitive_hub_bridge_t* hypo_cognitive_hub_create(
     }
 
     /* Create mutex for thread safety */
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "hypothalamus_cognitive_hub") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -618,9 +619,9 @@ void hypo_cognitive_hub_destroy(hypo_cognitive_hub_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-        bridge->mutex = NULL;
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
+        bridge->base.mutex = NULL;
     }
 
     bridge->initialized = false;
@@ -633,7 +634,7 @@ int hypo_cognitive_hub_reset(hypo_cognitive_hub_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset timing */
     bridge->last_broadcast_time_ms = get_timestamp_ms();
@@ -645,7 +646,7 @@ int hypo_cognitive_hub_reset(hypo_cognitive_hub_bridge_t* bridge) {
     /* Reset stats */
     memset(&bridge->stats, 0, sizeof(hypo_cognitive_hub_stats_t));
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -663,11 +664,11 @@ int hypo_cognitive_hub_connect(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if already connected */
     if (bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -675,7 +676,7 @@ int hypo_cognitive_hub_connect(
     bridge->orch = orch;
     bridge->cog_hub = hub;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Register with cognitive hub */
     int result = cognitive_hub_register_module(
@@ -687,10 +688,10 @@ int hypo_cognitive_hub_connect(
     );
 
     if (result != 0) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->orch = NULL;
         bridge->cog_hub = NULL;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -767,9 +768,9 @@ int hypo_cognitive_hub_connect(
     );
 
     if (result == 0) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->orch_bridge_id = bridge_id;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
 
         /* Subscribe to drive events */
         hypo_orch_subscribe(
@@ -813,10 +814,10 @@ int hypo_cognitive_hub_connect(
         );
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->connected = true;
     bridge->last_broadcast_time_ms = get_timestamp_ms();
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -826,10 +827,10 @@ int hypo_cognitive_hub_disconnect(hypo_cognitive_hub_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -838,7 +839,7 @@ int hypo_cognitive_hub_disconnect(hypo_cognitive_hub_bridge_t* bridge) {
     uint32_t module_id = bridge->config.module_id;
     uint32_t orch_bridge_id = bridge->orch_bridge_id;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Unsubscribe from cognitive hub events */
     if (hub) {
@@ -871,12 +872,12 @@ int hypo_cognitive_hub_disconnect(hypo_cognitive_hub_bridge_t* bridge) {
         hypo_orch_unregister_bridge(orch, orch_bridge_id);
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->orch = NULL;
     bridge->cog_hub = NULL;
     bridge->orch_bridge_id = 0;
     bridge->connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -889,9 +890,9 @@ bool hypo_cognitive_hub_is_connected(const hypo_cognitive_hub_bridge_t* bridge) 
     /* Cast away const for mutex lock */
     hypo_cognitive_hub_bridge_t* mutable_bridge = (hypo_cognitive_hub_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
     bool connected = bridge->connected;
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return connected;
 }
@@ -908,10 +909,10 @@ int hypo_cognitive_hub_update(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;  /* Not an error, just nothing to do */
     }
 
@@ -929,7 +930,7 @@ int hypo_cognitive_hub_update(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Broadcast drives if interval elapsed */
     if (should_broadcast) {
@@ -937,7 +938,7 @@ int hypo_cognitive_hub_update(
     }
 
     /* Decay cognitive state values over time */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float decay = 1.0f - (float)delta_ms / 10000.0f;  /* Decay over 10 seconds */
     if (decay < 0.0f) decay = 0.0f;
 
@@ -946,7 +947,7 @@ int hypo_cognitive_hub_update(
     bridge->cognitive_state.learning_activity *= decay;
     bridge->cognitive_state.memory_consolidation *= decay;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -956,10 +957,10 @@ int hypo_cognitive_hub_broadcast_drives(hypo_cognitive_hub_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->orch || !bridge->cog_hub) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -967,7 +968,7 @@ int hypo_cognitive_hub_broadcast_drives(hypo_cognitive_hub_bridge_t* bridge) {
     cognitive_integration_hub_t hub = bridge->cog_hub;
     uint32_t module_id = bridge->config.module_id;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Get current drive state from orchestrator */
     hypo_unified_drive_state_t drive_state;
@@ -1008,11 +1009,11 @@ int hypo_cognitive_hub_broadcast_drives(hypo_cognitive_hub_bridge_t* bridge) {
     int result = cognitive_hub_publish(hub, module_id, COG_EVENT_STATE_CHANGE, &event);
 
     if (result == 0) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.events_published++;
         bridge->stats.drive_broadcasts++;
         bridge->stats.last_broadcast_timestamp = payload.timestamp;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return result;
@@ -1024,7 +1025,7 @@ int hypo_cognitive_hub_receive_cognitive_state(hypo_cognitive_hub_bridge_t* brid
     }
 
     /* Cognitive state is updated via event callbacks - this is a sync point */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update cognitive load based on accumulated state */
     float load = 0.0f;
@@ -1035,7 +1036,7 @@ int hypo_cognitive_hub_receive_cognitive_state(hypo_cognitive_hub_bridge_t* brid
 
     bridge->cognitive_state.cognitive_load = clamp_float(load, 0.0f, 1.0f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1052,10 +1053,10 @@ int hypo_cognitive_hub_modulate_curiosity(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->orch) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -1065,7 +1066,7 @@ int hypo_cognitive_hub_modulate_curiosity(
 
     bridge->stats.curiosity_modulations++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Report drive satisfaction to orchestrator */
     float satisfaction = clamp_float(info_gain * weight, 0.0f, 1.0f);
@@ -1088,10 +1089,10 @@ int hypo_cognitive_hub_modulate_social(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->orch) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -1101,7 +1102,7 @@ int hypo_cognitive_hub_modulate_social(
 
     bridge->stats.social_modulations++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Report drive satisfaction to orchestrator */
     float satisfaction = clamp_float(social_reward * weight, 0.0f, 1.0f);
@@ -1124,10 +1125,10 @@ int hypo_cognitive_hub_modulate_competence(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->orch) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -1137,7 +1138,7 @@ int hypo_cognitive_hub_modulate_competence(
 
     bridge->stats.competence_modulations++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Report drive satisfaction to orchestrator */
     float satisfaction = clamp_float(skill_acquisition * weight, 0.0f, 1.0f);
@@ -1164,27 +1165,27 @@ int hypo_cognitive_hub_propagate_stress(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->cog_hub) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     if (!bridge->config.enable_stress_propagation) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
     if (stress_level < bridge->config.stress_propagation_threshold) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
     cognitive_integration_hub_t hub = bridge->cog_hub;
     uint32_t module_id = bridge->config.module_id;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Create stress propagation payload */
     hypo_stress_propagation_payload_t payload;
@@ -1220,10 +1221,10 @@ int hypo_cognitive_hub_propagate_stress(
     int result = cognitive_hub_publish(hub, module_id, COG_EVENT_STATE_CHANGE, &event);
 
     if (result == 0) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.events_published++;
         bridge->stats.stress_propagations++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return result;
@@ -1237,27 +1238,27 @@ int hypo_cognitive_hub_propagate_fatigue(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected || !bridge->cog_hub) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     if (!bridge->config.enable_fatigue_modulation) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
     if (fatigue_level < bridge->config.fatigue_threshold) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
     cognitive_integration_hub_t hub = bridge->cog_hub;
     uint32_t module_id = bridge->config.module_id;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Create fatigue modulation payload */
     hypo_fatigue_modulation_payload_t payload;
@@ -1290,10 +1291,10 @@ int hypo_cognitive_hub_propagate_fatigue(
     int result = cognitive_hub_publish(hub, module_id, COG_EVENT_STATE_CHANGE, &event);
 
     if (result == 0) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.events_published++;
         bridge->stats.fatigue_modulations++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return result;
@@ -1312,10 +1313,10 @@ int hypo_cognitive_hub_set_emotion_callback(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->emotion_callback = callback;
     bridge->emotion_callback_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1329,10 +1330,10 @@ int hypo_cognitive_hub_set_attention_callback(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->attention_callback = callback;
     bridge->attention_callback_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1346,10 +1347,10 @@ int hypo_cognitive_hub_set_decision_callback(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->decision_callback = callback;
     bridge->decision_callback_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1363,10 +1364,10 @@ int hypo_cognitive_hub_set_learning_callback(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->learning_callback = callback;
     bridge->learning_callback_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1383,14 +1384,14 @@ int hypo_cognitive_hub_connect_bio_async(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->bio_async_connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;  /* Already connected */
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Get router - use global if not provided */
     if (!router) {
@@ -1416,10 +1417,10 @@ int hypo_cognitive_hub_connect_bio_async(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_ctx = ctx;
     bridge->bio_async_connected = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1429,24 +1430,24 @@ int hypo_cognitive_hub_disconnect_bio_async(hypo_cognitive_hub_bridge_t* bridge)
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->bio_async_connected || !bridge->bio_ctx) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     bio_module_context_t ctx = bridge->bio_ctx;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Unregister from bio-async */
     bio_router_unregister_module(ctx);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_ctx = NULL;
     bridge->bio_async_connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1461,9 +1462,9 @@ bool hypo_cognitive_hub_bio_async_connected(
     /* Cast away const for mutex lock */
     hypo_cognitive_hub_bridge_t* mutable_bridge = (hypo_cognitive_hub_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
     bool connected = bridge->bio_async_connected;
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return connected;
 }
@@ -1483,9 +1484,9 @@ int hypo_cognitive_hub_get_cognitive_state(
     /* Cast away const for mutex lock */
     hypo_cognitive_hub_bridge_t* mutable_bridge = (hypo_cognitive_hub_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
     *state = bridge->cognitive_state;
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return 0;
 }
@@ -1501,9 +1502,9 @@ int hypo_cognitive_hub_get_config(
     /* Cast away const for mutex lock */
     hypo_cognitive_hub_bridge_t* mutable_bridge = (hypo_cognitive_hub_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
     *config = bridge->config;
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return 0;
 }
@@ -1523,9 +1524,9 @@ int hypo_cognitive_hub_get_stats(
     /* Cast away const for mutex lock */
     hypo_cognitive_hub_bridge_t* mutable_bridge = (hypo_cognitive_hub_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return 0;
 }
@@ -1535,9 +1536,9 @@ int hypo_cognitive_hub_reset_stats(hypo_cognitive_hub_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(hypo_cognitive_hub_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1574,7 +1575,7 @@ void hypo_cognitive_hub_print_summary(const hypo_cognitive_hub_bridge_t* bridge)
     /* Cast away const for mutex lock */
     hypo_cognitive_hub_bridge_t* mutable_bridge = (hypo_cognitive_hub_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     printf("=== Hypothalamus-Cognitive Hub Bridge ===\n");
     printf("  Initialized: %s\n", bridge->initialized ? "yes" : "no");
@@ -1599,7 +1600,7 @@ void hypo_cognitive_hub_print_summary(const hypo_cognitive_hub_bridge_t* bridge)
     printf("  Learning activity: %.2f\n", bridge->cognitive_state.learning_activity);
     printf("==========================================\n");
 
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 }
 
 void hypo_cognitive_hub_print_stats(const hypo_cognitive_hub_stats_t* stats) {

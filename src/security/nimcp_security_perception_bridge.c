@@ -270,7 +270,7 @@ security_perception_bridge_t* sec_percept_create(const sec_percept_config_t* con
     memset(bridge->signatures, 0, bridge->signature_capacity * sizeof(attack_signature_t));
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "security_perception") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge->signatures);
@@ -317,7 +317,7 @@ void sec_percept_destroy(security_perception_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

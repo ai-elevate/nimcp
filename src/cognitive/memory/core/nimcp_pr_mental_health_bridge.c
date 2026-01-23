@@ -7,6 +7,7 @@
  */
 
 #include "cognitive/memory/core/nimcp_pr_mental_health_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -29,6 +30,8 @@ typedef struct {
  * @brief Internal bridge structure
  */
 struct pr_mental_health_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     // Configuration
     pr_mh_config_t config;
 
@@ -72,9 +75,6 @@ struct pr_mental_health_bridge_struct {
 
     // Statistics
     pr_mh_stats_t stats;
-
-    // Thread safety
-    nimcp_mutex_t* mutex;
 
     // State
     bool initialized;
@@ -272,7 +272,7 @@ static int invoke_intervention_callbacks(
     int result = 0;
 
     // Release mutex during callbacks to prevent deadlock
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     for (size_t i = 0; i < bridge->intervention_callback_count; i++) {
         if (bridge->intervention_callbacks[i].active &&
@@ -285,7 +285,7 @@ static int invoke_intervention_callbacks(
         }
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     return result;
 }
 
@@ -364,12 +364,8 @@ pr_mental_health_bridge_t pr_mental_health_bridge_create(
     pr_mental_health_bridge_t bridge = calloc(1, sizeof(struct pr_mental_health_bridge_struct));
     if (!bridge) return NULL;
 
-    // Initialize mutex
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
-        free(bridge);
-        return NULL;
-    }
+    // Initialize bridge base infrastructure (includes mutex)
+    if (bridge_base_init(&bridge->base, 0, "pr_mental_health") != 0) { nimcp_free(bridge); return NULL; }
 
     // Store configuration
     bridge->config = cfg;
@@ -378,7 +374,7 @@ pr_mental_health_bridge_t pr_mental_health_bridge_create(
     bridge->history_capacity = cfg.retrieval_history_size;
     bridge->history = calloc(bridge->history_capacity, sizeof(pr_mh_retrieval_event_t));
     if (!bridge->history) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         free(bridge);
         return NULL;
     }
@@ -389,7 +385,7 @@ pr_mental_health_bridge_t pr_mental_health_bridge_create(
                                          sizeof(pr_mh_rumination_pattern_t));
     if (!bridge->rumination_patterns) {
         free(bridge->history);
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         free(bridge);
         return NULL;
     }
@@ -401,7 +397,7 @@ pr_mental_health_bridge_t pr_mental_health_bridge_create(
     if (!bridge->intrusion_records) {
         free(bridge->rumination_patterns);
         free(bridge->history);
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         free(bridge);
         return NULL;
     }
@@ -437,7 +433,7 @@ pr_mental_health_bridge_t pr_mental_health_bridge_create(
 void pr_mental_health_bridge_destroy(pr_mental_health_bridge_t bridge) {
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Free allocated arrays
     if (bridge->history) {
@@ -457,8 +453,8 @@ void pr_mental_health_bridge_destroy(pr_mental_health_bridge_t bridge) {
 
     bridge->initialized = false;
 
-    nimcp_mutex_unlock(bridge->mutex);
-    nimcp_mutex_free(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
+    bridge_base_cleanup(&bridge->base);
 
     free(bridge);
 }
@@ -467,7 +463,7 @@ pr_mh_error_t pr_mental_health_bridge_reset(pr_mental_health_bridge_t bridge) {
     if (!bridge) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Reset history
     bridge->history_count = 0;
@@ -494,7 +490,7 @@ pr_mh_error_t pr_mental_health_bridge_reset(pr_mental_health_bridge_t bridge) {
     // Reset intervention timing
     bridge->last_intervention_time_ms = 0;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_MH_SUCCESS;
 }
@@ -535,7 +531,7 @@ pr_mh_error_t pr_mental_health_bridge_track_retrieval_event(
     if (!bridge || !event) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Add to history
     add_to_history(bridge, event);
@@ -616,7 +612,7 @@ pr_mh_error_t pr_mental_health_bridge_track_retrieval_event(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_MH_SUCCESS;
 }
@@ -634,7 +630,7 @@ pr_mh_error_t pr_mental_health_bridge_detect_rumination(
     if (!bridge || !patterns || !count) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     size_t out_count = 0;
     for (size_t i = 0; i < bridge->rumination_count && out_count < max_patterns; i++) {
@@ -645,7 +641,7 @@ pr_mh_error_t pr_mental_health_bridge_detect_rumination(
 
     *count = out_count;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_MH_SUCCESS;
 }
@@ -657,7 +653,7 @@ bool pr_mental_health_bridge_is_ruminating_on(
 ) {
     if (!bridge || !bridge->initialized) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     pr_mh_rumination_pattern_t* found = find_rumination_pattern(bridge, node_id);
     bool is_ruminating = found && found->is_active;
@@ -666,7 +662,7 @@ bool pr_mental_health_bridge_is_ruminating_on(
         *pattern = *found;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return is_ruminating;
 }
@@ -674,7 +670,7 @@ bool pr_mental_health_bridge_is_ruminating_on(
 float pr_mental_health_bridge_get_rumination_score(pr_mental_health_bridge_t bridge) {
     if (!bridge || !bridge->initialized) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float total_strength = 0.0f;
     uint32_t active_count = 0;
@@ -688,7 +684,7 @@ float pr_mental_health_bridge_get_rumination_score(pr_mental_health_bridge_t bri
 
     float score = (active_count > 0) ? (total_strength / active_count) : 0.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return score;
 }
@@ -706,11 +702,11 @@ pr_mh_error_t pr_mental_health_bridge_track_intrusion(
     if (!bridge) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     pr_mh_intrusion_record_t* record = find_or_create_intrusion_record(bridge, node_id);
     if (!record) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_MH_ERROR_CAPACITY;
     }
 
@@ -755,7 +751,7 @@ pr_mh_error_t pr_mental_health_bridge_track_intrusion(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_MH_SUCCESS;
 }
@@ -769,7 +765,7 @@ pr_mh_error_t pr_mental_health_bridge_get_intrusion_records(
     if (!bridge || !records || !count) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     size_t out_count = (bridge->intrusion_count < max_records) ?
                        bridge->intrusion_count : max_records;
@@ -778,7 +774,7 @@ pr_mh_error_t pr_mental_health_bridge_get_intrusion_records(
            out_count * sizeof(pr_mh_intrusion_record_t));
     *count = out_count;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_MH_SUCCESS;
 }
@@ -789,7 +785,7 @@ float pr_mental_health_bridge_get_intrusion_frequency(
 ) {
     if (!bridge || !bridge->initialized) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float frequency = -1.0f;
 
@@ -807,7 +803,7 @@ float pr_mental_health_bridge_get_intrusion_frequency(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return frequency;
 }
@@ -823,7 +819,7 @@ pr_mh_error_t pr_mental_health_bridge_analyze_valence_bias(
     if (!bridge || !bias) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now = get_current_time_ms();
     uint64_t window_start = now - bridge->config.analysis_window_ms;
@@ -833,7 +829,7 @@ pr_mh_error_t pr_mental_health_bridge_analyze_valence_bias(
     compute_valence_stats(bridge, window_start, &positive, &negative, &neutral, &total);
 
     if (total < 10) {  // Minimum sample size
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_MH_ERROR_INSUFFICIENT_DATA;
     }
 
@@ -866,7 +862,7 @@ pr_mh_error_t pr_mental_health_bridge_analyze_valence_bias(
         bridge->stats.bias_alerts++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_MH_SUCCESS;
 }
@@ -874,7 +870,7 @@ pr_mh_error_t pr_mental_health_bridge_analyze_valence_bias(
 float pr_mental_health_bridge_get_valence_bias(pr_mental_health_bridge_t bridge) {
     if (!bridge || !bridge->initialized) return NAN;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float bias;
     uint64_t now = get_current_time_ms();
@@ -886,7 +882,7 @@ float pr_mental_health_bridge_get_valence_bias(pr_mental_health_bridge_t bridge)
     } else {
         // Recompute
         pr_mh_valence_bias_t result;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
 
         if (pr_mental_health_bridge_analyze_valence_bias(bridge, &result) != PR_MH_SUCCESS) {
             return NAN;
@@ -894,7 +890,7 @@ float pr_mental_health_bridge_get_valence_bias(pr_mental_health_bridge_t bridge)
         return result.bias_score;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return bias;
 }
@@ -934,7 +930,7 @@ pr_mh_error_t pr_mental_health_bridge_assess_trauma_load(
     if (!bridge || !assessment) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     memset(assessment, 0, sizeof(*assessment));
 
@@ -1007,7 +1003,7 @@ pr_mh_error_t pr_mental_health_bridge_assess_trauma_load(
         bridge->stats.trauma_alerts++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_MH_SUCCESS;
 }
@@ -1015,7 +1011,7 @@ pr_mh_error_t pr_mental_health_bridge_assess_trauma_load(
 float pr_mental_health_bridge_get_trauma_load(pr_mental_health_bridge_t bridge) {
     if (!bridge || !bridge->initialized) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float load;
     uint64_t now = get_current_time_ms();
@@ -1023,9 +1019,9 @@ float pr_mental_health_bridge_get_trauma_load(pr_mental_health_bridge_t bridge) 
     if (bridge->trauma_assessment_valid &&
         (now - bridge->trauma_assessment_compute_time_ms) < 10000) {
         load = bridge->cached_trauma_assessment.trauma_load;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
     } else {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         pr_mh_trauma_assessment_t assessment;
         if (pr_mental_health_bridge_assess_trauma_load(bridge, &assessment) != PR_MH_SUCCESS) {
             return -1.0f;
@@ -1044,11 +1040,11 @@ pr_mh_error_t pr_mental_health_bridge_mark_trauma_memory(
     if (!bridge) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     pr_mh_intrusion_record_t* record = find_or_create_intrusion_record(bridge, node_id);
     if (!record) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_MH_ERROR_CAPACITY;
     }
 
@@ -1057,7 +1053,7 @@ pr_mh_error_t pr_mental_health_bridge_mark_trauma_memory(
 
     invalidate_caches(bridge);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_MH_SUCCESS;
 }
@@ -1073,7 +1069,7 @@ pr_mh_error_t pr_mental_health_bridge_get_mood_from_memories(
     if (!bridge || !inference) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     memset(inference, 0, sizeof(*inference));
     inference->inference_time_ms = get_current_time_ms();
@@ -1081,7 +1077,7 @@ pr_mh_error_t pr_mental_health_bridge_get_mood_from_memories(
     if (bridge->history_count < 10) {
         inference->primary_mood = PR_MH_MOOD_UNKNOWN;
         inference->confidence = 0.0f;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_MH_ERROR_INSUFFICIENT_DATA;
     }
 
@@ -1106,7 +1102,7 @@ pr_mh_error_t pr_mental_health_bridge_get_mood_from_memories(
     if (count < 10) {
         inference->primary_mood = PR_MH_MOOD_UNKNOWN;
         inference->confidence = 0.0f;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_MH_ERROR_INSUFFICIENT_DATA;
     }
 
@@ -1152,7 +1148,7 @@ pr_mh_error_t pr_mental_health_bridge_get_mood_from_memories(
     // Update stats
     bridge->stats.current_mood = inference->primary_mood;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_MH_SUCCESS;
 }
@@ -1184,7 +1180,7 @@ pr_mh_error_t pr_mental_health_bridge_trigger_intervention(
     if (!bridge) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now = get_current_time_ms();
     uint64_t time_since_last = now - bridge->last_intervention_time_ms;
@@ -1192,7 +1188,7 @@ pr_mh_error_t pr_mental_health_bridge_trigger_intervention(
     // Rate limiting check
     if (time_since_last < bridge->config.min_intervention_interval_ms) {
         bridge->stats.interventions_blocked++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_MH_ERROR_INTERVENTION_BLOCKED;
     }
 
@@ -1211,7 +1207,7 @@ pr_mh_error_t pr_mental_health_bridge_trigger_intervention(
     bridge->last_intervention_time_ms = now;
     bridge->stats.interventions_triggered++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_MH_SUCCESS;
 }
@@ -1224,10 +1220,10 @@ pr_mh_error_t pr_mental_health_bridge_register_intervention_callback(
     if (!bridge || !callback) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->intervention_callback_count >= PR_MH_MAX_INTERVENTION_CALLBACKS) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_MH_ERROR_CAPACITY;
     }
 
@@ -1238,7 +1234,7 @@ pr_mh_error_t pr_mental_health_bridge_register_intervention_callback(
     entry->active = true;
     bridge->intervention_callback_count++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_MH_SUCCESS;
 }
@@ -1251,7 +1247,7 @@ pr_mh_error_t pr_mental_health_bridge_suggest_intervention(
     if (!bridge || !intervention || !indicator) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     *intervention = PR_MH_INTERVENTION_NONE;
     *indicator = PR_MH_INDICATOR_RUMINATION;  // Default
@@ -1268,7 +1264,7 @@ pr_mh_error_t pr_mental_health_bridge_suggest_intervention(
     if (rumination_score > 0.7f) {
         *intervention = PR_MH_INTERVENTION_DISTRACTION;
         *indicator = PR_MH_INDICATOR_RUMINATION;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_MH_SUCCESS;
     }
 
@@ -1277,7 +1273,7 @@ pr_mh_error_t pr_mental_health_bridge_suggest_intervention(
         bridge->cached_trauma_assessment.needs_intervention) {
         *intervention = bridge->cached_trauma_assessment.suggested_intervention;
         *indicator = PR_MH_INDICATOR_TRAUMA_LOAD;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_MH_SUCCESS;
     }
 
@@ -1286,12 +1282,12 @@ pr_mh_error_t pr_mental_health_bridge_suggest_intervention(
         if (bridge->cached_valence_bias.indicates_depression) {
             *intervention = PR_MH_INTERVENTION_COGNITIVE;
             *indicator = PR_MH_INDICATOR_NEGATIVE_BIAS;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return PR_MH_SUCCESS;
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_MH_ERROR_INSUFFICIENT_DATA;
 }
@@ -1320,7 +1316,7 @@ pr_mh_error_t pr_mental_health_bridge_update(
     if (!bridge) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Update uptime
     bridge->stats.uptime_ms = current_time_ms - bridge->creation_time_ms;
@@ -1353,7 +1349,7 @@ pr_mh_error_t pr_mental_health_bridge_update(
         bridge->mood_valid = false;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_MH_SUCCESS;
 }
@@ -1364,7 +1360,7 @@ size_t pr_mental_health_bridge_prune_history(
 ) {
     if (!bridge || !bridge->initialized) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now = get_current_time_ms();
     uint64_t cutoff = now - max_age_ms;
@@ -1382,7 +1378,7 @@ size_t pr_mental_health_bridge_prune_history(
 
     invalidate_caches(bridge);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return pruned;
 }
@@ -1398,9 +1394,9 @@ pr_mh_error_t pr_mental_health_bridge_get_stats(
     if (!bridge || !stats) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_MH_SUCCESS;
 }
@@ -1409,7 +1405,7 @@ pr_mh_error_t pr_mental_health_bridge_reset_stats(pr_mental_health_bridge_t brid
     if (!bridge) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Preserve current state indicators
     pr_mh_mood_state_t current_mood = bridge->stats.current_mood;
@@ -1427,7 +1423,7 @@ pr_mh_error_t pr_mental_health_bridge_reset_stats(pr_mental_health_bridge_t brid
     bridge->stats.active_ruminations = active_rum;
     bridge->stats.tracked_intrusions = tracked_int;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_MH_SUCCESS;
 }
@@ -1435,9 +1431,9 @@ pr_mh_error_t pr_mental_health_bridge_reset_stats(pr_mental_health_bridge_t brid
 size_t pr_mental_health_bridge_get_history_count(pr_mental_health_bridge_t bridge) {
     if (!bridge || !bridge->initialized) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     size_t count = bridge->history_count;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return count;
 }
@@ -1451,7 +1447,7 @@ pr_mh_error_t pr_mental_health_bridge_export_history(
     if (!bridge || !events || !count) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     size_t out_count = (bridge->history_count < max_events) ?
                        bridge->history_count : max_events;
@@ -1465,7 +1461,7 @@ pr_mh_error_t pr_mental_health_bridge_export_history(
 
     *count = out_count;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_MH_SUCCESS;
 }
@@ -1511,7 +1507,7 @@ bool pr_mental_health_bridge_validate(pr_mental_health_bridge_t bridge) {
     if (!bridge) return false;
     if (!bridge->initialized) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bool valid = true;
 
@@ -1528,7 +1524,7 @@ bool pr_mental_health_bridge_validate(pr_mental_health_bridge_t bridge) {
     // Check circular buffer invariant
     if (bridge->history_head >= bridge->history_capacity) valid = false;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return valid;
 }
@@ -1544,12 +1540,12 @@ pr_mh_error_t pr_mental_health_bridge_connect_flashbulb(
     if (!bridge) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->flashbulb_system = flashbulb_system;
     bridge->flashbulb_connected = (flashbulb_system != NULL);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return PR_MH_SUCCESS;
 }
@@ -1558,10 +1554,10 @@ pr_mh_error_t pr_mental_health_bridge_sync_flashbulb(pr_mental_health_bridge_t b
     if (!bridge) return PR_MH_ERROR_NULL_POINTER;
     if (!bridge->initialized) return PR_MH_ERROR_NOT_INITIALIZED;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->flashbulb_connected || !bridge->flashbulb_system) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return PR_MH_ERROR_NOT_INITIALIZED;
     }
 
@@ -1576,7 +1572,7 @@ pr_mh_error_t pr_mental_health_bridge_sync_flashbulb(pr_mental_health_bridge_t b
 
     // Note: This would need to use flashbulb_retrieve_by_type but we need
     // to release our mutex first to avoid deadlock
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     flashbulb_error_t fb_err = flashbulb_retrieve_by_type(
         fb,
@@ -1594,7 +1590,7 @@ pr_mh_error_t pr_mental_health_bridge_sync_flashbulb(pr_mental_health_bridge_t b
     for (size_t i = 0; i < trauma_count; i++) {
         flashbulb_memory_t* fb_mem = trauma_memories[i];
         if (fb_mem && fb_mem->requires_trauma_handling) {
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
 
             pr_mh_intrusion_record_t* record = find_or_create_intrusion_record(
                 bridge, fb_mem->flashbulb_id);
@@ -1605,7 +1601,7 @@ pr_mh_error_t pr_mental_health_bridge_sync_flashbulb(pr_mental_health_bridge_t b
                 record->distress_level = fb_mem->hyperarousal;
             }
 
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
         }
     }
 

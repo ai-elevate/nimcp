@@ -29,7 +29,7 @@ emotional_contagion_fep_bridge_t* emotional_contagion_fep_create(const emotional
     else emotional_contagion_fep_default_config(&bridge->config);
     bridge->fep_system = fep_system;
     bridge->contagion_system = contagion_system;
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "emotional_contagion_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
     return bridge;
 }
@@ -37,7 +37,7 @@ emotional_contagion_fep_bridge_t* emotional_contagion_fep_create(const emotional
 void emotional_contagion_fep_destroy(emotional_contagion_fep_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.bio_async_enabled) emotional_contagion_fep_disconnect_bio_async(bridge);
-    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

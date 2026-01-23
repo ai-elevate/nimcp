@@ -5,6 +5,7 @@
  * @date 2026-01-12
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "plasticity/eligibility/nimcp_eligibility_utils_quantum_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -18,6 +19,7 @@
  *===========================================================================*/
 
 struct elig_uq_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /* Configuration */
     elig_uq_bridge_config_t config;
 

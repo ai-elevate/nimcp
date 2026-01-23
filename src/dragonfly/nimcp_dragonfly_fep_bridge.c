@@ -3,6 +3,7 @@
  * @brief Dragonfly-to-Free Energy Principle Integration Bridge Implementation
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "dragonfly/nimcp_dragonfly_fep_bridge.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -15,6 +16,7 @@
 //=============================================================================
 
 struct dragonfly_fep_bridge_s {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     dragonfly_system_t* dragonfly;
     void* fep_system;
     dragonfly_fep_config_t config;

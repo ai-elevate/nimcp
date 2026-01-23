@@ -5,6 +5,7 @@
  * @date 2026-01-11
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/nimcp_neuromodulatory_cognitive_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -18,6 +19,7 @@
  * ============================================================================ */
 
 struct neuromod_cognitive_hub_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     neuromod_cognitive_hub_config_t config;
 
     /* Adapter connections */

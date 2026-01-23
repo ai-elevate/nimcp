@@ -5,6 +5,7 @@
  * @date 2026-01-12
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/olfactory/bridges/nimcp_olfact_bio_async_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -17,6 +18,7 @@
  * ============================================================================ */
 
 struct olfact_bio_async_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     olfact_bio_async_config_t config;
     nimcp_olfactory_t* olfact;
     bio_router_t router;

@@ -226,7 +226,7 @@ triplet_stdp_sleep_bridge_t triplet_stdp_sleep_bridge_create(
     bridge->effects.sleep_pressure = 0.0f;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "triplet_stdp_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for sleep bridge");
         nimcp_free(bridge);
@@ -276,7 +276,7 @@ void triplet_stdp_sleep_bridge_destroy(triplet_stdp_sleep_bridge_t bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
         bridge->base.mutex = NULL;
     }
 

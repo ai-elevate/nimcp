@@ -30,6 +30,7 @@
 #include "perception/nimcp_visual_cortex.h"
 #include "perception/nimcp_retina.h"
 #include "perception/nimcp_visual_cortex_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 
 /* Forward declaration for resonance engine */
 struct resonance_engine_struct;
@@ -288,6 +289,8 @@ struct pr_visual_bridge_stats_t {
  * @brief Prime Resonant Visual Bridge main structure
  */
 struct pr_visual_bridge_t {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     /** Connected visual cortex */
     visual_cortex_t* visual_cortex;
 
@@ -331,9 +334,6 @@ struct pr_visual_bridge_t {
 
     /** Resonance engine */
     resonance_engine_t* resonance_engine;
-
-    /** Thread safety mutex */
-    nimcp_mutex_t* mutex;
 
     /** Initialization flag */
     bool initialized;

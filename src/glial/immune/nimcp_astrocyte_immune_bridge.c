@@ -152,7 +152,7 @@ astro_network_bridge_t* astro_network_bridge_create(
     bridge->chronic_inflammation_accumulator = 0.0f;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "astrocyte_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("astro_network_bridge_create: mutex creation failed");
         nimcp_free(bridge);
@@ -174,7 +174,7 @@ void astro_network_bridge_destroy(astro_network_bridge_t* bridge) {
 
     /* Destroy mutex (created with nimcp_platform_mutex_create) */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     /* Free bridge */

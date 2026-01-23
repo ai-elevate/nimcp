@@ -9,6 +9,7 @@
  * Cortex for speech error detection, conflict monitoring, and self-correction.
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "language/bridges/nimcp_language_cingulate_bridge.h"
 #include "core/brain/regions/broca/nimcp_broca_adapter.h"
 #include "core/brain/regions/wernicke/nimcp_wernicke_adapter.h"
@@ -54,6 +55,7 @@ typedef struct {
  * @brief Bridge internal structure
  */
 struct language_cingulate_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /* Configuration */
     language_cingulate_config_t config;
 

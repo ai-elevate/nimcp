@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/mirror_neurons/nimcp_mirror_prefrontal_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -179,7 +180,7 @@ static void handle_bio_message(
     mirror_prefrontal_bridge_t bridge = (mirror_prefrontal_bridge_t)user_data;
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.messages_received++;
 
     switch (msg_type) {
@@ -240,7 +241,7 @@ static void handle_bio_message(
             break;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 /*=============================================================================
@@ -294,8 +295,8 @@ mirror_prefrontal_bridge_t mirror_prefrontal_bridge_create(
     }
 
     /* Initialize mutex */
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "mirror_prefrontal") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Mirror-PFC bridge: Failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -332,7 +333,7 @@ mirror_prefrontal_bridge_t mirror_prefrontal_bridge_create(
         );
         if (!bridge->sequences) {
             NIMCP_LOGGING_ERROR("Mirror-PFC bridge: Failed to allocate sequence memory");
-            nimcp_mutex_free(bridge->mutex);
+            bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
             return NULL;
         }
@@ -365,8 +366,8 @@ void mirror_prefrontal_bridge_destroy(mirror_prefrontal_bridge_t bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);
@@ -376,7 +377,7 @@ void mirror_prefrontal_bridge_destroy(mirror_prefrontal_bridge_t bridge) {
 int mirror_prefrontal_bridge_reset(mirror_prefrontal_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset state */
     bridge->current_inhibition = bridge->config.inhibition_threshold;
@@ -397,7 +398,7 @@ int mirror_prefrontal_bridge_reset(mirror_prefrontal_bridge_t bridge) {
     }
     bridge->sequence_count = 0;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Mirror-PFC bridge: Reset complete");
     return 0;
@@ -414,7 +415,7 @@ int mirror_prefrontal_request_imitation(
 ) {
     if (!bridge || !request || !decision) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     evaluate_imitation_decision(bridge, request, decision);
 
@@ -452,7 +453,7 @@ int mirror_prefrontal_request_imitation(
         bridge->stats.messages_sent++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -463,9 +464,9 @@ int mirror_prefrontal_set_inhibition(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->current_inhibition = level < 0.0f ? 0.0f : (level > 1.0f ? 1.0f : level);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -481,14 +482,14 @@ int mirror_prefrontal_set_imitation_mode(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->imitation_mode = mode;
 
     if (mode == IMITATION_MODE_UNRESTRICTED) {
         bridge->stats.inhibition_releases++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -509,7 +510,7 @@ int mirror_prefrontal_set_social_context(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->social_context != context) {
         bridge->social_context = context;
@@ -533,7 +534,7 @@ int mirror_prefrontal_set_social_context(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -555,12 +556,12 @@ uint32_t mirror_prefrontal_store_sequence(
     if (!bridge || !sequence) return 0;
     if (!bridge->config.enable_wm_integration || !bridge->sequences) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check capacity */
     if (bridge->sequence_count >= bridge->config.wm_sequence_capacity) {
         NIMCP_LOGGING_WARN("Mirror-PFC: Working memory at capacity");
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -574,7 +575,7 @@ uint32_t mirror_prefrontal_store_sequence(
     }
 
     if (slot < 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -602,7 +603,7 @@ uint32_t mirror_prefrontal_store_sequence(
     }
 
     uint32_t id = bridge->sequences[slot].sequence_id;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Mirror-PFC: Stored sequence %u with %u actions",
                         id, sequence->action_count);
@@ -617,11 +618,11 @@ int mirror_prefrontal_recall_sequence(
     if (!bridge || !sequence || sequence_id == 0) return -1;
     if (!bridge->config.enable_wm_integration || !bridge->sequences) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     int slot = find_sequence_slot(bridge, sequence_id);
     if (slot < 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -640,7 +641,7 @@ int mirror_prefrontal_recall_sequence(
         bridge->stats.messages_sent++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -655,14 +656,14 @@ int mirror_prefrontal_clear_sequences(mirror_prefrontal_bridge_t bridge) {
     if (!bridge) return -1;
     if (!bridge->sequences) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     int cleared = (int)bridge->sequence_count;
     memset(bridge->sequences, 0,
            bridge->config.wm_sequence_capacity * sizeof(action_sequence_t));
     bridge->sequence_count = 0;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Mirror-PFC: Cleared %d sequences from working memory", cleared);
     return cleared;
@@ -678,9 +679,9 @@ int mirror_prefrontal_set_active_goal(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->active_goal_id = goal_id;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Mirror-PFC: Active goal set to %u", goal_id);
     return 0;
@@ -710,7 +711,7 @@ int mirror_prefrontal_notify_goal_inference(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->inferred_goal_id = inferred_goal_id;
     bridge->action_prediction_confidence = confidence;
@@ -734,7 +735,7 @@ int mirror_prefrontal_notify_goal_inference(
         bridge->stats.messages_sent++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Mirror-PFC: Goal %u inferred with confidence %.2f",
                         inferred_goal_id, confidence);
@@ -751,7 +752,7 @@ int mirror_prefrontal_update(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Decay inhibition towards context-appropriate level */
     if (bridge->config.inhibition_decay_rate > 0.0f) {
@@ -787,7 +788,7 @@ int mirror_prefrontal_update(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -832,7 +833,7 @@ int mirror_prefrontal_connect_bio_async(mirror_prefrontal_bridge_t bridge) {
     if (!bridge) return -1;
     if (bridge->bio_async_enabled) return 0; /* Already connected */
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Register with bio-async router */
     bio_module_info_t info;
@@ -850,7 +851,7 @@ int mirror_prefrontal_connect_bio_async(mirror_prefrontal_bridge_t bridge) {
         NIMCP_LOGGING_WARN("Mirror-PFC bridge: Bio-async connection failed");
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return bridge->bio_async_enabled ? 0 : -1;
 }
 
@@ -858,7 +859,7 @@ int mirror_prefrontal_disconnect_bio_async(mirror_prefrontal_bridge_t bridge) {
     if (!bridge) return -1;
     if (!bridge->bio_async_enabled) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->bio_context) {
         bio_router_unregister_module(bridge->bio_context);
@@ -866,7 +867,7 @@ int mirror_prefrontal_disconnect_bio_async(mirror_prefrontal_bridge_t bridge) {
     }
     bridge->bio_async_enabled = false;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Mirror-PFC bridge: Bio-async disconnected");
     return 0;
@@ -913,9 +914,9 @@ int mirror_prefrontal_get_stats(
 int mirror_prefrontal_reset_stats(mirror_prefrontal_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(mirror_prefrontal_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("Mirror-PFC bridge: Statistics reset");
     return 0;

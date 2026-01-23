@@ -7,6 +7,7 @@
  * HOW: Monitors ATP/fatigue; modulates moral reasoning, judgment speed, consistency
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/ethics/nimcp_ethics_substrate_bridge.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "utils/memory/nimcp_memory.h"
@@ -17,6 +18,7 @@
 #include <math.h>
 
 struct ethics_substrate_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* ethics;
     neural_substrate_t* substrate;
     ethics_substrate_config_t config;

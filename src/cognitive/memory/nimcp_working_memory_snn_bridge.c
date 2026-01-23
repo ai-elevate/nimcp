@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/memory/nimcp_working_memory_snn_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_config.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
@@ -34,6 +35,8 @@
 //=============================================================================
 
 struct wm_snn_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     wm_snn_config_t config;
 
     /* SNN network */
@@ -66,9 +69,6 @@ struct wm_snn_bridge {
 
     /* Bio-async */
     bool bio_async_connected;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 };
 
 //=============================================================================
@@ -128,10 +128,8 @@ wm_snn_bridge_t* wm_snn_create(const wm_snn_config_t* config) {
         return NULL;
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize bridge base infrastructure (includes mutex) */
+    if (bridge_base_init(&bridge->base, 0, "wm_snn") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -152,7 +150,7 @@ wm_snn_bridge_t* wm_snn_create(const wm_snn_config_t* config) {
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
         NIMCP_LOG_ERROR(LOG_MODULE, "Failed to create SNN network");
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -267,7 +265,9 @@ void wm_snn_destroy(wm_snn_bridge_t* bridge) {
     if (bridge->slot_states) nimcp_free(bridge->slot_states);
     if (bridge->slot_buffer) nimcp_free(bridge->slot_buffer);
     if (bridge->output_buffer) nimcp_free(bridge->output_buffer);
-    if (bridge->mutex) nimcp_mutex_free(bridge->mutex);
+
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }
@@ -275,7 +275,7 @@ void wm_snn_destroy(wm_snn_bridge_t* bridge) {
 int wm_snn_reset(wm_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset slot states */
     memset(bridge->slot_states, 0,
@@ -294,7 +294,7 @@ int wm_snn_reset(wm_snn_bridge_t* bridge) {
     bridge->state = WM_SNN_STATE_IDLE;
     bridge->current_time_ms = 0;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -311,7 +311,7 @@ int wm_snn_encode_item(
 {
     if (!bridge || !features || slot >= bridge->config.max_slots) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = WM_SNN_STATE_ENCODING;
 
@@ -367,7 +367,7 @@ int wm_snn_encode_item(
 
     bridge->state = WM_SNN_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return spike_count;
 }
 
@@ -388,7 +388,7 @@ int wm_snn_update_item(
 int wm_snn_clear_slot(wm_snn_bridge_t* bridge, uint32_t slot) {
     if (!bridge || slot >= bridge->config.max_slots) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Clear slot buffer */
     uint32_t offset = slot * bridge->config.neurons_per_slot;
@@ -398,7 +398,7 @@ int wm_snn_clear_slot(wm_snn_bridge_t* bridge, uint32_t slot) {
     /* Clear slot state */
     memset(&bridge->slot_states[slot], 0, sizeof(wm_slot_state_t));
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -409,7 +409,7 @@ int wm_snn_clear_slot(wm_snn_bridge_t* bridge, uint32_t slot) {
 int wm_snn_simulate(wm_snn_bridge_t* bridge, float duration_ms) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = WM_SNN_STATE_SIMULATING;
 
@@ -434,7 +434,7 @@ int wm_snn_simulate(wm_snn_bridge_t* bridge, float duration_ms) {
 
     bridge->state = WM_SNN_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return ret;
 }
 
@@ -450,7 +450,7 @@ int wm_snn_forward(
 {
     if (!bridge || !inputs) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = WM_SNN_STATE_SIMULATING;
 
@@ -471,7 +471,7 @@ int wm_snn_forward(
 
     bridge->state = WM_SNN_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return spike_count;
 }
 
@@ -488,7 +488,7 @@ int wm_snn_retrieve_item(
     if (!bridge || !output || slot >= bridge->config.max_slots) return -1;
     if (!bridge->slot_states[slot].occupied) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = WM_SNN_STATE_RETRIEVING;
 
@@ -517,7 +517,7 @@ int wm_snn_retrieve_item(
 
     bridge->state = WM_SNN_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -528,7 +528,7 @@ int wm_snn_get_slot_activities(
 {
     if (!bridge || !activities) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t n = (slot_count < bridge->config.max_slots) ?
                   slot_count : bridge->config.max_slots;
@@ -537,7 +537,7 @@ int wm_snn_get_slot_activities(
         activities[s] = bridge->slot_states[s].activity_level;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -547,7 +547,7 @@ int wm_snn_get_most_active_slot(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     int best_slot = -1;
     float best_activity = 0.0f;
@@ -564,7 +564,7 @@ int wm_snn_get_most_active_slot(
         *confidence = best_activity;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return best_slot;
 }
 
@@ -579,9 +579,9 @@ int wm_snn_get_slot_state(
 {
     if (!bridge || !state || slot >= bridge->config.max_slots) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->slot_states[slot];
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -592,7 +592,7 @@ int wm_snn_get_state(
 {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
     state->active_slots = 0;
@@ -614,14 +614,14 @@ int wm_snn_get_state(
     state->capacity_used = (float)state->active_slots /
                            (float)bridge->config.max_slots;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int wm_snn_get_stats(wm_snn_bridge_t* bridge, wm_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
 
     /* Calculate derived statistics */
@@ -634,16 +634,16 @@ int wm_snn_get_stats(wm_snn_bridge_t* bridge, wm_snn_stats_t* stats) {
                                           (float)stats->total_retrievals;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int wm_snn_reset_stats(wm_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(wm_snn_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -651,7 +651,7 @@ int wm_snn_reset_stats(wm_snn_bridge_t* bridge) {
 float wm_snn_get_capacity(wm_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t active = 0;
     for (uint32_t s = 0; s < bridge->config.max_slots; s++) {
@@ -660,21 +660,21 @@ float wm_snn_get_capacity(wm_snn_bridge_t* bridge) {
 
     float capacity = (float)active / (float)bridge->config.max_slots;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return capacity;
 }
 
 float wm_snn_get_total_activity(wm_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float total = 0.0f;
     for (uint32_t s = 0; s < bridge->config.max_slots; s++) {
         total += bridge->slot_states[s].activity_level;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return total;
 }
 
@@ -689,10 +689,10 @@ int wm_snn_register_spike_callback(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->spike_callback = callback;
     bridge->spike_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -704,10 +704,10 @@ int wm_snn_register_encoding_callback(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->encoding_callback = callback;
     bridge->encoding_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -719,10 +719,10 @@ int wm_snn_register_retrieval_callback(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->retrieval_callback = callback;
     bridge->retrieval_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -735,9 +735,9 @@ int wm_snn_bio_async_connect(wm_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -745,9 +745,9 @@ int wm_snn_bio_async_connect(wm_snn_bridge_t* bridge) {
 int wm_snn_bio_async_disconnect(wm_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -755,9 +755,9 @@ int wm_snn_bio_async_disconnect(wm_snn_bridge_t* bridge) {
 bool wm_snn_is_bio_async_connected(wm_snn_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
 }

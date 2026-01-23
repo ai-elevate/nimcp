@@ -15521,6 +15521,30 @@ __/core/brain/factory/init/nimcp_brain_init_sensory.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_sensory.c.s
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_sensory.c.s
 
+__/core/brain/factory/init/nimcp_brain_init_state_manager.o: __/core/brain/factory/init/nimcp_brain_init_state_manager.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_state_manager.o
+
+# target to build an object file
+__/core/brain/factory/init/nimcp_brain_init_state_manager.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_state_manager.c.o
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_state_manager.c.o
+
+__/core/brain/factory/init/nimcp_brain_init_state_manager.i: __/core/brain/factory/init/nimcp_brain_init_state_manager.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_state_manager.i
+
+# target to preprocess a source file
+__/core/brain/factory/init/nimcp_brain_init_state_manager.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_state_manager.c.i
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_state_manager.c.i
+
+__/core/brain/factory/init/nimcp_brain_init_state_manager.s: __/core/brain/factory/init/nimcp_brain_init_state_manager.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_state_manager.s
+
+# target to generate assembly for a file
+__/core/brain/factory/init/nimcp_brain_init_state_manager.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/core/brain/factory/init/nimcp_brain_init_state_manager.c.s
+.PHONY : __/core/brain/factory/init/nimcp_brain_init_state_manager.c.s
+
 __/core/brain/factory/init/nimcp_brain_init_structural.o: __/core/brain/factory/init/nimcp_brain_init_structural.c.o
 .PHONY : __/core/brain/factory/init/nimcp_brain_init_structural.o
 
@@ -32777,6 +32801,30 @@ __/physics/ephaptic/nimcp_ephaptic.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/ephaptic/nimcp_ephaptic.c.s
 .PHONY : __/physics/ephaptic/nimcp_ephaptic.c.s
 
+__/physics/geometry/nimcp_information_geometry.o: __/physics/geometry/nimcp_information_geometry.c.o
+.PHONY : __/physics/geometry/nimcp_information_geometry.o
+
+# target to build an object file
+__/physics/geometry/nimcp_information_geometry.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/geometry/nimcp_information_geometry.c.o
+.PHONY : __/physics/geometry/nimcp_information_geometry.c.o
+
+__/physics/geometry/nimcp_information_geometry.i: __/physics/geometry/nimcp_information_geometry.c.i
+.PHONY : __/physics/geometry/nimcp_information_geometry.i
+
+# target to preprocess a source file
+__/physics/geometry/nimcp_information_geometry.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/geometry/nimcp_information_geometry.c.i
+.PHONY : __/physics/geometry/nimcp_information_geometry.c.i
+
+__/physics/geometry/nimcp_information_geometry.s: __/physics/geometry/nimcp_information_geometry.c.s
+.PHONY : __/physics/geometry/nimcp_information_geometry.s
+
+# target to generate assembly for a file
+__/physics/geometry/nimcp_information_geometry.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/physics/geometry/nimcp_information_geometry.c.s
+.PHONY : __/physics/geometry/nimcp_information_geometry.c.s
+
 __/physics/geometry/nimcp_information_geometry_bridge.o: __/physics/geometry/nimcp_information_geometry_bridge.c.o
 .PHONY : __/physics/geometry/nimcp_information_geometry_bridge.o
 
@@ -46156,6 +46204,9 @@ help:
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_sensory.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_sensory.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_sensory.s"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_state_manager.o"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_state_manager.i"
+	@echo "... __/core/brain/factory/init/nimcp_brain_init_state_manager.s"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_structural.o"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_structural.i"
 	@echo "... __/core/brain/factory/init/nimcp_brain_init_structural.s"
@@ -48313,6 +48364,9 @@ help:
 	@echo "... __/physics/ephaptic/nimcp_ephaptic.o"
 	@echo "... __/physics/ephaptic/nimcp_ephaptic.i"
 	@echo "... __/physics/ephaptic/nimcp_ephaptic.s"
+	@echo "... __/physics/geometry/nimcp_information_geometry.o"
+	@echo "... __/physics/geometry/nimcp_information_geometry.i"
+	@echo "... __/physics/geometry/nimcp_information_geometry.s"
 	@echo "... __/physics/geometry/nimcp_information_geometry_bridge.o"
 	@echo "... __/physics/geometry/nimcp_information_geometry_bridge.i"
 	@echo "... __/physics/geometry/nimcp_information_geometry_bridge.s"

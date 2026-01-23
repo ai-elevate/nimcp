@@ -5,6 +5,7 @@
  * @date 2026-01-10
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "integration/inter/neuromod_memory/nimcp_neuromod_memory_bridge.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -12,6 +13,7 @@
 #include <stdlib.h>
 
 struct nimcp_neuromod_memory_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     nimcp_neuromod_memory_config_t config;
     nimcp_layer_registry_t registry;
     nimcp_neuromod_intra_t neuromod;

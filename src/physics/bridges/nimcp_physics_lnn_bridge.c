@@ -6,6 +6,7 @@
  * @brief Implementation of physics-LNN bidirectional bridge
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "physics/bridges/nimcp_physics_lnn_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -28,6 +29,7 @@ typedef struct {
 } spike_history_entry_t;
 
 struct physics_lnn_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /** Configuration */
     physics_lnn_config_t config;
 

@@ -127,7 +127,7 @@ shannon_immune_bridge_t* shannon_immune_create(
     bridge->last_update_time = get_time_ms();
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "shannon_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_WARN("shannon_immune_create: mutex creation failed");
         NIMCP_THROW_THREADING(NIMCP_ERROR_MUTEX_INIT, 0,
@@ -151,7 +151,7 @@ void shannon_immune_destroy(shannon_immune_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

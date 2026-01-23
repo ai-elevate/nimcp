@@ -3,6 +3,7 @@
  * @brief Theory of Mind-Thalamic Bridge Implementation
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/tom/nimcp_tom_thalamic_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
@@ -11,6 +12,7 @@
 #include <string.h>
 
 struct tom_thalamic_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* tom;
     thalamic_router_t* router;
     tom_thalamic_config_t config;

@@ -7,6 +7,7 @@
  * @author NIMCP Development Team
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/gustatory/bridges/nimcp_gust_quantum_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
@@ -20,6 +21,7 @@
  * ============================================================================ */
 
 struct gust_quantum_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     gust_quantum_config_t config;
     nimcp_gustatory_t* gust;
 

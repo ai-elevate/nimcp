@@ -12,6 +12,7 @@
  */
 
 #include "cognitive/symbolic_logic/bridges/nimcp_symbolic_logic_plasticity_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "plasticity/nimcp_plasticity_orchestrator.h"
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "cognitive/nimcp_symbolic_logic.h"
@@ -515,8 +516,8 @@ safety_plasticity_bridge_t* safety_plasticity_bridge_create(
     mutex_attr_t attr;
     memset(&attr, 0, sizeof(attr));
     attr.type = MUTEX_TYPE_NORMAL;
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_mutex_create(&attr);
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("[SAFETY-PLASTICITY] Failed to create mutex");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
@@ -540,8 +541,8 @@ void safety_plasticity_bridge_destroy(safety_plasticity_bridge_t* bridge) {
     safety_plasticity_bridge_disconnect(bridge);
 
     /* Cleanup */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     bridge_base_cleanup(&bridge->base);
@@ -561,12 +562,12 @@ int safety_plasticity_bridge_connect_orchestrator(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->orchestrator = orchestrator;
     bridge->base.system_a = orchestrator;
     bridge->base.system_a_connected = true;
     bridge->state.connected = bridge->base.system_a_connected && bridge->neuromod != NULL;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("[SAFETY-PLASTICITY] Connected to plasticity orchestrator");
     return 0;
@@ -580,12 +581,12 @@ int safety_plasticity_bridge_connect_neuromod(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->neuromod = neuromod;
     bridge->base.system_b = neuromod;
     bridge->base.system_b_connected = true;
     bridge->state.connected = bridge->orchestrator != NULL && bridge->base.system_b_connected;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("[SAFETY-PLASTICITY] Connected to neuromodulator system");
     return 0;
@@ -599,9 +600,9 @@ int safety_plasticity_bridge_connect_logic(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->logic = logic;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("[SAFETY-PLASTICITY] Connected to symbolic logic system");
     return 0;
@@ -612,7 +613,7 @@ int safety_plasticity_bridge_disconnect(safety_plasticity_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->orchestrator = NULL;
     bridge->neuromod = NULL;
     bridge->logic = NULL;
@@ -621,7 +622,7 @@ int safety_plasticity_bridge_disconnect(safety_plasticity_bridge_t* bridge) {
     bridge->base.system_a_connected = false;
     bridge->base.system_b_connected = false;
     bridge->state.connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("[SAFETY-PLASTICITY] Disconnected all systems");
     return 0;
@@ -645,7 +646,7 @@ int safety_plasticity_map_event(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute default response based on event type */
     compute_default_response(bridge, event, response);
@@ -656,7 +657,7 @@ int safety_plasticity_map_event(
     /* Invoke registered callbacks (can modify response) */
     int cb_result = invoke_callbacks(bridge, event, response);
     if (cb_result != 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return cb_result;
     }
 
@@ -673,7 +674,7 @@ int safety_plasticity_map_event(
     bridge->state.last_event_type = event->type;
     bridge->state.last_event_us = get_time_us();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -685,13 +686,13 @@ int safety_plasticity_apply_response(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check for halt */
     if (response->halt_system) {
         bridge->state.system_halted = true;
         NIMCP_LOGGING_ERROR("[SAFETY-PLASTICITY] SYSTEM HALT triggered by integrity failure!");
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 1;  /* Return 1 to indicate halt */
     }
 
@@ -745,7 +746,7 @@ int safety_plasticity_apply_response(
     bridge->state.pending_5ht_delta = response->serotonin_delta;
     bridge->state.pending_ach_delta = response->acetylcholine_delta;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -775,7 +776,7 @@ int safety_plasticity_register_callback(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Find free slot */
     int slot = -1;
@@ -788,7 +789,7 @@ int safety_plasticity_register_callback(
 
     if (slot < 0) {
         NIMCP_LOGGING_ERROR("[SAFETY-PLASTICITY] No free callback slots");
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -798,7 +799,7 @@ int safety_plasticity_register_callback(
     bridge->callbacks[slot].user_data = user_data;
     bridge->num_callbacks++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return slot;
 }
 
@@ -811,10 +812,10 @@ int safety_plasticity_unregister_callback(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->callbacks[callback_id].active) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -823,7 +824,7 @@ int safety_plasticity_unregister_callback(
     bridge->callbacks[callback_id].user_data = NULL;
     bridge->num_callbacks--;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -837,7 +838,7 @@ int safety_plasticity_bridge_update(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now = get_time_us();
 
@@ -863,7 +864,7 @@ int safety_plasticity_bridge_update(
     bridge->state.last_update_us = now;
     bridge->stats.total_updates++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -902,10 +903,10 @@ int safety_plasticity_reset_stats(safety_plasticity_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(safety_plasticity_stats_t));
     bridge->stats.avg_learning_rate_mod = 1.0f;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -940,10 +941,10 @@ int safety_plasticity_clear_halt(
         return -2;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.system_halted = false;
     NIMCP_LOGGING_WARN("[SAFETY-PLASTICITY] System halt cleared with authorization");
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

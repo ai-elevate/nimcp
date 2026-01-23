@@ -14,6 +14,7 @@
  * @version 1.0.0
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/memory/core/nimcp_pr_bio_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -94,6 +95,7 @@ typedef struct {
  * @brief Internal bridge structure
  */
 struct pr_bio_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /* Configuration */
     pr_bio_bridge_config_t config;
 

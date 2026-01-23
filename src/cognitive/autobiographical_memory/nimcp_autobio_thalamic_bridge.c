@@ -3,6 +3,7 @@
  * @brief Autobiographical Memory-Thalamic Bridge Implementation
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/autobiographical_memory/nimcp_autobio_thalamic_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
@@ -10,6 +11,7 @@
 #include <string.h>
 
 struct autobio_thalamic_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* autobio;
     thalamic_router_t* router;
     autobio_thalamic_config_t config;

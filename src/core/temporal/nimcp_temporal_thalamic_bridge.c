@@ -10,6 +10,7 @@
  * @date 2024-12-30
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/temporal/nimcp_temporal_thalamic_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -19,6 +20,7 @@
  * Internal structure for temporal-thalamic bridge
  */
 struct temporal_thalamic_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* temporal;                       /**< Temporal processing module */
     thalamic_router_t* router;            /**< Thalamic router instance */
     temporal_thalamic_config_t config;    /**< Bridge configuration */

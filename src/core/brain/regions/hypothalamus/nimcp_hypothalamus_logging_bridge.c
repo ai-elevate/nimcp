@@ -20,6 +20,7 @@
  */
 
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_logging_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/platform/nimcp_platform_time.h"
@@ -175,6 +176,8 @@ extern int hypo_orch_unsubscribe(
  * @brief Internal logging bridge structure
  */
 struct hypo_logging_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     hypo_logging_config_t config;
 
@@ -184,9 +187,6 @@ struct hypo_logging_bridge {
     uint32_t head;              /* Next write position */
     uint32_t count;             /* Current entry count */
     uint32_t sequence;          /* Monotonic sequence number */
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 
     /* Connection state */
     hypo_orchestrator_t orchestrator;
@@ -219,16 +219,16 @@ static uint64_t get_current_time_us(void) {
  * @brief Lock the bridge mutex
  */
 static int bridge_lock(hypo_logging_bridge_t* bridge) {
-    if (!bridge || !bridge->mutex) return -1;
-    return nimcp_mutex_lock(bridge->mutex);
+    if (!bridge || !bridge->base.mutex) return -1;
+    return nimcp_mutex_lock(bridge->base.mutex);
 }
 
 /**
  * @brief Unlock the bridge mutex
  */
 static int bridge_unlock(hypo_logging_bridge_t* bridge) {
-    if (!bridge || !bridge->mutex) return -1;
-    return nimcp_mutex_unlock(bridge->mutex);
+    if (!bridge || !bridge->base.mutex) return -1;
+    return nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 /**
@@ -643,8 +643,8 @@ hypo_logging_bridge_t* hypo_logging_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "hypothalamus_logging") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         LOG_ERROR("hypo_logging_bridge_create: mutex creation failed");
         nimcp_free(bridge->entries);
         nimcp_free(bridge);
@@ -701,9 +701,9 @@ void hypo_logging_bridge_destroy(hypo_logging_bridge_t* bridge) {
     }
 
     /* Free mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-        bridge->mutex = NULL;
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
+        bridge->base.mutex = NULL;
     }
 
     /* Free buffer */

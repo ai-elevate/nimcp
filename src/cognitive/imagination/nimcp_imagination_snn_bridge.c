@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/imagination/nimcp_imagination_snn_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_config.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
@@ -25,9 +26,9 @@
 //=============================================================================
 
 struct imagination_snn_bridge {
+    bridge_base_t base;
     imagination_snn_config_t config;
     snn_network_t* snn;
-    nimcp_mutex_t* mutex;
 
     /* State */
     imagination_snn_state_t state;
@@ -149,10 +150,8 @@ imagination_snn_bridge_t* imagination_snn_create(const imagination_snn_config_t*
         return NULL;
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize bridge base */
+    if (bridge_base_init(&bridge->base, 0, "imagination_snn") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -169,7 +168,7 @@ imagination_snn_bridge_t* imagination_snn_create(const imagination_snn_config_t*
 
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -223,9 +222,7 @@ void imagination_snn_destroy(imagination_snn_bridge_t* bridge) {
         snn_network_destroy(bridge->snn);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge->encoding_buffer);
     nimcp_free(bridge->output_buffer);
@@ -237,7 +234,7 @@ void imagination_snn_destroy(imagination_snn_bridge_t* bridge) {
 int imagination_snn_reset(imagination_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset SNN network */
     if (bridge->snn) {
@@ -270,7 +267,7 @@ int imagination_snn_reset(imagination_snn_bridge_t* bridge) {
     bridge->coherence_signal = 0.0f;
     bridge->creativity_signal = 0.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -286,7 +283,7 @@ int imagination_snn_encode_state(
     if (!bridge || !dimensions) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = IMAGINATION_SNN_STATE_ENCODING;
 
     uint32_t neurons_per_dim = bridge->config.neurons_per_dim;
@@ -331,7 +328,7 @@ int imagination_snn_encode_state(
 
     bridge->stats.total_spikes += total_spikes;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return total_spikes;
 }
 
@@ -342,14 +339,14 @@ int imagination_snn_encode_vividness(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[IMAGINATION_DIM_COUNT] = {0};
     dims[IMAGINATION_DIM_VIVIDNESS] = clamp_f(vividness, 0.0f, 1.0f);
     dims[IMAGINATION_DIM_DETAIL] = clamp_f(detail, 0.0f, 1.0f);
     dims[IMAGINATION_DIM_COHERENCE] = (vividness + detail) / 2.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return imagination_snn_encode_state(bridge, dims, 3);
 }
@@ -361,7 +358,7 @@ int imagination_snn_encode_scenario(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[IMAGINATION_DIM_COUNT] = {0};
     dims[IMAGINATION_DIM_COHERENCE] = clamp_f(coherence, 0.0f, 1.0f);
@@ -369,7 +366,7 @@ int imagination_snn_encode_scenario(
 
     bridge->coherence_signal = coherence;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return imagination_snn_encode_state(bridge, dims, 2);
 }
@@ -381,7 +378,7 @@ int imagination_snn_encode_creativity(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[IMAGINATION_DIM_COUNT] = {0};
     dims[IMAGINATION_DIM_CREATIVITY] = clamp_f(creativity, 0.0f, 1.0f);
@@ -400,7 +397,7 @@ int imagination_snn_encode_creativity(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return imagination_snn_encode_state(bridge, dims, 2);
 }
@@ -412,14 +409,14 @@ int imagination_snn_encode_counterfactual(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[IMAGINATION_DIM_COUNT] = {0};
     dims[IMAGINATION_DIM_COUNTERFACTUAL] = clamp_f(divergence, 0.0f, 1.0f);
     dims[IMAGINATION_DIM_PROSPECTIVE] = clamp_f((float)steps_ahead / 100.0f, 0.0f, 1.0f);
     dims[IMAGINATION_DIM_REALITY_DISTANCE] = divergence * 0.8f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return imagination_snn_encode_state(bridge, dims, 3);
 }
@@ -432,7 +429,7 @@ int imagination_snn_simulate(imagination_snn_bridge_t* bridge, float duration_ms
     if (!bridge) return -1;
     if (duration_ms <= 0.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = IMAGINATION_SNN_STATE_SIMULATING;
 
     float dt = bridge->config.dt_ms;
@@ -495,7 +492,7 @@ int imagination_snn_simulate(imagination_snn_bridge_t* bridge, float duration_ms
         bridge->imagery_callback(bridge, &bridge->last_imagery, bridge->imagery_callback_data);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -531,9 +528,9 @@ int imagination_snn_get_imagery(
 ) {
     if (!bridge || !imagery) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *imagery = bridge->last_imagery;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -546,11 +543,11 @@ int imagination_snn_get_activations(
     if (!bridge || !activations) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t d = 0; d < num_dims; d++) {
         activations[d] = bridge->dim_states[d].activation;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -561,13 +558,13 @@ bool imagination_snn_check_vividness(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_imagery.vividness_level;
     if (vividness_level) {
         *vividness_level = level;
     }
     bool detected = level > bridge->config.vividness_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return detected;
 }
@@ -578,13 +575,13 @@ bool imagination_snn_check_creative(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_imagery.creativity_level;
     if (creative_level) {
         *creative_level = level;
     }
     bool detected = level > bridge->config.vividness_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return detected;
 }
@@ -595,7 +592,7 @@ bool imagination_snn_check_state_change(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     /* Calculate magnitude from prev_state differences */
     float mag = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
@@ -608,7 +605,7 @@ bool imagination_snn_check_state_change(
         *change_magnitude = mag;
     }
     bool changed = mag > bridge->config.state_change_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return changed;
 }
@@ -625,9 +622,9 @@ int imagination_snn_get_dim_state(
     if (!bridge || !state) return -1;
     if (dim >= bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -638,7 +635,7 @@ int imagination_snn_get_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
     state->mean_vividness = bridge->last_imagery.vividness_level;
@@ -655,16 +652,16 @@ int imagination_snn_get_state(
         state->total_activity += bridge->dim_states[d].activation;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int imagination_snn_get_stats(imagination_snn_bridge_t* bridge, imagination_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -672,9 +669,9 @@ int imagination_snn_get_stats(imagination_snn_bridge_t* bridge, imagination_snn_
 int imagination_snn_reset_stats(imagination_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(imagination_snn_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -682,9 +679,9 @@ int imagination_snn_reset_stats(imagination_snn_bridge_t* bridge) {
 float imagination_snn_get_vividness(imagination_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float vividness = bridge->last_imagery.vividness_level;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return vividness;
 }
@@ -692,12 +689,12 @@ float imagination_snn_get_vividness(imagination_snn_bridge_t* bridge) {
 float imagination_snn_get_total_activity(imagination_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float total = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
         total += bridge->dim_states[d].activation;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return total;
 }
@@ -713,10 +710,10 @@ int imagination_snn_register_vividness_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->vividness_callback = callback;
     bridge->vividness_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -728,10 +725,10 @@ int imagination_snn_register_imagery_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->imagery_callback = callback;
     bridge->imagery_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -743,10 +740,10 @@ int imagination_snn_register_creative_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->creative_callback = callback;
     bridge->creative_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -759,10 +756,10 @@ int imagination_snn_bio_async_connect(imagination_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -770,9 +767,9 @@ int imagination_snn_bio_async_connect(imagination_snn_bridge_t* bridge) {
 int imagination_snn_bio_async_disconnect(imagination_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -780,9 +777,9 @@ int imagination_snn_bio_async_disconnect(imagination_snn_bridge_t* bridge) {
 bool imagination_snn_is_bio_async_connected(imagination_snn_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
 }

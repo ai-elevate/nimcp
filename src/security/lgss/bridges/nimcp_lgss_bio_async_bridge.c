@@ -9,6 +9,7 @@
  * HOW:  Message serialization/deserialization, handler dispatch, router integration
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "security/lgss/bridges/nimcp_lgss_bio_async_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -48,6 +49,7 @@ typedef struct {
  * ============================================================================ */
 
 struct lgss_bio_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     lgss_bio_bridge_config_t config;
     bio_router_t router;
 

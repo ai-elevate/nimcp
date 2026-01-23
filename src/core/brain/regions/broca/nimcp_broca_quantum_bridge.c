@@ -6,6 +6,7 @@
  * optimized lexical search, syntax selection, and phoneme sequencing.
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/broca/nimcp_broca_quantum_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -17,6 +18,7 @@
 //=============================================================================
 
 struct broca_quantum_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* broca;                         /**< Broca adapter handle */
     broca_quantum_config_t config;       /**< Configuration */
     qreason_t quantum_reasoner;          /**< Quantum reasoning engine */

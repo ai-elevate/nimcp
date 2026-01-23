@@ -13,6 +13,7 @@
  */
 
 #include "cognitive/integration/nimcp_salience_attention_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/integration/nimcp_salience_attention_bridge.h"
 #include "cognitive/free_energy/nimcp_fep_orchestrator.h"
 #include "utils/memory/nimcp_memory.h"
@@ -28,12 +29,13 @@
  *===========================================================================*/
 
 struct sa_fep_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     sa_fep_config_t config;
 
     /* State */
     sa_fep_state_t state;
-    nimcp_mutex_t* mutex;
 
     /* References */
     fep_orchestrator_t* orchestrator;
@@ -306,10 +308,8 @@ sa_fep_bridge_t* sa_fep_bridge_create(const sa_fep_config_t* config) {
         bridge->config = sa_fep_config_default();
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "salience_attention_fep") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -350,10 +350,8 @@ void sa_fep_bridge_destroy(sa_fep_bridge_t* bridge) {
         sa_fep_bridge_unregister(bridge);
     }
 
-    /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }
@@ -361,7 +359,7 @@ void sa_fep_bridge_destroy(sa_fep_bridge_t* bridge) {
 int sa_fep_bridge_reset(sa_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset metrics */
     memset(&bridge->metrics, 0, sizeof(sa_fep_metrics_t));
@@ -386,7 +384,7 @@ int sa_fep_bridge_reset(sa_fep_bridge_t* bridge) {
 
     bridge->state = SA_FEP_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -402,11 +400,11 @@ int sa_fep_bridge_register(
 ) {
     if (!bridge || !orchestrator) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if already registered */
     if (bridge->registered) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         if (bridge_id_out) {
             *bridge_id_out = bridge->bridge_id;
         }
@@ -417,7 +415,7 @@ int sa_fep_bridge_register(
     bridge->orchestrator = orchestrator;
     bridge->sa_bridge = sa_bridge;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Register with FEP orchestrator */
     uint32_t assigned_id = 0;
@@ -432,18 +430,18 @@ int sa_fep_bridge_register(
     );
 
     if (ret != 0) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->orchestrator = NULL;
         bridge->sa_bridge = NULL;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bridge_id = assigned_id;
     bridge->registered = true;
     bridge->state = SA_FEP_STATE_ACTIVE;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     if (bridge_id_out) {
         *bridge_id_out = assigned_id;
@@ -455,10 +453,10 @@ int sa_fep_bridge_register(
 int sa_fep_bridge_unregister(sa_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->registered) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;  /* Not registered, nothing to do */
     }
 
@@ -473,16 +471,16 @@ int sa_fep_bridge_unregister(sa_fep_bridge_t* bridge) {
     bridge->sa_bridge = NULL;
     bridge->state = SA_FEP_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 bool sa_fep_bridge_is_registered(const sa_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->base.mutex);
     bool registered = bridge->registered;
-    nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->base.mutex);
 
     return registered;
 }
@@ -490,9 +488,9 @@ bool sa_fep_bridge_is_registered(const sa_fep_bridge_t* bridge) {
 uint32_t sa_fep_bridge_get_id(const sa_fep_bridge_t* bridge) {
     if (!bridge) return 0;
 
-    nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->base.mutex);
     uint32_t id = bridge->registered ? bridge->bridge_id : 0;
-    nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->base.mutex);
 
     return id;
 }
@@ -505,11 +503,11 @@ int sa_fep_update_callback(void* handle) {
     sa_fep_bridge_t* bridge = (sa_fep_bridge_t*)handle;
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Ensure we're registered */
     if (!bridge->registered) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -594,7 +592,7 @@ int sa_fep_update_callback(void* handle) {
     /* Check and trigger callbacks */
     check_callbacks(bridge);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -610,7 +608,7 @@ void sa_fep_destroy_callback(void* handle) {
 int sa_fep_bridge_force_update(sa_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t start_us = get_time_us();
 
@@ -630,7 +628,7 @@ int sa_fep_bridge_force_update(sa_fep_bridge_t* bridge) {
     /* Check and trigger callbacks */
     check_callbacks(bridge);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -640,10 +638,10 @@ int sa_fep_bridge_update_salience_error(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.salience_prediction_error = clamp_f(error, 0.0f, 1.0f);
     bridge->stats.salience_computations++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -654,10 +652,10 @@ int sa_fep_bridge_update_attention_error(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.attention_allocation_error = clamp_f(error, 0.0f, 1.0f);
     bridge->stats.attention_computations++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -668,10 +666,10 @@ int sa_fep_bridge_update_priority_error(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.priority_estimation_error = clamp_f(error, 0.0f, 1.0f);
     bridge->stats.priority_computations++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -682,9 +680,9 @@ int sa_fep_bridge_update_attention_efficiency(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.attention_efficiency = clamp_f(efficiency, 0.0f, 1.0f);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -699,9 +697,9 @@ int sa_fep_bridge_get_metrics(
 ) {
     if (!bridge || !metrics_out) return -1;
 
-    nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->base.mutex);
     *metrics_out = bridge->metrics;
-    nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -712,9 +710,9 @@ int sa_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats_out) return -1;
 
-    nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->base.mutex);
     *stats_out = bridge->stats;
-    nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -722,11 +720,11 @@ int sa_fep_bridge_get_stats(
 int sa_fep_bridge_reset_stats(sa_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(sa_fep_stats_t));
     bridge->running_avg_fe = 0.0f;
     bridge->running_count = 0;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -734,9 +732,9 @@ int sa_fep_bridge_reset_stats(sa_fep_bridge_t* bridge) {
 float sa_fep_bridge_get_free_energy(const sa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->base.mutex);
     float fe = bridge->metrics.free_energy;
-    nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->base.mutex);
 
     return fe;
 }
@@ -744,9 +742,9 @@ float sa_fep_bridge_get_free_energy(const sa_fep_bridge_t* bridge) {
 float sa_fep_bridge_get_salience_error(const sa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->base.mutex);
     float se = bridge->metrics.salience_prediction_error;
-    nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->base.mutex);
 
     return se;
 }
@@ -754,9 +752,9 @@ float sa_fep_bridge_get_salience_error(const sa_fep_bridge_t* bridge) {
 float sa_fep_bridge_get_prediction_error(const sa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->base.mutex);
     float pe = bridge->metrics.prediction_error;
-    nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->base.mutex);
 
     return pe;
 }
@@ -764,9 +762,9 @@ float sa_fep_bridge_get_prediction_error(const sa_fep_bridge_t* bridge) {
 float sa_fep_bridge_get_attention_efficiency(const sa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->base.mutex);
     float eff = bridge->metrics.attention_efficiency;
-    nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->base.mutex);
 
     return eff;
 }
@@ -778,9 +776,9 @@ float sa_fep_bridge_get_attention_efficiency(const sa_fep_bridge_t* bridge) {
 sa_fep_state_t sa_fep_bridge_get_state(const sa_fep_bridge_t* bridge) {
     if (!bridge) return SA_FEP_STATE_ERROR;
 
-    nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->base.mutex);
     sa_fep_state_t state = bridge->state;
-    nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->base.mutex);
 
     return state;
 }
@@ -788,9 +786,9 @@ sa_fep_state_t sa_fep_bridge_get_state(const sa_fep_bridge_t* bridge) {
 bool sa_fep_bridge_is_degraded(const sa_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->base.mutex);
     bool degraded = (bridge->state == SA_FEP_STATE_DEGRADED);
-    nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->base.mutex);
 
     return degraded;
 }
@@ -798,10 +796,10 @@ bool sa_fep_bridge_is_degraded(const sa_fep_bridge_t* bridge) {
 bool sa_fep_bridge_is_efficient(const sa_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->base.mutex);
     bool efficient = (bridge->metrics.attention_efficiency >=
                       bridge->config.attention_efficiency_threshold);
-    nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->base.mutex);
 
     return efficient;
 }
@@ -828,10 +826,10 @@ int sa_fep_bridge_set_high_fe_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->high_fe_callback = callback;
     bridge->high_fe_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -843,10 +841,10 @@ int sa_fep_bridge_set_surprise_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->surprise_callback = callback;
     bridge->surprise_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -858,10 +856,10 @@ int sa_fep_bridge_set_metrics_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics_callback = callback;
     bridge->metrics_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -876,9 +874,9 @@ int sa_fep_bridge_set_config(
 ) {
     if (!bridge || !config) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->config = *config;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -889,9 +887,9 @@ int sa_fep_bridge_get_config(
 ) {
     if (!bridge || !config_out) return -1;
 
-    nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((sa_fep_bridge_t*)bridge)->base.mutex);
     *config_out = bridge->config;
-    nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((sa_fep_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }

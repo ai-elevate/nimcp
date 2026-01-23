@@ -120,7 +120,7 @@ p2p_immune_bridge_t* p2p_immune_bridge_create(
     bridge->last_update_time = get_time_ms();
     bridge->last_health_check_time = get_time_ms();
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "p2p_immune") != 0) { nimcp_free(bridge); return NULL; }
 
     NIMCP_LOGGING_INFO("p2p_immune_bridge: created successfully");
     return bridge;
@@ -140,7 +140,7 @@ void p2p_immune_bridge_destroy(p2p_immune_bridge_t* bridge) {
     }
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

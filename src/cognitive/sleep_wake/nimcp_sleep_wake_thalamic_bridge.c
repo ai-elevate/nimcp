@@ -32,7 +32,7 @@ sleep_wake_thalamic_config_t sleep_wake_thalamic_default_config(void) {
 sleep_wake_thalamic_bridge_t* sleep_wake_thalamic_bridge_create(void* sleep_wake, thalamic_router_t* router, const sleep_wake_thalamic_config_t* config) {
     sleep_wake_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(sleep_wake_thalamic_bridge_t));
     if (!bridge) return NULL;
-    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (bridge_base_init(&bridge->base, 0, "sleep_wake_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -48,7 +48,7 @@ sleep_wake_thalamic_bridge_t* sleep_wake_thalamic_bridge_create(void* sleep_wake
 void sleep_wake_thalamic_bridge_destroy(sleep_wake_thalamic_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
 }

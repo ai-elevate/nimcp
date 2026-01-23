@@ -120,7 +120,7 @@ feature_extractor_sleep_bridge_t feature_extractor_sleep_bridge_create(
     bridge->effects.window_duration_factor = 1.0f;
     bridge->effects.extraction_enabled = true;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "feature_extractor_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(nimcp_platform_mutex_t),
             "feature_extractor_sleep_bridge_create: failed to allocate mutex");
@@ -163,7 +163,7 @@ void feature_extractor_sleep_bridge_destroy(feature_extractor_sleep_bridge_t bri
         }
     }
 
-    if (bridge->base.mutex) nimcp_mutex_free(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

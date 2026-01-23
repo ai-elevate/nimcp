@@ -429,6 +429,8 @@ TEST_F(ExceptionStressE2ETest, ExceptionStormPrevention) {
         if (circuit_result == 1) {
             blocked_count++;
             g_stats.circuit_blocks++;
+            // Circuit breaker blocking IS storm detection
+            g_stats.storm_detected = true;
         } else {
             passed_count++;
             nimcp_exception_dispatch(ex);

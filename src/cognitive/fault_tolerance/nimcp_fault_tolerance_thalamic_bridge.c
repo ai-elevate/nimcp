@@ -32,7 +32,7 @@ fault_tolerance_thalamic_config_t fault_tolerance_thalamic_default_config(void) 
 fault_tolerance_thalamic_bridge_t* fault_tolerance_thalamic_bridge_create(void* fault_tolerance, thalamic_router_t* router, const fault_tolerance_thalamic_config_t* config) {
     fault_tolerance_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(fault_tolerance_thalamic_bridge_t));
     if (!bridge) return NULL;
-    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (bridge_base_init(&bridge->base, 0, "fault_tolerance_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -48,7 +48,7 @@ fault_tolerance_thalamic_bridge_t* fault_tolerance_thalamic_bridge_create(void* 
 void fault_tolerance_thalamic_bridge_destroy(fault_tolerance_thalamic_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
 }

@@ -39,7 +39,7 @@ personality_fep_bridge_t* personality_fep_bridge_create(const personality_fep_co
     } else {
         personality_fep_bridge_default_config(&bridge->config);
     }
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "personality_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
@@ -55,7 +55,7 @@ void personality_fep_bridge_destroy(personality_fep_bridge_t* bridge) {
         personality_fep_bridge_disconnect_bio_async(bridge);
     }
     if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Destroyed personality FEP bridge");

@@ -78,7 +78,7 @@ semantic_compression_fep_bridge_t* semantic_compression_fep_create(
     bridge->fep_effects.preserve_semantic_structure = config->enable_semantic_preservation;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "semantic_compression_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "semantic_compression_fep_create: Failed to create mutex");
         NIMCP_LOGGING_ERROR("semantic_compression_fep_create: Failed to create mutex");
@@ -103,7 +103,7 @@ void semantic_compression_fep_destroy(semantic_compression_fep_bridge_t* bridge)
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

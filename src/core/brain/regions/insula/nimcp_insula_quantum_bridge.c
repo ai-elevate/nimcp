@@ -6,6 +6,7 @@
  * interoceptive integration, emotional evaluation, and somatic marker search.
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/insula/nimcp_insula_quantum_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -17,6 +18,7 @@
  *===========================================================================*/
 
 struct insula_quantum_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* insula;                            /**< Insula adapter handle */
     insula_quantum_config_t config;          /**< Configuration */
     qreason_t quantum_reasoner;              /**< Quantum reasoning engine */

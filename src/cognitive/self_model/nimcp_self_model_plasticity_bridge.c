@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/self_model/nimcp_self_model_plasticity_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -21,8 +22,8 @@
 //=============================================================================
 
 struct self_model_plasticity_bridge {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
     self_model_plasticity_config_t config;
-    nimcp_mutex_t* mutex;
 
     /* State */
     self_model_plasticity_state_t state;
@@ -121,10 +122,8 @@ self_model_plasticity_bridge_t* self_model_plasticity_create(
         bridge->config = self_model_plasticity_config_default();
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize base bridge */
+    if (bridge_base_init(&bridge->base, 0, "self_model_plasticity") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -133,7 +132,7 @@ self_model_plasticity_bridge_t* self_model_plasticity_create(
     bridge->max_synapses = bridge->config.max_synapses;
     bridge->synapses = nimcp_calloc(bridge->max_synapses, sizeof(self_model_plasticity_synapse_t));
     if (!bridge->synapses) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -160,9 +159,7 @@ self_model_plasticity_bridge_t* self_model_plasticity_create(
 void self_model_plasticity_destroy(self_model_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge->synapses);
     nimcp_free(bridge);
@@ -171,7 +168,7 @@ void self_model_plasticity_destroy(self_model_plasticity_bridge_t* bridge) {
 int self_model_plasticity_reset(self_model_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset all synapses to initial weights */
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
@@ -194,7 +191,7 @@ int self_model_plasticity_reset(self_model_plasticity_bridge_t* bridge) {
     bridge->last_reward = 0.0f;
     bridge->state = SELF_MODEL_PLASTICITY_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -210,17 +207,17 @@ int self_model_plasticity_register_synapse(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if already exists */
     if (find_synapse(bridge, synapse_id)) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     /* Check capacity */
     if (bridge->num_synapses >= bridge->max_synapses) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -247,7 +244,7 @@ int self_model_plasticity_register_synapse(
 
     bridge->num_synapses++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -257,7 +254,7 @@ int self_model_plasticity_unregister_synapse(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
         if (bridge->synapses[i].synapse_id == synapse_id) {
@@ -266,12 +263,12 @@ int self_model_plasticity_unregister_synapse(
                 bridge->synapses[i] = bridge->synapses[bridge->num_synapses - 1];
             }
             bridge->num_synapses--;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return 0;
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return -1;
 }
 
@@ -282,17 +279,17 @@ int self_model_plasticity_get_synapse(
 ) {
     if (!bridge || !synapse) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     self_model_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
     if (!syn) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     *synapse = *syn;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -303,17 +300,17 @@ int self_model_plasticity_protect_synapse(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     self_model_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
     if (!syn) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     syn->is_protected = protect;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -330,13 +327,13 @@ int self_model_plasticity_learn(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = SELF_MODEL_PLASTICITY_STATE_LEARNING;
 
     self_model_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
     if (!syn) {
         bridge->state = SELF_MODEL_PLASTICITY_STATE_IDLE;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -344,7 +341,7 @@ int self_model_plasticity_learn(
     if (syn->is_protected) {
         bridge->stats.protected_updates_blocked++;
         bridge->state = SELF_MODEL_PLASTICITY_STATE_IDLE;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -435,7 +432,7 @@ int self_model_plasticity_learn(
     }
 
     bridge->state = SELF_MODEL_PLASTICITY_STATE_IDLE;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -447,18 +444,18 @@ float self_model_plasticity_apply_stdp(
 ) {
     if (!bridge) return NAN;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     self_model_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
     if (!syn) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return NAN;
     }
 
     /* Check protection */
     if (syn->is_protected) {
         bridge->stats.protected_updates_blocked++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0.0f;
     }
 
@@ -494,7 +491,7 @@ float self_model_plasticity_apply_stdp(
     syn->last_update_us = bridge->current_time_us;
     syn->update_count++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return actual_delta;
 }
 
@@ -504,7 +501,7 @@ int self_model_plasticity_apply_reward(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     reward = clamp_f(reward, -1.0f, 1.0f);
     bridge->last_reward = reward;
@@ -530,7 +527,7 @@ int self_model_plasticity_apply_reward(
         bridge->stats.weight_updates++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -541,7 +538,7 @@ int self_model_plasticity_update_bcm(
     if (!bridge) return -1;
     if (dt_ms <= 0.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float decay = expf(-dt_ms / bridge->config.bcm_tau_ms);
 
@@ -561,7 +558,7 @@ int self_model_plasticity_update_bcm(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -572,7 +569,7 @@ int self_model_plasticity_homeostatic_update(
     if (!bridge) return -1;
     if (dt_ms <= 0.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Calculate mean weight */
     float mean_weight = 0.0f;
@@ -621,7 +618,7 @@ int self_model_plasticity_homeostatic_update(
                                      bridge->calibration_callback_data);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -632,7 +629,7 @@ int self_model_plasticity_update_traces(
     if (!bridge) return -1;
     if (dt_ms <= 0.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float decay = expf(-dt_ms / bridge->config.stdp_tau_plus_ms);
 
@@ -643,14 +640,14 @@ int self_model_plasticity_update_traces(
     bridge->global_eligibility *= decay;
     bridge->current_time_us += (uint64_t)(dt_ms * 1000.0f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int self_model_plasticity_consolidate(self_model_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = SELF_MODEL_PLASTICITY_STATE_CONSOLIDATING;
 
     /* Consolidate learning by resetting eligibility traces */
@@ -661,7 +658,7 @@ int self_model_plasticity_consolidate(self_model_plasticity_bridge_t* bridge) {
     bridge->global_eligibility = 0.0f;
     bridge->state = SELF_MODEL_PLASTICITY_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -675,9 +672,9 @@ int self_model_plasticity_get_calibration_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->calibration;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -688,7 +685,7 @@ int self_model_plasticity_get_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
     state->active_synapses = bridge->num_synapses;
@@ -714,7 +711,7 @@ int self_model_plasticity_get_state(
     state->learning_rate_effective = bridge->config.base_learning_rate *
                                      bridge->calibration.learning_rate_mod;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -724,9 +721,9 @@ int self_model_plasticity_get_stats(
 ) {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -734,9 +731,9 @@ int self_model_plasticity_get_stats(
 int self_model_plasticity_reset_stats(self_model_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(self_model_plasticity_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -752,10 +749,10 @@ int self_model_plasticity_register_learn_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->learn_callback = callback;
     bridge->learn_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -767,10 +764,10 @@ int self_model_plasticity_register_calibration_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->calibration_callback = callback;
     bridge->calibration_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -783,9 +780,9 @@ int self_model_plasticity_bio_async_connect(self_model_plasticity_bridge_t* brid
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -793,9 +790,9 @@ int self_model_plasticity_bio_async_connect(self_model_plasticity_bridge_t* brid
 int self_model_plasticity_bio_async_disconnect(self_model_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -803,9 +800,9 @@ int self_model_plasticity_bio_async_disconnect(self_model_plasticity_bridge_t* b
 bool self_model_plasticity_is_bio_async_connected(self_model_plasticity_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
 }

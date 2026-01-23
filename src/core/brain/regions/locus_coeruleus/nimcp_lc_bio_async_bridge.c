@@ -5,6 +5,7 @@
  * @date 2026-01-11
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/locus_coeruleus/nimcp_lc_bio_async_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -34,6 +35,7 @@ typedef struct {
  * ============================================================================ */
 
 struct lc_bio_async_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     lc_bio_async_config_t config;
     nimcp_lc_adapter_t adapter;
     bio_router_t router;

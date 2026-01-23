@@ -10,6 +10,7 @@
  * @date 2025-01-03
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/brainstem/nimcp_vestibular_cerebellum_bridge.h"
 #include "core/brain/regions/cerebellum/nimcp_cerebellum_adapter.h"
 #include "utils/memory/nimcp_memory.h"
@@ -32,6 +33,7 @@
  * @brief Internal bridge structure
  */
 struct vestibular_cerebellum_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /* Configuration */
     vestibular_cerebellum_config_t config;
 

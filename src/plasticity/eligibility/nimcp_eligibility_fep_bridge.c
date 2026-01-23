@@ -32,7 +32,7 @@ eligibility_fep_bridge_t* eligibility_fep_bridge_create(const eligibility_fep_co
     memset(bridge, 0, sizeof(eligibility_fep_bridge_t));
     if (config) bridge->config = *config;
     else eligibility_fep_bridge_default_config(&bridge->config);
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "eligibility_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
     bridge->effects.total_decay_modulation = 1.0f;
     NIMCP_LOGGING_INFO("Eligibility-FEP bridge created");
@@ -42,7 +42,7 @@ eligibility_fep_bridge_t* eligibility_fep_bridge_create(const eligibility_fep_co
 void eligibility_fep_bridge_destroy(eligibility_fep_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.bio_async_enabled) eligibility_fep_bridge_disconnect_bio_async(bridge);
-    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

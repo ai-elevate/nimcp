@@ -43,7 +43,7 @@ microglia_fep_bridge_t* microglia_fep_create(
     bridge->microglia_network = microglia_network;
     bridge->fep_system = fep_system;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "microglia_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("microglia_fep_create: mutex creation failed");
         nimcp_free(bridge);
@@ -61,7 +61,7 @@ void microglia_fep_destroy(microglia_fep_bridge_t* bridge) {
         microglia_fep_disconnect_bio_async(bridge);
     }
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
     NIMCP_LOGGING_INFO("Microglia-FEP bridge destroyed");

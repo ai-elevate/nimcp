@@ -115,7 +115,7 @@ fep_immune_bridge_t* fep_immune_bridge_create(const fep_immune_config_t* config)
     memset(&bridge->cytokine_effects, 0, sizeof(fep_cytokine_effects_t));
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "fep_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         fep_immune_bridge_destroy(bridge);
         return NULL;
@@ -133,7 +133,7 @@ void fep_immune_bridge_destroy(fep_immune_bridge_t* bridge) {
     }
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

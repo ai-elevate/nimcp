@@ -2,6 +2,7 @@
 // nimcp_language_hippocampus_bridge.c - Language-Hippocampus Memory Bridge
 //=============================================================================
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "language/bridges/nimcp_language_hippocampus_bridge.h"
 #include "core/brain/regions/broca/nimcp_broca_adapter.h"
 #include "core/brain/regions/wernicke/nimcp_wernicke_adapter.h"
@@ -37,6 +38,7 @@ typedef struct {
 } association_entry_t;
 
 struct language_hippocampus_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     language_hippocampus_config_t config;
 
     language_orchestrator_t* language;

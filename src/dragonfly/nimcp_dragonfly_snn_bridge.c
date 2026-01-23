@@ -3,6 +3,7 @@
  * @brief Implementation of Dragonfly-to-SNN Backpropagation Bridge
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "dragonfly/nimcp_dragonfly_snn_bridge.h"
 #include "utils/rng/nimcp_rand.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -17,6 +18,7 @@
 #define TSDN_NUM_NEURONS 16
 
 struct dragonfly_snn_bridge_s {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     dragonfly_snn_config_t config;
     dragonfly_system_t* dragonfly;
     void* snn_trainer;

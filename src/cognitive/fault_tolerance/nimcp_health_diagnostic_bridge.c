@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/fault_tolerance/nimcp_health_diagnostic_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
@@ -23,6 +24,7 @@
  * @brief Health diagnostic bridge internal state
  */
 struct health_diag_bridge {
+    bridge_base_t base;                     /**< MUST be first: base bridge infrastructure */
     uint32_t magic;                         /**< Magic number for validation */
     health_diag_bridge_config_t config;     /**< Configuration */
 
@@ -38,9 +40,6 @@ struct health_diag_bridge {
     /* Timing for stats */
     uint64_t total_conversion_time_us;
     uint64_t conversion_count;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 
     /* State */
     bool initialized;
@@ -334,10 +333,8 @@ health_diag_bridge_t* health_diag_bridge_create(
     }
 
     /* Create mutex */
-    mutex_attr_t attr = {0};
-    attr.type = MUTEX_TYPE_NORMAL;
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
+    /* Initialize base bridge */
+    if (bridge_base_init(&bridge->base, 0, "health_diagnostic") != 0) {
         health_diag_bridge_destroy(bridge);
         return NULL;
     }
@@ -358,9 +355,9 @@ void health_diag_bridge_destroy(health_diag_bridge_t* bridge) {
     bridge->magic = 0;
     bridge->initialized = false;
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-        bridge->mutex = NULL;
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
+        bridge->base.mutex = NULL;
     }
 
     if (bridge->custom_anomaly_mappings) {
@@ -398,12 +395,12 @@ int health_diag_bridge_convert_anomaly(
 
     uint64_t start_time = nimcp_time_get_us();
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Allocate result */
     diagnostic_result_t* diag = allocate_diagnostic_result();
     if (!diag) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -411,7 +408,7 @@ int health_diag_bridge_convert_anomaly(
     const anomaly_error_mapping_t* mapping = find_anomaly_mapping(bridge, anomaly->type);
     if (!mapping) {
         nimcp_free(diag);
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         bridge->stats.conversions_failed++;
         return -1;
     }
@@ -474,7 +471,7 @@ int health_diag_bridge_convert_anomaly(
     bridge->stats.avg_conversion_time_us =
         (float)bridge->total_conversion_time_us / (float)bridge->conversion_count;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     *result = diag;
     return 0;
@@ -528,12 +525,12 @@ int health_diag_bridge_convert_agent_message(
 
     uint64_t start_time = nimcp_time_get_us();
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Allocate result */
     diagnostic_result_t* diag = allocate_diagnostic_result();
     if (!diag) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -642,7 +639,7 @@ int health_diag_bridge_convert_agent_message(
     bridge->stats.avg_conversion_time_us =
         (float)bridge->total_conversion_time_us / (float)bridge->conversion_count;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     *result = diag;
     return 0;
@@ -660,12 +657,12 @@ int health_diag_bridge_enrich_stack_trace(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     int ret = capture_stack_trace(result);
     if (ret == 0) {
         bridge->stats.stack_traces_captured++;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return ret;
 }
@@ -678,12 +675,12 @@ int health_diag_bridge_enrich_memory_snapshot(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     int ret = capture_memory_snapshot(result);
     if (ret == 0) {
         bridge->stats.memory_snapshots_captured++;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return ret;
 }
@@ -717,9 +714,9 @@ int health_diag_bridge_analyze_patterns(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     int ret = analyze_patterns_unlocked(bridge, result);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return ret;
 }
@@ -736,16 +733,16 @@ int health_diag_bridge_add_anomaly_mapping(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->custom_anomaly_mapping_count >= HEALTH_DIAG_BRIDGE_MAX_MAPPINGS) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     bridge->custom_anomaly_mappings[bridge->custom_anomaly_mapping_count++] = *mapping;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -757,16 +754,16 @@ int health_diag_bridge_add_agent_mapping(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->custom_agent_mapping_count >= HEALTH_DIAG_BRIDGE_MAX_MAPPINGS) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     bridge->custom_agent_mappings[bridge->custom_agent_mapping_count++] = *mapping;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -815,9 +812,9 @@ int health_diag_bridge_get_stats(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -827,11 +824,11 @@ void health_diag_bridge_reset_stats(health_diag_bridge_t* bridge) {
         return;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     bridge->total_conversion_time_us = 0;
     bridge->conversion_count = 0;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 bool health_diag_bridge_is_ready(const health_diag_bridge_t* bridge) {

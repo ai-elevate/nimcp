@@ -17,6 +17,7 @@
  */
 
 #include "cognitive/integration/nimcp_mirror_empathy_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/integration/nimcp_cognitive_integration_hub.h"
 #include "cognitive/integration/nimcp_cognitive_event_types.h"
 #include "utils/thread/nimcp_thread.h"
@@ -50,6 +51,7 @@ typedef struct {
  * @brief Internal mirror-empathy bridge structure
  */
 struct mirror_empathy_bridge {
+    bridge_base_t base;                       /**< MUST be first: base bridge infrastructure */
     mirror_empathy_config_t config;           /**< Bridge configuration */
     cognitive_integration_hub_t hub;          /**< Connected cognitive hub */
 
@@ -71,9 +73,6 @@ struct mirror_empathy_bridge {
 
     /* Statistics */
     mirror_empathy_stats_t stats;             /**< Bridge statistics */
-
-    /* Synchronization */
-    nimcp_mutex_t* mutex;                     /**< Thread safety mutex */
 };
 
 /* ============================================================================
@@ -261,14 +260,14 @@ static int mirror_empathy_on_event(
 
     mirror_empathy_bridge_t* bridge = (mirror_empathy_bridge_t*)user_data;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update statistics */
     bridge->stats.events_received++;
     bridge->stats.total_events++;
     bridge->stats.last_event_timestamp = get_timestamp_ms();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Dispatch based on event type */
     switch (event->event_type) {
@@ -277,7 +276,7 @@ static int mirror_empathy_on_event(
             if (event->payload && event->payload_size >= sizeof(uint32_t)) {
                 uint32_t agent_id = *((const uint32_t*)event->payload);
 
-                nimcp_mutex_lock(bridge->mutex);
+                nimcp_mutex_lock(bridge->base.mutex);
 
                 agent_empathy_state_t* agent = find_or_create_agent(bridge, agent_id);
                 agent->last_interaction_ms = get_timestamp_ms();
@@ -287,7 +286,7 @@ static int mirror_empathy_on_event(
                 mirror_empathy_action_callback_t callback = bridge->action_callback;
                 void* cb_data = bridge->action_callback_user_data;
 
-                nimcp_mutex_unlock(bridge->mutex);
+                nimcp_mutex_unlock(bridge->base.mutex);
 
                 if (callback) {
                     mirror_empathy_action_t action;
@@ -313,7 +312,7 @@ static int mirror_empathy_on_event(
                 uint32_t agent_id = data[0];
                 uint32_t state_value = data[1];
 
-                nimcp_mutex_lock(bridge->mutex);
+                nimcp_mutex_lock(bridge->base.mutex);
 
                 agent_empathy_state_t* agent = find_or_create_agent(bridge, agent_id);
                 agent->last_interaction_ms = get_timestamp_ms();
@@ -338,7 +337,7 @@ static int mirror_empathy_on_event(
                 mirror_empathy_resonance_callback_t callback = bridge->resonance_callback;
                 void* cb_data = bridge->resonance_callback_user_data;
 
-                nimcp_mutex_unlock(bridge->mutex);
+                nimcp_mutex_unlock(bridge->base.mutex);
 
                 if (callback) {
                     mirror_empathy_resonance_t res;
@@ -359,9 +358,9 @@ static int mirror_empathy_on_event(
 
         case COG_EVENT_INPUT_RECEIVED: {
             /* Input might be social stimulus requiring empathetic processing */
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
             bridge->stats.social_insights++;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             break;
         }
 
@@ -377,7 +376,7 @@ static int mirror_empathy_on_event(
                 uint32_t agent_id = *((const uint32_t*)payload);
                 float intensity = *((const float*)(payload + sizeof(uint32_t)));
 
-                nimcp_mutex_lock(bridge->mutex);
+                nimcp_mutex_lock(bridge->base.mutex);
 
                 agent_empathy_state_t* agent = find_or_create_agent(bridge, agent_id);
                 agent->empathy_level = clamp_float(
@@ -386,7 +385,7 @@ static int mirror_empathy_on_event(
                 );
                 agent->last_interaction_ms = get_timestamp_ms();
 
-                nimcp_mutex_unlock(bridge->mutex);
+                nimcp_mutex_unlock(bridge->base.mutex);
             }
             break;
         }
@@ -442,8 +441,8 @@ mirror_empathy_bridge_t* mirror_empathy_bridge_create(
     }
 
     /* Create mutex for thread safety */
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "mirror_empathy") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -452,7 +451,7 @@ mirror_empathy_bridge_t* mirror_empathy_bridge_create(
     bridge->agents = (agent_empathy_state_t*)nimcp_calloc(
         bridge->config.agent_capacity, sizeof(agent_empathy_state_t));
     if (!bridge->agents) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -495,9 +494,9 @@ void mirror_empathy_bridge_destroy(mirror_empathy_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-        bridge->mutex = NULL;
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
+        bridge->base.mutex = NULL;
     }
 
     bridge->initialized = false;
@@ -517,18 +516,18 @@ int mirror_empathy_bridge_register_with_hub(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if already registered */
     if (bridge->registered) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     /* Store hub reference */
     bridge->hub = hub;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Register module with hub */
     int result = cognitive_hub_register_module(
@@ -540,9 +539,9 @@ int mirror_empathy_bridge_register_with_hub(
     );
 
     if (result != 0) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->hub = NULL;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -587,9 +586,9 @@ int mirror_empathy_bridge_register_with_hub(
         bridge
     );
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->registered = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -599,17 +598,17 @@ int mirror_empathy_bridge_unregister_from_hub(mirror_empathy_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->registered || !bridge->hub) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     cognitive_integration_hub_t hub = bridge->hub;
     uint32_t module_id = bridge->config.module_id;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Unsubscribe from events */
     if (bridge->config.auto_subscribe_social) {
@@ -626,10 +625,10 @@ int mirror_empathy_bridge_unregister_from_hub(mirror_empathy_bridge_t* bridge) {
     /* Unregister module from hub */
     cognitive_hub_unregister_module(hub, module_id);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->hub = NULL;
     bridge->registered = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -642,9 +641,9 @@ bool mirror_empathy_bridge_is_registered(const mirror_empathy_bridge_t* bridge) 
     /* Cast away const for mutex lock (safe - only reading) */
     mirror_empathy_bridge_t* mutable_bridge = (mirror_empathy_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
     bool registered = bridge->registered;
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return registered;
 }
@@ -661,10 +660,10 @@ int mirror_empathy_publish_mirrored_action(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->registered || !bridge->hub) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -679,7 +678,7 @@ int mirror_empathy_publish_mirrored_action(
     agent_empathy_state_t* agent = find_or_create_agent(bridge, action->agent_id);
     agent->last_interaction_ms = get_timestamp_ms();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Create event data */
     cognitive_event_data_t event;
@@ -703,10 +702,10 @@ int mirror_empathy_publish_emotional_resonance(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->registered || !bridge->hub) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -728,7 +727,7 @@ int mirror_empathy_publish_emotional_resonance(
         (bridge->stats.avg_resonance_strength * 0.9f) +
         (resonance->resonance_strength * 0.1f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Create event data */
     cognitive_event_data_t event;
@@ -754,10 +753,10 @@ int mirror_empathy_request_empathetic_response(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->registered || !bridge->hub) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -810,7 +809,7 @@ int mirror_empathy_request_empathetic_response(
     mirror_empathy_response_callback_t callback = bridge->response_callback;
     void* cb_data = bridge->response_callback_user_data;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     if (callback) {
         callback(response_out, cb_data);
@@ -839,16 +838,16 @@ int mirror_empathy_notify_action_intention(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->registered || !bridge->hub) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     /* Check if predictions are enabled */
     if (!bridge->config.publish_predictions) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;  /* Success but not published */
     }
 
@@ -863,7 +862,7 @@ int mirror_empathy_notify_action_intention(
     agent_empathy_state_t* agent = find_or_create_agent(bridge, intention->agent_id);
     agent->last_interaction_ms = get_timestamp_ms();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Create prediction event */
     cognitive_event_data_t event;
@@ -887,10 +886,10 @@ int mirror_empathy_publish_social_understanding(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->registered || !bridge->hub) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -906,7 +905,7 @@ int mirror_empathy_publish_social_understanding(
     agent->resonance_strength = understanding->rapport_level;
     agent->last_interaction_ms = get_timestamp_ms();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Create social understanding event */
     cognitive_event_data_t event;
@@ -935,10 +934,10 @@ int mirror_empathy_set_action_callback(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->action_callback = callback;
     bridge->action_callback_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -952,10 +951,10 @@ int mirror_empathy_set_resonance_callback(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->resonance_callback = callback;
     bridge->resonance_callback_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -969,10 +968,10 @@ int mirror_empathy_set_response_callback(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->response_callback = callback;
     bridge->response_callback_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -994,7 +993,7 @@ int mirror_empathy_get_agent_state(
     /* Cast away const for mutex lock */
     mirror_empathy_bridge_t* mutable_bridge = (mirror_empathy_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     /* Search for agent */
     const agent_empathy_state_t* agent = NULL;
@@ -1006,7 +1005,7 @@ int mirror_empathy_get_agent_state(
     }
 
     if (!agent) {
-        nimcp_mutex_unlock(mutable_bridge->mutex);
+        nimcp_mutex_unlock(mutable_bridge->base.mutex);
         /* Return defaults for unknown agent */
         if (empathy_level) *empathy_level = 0.0f;
         if (last_emotion) *last_emotion = MIRROR_EMOTION_NEUTRAL;
@@ -1016,7 +1015,7 @@ int mirror_empathy_get_agent_state(
     if (empathy_level) *empathy_level = agent->empathy_level;
     if (last_emotion) *last_emotion = agent->last_emotion;
 
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return 0;
 }
@@ -1036,9 +1035,9 @@ int mirror_empathy_bridge_get_stats(
     /* Cast away const for mutex lock */
     mirror_empathy_bridge_t* mutable_bridge = (mirror_empathy_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return 0;
 }
@@ -1048,9 +1047,9 @@ int mirror_empathy_bridge_reset_stats(mirror_empathy_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(mirror_empathy_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

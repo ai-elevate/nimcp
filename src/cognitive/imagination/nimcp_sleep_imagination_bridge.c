@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/imagination/nimcp_sleep_imagination_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/imagination/nimcp_imagination_engine.h"
 #include "utils/memory/nimcp_memory.h"
@@ -167,7 +168,7 @@ sleep_imagination_bridge_t* sleep_imagination_bridge_create(
     bridge->base.bridge_active = false;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (bridge_base_init(&bridge->base, 0, "sleep_imagination") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOG_ERROR("Failed to create bridge mutex");
         nimcp_free(bridge);
@@ -178,7 +179,7 @@ sleep_imagination_bridge_t* sleep_imagination_bridge_create(
     if (config) {
         if (sleep_imagination_validate_config(config) != 0) {
             NIMCP_LOG_ERROR("Invalid bridge configuration");
-            nimcp_mutex_free(bridge->base.mutex);
+            bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
             return NULL;
         }
@@ -230,7 +231,7 @@ void sleep_imagination_bridge_destroy(sleep_imagination_bridge_t* bridge) {
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

@@ -140,7 +140,7 @@ lnn_sleep_bridge_t lnn_sleep_bridge_create(
     bridge->effects.dynamics_slowed = false;
 
     /* Create mutex for thread safety */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "lnn_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -186,7 +186,7 @@ void lnn_sleep_bridge_destroy(lnn_sleep_bridge_t bridge) {
         lnn_sleep_bridge_disconnect_bio_async(bridge);
     }
 
-    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

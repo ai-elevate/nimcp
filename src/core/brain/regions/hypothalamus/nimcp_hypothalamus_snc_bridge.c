@@ -10,6 +10,7 @@
  */
 
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_snc_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/thread/nimcp_thread.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
@@ -111,8 +112,8 @@ hypo_snc_bridge_t* hypo_snc_bridge_create(
     mutex_attr_t attr = {
         .type = MUTEX_TYPE_RECURSIVE
     };
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_mutex_create(&attr);
+    if (!bridge->base.mutex) {
         free(bridge);
         return NULL;
     }
@@ -123,8 +124,8 @@ hypo_snc_bridge_t* hypo_snc_bridge_create(
 void hypo_snc_bridge_destroy(hypo_snc_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     free(bridge);
@@ -133,7 +134,7 @@ void hypo_snc_bridge_destroy(hypo_snc_bridge_t* bridge) {
 void hypo_snc_bridge_reset(hypo_snc_bridge_t* bridge) {
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset dopamine to tonic baseline */
     snc_bridge_init_channels(bridge);
@@ -153,7 +154,7 @@ void hypo_snc_bridge_reset(hypo_snc_bridge_t* bridge) {
     /* Clear last RPE */
     memset(&bridge->last_rpe, 0, sizeof(hypo_rpe_t));
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 /*=============================================================================
@@ -170,7 +171,7 @@ hypo_rpe_t hypo_snc_bridge_process_reward(
         return rpe;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute RPE from reward */
     snc_bridge_compute_rpe(bridge, reward, &rpe);
@@ -190,14 +191,14 @@ hypo_rpe_t hypo_snc_bridge_process_reward(
     /* Broadcast if enabled */
     if (bridge->config.broadcast_enabled) {
         /* Will unlock/relock internally if needed */
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         hypo_snc_bridge_broadcast_rpe(bridge, &rpe);
         hypo_snc_bridge_broadcast_dopamine(bridge);
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->broadcasts_sent += 2;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return rpe;
 }
 
@@ -207,9 +208,9 @@ void hypo_snc_bridge_update_value_prediction(
 
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->dopamine.next_value_estimate = next_value;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 void hypo_snc_bridge_step(hypo_snc_bridge_t* bridge, uint64_t dt_us) {
@@ -217,9 +218,9 @@ void hypo_snc_bridge_step(hypo_snc_bridge_t* bridge, uint64_t dt_us) {
 
     float dt_sec = (float)dt_us / 1000000.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     snc_bridge_decay_phasic(bridge, dt_sec);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 /*=============================================================================
@@ -277,7 +278,7 @@ void hypo_snc_bridge_modulate_tonic(
 
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Arousal increases tonic DA (alertness, readiness to act) */
     float arousal_effect = 1.0f + 0.3f * arousal_level;
@@ -299,7 +300,7 @@ void hypo_snc_bridge_modulate_tonic(
     }
     bridge->dopamine.global_tonic_level = new_tonic;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 void hypo_snc_bridge_set_channel_gain(
@@ -309,9 +310,9 @@ void hypo_snc_bridge_set_channel_gain(
 
     if (!bridge || channel >= HYPO_DA_CHANNEL_COUNT) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.channel_gains[channel] = clamp_float(gain, 0.0f, 10.0f);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 /*=============================================================================
@@ -324,10 +325,10 @@ bool hypo_snc_bridge_connect_snc(
 
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->external_snc = snc_module;
     bridge->config.use_external_snc = (snc_module != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return true;
 }
@@ -335,10 +336,10 @@ bool hypo_snc_bridge_connect_snc(
 void hypo_snc_bridge_disconnect_snc(hypo_snc_bridge_t* bridge) {
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->external_snc = NULL;
     bridge->config.use_external_snc = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 /*=============================================================================

@@ -9,6 +9,7 @@
  * HOW:  Track bias detection events for spike-timing dependent synaptic changes
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/bias/nimcp_bias_plasticity_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -20,6 +21,7 @@
 //=============================================================================
 
 struct bias_plasticity_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     bias_plasticity_config_t config;
     bias_plasticity_state_t state;
 

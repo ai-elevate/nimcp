@@ -195,7 +195,7 @@ neuron_substrate_bridge_t* neuron_substrate_bridge_create(
     bridge->energy_tracking.atp_per_spike = config->atp_cost_per_spike;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "neuron_substrate") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Mutex allocation failed");
         neuron_substrate_bridge_destroy(bridge);
@@ -220,7 +220,7 @@ void neuron_substrate_bridge_destroy(neuron_substrate_bridge_t* bridge) {
     }
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

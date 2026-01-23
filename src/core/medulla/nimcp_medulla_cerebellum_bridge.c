@@ -6,6 +6,7 @@
  */
 
 #include "core/medulla/nimcp_medulla_cerebellum_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/medulla/nimcp_medulla.h"
 #include "core/brain/regions/cerebellum/nimcp_cerebellum_adapter.h"
 #include "utils/memory/nimcp_memory.h"
@@ -29,6 +30,7 @@
  * @brief Bridge internal state
  */
 struct med_cereb_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     med_cereb_bridge_config_t config;
 
     /* Connected systems */
@@ -58,9 +60,6 @@ struct med_cereb_bridge_struct {
 
     /* Last update time */
     uint64_t last_update_us;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 };
 
 /* ============================================================================
@@ -467,8 +466,8 @@ med_cereb_bridge_t med_cereb_bridge_create(const med_cereb_bridge_config_t* conf
     /* Initialize mutex */
     mutex_attr_t attr = {0};
     attr.type = MUTEX_TYPE_RECURSIVE;
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_mutex_create(&attr);
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -497,8 +496,8 @@ med_cereb_bridge_t med_cereb_bridge_create(const med_cereb_bridge_config_t* conf
 void med_cereb_bridge_destroy(med_cereb_bridge_t bridge) {
     if (!bridge) return;
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);
@@ -507,7 +506,7 @@ void med_cereb_bridge_destroy(med_cereb_bridge_t bridge) {
 int med_cereb_bridge_reset(med_cereb_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset IO */
     init_inferior_olive(&bridge->io, &bridge->config);
@@ -523,7 +522,7 @@ int med_cereb_bridge_reset(med_cereb_bridge_t bridge) {
     /* Reset statistics */
     memset(&bridge->stats, 0, sizeof(bridge->stats));
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -535,9 +534,9 @@ int med_cereb_bridge_connect_medulla(med_cereb_bridge_t bridge, medulla_t medull
     if (!bridge) return -1;
     if (!medulla) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->medulla = medulla;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -547,9 +546,9 @@ int med_cereb_bridge_connect_cerebellum(med_cereb_bridge_t bridge,
     if (!bridge) return -1;
     if (!cerebellum) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->cerebellum = cerebellum;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -558,9 +557,9 @@ int med_cereb_bridge_connect_bio_async(med_cereb_bridge_t bridge,
                                         bio_router_t router) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->router = router;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -581,12 +580,12 @@ int med_cereb_bridge_queue_error(med_cereb_bridge_t bridge,
     if (!bridge) return -1;
     if (error_type >= MED_CEREB_ERROR_COUNT) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check queue capacity */
     if (bridge->error_queue_count >= MED_CEREB_MAX_ERROR_QUEUE) {
         bridge->stats.errors_dropped++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -606,7 +605,7 @@ int med_cereb_bridge_queue_error(med_cereb_bridge_t bridge,
         bridge->stats.peak_error_magnitude = fabsf(magnitude);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -617,7 +616,7 @@ int med_cereb_bridge_send_climbing_signal(med_cereb_bridge_t bridge,
     if (!bridge) return -1;
     if (!bridge->cerebellum) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     climbing_fiber_signal_t cf_signal;
     cf_signal.fiber_id = 0;  /* Direct signal, no specific fiber */
@@ -633,7 +632,7 @@ int med_cereb_bridge_send_climbing_signal(med_cereb_bridge_t bridge,
         bridge->stats.signals_per_type[error_type]++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result ? 0 : -1;
 }
 
@@ -643,7 +642,7 @@ int med_cereb_bridge_broadcast_error(med_cereb_bridge_t bridge,
     if (!bridge) return -1;
     if (!bridge->cerebellum) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bool result = cerebellum_broadcast_error(bridge->cerebellum,
                                               magnitude,
@@ -654,7 +653,7 @@ int med_cereb_bridge_broadcast_error(med_cereb_bridge_t bridge,
         bridge->stats.signals_per_type[error_type]++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return result ? 0 : -1;
 }
 
@@ -666,9 +665,9 @@ int med_cereb_bridge_get_arousal_effects(med_cereb_bridge_t bridge,
                                           med_cereb_arousal_effects_t* effects) {
     if (!bridge || !effects) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->arousal_effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -680,7 +679,7 @@ int med_cereb_bridge_modulate_motor(med_cereb_bridge_t bridge,
     if (!bridge || !motor_command || !modulated_command) return -1;
     if (num_dimensions == 0 || num_dimensions > 8) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if motor is allowed */
     if (bridge->emergency_stop_active ||
@@ -689,7 +688,7 @@ int med_cereb_bridge_modulate_motor(med_cereb_bridge_t bridge,
             modulated_command[i] = 0.0f;
         }
         bridge->stats.protection_gates++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -715,7 +714,7 @@ int med_cereb_bridge_modulate_motor(med_cereb_bridge_t bridge,
 
     bridge->stats.motor_commands_modulated++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -727,9 +726,9 @@ int med_cereb_bridge_get_protection_effects(med_cereb_bridge_t bridge,
                                              med_cereb_protection_effects_t* effects) {
     if (!bridge || !effects) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->protection_effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -739,7 +738,7 @@ bool med_cereb_bridge_motor_allowed(med_cereb_bridge_t bridge,
                                      bool is_reflexive) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bool allowed = true;
 
@@ -766,14 +765,14 @@ bool med_cereb_bridge_motor_allowed(med_cereb_bridge_t bridge,
         bridge->stats.protection_gates++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return allowed;
 }
 
 int med_cereb_bridge_emergency_stop(med_cereb_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->emergency_stop_active = true;
     bridge->protection_effects.emergency_stop = true;
@@ -786,17 +785,17 @@ int med_cereb_bridge_emergency_stop(med_cereb_bridge_t bridge) {
         bridge->stats.signals_per_type[MED_CEREB_ERROR_PROTECTION]++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int med_cereb_bridge_release_emergency(med_cereb_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->emergency_stop_active = false;
     bridge->protection_effects.emergency_stop = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -809,9 +808,9 @@ int med_cereb_bridge_get_circadian_effects(med_cereb_bridge_t bridge,
                                             med_cereb_circadian_effects_t* effects) {
     if (!bridge || !effects) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->circadian_effects;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -819,7 +818,7 @@ int med_cereb_bridge_get_circadian_effects(med_cereb_bridge_t bridge,
 float med_cereb_bridge_get_learning_multiplier(med_cereb_bridge_t bridge) {
     if (!bridge) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Combine circadian and arousal effects */
     float circadian_mult = bridge->circadian_effects.ltd_rate_multiplier;
@@ -829,7 +828,7 @@ float med_cereb_bridge_get_learning_multiplier(med_cereb_bridge_t bridge) {
     if (combined < 0.1f) combined = 0.1f;
     if (combined > 2.0f) combined = 2.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return combined;
 }
 
@@ -837,13 +836,13 @@ int med_cereb_bridge_apply_circadian_learning(med_cereb_bridge_t bridge) {
     if (!bridge) return -1;
     if (!bridge->cerebellum) return 0;  /* No-op if not connected */
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Note: This would update cerebellum's learning rates if the API supported it */
     /* For now, we track the adjustment in stats */
     bridge->stats.learning_rate_adjustments++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -854,7 +853,7 @@ int med_cereb_bridge_apply_circadian_learning(med_cereb_bridge_t bridge) {
 int med_cereb_bridge_update(med_cereb_bridge_t bridge, uint64_t delta_us) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update arousal effects from medulla */
     if (bridge->medulla && bridge->config.enable_arousal_modulation) {
@@ -928,7 +927,7 @@ int med_cereb_bridge_update(med_cereb_bridge_t bridge, uint64_t delta_us) {
 
     bridge->last_update_us = nimcp_time_get_us();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -948,9 +947,9 @@ int med_cereb_bridge_get_stats(med_cereb_bridge_t bridge,
                                 med_cereb_bridge_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -958,9 +957,9 @@ int med_cereb_bridge_get_stats(med_cereb_bridge_t bridge,
 int med_cereb_bridge_reset_stats(med_cereb_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -969,9 +968,9 @@ int med_cereb_bridge_get_io_state(med_cereb_bridge_t bridge,
                                    med_cereb_inferior_olive_t* io_state) {
     if (!bridge || !io_state) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *io_state = bridge->io;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

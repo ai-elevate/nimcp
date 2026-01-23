@@ -2,6 +2,7 @@
 // nimcp_language_parietal_bridge.c - Language-Parietal Spatial Bridge
 //=============================================================================
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "language/bridges/nimcp_language_parietal_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -16,6 +17,7 @@
 //=============================================================================
 
 struct language_parietal_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     language_orchestrator_t* language;
     parietal_adapter_t* parietal;
     language_parietal_config_t config;

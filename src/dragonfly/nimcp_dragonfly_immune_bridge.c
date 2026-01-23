@@ -11,6 +11,7 @@
  */
 
 #include "dragonfly/nimcp_dragonfly_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/rng/nimcp_rand.h"
@@ -42,6 +43,7 @@ static inline float clamp_f(float v, float min, float max) {
 //=============================================================================
 
 struct dragonfly_immune_bridge_s {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /* Configuration */
     dragonfly_immune_config_t config;
 
@@ -55,9 +57,6 @@ struct dragonfly_immune_bridge_s {
 
     /* Statistics */
     dragonfly_immune_stats_t stats;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 
     /* Timing */
     uint64_t creation_time_us;
@@ -258,8 +257,8 @@ dragonfly_immune_bridge_t dragonfly_immune_bridge_create(
     bridge->state.modulation.reaction_modifier = 1.0f;
     bridge->state.modulation.max_pursuit_duration_s = 5.0f;
 
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "dragonfly_immune") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_immune_bridge_create: failed to create mutex");
         nimcp_free(bridge);
         return NULL;
@@ -271,8 +270,8 @@ dragonfly_immune_bridge_t dragonfly_immune_bridge_create(
 void dragonfly_immune_bridge_destroy(dragonfly_immune_bridge_t bridge) {
     if (!bridge) return;
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);
@@ -288,11 +287,11 @@ int dragonfly_immune_bridge_connect(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->dragonfly = dragonfly;
     bridge->bbb = bbb;
     bridge->connected = (dragonfly != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -303,11 +302,11 @@ int dragonfly_immune_bridge_disconnect(dragonfly_immune_bridge_t bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->dragonfly = NULL;
     bridge->bbb = NULL;
     bridge->connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -329,7 +328,7 @@ int dragonfly_immune_bridge_update(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now = get_time_us();
     hunting_stress_t* stress = &bridge->state.stress_report;
@@ -382,7 +381,7 @@ int dragonfly_immune_bridge_update(
         (bridge->stats.avg_health_modifier * (bridge->stats.modulations_applied - 1) + avg_mod) /
         bridge->stats.modulations_applied;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -398,7 +397,7 @@ int dragonfly_immune_report_hunt(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     hunting_stress_t* stress = &bridge->state.stress_report;
 
@@ -451,7 +450,7 @@ int dragonfly_immune_report_hunt(
         bridge->stats.hunts_blocked++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -466,7 +465,7 @@ int dragonfly_immune_report_stress(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     hunting_stress_t* stress = &bridge->state.stress_report;
 
@@ -480,7 +479,7 @@ int dragonfly_immune_report_stress(
 
     bridge->stats.stress_events++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -494,7 +493,7 @@ int dragonfly_immune_report_rest(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     hunting_stress_t* stress = &bridge->state.stress_report;
 
@@ -516,7 +515,7 @@ int dragonfly_immune_report_rest(
 
     bridge->stats.recovery_events++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -538,9 +537,9 @@ int dragonfly_immune_get_modulation(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *modulation = bridge->state.modulation;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -573,9 +572,9 @@ int dragonfly_immune_get_state(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *state = bridge->state;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }
@@ -593,9 +592,9 @@ int dragonfly_immune_get_stats(
         return -1;
     }
 
-    nimcp_mutex_lock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->mutex);
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
 
     return 0;
 }

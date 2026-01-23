@@ -2,6 +2,7 @@
 // nimcp_physics_perception_bridge.c - Physics Layer to Perception Bridge
 //=============================================================================
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "physics/bridges/nimcp_physics_perception_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -22,6 +23,7 @@
 //=============================================================================
 
 struct physics_percept_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     physics_percept_config_t config;
 
     /** Physics state */

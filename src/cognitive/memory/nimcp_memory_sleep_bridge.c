@@ -179,7 +179,7 @@ memory_sleep_bridge_t memory_sleep_bridge_create(
     bridge->effects.peak_consolidation = false;
 
     /* Create thread safety mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "memory_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -241,7 +241,7 @@ void memory_sleep_bridge_destroy(memory_sleep_bridge_t bridge)
     }
 
     if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

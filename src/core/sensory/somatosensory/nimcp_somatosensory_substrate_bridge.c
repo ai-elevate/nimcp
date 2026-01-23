@@ -3,12 +3,14 @@
  * @brief Somatosensory-Neural Substrate Bridge Implementation
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/sensory/somatosensory/nimcp_somatosensory_substrate_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 struct somatosensory_substrate_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* somatosensory;
     neural_substrate_t* substrate;
     somatosensory_substrate_config_t config;

@@ -7,6 +7,7 @@
  * HOW: Monitors ATP/fatigue; modulates broadcast capacity, competition, integration
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/global_workspace/nimcp_gw_substrate_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
@@ -19,6 +20,7 @@
 
 /* Internal structure */
 struct gw_substrate_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* gw;
     neural_substrate_t* substrate;
     gw_substrate_config_t config;

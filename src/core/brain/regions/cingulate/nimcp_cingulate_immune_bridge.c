@@ -210,7 +210,7 @@ cingulate_immune_bridge_t cingulate_immune_create(
     bridge->state = CINGULATE_IMMUNE_NORMAL;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "cingulate_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create bridge mutex");
         nimcp_free(bridge);
@@ -251,7 +251,7 @@ void cingulate_immune_destroy(cingulate_immune_bridge_t bridge) {
     }
 
     /* Destroy mutex */
-    nimcp_platform_mutex_destroy(bridge->base.mutex);
+    bridge_base_cleanup(&bridge->base);
 
     /* Free bridge */
     nimcp_free(bridge);

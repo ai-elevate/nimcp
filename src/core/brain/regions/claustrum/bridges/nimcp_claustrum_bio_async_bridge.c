@@ -5,6 +5,7 @@
  * @date 2026-01-13
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/claustrum/bridges/nimcp_claustrum_bio_async_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -17,6 +18,7 @@
  * ============================================================================ */
 
 struct claustrum_bio_async_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     claustrum_bio_async_config_t config;
     nimcp_claustrum_t* claustrum;
     bio_router_t router;

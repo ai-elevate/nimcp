@@ -7,6 +7,7 @@
  * HOW: Monitors ATP/fatigue; modulates self-reflection, introspection, metacognition
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/self_awareness/nimcp_self_awareness_substrate_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
@@ -18,6 +19,7 @@
 #include <math.h>
 
 struct self_awareness_substrate_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* self_awareness;
     neural_substrate_t* substrate;
     self_awareness_substrate_config_t config;

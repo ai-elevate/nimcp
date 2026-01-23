@@ -119,7 +119,7 @@ triplet_stdp_immune_bridge_t triplet_stdp_immune_bridge_create(
     bridge->inflammation_state.a3_suppression = 0.0f;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "triplet_stdp_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);

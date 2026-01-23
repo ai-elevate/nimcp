@@ -118,7 +118,7 @@ ensemble_pink_bridge_t* ensemble_pink_create(const ensemble_pink_config_t* confi
     }
 
     // Create mutex for thread safety
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "ensemble_uncertainty_pink_nois") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to create mutex");
         nimcp_free(bridge);
@@ -157,7 +157,7 @@ void ensemble_pink_destroy(ensemble_pink_bridge_t* bridge) {
 
     // Destroy mutex
     if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     // Free bridge

@@ -29,7 +29,7 @@ swarm_emergence_fep_bridge_t* swarm_emergence_fep_create(const swarm_emergence_f
     else swarm_emergence_fep_default_config(&bridge->config);
     bridge->fep_system = fep_system;
     bridge->emergence_ctx = emergence_ctx;
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "swarm_emergence_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
     return bridge;
 }
@@ -37,7 +37,7 @@ swarm_emergence_fep_bridge_t* swarm_emergence_fep_create(const swarm_emergence_f
 void swarm_emergence_fep_destroy(swarm_emergence_fep_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.bio_async_enabled) swarm_emergence_fep_disconnect_bio_async(bridge);
-    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

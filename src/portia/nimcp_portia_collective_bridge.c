@@ -10,6 +10,7 @@
  */
 
 #include "portia/nimcp_portia_collective_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "portia/nimcp_portia_tier_switch.h"
 #include "cognitive/collective_cognition/nimcp_collective_cognition.h"
 #include "async/nimcp_bio_router.h"
@@ -42,9 +43,7 @@ static int find_instance_index(
 //=============================================================================
 
 struct portia_collective_bridge {
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
-
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /* Bio-async context */
     bio_module_context_t bio_ctx;
 
@@ -121,8 +120,8 @@ portia_collective_bridge_t* portia_collective_create(
     }
 
     /* Create mutex for thread safety */
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "portia_collective") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         LOG_ERROR("Failed to create mutex for portia-collective bridge");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create mutex for portia-collective bridge");
         nimcp_free(bridge);
@@ -170,8 +169,8 @@ void portia_collective_destroy(portia_collective_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     LOG_INFO("Portia-collective bridge destroyed (local_id=%u)", bridge->local_instance_id);
@@ -182,7 +181,7 @@ void portia_collective_destroy(portia_collective_bridge_t* bridge) {
 int portia_collective_reset(portia_collective_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset collective state */
     memset(bridge->instances, 0, sizeof(bridge->instances));
@@ -197,7 +196,7 @@ int portia_collective_reset(portia_collective_bridge_t* bridge) {
     bridge->last_update_ms = nimcp_time_get_ms();
     bridge->last_broadcast_ms = 0;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     LOG_DEBUG("Portia-collective bridge reset");
 
@@ -409,7 +408,7 @@ static nimcp_error_t portia_collective_message_handler(
                 (const collective_instance_state_t*)payload;
 
             /* Update remote instance state */
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
             int idx = find_instance_index(bridge, state->instance_id);
             if (idx < 0 && bridge->instance_count < PORTIA_COLLECTIVE_MAX_INSTANCES) {
                 idx = (int)bridge->instance_count++;
@@ -418,7 +417,7 @@ static nimcp_error_t portia_collective_message_handler(
                 bridge->instances[idx] = *state;
                 bridge->stats.tier_events_received++;
             }
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return 0;
         }
         case BIO_MSG_PORTIA_COLLECTIVE_OFFLOAD_REQUEST: {
@@ -429,9 +428,9 @@ static nimcp_error_t portia_collective_message_handler(
             /* uint32_t task_complexity_bits = data[1]; */
             /* Would process offload request and potentially accept task */
             LOG_DEBUG("Received offload request from instance %u", source_id);
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
             bridge->stats.tasks_received++;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return 0;
         }
         case BIO_MSG_PORTIA_COLLECTIVE_DEGRADATION: {
@@ -441,13 +440,13 @@ static nimcp_error_t portia_collective_message_handler(
             uint32_t instance_id = data[0];
             bool is_degraded = (data[1] != 0);
 
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
             int idx = find_instance_index(bridge, instance_id);
             if (idx >= 0) {
                 bridge->instances[idx].is_degraded = is_degraded;
                 bridge->instances[idx].last_update_ms = nimcp_time_get_ms();
             }
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
 
             LOG_DEBUG("Instance %u degradation state: %s",
                       instance_id, is_degraded ? "degraded" : "normal");
@@ -508,7 +507,7 @@ int portia_collective_update(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     (void)delta_ms;  /* Used for timing calculations if needed */
 
@@ -542,7 +541,7 @@ int portia_collective_update(
 
     bridge->last_update_ms = now;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -553,7 +552,7 @@ int portia_collective_broadcast_tier(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t local_id = bridge->local_instance_id;
     bool should_broadcast = bridge->bio_async_connected && bridge->bio_ctx;
@@ -565,7 +564,7 @@ int portia_collective_broadcast_tier(
     /* Update local state immediately */
     update_local_state(bridge);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Send tier change via bio-async when connected */
     if (should_broadcast) {
@@ -600,10 +599,10 @@ int portia_collective_handle_remote_tier(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (instance_id == bridge->local_instance_id) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;  /* Ignore self */
     }
 
@@ -612,7 +611,7 @@ int portia_collective_handle_remote_tier(
         /* New instance - add it */
         if (bridge->instance_count >= PORTIA_COLLECTIVE_MAX_INSTANCES) {
             LOG_WARNING("Cannot add instance %u: max instances reached", instance_id);
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return -1;
         }
         idx = (int)bridge->instance_count++;
@@ -627,7 +626,7 @@ int portia_collective_handle_remote_tier(
     /* Re-evaluate leader */
     elect_leader(bridge);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     LOG_DEBUG("Received tier %u from instance %u", new_tier, instance_id);
 
@@ -640,7 +639,7 @@ int portia_collective_handle_remote_tier(
 
 /**
  * @brief Internal unlocked version of request_offload
- * @note Caller must hold bridge->mutex
+ * @note Caller must hold bridge->base.mutex
  */
 static int request_offload_unlocked(
     portia_collective_bridge_t* bridge,
@@ -692,11 +691,11 @@ int portia_collective_request_offload(
 ) {
     if (!bridge || !target_instance) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     int result = request_offload_unlocked(bridge, task_complexity, target_instance);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     if (result == 0) {
         LOG_DEBUG("Offload request: complexity=%.2f -> instance %u",
@@ -709,12 +708,12 @@ int portia_collective_request_offload(
 bool portia_collective_can_receive(const portia_collective_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bool result = !bridge->local_degraded &&
                   bridge->local_load < bridge->config.receive_threshold;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -722,10 +721,10 @@ bool portia_collective_can_receive(const portia_collective_bridge_t* bridge) {
 int portia_collective_rebalance(portia_collective_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->is_leader) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;  /* Only leader rebalances */
     }
 
@@ -746,7 +745,7 @@ int portia_collective_rebalance(portia_collective_bridge_t* bridge) {
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     LOG_DEBUG("Rebalance complete: %u tasks redistributed", redistributed);
 
@@ -759,7 +758,7 @@ int portia_collective_rebalance(portia_collective_bridge_t* bridge) {
 
 /**
  * @brief Internal unlocked version of request_compensation
- * @note Caller must hold bridge->mutex
+ * @note Caller must hold bridge->base.mutex
  */
 static int request_compensation_unlocked(portia_collective_bridge_t* bridge) {
     if (!bridge->local_degraded) return 0;
@@ -778,7 +777,7 @@ int portia_collective_coordinate_degradation(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bool was_degraded = bridge->local_degraded;
     bridge->local_degraded = local_degraded;
@@ -808,7 +807,7 @@ int portia_collective_coordinate_degradation(
 
     update_local_state(bridge);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -816,11 +815,11 @@ int portia_collective_coordinate_degradation(
 int portia_collective_request_compensation(portia_collective_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     int result = request_compensation_unlocked(bridge);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -835,7 +834,7 @@ int portia_collective_get_summary(
 ) {
     if (!bridge || !summary) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     memset(summary, 0, sizeof(*summary));
 
@@ -868,7 +867,7 @@ int portia_collective_get_summary(
     summary->collective_utilization = summary->average_load;
     summary->collective_stressed = (summary->average_load > bridge->config.degradation_threshold);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -880,17 +879,17 @@ int portia_collective_get_instance_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     int idx = find_instance_index(bridge, instance_id);
     if (idx < 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     *state = bridge->instances[idx];
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -898,9 +897,9 @@ int portia_collective_get_instance_state(
 uint32_t portia_collective_get_local_id(const portia_collective_bridge_t* bridge) {
     if (!bridge) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     uint32_t local_id = bridge->local_instance_id;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return local_id;
 }
@@ -908,9 +907,9 @@ uint32_t portia_collective_get_local_id(const portia_collective_bridge_t* bridge
 bool portia_collective_is_leader(const portia_collective_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool is_leader = bridge->is_leader;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return is_leader;
 }
@@ -925,9 +924,9 @@ int portia_collective_get_stats(
 ) {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -935,9 +934,9 @@ int portia_collective_get_stats(
 void portia_collective_reset_stats(portia_collective_bridge_t* bridge) {
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 //=============================================================================
@@ -947,20 +946,20 @@ void portia_collective_reset_stats(portia_collective_bridge_t* bridge) {
 int portia_collective_connect_bio_async(portia_collective_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* If already connected, disconnect first */
     if (bridge->bio_async_connected && bridge->bio_ctx) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         portia_collective_disconnect_bio_async(bridge);
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
     /* Check if router is initialized */
     if (!bio_router_is_initialized()) {
         LOG_WARNING("Bio-async router not initialized, skipping registration");
         bridge->bio_async_connected = false;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -976,7 +975,7 @@ int portia_collective_connect_bio_async(portia_collective_bridge_t* bridge) {
     if (!bridge->bio_ctx) {
         LOG_WARNING("Failed to register with bio-async router");
         bridge->bio_async_connected = false;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -1014,7 +1013,7 @@ int portia_collective_connect_bio_async(portia_collective_bridge_t* bridge) {
 
     bridge->bio_async_connected = true;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     LOG_INFO("Connected to bio-async router (module_id=0x%04X)", BIO_MODULE_PORTIA_COLLECTIVE);
     return 0;
@@ -1023,7 +1022,7 @@ int portia_collective_connect_bio_async(portia_collective_bridge_t* bridge) {
 int portia_collective_disconnect_bio_async(portia_collective_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->bio_async_connected && bridge->bio_ctx) {
         /* Unregister handlers first */
@@ -1039,7 +1038,7 @@ int portia_collective_disconnect_bio_async(portia_collective_bridge_t* bridge) {
 
     bridge->bio_async_connected = false;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     LOG_INFO("Disconnected from bio-async router");
     return 0;

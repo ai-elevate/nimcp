@@ -13,6 +13,7 @@
  */
 
 #include "cognitive/memory/core/nimcp_pr_continual_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/memory/core/nimcp_pr_memory_node.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -35,6 +36,8 @@
  * WHY:  Encapsulate all data for thread-safe operations
  */
 struct pr_continual_bridge_struct {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     pr_continual_config_t config;
 
@@ -68,9 +71,6 @@ struct pr_continual_bridge_struct {
     pr_continual_node_importance_t* importance_cache;
     uint32_t importance_cache_count;
     uint32_t importance_cache_capacity;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 
     /* Timing */
     uint64_t session_start_ms;
@@ -316,10 +316,8 @@ pr_continual_bridge_t pr_continual_bridge_create(
         bridge->config = pr_continual_config_default();
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "pr_continual") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -330,7 +328,7 @@ pr_continual_bridge_t pr_continual_bridge_create(
 
     bridge->fisher_diag = nimcp_calloc(bridge->fisher_capacity, sizeof(float));
     if (!bridge->fisher_diag) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -338,7 +336,7 @@ pr_continual_bridge_t pr_continual_bridge_create(
     bridge->old_params = nimcp_calloc(bridge->fisher_capacity, sizeof(float));
     if (!bridge->old_params) {
         nimcp_free(bridge->fisher_diag);
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -350,7 +348,7 @@ pr_continual_bridge_t pr_continual_bridge_create(
         if (!bridge->fisher_accum) {
             nimcp_free(bridge->old_params);
             nimcp_free(bridge->fisher_diag);
-            nimcp_mutex_free(bridge->mutex);
+            bridge_base_cleanup(&bridge->base);
             nimcp_free(bridge);
             return NULL;
         }
@@ -365,7 +363,7 @@ pr_continual_bridge_t pr_continual_bridge_create(
         if (bridge->fisher_accum) nimcp_free(bridge->fisher_accum);
         nimcp_free(bridge->old_params);
         nimcp_free(bridge->fisher_diag);
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -381,7 +379,7 @@ pr_continual_bridge_t pr_continual_bridge_create(
         if (bridge->fisher_accum) nimcp_free(bridge->fisher_accum);
         nimcp_free(bridge->old_params);
         nimcp_free(bridge->fisher_diag);
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -420,10 +418,8 @@ void pr_continual_bridge_destroy(pr_continual_bridge_t bridge) {
     /* Free importance cache */
     if (bridge->importance_cache) nimcp_free(bridge->importance_cache);
 
-    /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }
@@ -431,7 +427,7 @@ void pr_continual_bridge_destroy(pr_continual_bridge_t bridge) {
 int pr_continual_bridge_reset(pr_continual_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset Fisher */
     if (bridge->fisher_diag) {
@@ -463,7 +459,7 @@ int pr_continual_bridge_reset(pr_continual_bridge_t bridge) {
 
     bridge->session_start_ms = nimcp_time_get_ms();
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -482,11 +478,11 @@ int pr_continual_compute_fisher(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Ensure capacity */
     if (ensure_fisher_capacity(bridge, num_params) != 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -540,7 +536,7 @@ int pr_continual_compute_fisher(
     bridge->stats.avg_fisher_time_ms =
         (bridge->stats.avg_fisher_time_ms * 0.9f) + (elapsed_ms * 0.1f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -557,11 +553,11 @@ int pr_continual_compute_fisher_weighted(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Ensure capacity */
     if (ensure_fisher_capacity(bridge, num_params) != 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -598,7 +594,7 @@ int pr_continual_compute_fisher_weighted(
 
     bridge->stats.fisher_computations++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -620,11 +616,11 @@ int pr_continual_set_fisher(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (param_idx >= bridge->fisher_capacity) {
         if (ensure_fisher_capacity(bridge, param_idx + 1) != 0) {
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return -1;
         }
     }
@@ -635,7 +631,7 @@ int pr_continual_set_fisher(
 
     bridge->fisher_diag[param_idx] = clamp_f(value, 0.0f, PR_CONTINUAL_FISHER_MAX);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -648,10 +644,10 @@ int pr_continual_accumulate_fisher(
 {
     if (!bridge || !new_fisher || num_params == 0) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (ensure_fisher_capacity(bridge, num_params) != 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -670,7 +666,7 @@ int pr_continual_accumulate_fisher(
                                           0.0f, PR_CONTINUAL_FISHER_MAX);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -687,7 +683,7 @@ float pr_continual_ewc_loss(
     if (!bridge || !current_params || num_params == 0) return -1.0f;
     if (!bridge->params_stored) return 0.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     size_t n = (num_params < bridge->fisher_size) ? num_params : bridge->fisher_size;
     float lambda = bridge->config.ewc_lambda;
@@ -708,7 +704,7 @@ float pr_continual_ewc_loss(
         bridge->stats.ewc_loss_max = loss;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return loss;
 }
@@ -722,7 +718,7 @@ float pr_continual_ewc_loss_weighted(
     if (!bridge || !current_params || num_params == 0) return -1.0f;
     if (!bridge->params_stored) return 0.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     size_t n = (num_params < bridge->fisher_size) ? num_params : bridge->fisher_size;
     float lambda = bridge->config.ewc_lambda;
@@ -746,7 +742,7 @@ float pr_continual_ewc_loss_weighted(
 
     bridge->stats.ewc_loss_current = loss;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return loss;
 }
@@ -765,7 +761,7 @@ int pr_continual_ewc_gradient(
         return 0;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     size_t n = (num_params < bridge->fisher_size) ? num_params : bridge->fisher_size;
     float lambda = bridge->config.ewc_lambda;
@@ -781,7 +777,7 @@ int pr_continual_ewc_gradient(
         ewc_gradients[i] = 0.0f;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -881,7 +877,7 @@ int pr_continual_replay_sample(
 {
     if (!bridge || !ladder || !samples || !samples_returned) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     *samples_returned = 0;
 
@@ -960,7 +956,7 @@ int pr_continual_replay_sample(
             (total_imp / (float)total_sampled) * 0.1f;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1020,7 +1016,7 @@ int pr_continual_apply_protection(
 {
     if (!bridge || !gradients || num_params == 0) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t start_time_us = nimcp_time_get_us();
 
@@ -1079,7 +1075,7 @@ int pr_continual_apply_protection(
         bridge->stats.avg_protection_time_us * 0.99f +
         (float)(end_time_us - start_time_us) * 0.01f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1093,7 +1089,7 @@ int pr_continual_apply_protection_nodes(
 {
     if (!bridge || !gradients || !nodes || num_params == 0) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float norm_before = compute_l2_norm(gradients, num_params);
 
@@ -1139,7 +1135,7 @@ int pr_continual_apply_protection_nodes(
 
     bridge->stats.total_protections++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1154,7 +1150,7 @@ int pr_continual_preview_protection(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     size_t n = (num_params < bridge->fisher_size) ? num_params : bridge->fisher_size;
 
@@ -1169,7 +1165,7 @@ int pr_continual_preview_protection(
         protection_factors[i] = 1.0f;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1184,7 +1180,7 @@ int pr_continual_task_boundary(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Create task info record */
     pr_continual_task_info_t info;
@@ -1210,7 +1206,7 @@ int pr_continual_task_boundary(
     bridge->current_task_id = task_id + 1;
     bridge->stats.total_tasks++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1222,17 +1218,17 @@ int pr_continual_store_params(
 {
     if (!bridge || !params || num_params == 0) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (ensure_fisher_capacity(bridge, num_params) != 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     memcpy(bridge->old_params, params, num_params * sizeof(float));
     bridge->params_stored = true;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1256,7 +1252,7 @@ int pr_continual_consolidate_task(
 {
     if (!bridge || !ladder || !graph) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t consolidated = 0;
     uint64_t pruned = 0;
@@ -1312,7 +1308,7 @@ int pr_continual_consolidate_task(
 
     (void)task_id;  /* Used for tagging in full implementation */
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1327,9 +1323,9 @@ int pr_continual_get_stats(
 {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -1341,7 +1337,7 @@ int pr_continual_get_task_info(
 {
     if (!bridge || !info) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Search for task */
     bool found = false;
@@ -1353,7 +1349,7 @@ int pr_continual_get_task_info(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return found ? 0 : -1;
 }
@@ -1371,9 +1367,9 @@ size_t pr_continual_get_num_params(pr_continual_bridge_t bridge) {
 void pr_continual_reset_stats(pr_continual_bridge_t bridge) {
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(pr_continual_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 //=============================================================================

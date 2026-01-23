@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/symbolic_logic/nimcp_symbolic_logic_hub_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/thread/nimcp_thread.h"
@@ -74,7 +75,7 @@ symbolic_logic_hub_bridge_t* symbolic_logic_hub_bridge_create(
     }
 
     /* Initialize base bridge */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "symbolic_logic_hub") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -105,7 +106,7 @@ void symbolic_logic_hub_bridge_destroy(symbolic_logic_hub_bridge_t* bridge) {
 
     /* Free mutex */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

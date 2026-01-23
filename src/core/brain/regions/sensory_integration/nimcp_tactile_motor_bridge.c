@@ -7,6 +7,7 @@
  * @author NIMCP Development Team
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/sensory_integration/nimcp_tactile_motor_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
@@ -20,6 +21,7 @@
  * ============================================================================ */
 
 struct tactile_motor_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     tactile_motor_config_t config;
 
     nimcp_somatosensory_t* soma;

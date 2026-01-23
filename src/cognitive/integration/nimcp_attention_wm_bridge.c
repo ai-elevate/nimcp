@@ -20,6 +20,7 @@
  */
 
 #include "cognitive/integration/nimcp_attention_wm_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -55,13 +56,13 @@ typedef struct wm_item {
  * @brief Opaque attention-WM bridge structure
  */
 struct attention_wm_bridge {
+    bridge_base_t base;                 /**< MUST be first: base bridge infrastructure */
     attention_wm_config_t config;       /**< Configuration parameters */
     wm_item_t* items;                   /**< Working memory items */
     size_t item_capacity;               /**< Maximum items (from config) */
     size_t item_count;                  /**< Current item count */
     uint64_t current_focus;             /**< Currently focused item ID */
     attention_wm_stats_t stats;         /**< Bridge statistics */
-    nimcp_mutex_t* mutex;               /**< Thread safety mutex */
     bool initialized;                   /**< Initialization flag */
 };
 
@@ -206,8 +207,8 @@ attention_wm_bridge_t* attention_wm_bridge_create(
     }
 
     // Create mutex
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "attention_wm") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         nimcp_free(bridge->items);
         nimcp_free(bridge);
         return NULL;
@@ -237,9 +238,9 @@ void attention_wm_bridge_destroy(attention_wm_bridge_t* bridge) {
     }
 
     // Destroy mutex
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-        bridge->mutex = NULL;
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
+        bridge->base.mutex = NULL;
     }
 
     bridge->initialized = false;
@@ -261,11 +262,11 @@ int attention_wm_gate_entry(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Check attention threshold - reject if below threshold
     if (attention_strength < bridge->config.attention_threshold) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;  // Rejected due to insufficient attention
     }
 
@@ -276,7 +277,7 @@ int attention_wm_gate_entry(
         bridge->items[existing_idx].attention_strength = attention_strength;
         bridge->items[existing_idx].priority = clamp_priority(attention_strength);
         bridge->items[existing_idx].last_access_time = nimcp_time_get_ms();
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -287,7 +288,7 @@ int attention_wm_gate_entry(
         // At capacity - evict lowest priority item
         slot_idx = find_lowest_priority_unlocked(bridge);
         if (slot_idx < 0) {
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return -1;  // Should not happen, but safety check
         }
 
@@ -309,7 +310,7 @@ int attention_wm_gate_entry(
     bridge->item_count++;
     bridge->stats.items_gated_in++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -322,7 +323,7 @@ int attention_wm_on_focus_shift(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     // Apply decay to old focus item (if it exists and is not 0)
     if (old_focus != 0) {
@@ -346,7 +347,7 @@ int attention_wm_on_focus_shift(
     bridge->current_focus = new_focus;
     bridge->stats.focus_shifts++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -363,11 +364,11 @@ int attention_wm_update_priority(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     int idx = find_item_unlocked(bridge, item_id);
     if (idx < 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;  // Item not found
     }
 
@@ -375,7 +376,7 @@ int attention_wm_update_priority(
     bridge->items[idx].last_access_time = nimcp_time_get_ms();
     bridge->stats.priority_updates++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -392,7 +393,7 @@ int attention_wm_get_attended_items(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     int count = 0;
     for (size_t i = 0; i < bridge->item_capacity && (size_t)count < max_count; i++) {
@@ -408,7 +409,7 @@ int attention_wm_get_attended_items(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return count;
 }
 
@@ -427,7 +428,7 @@ int attention_wm_bridge_get_stats(
     // Cast away const to acquire mutex (thread-safe read)
     attention_wm_bridge_t* mutable_bridge = (attention_wm_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     // Copy stats
     memcpy(stats, &bridge->stats, sizeof(attention_wm_stats_t));
@@ -436,6 +437,6 @@ int attention_wm_bridge_get_stats(
     stats->current_item_count = bridge->item_count;
     stats->avg_priority = compute_avg_priority_unlocked(bridge);
 
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
     return 0;
 }

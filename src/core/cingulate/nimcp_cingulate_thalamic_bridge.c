@@ -10,6 +10,7 @@
  * @date 2024-12-30
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/cingulate/nimcp_cingulate_thalamic_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -19,6 +20,7 @@
  * Internal structure for cingulate-thalamic bridge
  */
 struct cingulate_thalamic_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* cingulate;                       /**< Cingulate processing module */
     thalamic_router_t* router;             /**< Thalamic router instance */
     cingulate_thalamic_config_t config;    /**< Bridge configuration */

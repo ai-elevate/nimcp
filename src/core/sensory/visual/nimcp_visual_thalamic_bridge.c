@@ -7,12 +7,14 @@
  * HOW: Tracks visual signal routing statistics
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/sensory/visual/nimcp_visual_thalamic_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 struct visual_thalamic_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* visual;
     thalamic_router_t* router;
     visual_thalamic_config_t config;

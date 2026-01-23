@@ -29,7 +29,7 @@ collective_workspace_fep_bridge_t* collective_workspace_fep_create(const collect
     else collective_workspace_fep_default_config(&bridge->config);
     bridge->fep_system = fep_system;
     bridge->workspace = workspace;
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "collective_workspace_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
     return bridge;
 }
@@ -37,7 +37,7 @@ collective_workspace_fep_bridge_t* collective_workspace_fep_create(const collect
 void collective_workspace_fep_destroy(collective_workspace_fep_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.bio_async_enabled) collective_workspace_fep_disconnect_bio_async(bridge);
-    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

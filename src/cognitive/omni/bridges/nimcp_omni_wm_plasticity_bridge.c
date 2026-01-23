@@ -581,9 +581,9 @@ static nimcp_error_t handle_eligibility(const void* msg, size_t msg_size,
 
     omni_wm_plasticity_bridge_t* bridge = (omni_wm_plasticity_bridge_t*)user_data;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.eligibility_updates++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -749,8 +749,8 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "omni_wm_plasticity") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for WM plasticity bridge");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
@@ -759,7 +759,7 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
 
     /* Allocate buffers */
     if (allocate_stdp_event_buffer(bridge) != NIMCP_SUCCESS) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
@@ -767,7 +767,7 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
 
     if (allocate_spike_seq_buffer(bridge) != NIMCP_SUCCESS) {
         free_stdp_event_buffer(bridge);
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
@@ -776,7 +776,7 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
     if (allocate_encoder_deltas(bridge) != NIMCP_SUCCESS) {
         free_spike_seq_buffer(bridge);
         free_stdp_event_buffer(bridge);
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
@@ -786,7 +786,7 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
         free_encoder_deltas(bridge);
         free_spike_seq_buffer(bridge);
         free_stdp_event_buffer(bridge);
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
@@ -819,9 +819,9 @@ void omni_wm_plasticity_bridge_destroy(omni_wm_plasticity_bridge_t* bridge) {
     free_stdp_event_buffer(bridge);
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-        bridge->mutex = NULL;
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
+        bridge->base.mutex = NULL;
     }
 
     /* Cleanup base bridge */
@@ -836,7 +836,7 @@ void omni_wm_plasticity_bridge_destroy(omni_wm_plasticity_bridge_t* bridge) {
 nimcp_error_t omni_wm_plasticity_bridge_reset(omni_wm_plasticity_bridge_t* bridge) {
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Clear event buffers */
     bridge->stdp_event_count = 0;
@@ -864,7 +864,7 @@ nimcp_error_t omni_wm_plasticity_bridge_reset(omni_wm_plasticity_bridge_t* bridg
     /* Reset base */
     bridge_base_reset(&bridge->base);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -883,7 +883,7 @@ nimcp_error_t omni_wm_plasticity_bridge_connect(
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_NULL_POINTER, "world_model is NULL (required)");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->world_model = world_model;
     bridge->stdp_bridge = stdp_bridge;
@@ -897,7 +897,7 @@ nimcp_error_t omni_wm_plasticity_bridge_connect(
                                (coordinator ? (void*)coordinator : (void*)snn));
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("WM plasticity bridge connected to systems");
 
@@ -911,10 +911,10 @@ nimcp_error_t omni_wm_plasticity_bridge_connect_world_model(
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(world_model, NIMCP_ERROR_NULL_POINTER, "world_model is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->world_model = world_model;
     bridge_base_connect_a(&bridge->base, world_model);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -926,9 +926,9 @@ nimcp_error_t omni_wm_plasticity_bridge_connect_stdp_bridge(
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(stdp_bridge, NIMCP_ERROR_NULL_POINTER, "stdp_bridge is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stdp_bridge = stdp_bridge;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -940,9 +940,9 @@ nimcp_error_t omni_wm_plasticity_bridge_connect_coordinator(
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(coordinator, NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->coordinator = coordinator;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -954,9 +954,9 @@ nimcp_error_t omni_wm_plasticity_bridge_connect_snn(
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(snn, NIMCP_ERROR_NULL_POINTER, "snn is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->snn = snn;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -979,7 +979,7 @@ nimcp_error_t omni_wm_plasticity_bridge_update(
 
     uint64_t start_time = get_current_time_us();
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* 1. Process buffered STDP events -> RSSM encoder updates */
     if (bridge->config.enable_stdp_to_wm) {
@@ -1017,7 +1017,7 @@ nimcp_error_t omni_wm_plasticity_bridge_update(
     /* Record base update */
     bridge_base_record_update(&bridge->base);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -1033,7 +1033,7 @@ nimcp_error_t omni_wm_plasticity_bridge_on_stdp_event(
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(event, NIMCP_ERROR_NULL_POINTER, "event is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check buffer capacity */
     if (bridge->stdp_event_count >= bridge->stdp_event_capacity) {
@@ -1047,7 +1047,7 @@ nimcp_error_t omni_wm_plasticity_bridge_on_stdp_event(
     bridge->stdp_event_count++;
     bridge->stats.stdp_events_received++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -1057,7 +1057,7 @@ nimcp_error_t omni_wm_plasticity_bridge_apply_stdp_to_rssm(
 {
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     nimcp_error_t result = process_stdp_events(bridge);
 
     /* Also apply accumulated deltas if we were accumulating */
@@ -1069,7 +1069,7 @@ nimcp_error_t omni_wm_plasticity_bridge_apply_stdp_to_rssm(
         bridge->accumulated_delta_norm = 0.0f;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -1085,10 +1085,10 @@ nimcp_error_t omni_wm_plasticity_bridge_get_stdp_modulation(
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(out_modulation, NIMCP_ERROR_NULL_POINTER, "out_modulation is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memcpy(out_modulation, &bridge->current_modulation, sizeof(wm_to_plasticity_modulation_t));
     bridge->stats.pe_modulations_sent++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -1102,7 +1102,7 @@ nimcp_error_t omni_wm_plasticity_bridge_set_prediction_error(
 {
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Store PE values */
     bridge->current_modulation.forward_pe = forward_pe;
@@ -1144,7 +1144,7 @@ nimcp_error_t omni_wm_plasticity_bridge_set_prediction_error(
          bridge->current_modulation.a_minus_modulation) /
         ((float)bridge->stats.pe_modulations_sent + 1.0f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -1160,7 +1160,7 @@ nimcp_error_t omni_wm_plasticity_bridge_train_from_spikes(
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(sequence, NIMCP_ERROR_NULL_POINTER, "sequence is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check buffer capacity */
     if (bridge->spike_seq_count >= bridge->spike_seq_capacity) {
@@ -1190,7 +1190,7 @@ nimcp_error_t omni_wm_plasticity_bridge_train_from_spikes(
 
     bridge->spike_seq_count++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -1207,7 +1207,7 @@ nimcp_error_t omni_wm_plasticity_bridge_predict_snn_activity(
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(out_prediction, NIMCP_ERROR_NULL_POINTER, "out_prediction is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update prediction with requested horizon */
     bridge->config.prediction_horizon_ms = horizon_ms;
@@ -1222,7 +1222,7 @@ nimcp_error_t omni_wm_plasticity_bridge_predict_snn_activity(
         memset(out_prediction, 0, sizeof(wm_to_snn_prediction_t));
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -1237,7 +1237,7 @@ nimcp_error_t omni_wm_plasticity_bridge_on_bcm_threshold_shift(
 {
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update plasticity state with BCM threshold */
     bridge->current_plasticity_state.bcm_threshold = new_threshold;
@@ -1249,7 +1249,7 @@ nimcp_error_t omni_wm_plasticity_bridge_on_bcm_threshold_shift(
 
     bridge->stats.bcm_threshold_updates++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -1268,7 +1268,7 @@ nimcp_error_t omni_wm_plasticity_bridge_apply_eligibility(
     NIMCP_CHECK_THROW(eligibility_traces, NIMCP_ERROR_NULL_POINTER, "eligibility_traces is NULL");
     if (trace_count == 0) return NIMCP_SUCCESS;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute eligibility-weighted encoder update */
     float total_eligibility = 0.0f;
@@ -1307,7 +1307,7 @@ nimcp_error_t omni_wm_plasticity_bridge_apply_eligibility(
     }
     bridge->accumulated_delta_norm = sqrtf(norm_sq);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -1324,7 +1324,7 @@ nimcp_error_t omni_wm_plasticity_bridge_update_stp_state(
 {
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update plasticity state */
     bridge->current_plasticity_state.stp_facilitation = clamp_float(facilitation, 0.0f, 1.0f);
@@ -1347,7 +1347,7 @@ nimcp_error_t omni_wm_plasticity_bridge_update_stp_state(
         (bridge->stats.mean_depression * ((float)bridge->stats.stp_state_updates - 1.0f) +
          depression) / (float)bridge->stats.stp_state_updates;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -1363,7 +1363,7 @@ nimcp_error_t omni_wm_plasticity_bridge_get_plasticity_state(
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
     NIMCP_CHECK_THROW(out_state, NIMCP_ERROR_NULL_POINTER, "out_state is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update timestamp */
     bridge->current_plasticity_state.timestamp_us = get_current_time_us();
@@ -1381,7 +1381,7 @@ nimcp_error_t omni_wm_plasticity_bridge_get_plasticity_state(
     /* Copy to output */
     memcpy(out_state, &bridge->current_plasticity_state, sizeof(plasticity_to_wm_state_t));
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -1418,9 +1418,9 @@ nimcp_error_t omni_wm_plasticity_bridge_get_stats(
 nimcp_error_t omni_wm_plasticity_bridge_reset_stats(omni_wm_plasticity_bridge_t* bridge) {
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(omni_wm_plasticity_bridge_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
 }
@@ -1434,12 +1434,12 @@ nimcp_error_t omni_wm_plasticity_bridge_connect_bio_async(
 {
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Connect base to bio-async */
     int result = bridge_base_connect_bio_async(&bridge->base);
     if (result != 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return (nimcp_error_t)result;
     }
 
@@ -1457,7 +1457,7 @@ nimcp_error_t omni_wm_plasticity_bridge_connect_bio_async(
      */
     (void)bridge; /* Suppress unused parameter warning */
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_DEBUG("WM plasticity bridge connected to bio-async");
 
@@ -1469,14 +1469,14 @@ nimcp_error_t omni_wm_plasticity_bridge_disconnect_bio_async(
 {
     NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Unregister handlers would go here */
 
     /* Disconnect base */
     int result = bridge_base_disconnect_bio_async(&bridge->base);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return (nimcp_error_t)result;
 }

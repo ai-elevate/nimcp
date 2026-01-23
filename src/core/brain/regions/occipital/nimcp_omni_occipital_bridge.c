@@ -4,6 +4,7 @@
  */
 
 #include "core/brain/regions/occipital/nimcp_omni_occipital_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/occipital/nimcp_occipital_adapter.h"
 #include "cognitive/jepa/nimcp_jepa_bidirectional.h"
 #include "cognitive/predictive/nimcp_predictive_hierarchy.h"
@@ -102,8 +103,8 @@ omni_occipital_bridge_t* omni_occipital_bridge_create(
         omni_occipital_default_config(&bridge->config);
     }
 
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "omni_occipital") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -148,8 +149,8 @@ void omni_occipital_bridge_destroy(omni_occipital_bridge_t* bridge) {
     if (bridge->occipital_effects.v4_pe) nimcp_free(bridge->occipital_effects.v4_pe);
     if (bridge->occipital_effects.v5_pe) nimcp_free(bridge->occipital_effects.v5_pe);
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);
@@ -162,40 +163,40 @@ void omni_occipital_bridge_destroy(omni_occipital_bridge_t* bridge) {
 int omni_occipital_connect_jepa(omni_occipital_bridge_t* bridge,
                                  jepa_bidirectional_t* jepa) {
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->jepa = jepa;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
 int omni_occipital_connect_pred_hier(omni_occipital_bridge_t* bridge,
                                       predictive_hierarchy_t* pred_hier) {
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->pred_hier = pred_hier;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
 int omni_occipital_connect_hopfield(omni_occipital_bridge_t* bridge,
                                      hopfield_memory_t* hopfield) {
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->hopfield = hopfield;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
 int omni_occipital_connect_occipital(omni_occipital_bridge_t* bridge,
                                       occipital_adapter_t* occipital) {
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->occipital = occipital;
     /* Mark areas as active when occipital is connected */
     for (int i = 0; i < OMNI_OCCIPITAL_NUM_AREAS; i++) {
         bridge->area_states[i].active = (occipital != NULL);
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -206,7 +207,7 @@ int omni_occipital_connect_occipital(omni_occipital_bridge_t* bridge,
 int omni_occipital_update(omni_occipital_bridge_t* bridge) {
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute stream PEs */
     bridge->occipital_effects.dorsal_pe = compute_stream_pe(
@@ -272,7 +273,7 @@ int omni_occipital_update(omni_occipital_bridge_t* bridge) {
         (bridge->stats.avg_free_energy * (n - 1) +
          bridge->occipital_effects.free_energy) / n;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -299,7 +300,7 @@ int omni_occipital_predict_area(omni_occipital_bridge_t* bridge,
     NIMCP_CHECK_THROW(area < OMNI_OCCIPITAL_NUM_AREAS,
                       NIMCP_ERROR_INVALID_PARAM, "Invalid visual area");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Update stats */
     switch (area) {
@@ -309,7 +310,7 @@ int omni_occipital_predict_area(omni_occipital_bridge_t* bridge,
         case OMNI_VISUAL_V5: bridge->stats.v5_predictions++; break;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -323,7 +324,7 @@ int omni_occipital_compute_pe(omni_occipital_bridge_t* bridge,
     NIMCP_CHECK_THROW(area < OMNI_OCCIPITAL_NUM_AREAS,
                       NIMCP_ERROR_INVALID_PARAM, "Invalid visual area");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     omni_visual_area_state_t* state = &bridge->area_states[area];
 
@@ -341,7 +342,7 @@ int omni_occipital_compute_pe(omni_occipital_bridge_t* bridge,
     state->pe_magnitude = *pe;
     state->dim = dim;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -364,9 +365,9 @@ int omni_occipital_propagate_forward(omni_occipital_bridge_t* bridge) {
 int omni_occipital_set_stream(omni_occipital_bridge_t* bridge,
                                omni_visual_stream_t stream) {
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->omni_effects.active_stream = stream;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -397,9 +398,9 @@ int omni_occipital_set_precision(omni_occipital_bridge_t* bridge,
     NIMCP_CHECK_THROW(area < OMNI_OCCIPITAL_NUM_AREAS,
                       NIMCP_ERROR_INVALID_PARAM, "Invalid visual area");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->area_states[area].precision = fmaxf(0.0f, precision);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -434,7 +435,7 @@ int omni_occipital_apply_spatial_attention(omni_occipital_bridge_t* bridge,
     NIMCP_CHECK_THROW(bridge != NULL && attention_map != NULL && width > 0 && height > 0,
                       NIMCP_ERROR_INVALID_PARAM, "Invalid parameters in apply_spatial_attention");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->config.enable_spatial_attention) {
         /* Apply spatial attention gain to V1 and V2 precision */
@@ -450,7 +451,7 @@ int omni_occipital_apply_spatial_attention(omni_occipital_bridge_t* bridge,
         bridge->area_states[OMNI_VISUAL_V2].precision *= (1.0f + (gain - 1.0f) * max_attn);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -459,7 +460,7 @@ int omni_occipital_apply_feature_attention(omni_occipital_bridge_t* bridge,
                                             float attention_weight) {
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->config.enable_feature_attention) {
         float gain = bridge->config.attention_gain;
@@ -491,7 +492,7 @@ int omni_occipital_apply_feature_attention(omni_occipital_bridge_t* bridge,
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 
@@ -545,9 +546,9 @@ int omni_occipital_get_stats(const omni_occipital_bridge_t* bridge,
 
 int omni_occipital_reset_stats(omni_occipital_bridge_t* bridge) {
     NIMCP_CHECK_THROW(bridge != NULL, NIMCP_ERROR_INVALID_PARAM, "bridge is NULL");
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(omni_occipital_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return NIMCP_SUCCESS;
 }
 

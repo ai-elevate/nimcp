@@ -82,7 +82,7 @@ cortical_dendritic_sleep_bridge_t cortical_dendritic_sleep_bridge_create(
     bridge->dendritic_module = dendritic_module;
     bridge->sleep_system = sleep;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "cortical_dendritic_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -105,7 +105,7 @@ void cortical_dendritic_sleep_bridge_destroy(cortical_dendritic_sleep_bridge_t b
     if (bridge->callback_registered) {
         sleep_unregister_state_callback(bridge->sleep_system, cortical_dendritic_on_sleep_state_change, bridge);
     }
-    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

@@ -7,6 +7,7 @@
  * HOW: Monitors ATP/fatigue; modulates mentalizing, perspective-taking
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/theory_of_mind/nimcp_theory_of_mind_substrate_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
@@ -18,6 +19,7 @@
 #include <math.h>
 
 struct tom_substrate_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* tom;
     neural_substrate_t* substrate;
     tom_substrate_config_t config;

@@ -90,7 +90,7 @@ oscillations_fep_bridge_t* oscillations_fep_bridge_create(
     bridge->state.effective_precision = 1.0f;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "oscillations_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         oscillations_fep_bridge_destroy(bridge);
         return NULL;
@@ -110,7 +110,7 @@ void oscillations_fep_bridge_destroy(
     }
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

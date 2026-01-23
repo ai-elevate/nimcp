@@ -13,6 +13,7 @@
  */
 
 #include "cognitive/imagination/nimcp_imagination_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/imagination/nimcp_imagination_engine.h"
 #include "cognitive/free_energy/nimcp_fep_orchestrator.h"
 #include "utils/memory/nimcp_memory.h"
@@ -28,12 +29,13 @@
  *===========================================================================*/
 
 struct imagination_fep_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     imagination_fep_config_t config;
 
     /* State */
     imagination_fep_state_t state;
-    nimcp_mutex_t* mutex;
 
     /* References */
     fep_orchestrator_t* orchestrator;
@@ -276,10 +278,8 @@ imagination_fep_bridge_t* imagination_fep_bridge_create(
         bridge->config = imagination_fep_config_default();
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "imagination_fep") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -314,10 +314,8 @@ void imagination_fep_bridge_destroy(imagination_fep_bridge_t* bridge) {
         imagination_fep_bridge_unregister(bridge);
     }
 
-    /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }
@@ -325,7 +323,7 @@ void imagination_fep_bridge_destroy(imagination_fep_bridge_t* bridge) {
 int imagination_fep_bridge_reset(imagination_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset metrics */
     bridge->free_energy = bridge->config.baseline_free_energy;
@@ -354,7 +352,7 @@ int imagination_fep_bridge_reset(imagination_fep_bridge_t* bridge) {
 
     bridge->state = IMAGINATION_FEP_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -370,11 +368,11 @@ int imagination_fep_bridge_register(
 ) {
     if (!bridge || !orchestrator) return -1;  /* engine can be NULL for standalone testing */
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if already registered */
     if (bridge->registered) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         if (bridge_id_out) {
             *bridge_id_out = bridge->bridge_id;
         }
@@ -400,7 +398,7 @@ int imagination_fep_bridge_register(
     if (ret != 0) {
         bridge->orchestrator = NULL;
         bridge->engine = NULL;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -412,17 +410,17 @@ int imagination_fep_bridge_register(
         *bridge_id_out = assigned_id;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int imagination_fep_bridge_unregister(imagination_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->registered) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;  /* Not registered, nothing to do */
     }
 
@@ -437,16 +435,16 @@ int imagination_fep_bridge_unregister(imagination_fep_bridge_t* bridge) {
     bridge->engine = NULL;
     bridge->state = IMAGINATION_FEP_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 bool imagination_fep_bridge_is_registered(const imagination_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(((imagination_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((imagination_fep_bridge_t*)bridge)->base.mutex);
     bool registered = bridge->registered;
-    nimcp_mutex_unlock(((imagination_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((imagination_fep_bridge_t*)bridge)->base.mutex);
 
     return registered;
 }
@@ -454,9 +452,9 @@ bool imagination_fep_bridge_is_registered(const imagination_fep_bridge_t* bridge
 uint32_t imagination_fep_bridge_get_id(const imagination_fep_bridge_t* bridge) {
     if (!bridge) return 0;
 
-    nimcp_mutex_lock(((imagination_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((imagination_fep_bridge_t*)bridge)->base.mutex);
     uint32_t id = bridge->registered ? bridge->bridge_id : 0;
-    nimcp_mutex_unlock(((imagination_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((imagination_fep_bridge_t*)bridge)->base.mutex);
 
     return id;
 }
@@ -469,11 +467,11 @@ int imagination_fep_update_callback(void* handle) {
     imagination_fep_bridge_t* bridge = (imagination_fep_bridge_t*)handle;
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Ensure we're registered and have an engine */
     if (!bridge->registered || !bridge->engine) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -488,7 +486,7 @@ int imagination_fep_update_callback(void* handle) {
         /* Engine stats not available, use minimal update */
         bridge->last_update_time_ms = get_time_ms();
         bridge->stats.total_updates++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;  /* Non-critical failure */
     }
 
@@ -513,7 +511,7 @@ int imagination_fep_update_callback(void* handle) {
     /* Check and trigger callbacks */
     check_callbacks(bridge);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -546,7 +544,7 @@ int imagination_fep_bridge_force_update(imagination_fep_bridge_t* bridge) {
     }
 
     /* For unit testing: perform minimal update with callback invocation */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t start_us = get_time_us();
 
@@ -569,7 +567,7 @@ int imagination_fep_bridge_force_update(imagination_fep_bridge_t* bridge) {
     /* Invoke callbacks even without full engine data */
     check_callbacks(bridge);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -583,9 +581,9 @@ int imagination_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats_out) return -1;
 
-    nimcp_mutex_lock(((imagination_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((imagination_fep_bridge_t*)bridge)->base.mutex);
     *stats_out = bridge->stats;
-    nimcp_mutex_unlock(((imagination_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((imagination_fep_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -593,14 +591,14 @@ int imagination_fep_bridge_get_stats(
 int imagination_fep_bridge_reset_stats(imagination_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(imagination_fep_stats_t));
     bridge->running_avg_fe = 0.0f;
     bridge->running_avg_divergence = 0.0f;
     bridge->running_avg_counterfactual = 0.0f;
     bridge->running_count = 0;
     bridge->total_update_time_us = 0;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -612,9 +610,9 @@ int imagination_fep_bridge_reset_stats(imagination_fep_bridge_t* bridge) {
 float imagination_fep_bridge_get_free_energy(const imagination_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(((imagination_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((imagination_fep_bridge_t*)bridge)->base.mutex);
     float fe = bridge->free_energy;
-    nimcp_mutex_unlock(((imagination_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((imagination_fep_bridge_t*)bridge)->base.mutex);
 
     return fe;
 }
@@ -624,9 +622,9 @@ float imagination_fep_bridge_get_simulation_divergence(
 ) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(((imagination_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((imagination_fep_bridge_t*)bridge)->base.mutex);
     float divergence = bridge->simulation_divergence;
-    nimcp_mutex_unlock(((imagination_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((imagination_fep_bridge_t*)bridge)->base.mutex);
 
     return divergence;
 }
@@ -636,9 +634,9 @@ float imagination_fep_bridge_get_prediction_error(
 ) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(((imagination_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((imagination_fep_bridge_t*)bridge)->base.mutex);
     float pe = bridge->prediction_error;
-    nimcp_mutex_unlock(((imagination_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((imagination_fep_bridge_t*)bridge)->base.mutex);
 
     return pe;
 }
@@ -648,9 +646,9 @@ imagination_fep_state_t imagination_fep_bridge_get_state(
 ) {
     if (!bridge) return IMAGINATION_FEP_STATE_ERROR;
 
-    nimcp_mutex_lock(((imagination_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((imagination_fep_bridge_t*)bridge)->base.mutex);
     imagination_fep_state_t state = bridge->state;
-    nimcp_mutex_unlock(((imagination_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((imagination_fep_bridge_t*)bridge)->base.mutex);
 
     return state;
 }
@@ -658,9 +656,9 @@ imagination_fep_state_t imagination_fep_bridge_get_state(
 bool imagination_fep_bridge_is_degraded(const imagination_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(((imagination_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((imagination_fep_bridge_t*)bridge)->base.mutex);
     bool degraded = (bridge->state == IMAGINATION_FEP_STATE_DEGRADED);
-    nimcp_mutex_unlock(((imagination_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((imagination_fep_bridge_t*)bridge)->base.mutex);
 
     return degraded;
 }
@@ -676,10 +674,10 @@ int imagination_fep_bridge_set_high_fe_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->high_fe_callback = callback;
     bridge->high_fe_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -691,10 +689,10 @@ int imagination_fep_bridge_set_divergence_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->divergence_callback = callback;
     bridge->divergence_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -709,9 +707,9 @@ int imagination_fep_bridge_set_config(
 ) {
     if (!bridge || !config) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->config = *config;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -722,9 +720,9 @@ int imagination_fep_bridge_get_config(
 ) {
     if (!bridge || !config_out) return -1;
 
-    nimcp_mutex_lock(((imagination_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((imagination_fep_bridge_t*)bridge)->base.mutex);
     *config_out = bridge->config;
-    nimcp_mutex_unlock(((imagination_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((imagination_fep_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }

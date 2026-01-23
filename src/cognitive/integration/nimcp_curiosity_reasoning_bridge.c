@@ -17,6 +17,7 @@
  */
 
 #include "cognitive/integration/nimcp_curiosity_reasoning_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -43,12 +44,12 @@ typedef struct exploration_topic {
  * @brief Internal bridge structure
  */
 struct curiosity_reasoning_bridge {
+    bridge_base_t base;                     /**< MUST be first: base bridge infrastructure */
     curiosity_reasoning_config_t config;    /**< Bridge configuration */
     exploration_topic_t* topics;            /**< Topic tracking array */
     size_t topic_capacity;                  /**< Maximum topics */
     size_t topic_count;                     /**< Current topic count */
     curiosity_reasoning_stats_t stats;      /**< Bridge statistics */
-    nimcp_mutex_t* mutex;                   /**< Thread safety mutex */
     bool initialized;                       /**< Initialization flag */
 };
 
@@ -176,8 +177,8 @@ curiosity_reasoning_bridge_t* curiosity_reasoning_bridge_create(
     bridge->topic_count = 0;
 
     /* Create mutex for thread safety */
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "curiosity_reasoning") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         nimcp_free(bridge->topics);
         nimcp_free(bridge);
         return NULL;
@@ -196,9 +197,9 @@ void curiosity_reasoning_bridge_destroy(curiosity_reasoning_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-        bridge->mutex = NULL;
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
+        bridge->base.mutex = NULL;
     }
 
     /* Free topics array */
@@ -229,7 +230,7 @@ int curiosity_reasoning_drive_exploration(
                                CURIOSITY_REASONING_MIN_LEVEL,
                                CURIOSITY_REASONING_MAX_LEVEL);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Use context_id as topic_id (truncate to 32-bit) */
     uint32_t topic_id = (uint32_t)(context->context_id & 0xFFFFFFFF);
@@ -237,7 +238,7 @@ int curiosity_reasoning_drive_exploration(
     /* Find or create topic for this context */
     exploration_topic_t* topic = find_or_create_topic_unlocked(bridge, topic_id);
     if (!topic) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;  /* At capacity */
     }
 
@@ -261,7 +262,7 @@ int curiosity_reasoning_drive_exploration(
         bridge->stats.avg_curiosity_level * (1.0f - alpha) +
         curiosity_level * alpha;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -279,13 +280,13 @@ int curiosity_reasoning_share_uncertainty(
                                  CURIOSITY_REASONING_MIN_LEVEL,
                                  CURIOSITY_REASONING_MAX_LEVEL);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Find or create topic */
     uint32_t tid = (uint32_t)(topic_id & 0xFFFFFFFF);
     exploration_topic_t* topic = find_or_create_topic_unlocked(bridge, tid);
     if (!topic) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;  /* At capacity */
     }
 
@@ -303,7 +304,7 @@ int curiosity_reasoning_share_uncertainty(
     /* Update stats */
     bridge->stats.uncertainty_shared++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -325,7 +326,7 @@ int curiosity_reasoning_on_novel_conclusion(
                              CURIOSITY_REASONING_MIN_LEVEL,
                              CURIOSITY_REASONING_MAX_LEVEL);
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     int triggered = 0;
 
@@ -365,7 +366,7 @@ int curiosity_reasoning_on_novel_conclusion(
         triggered = 1;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return triggered;
 }
 
@@ -381,7 +382,7 @@ float curiosity_reasoning_get_exploration_priority(
         return -1.0f;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t tid = (uint32_t)(topic_id & 0xFFFFFFFF);
     exploration_topic_t* topic = find_topic_unlocked(bridge, tid);
@@ -391,7 +392,7 @@ float curiosity_reasoning_get_exploration_priority(
         priority = topic->exploration_priority;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return priority;
 }
 
@@ -413,9 +414,9 @@ int curiosity_reasoning_bridge_get_stats(
     curiosity_reasoning_bridge_t* mutable_bridge =
         (curiosity_reasoning_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return 0;
 }

@@ -6,6 +6,7 @@
  */
 
 #include "dragonfly/nimcp_dragonfly_visual_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/thread/nimcp_thread.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -33,6 +34,8 @@ typedef struct {
  * @brief Visual bridge state
  */
 struct dragonfly_visual_bridge_s {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     visual_bridge_config_t config;
 
@@ -51,9 +54,6 @@ struct dragonfly_visual_bridge_s {
 
     /* Statistics */
     visual_bridge_stats_t stats;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 };
 
 //=============================================================================
@@ -200,10 +200,9 @@ dragonfly_visual_bridge_t* dragonfly_visual_bridge_create(
     bridge->visual_cortex = visual_cortex;
     bridge->next_track_id = 1;
 
-    /* Create mutex */
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_visual_bridge_create: failed to create mutex");
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "dragonfly_visual") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "dragonfly_visual_bridge_create: failed to init base");
         free(bridge);
         return NULL;
     }
@@ -214,7 +213,7 @@ dragonfly_visual_bridge_t* dragonfly_visual_bridge_create(
 void dragonfly_visual_bridge_destroy(dragonfly_visual_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->mutex) nimcp_mutex_free(bridge->mutex);
+    bridge_base_cleanup(&bridge->base);
     free(bridge);
 }
 
@@ -224,7 +223,7 @@ int dragonfly_visual_bridge_reset(dragonfly_visual_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     memset(&bridge->current_result, 0, sizeof(bridge->current_result));
     memset(bridge->prev_blobs, 0, sizeof(bridge->prev_blobs));
@@ -232,7 +231,7 @@ int dragonfly_visual_bridge_reset(dragonfly_visual_bridge_t* bridge) {
     bridge->frame_count = 0;
     bridge->next_track_id = 1;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -260,7 +259,7 @@ int dragonfly_visual_bridge_process_frame(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t start_time = get_time_us();
     bridge->frame_count++;
@@ -351,7 +350,7 @@ int dragonfly_visual_bridge_process_frame(
         (bridge->stats.avg_process_time_us * (bridge->stats.frames_processed - 1) + (float)elapsed)
         / (float)bridge->stats.frames_processed;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -370,7 +369,7 @@ int dragonfly_visual_bridge_process_features(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Extract motion information from visual cortex features */
     /* Feature vector layout (assuming MT-style features):
@@ -445,7 +444,7 @@ int dragonfly_visual_bridge_process_features(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -462,7 +461,7 @@ int dragonfly_visual_bridge_inject_blob(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now = get_time_us();
 
@@ -518,7 +517,7 @@ int dragonfly_visual_bridge_inject_blob(
         bridge->stats.detections_sent++;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -535,9 +534,9 @@ int dragonfly_visual_bridge_get_result(
         return -1;
     }
 
-    nimcp_mutex_lock(((dragonfly_visual_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((dragonfly_visual_bridge_t*)bridge)->base.mutex);
     *result = bridge->current_result;
-    nimcp_mutex_unlock(((dragonfly_visual_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((dragonfly_visual_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -628,7 +627,7 @@ int dragonfly_visual_bridge_get_stats(
         return -1;
     }
 
-    nimcp_mutex_lock(((dragonfly_visual_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((dragonfly_visual_bridge_t*)bridge)->base.mutex);
 
     *stats = bridge->stats;
 
@@ -638,7 +637,7 @@ int dragonfly_visual_bridge_get_stats(
             (float)stats->blobs_detected / (float)stats->frames_processed;
     }
 
-    nimcp_mutex_unlock(((dragonfly_visual_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((dragonfly_visual_bridge_t*)bridge)->base.mutex);
     return 0;
 }
 
@@ -648,9 +647,9 @@ int dragonfly_visual_bridge_reset_stats(dragonfly_visual_bridge_t* bridge) {
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -676,9 +675,9 @@ int dragonfly_visual_bridge_set_config(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->config = *config;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -696,9 +695,9 @@ int dragonfly_visual_bridge_get_config(
         return -1;
     }
 
-    nimcp_mutex_lock(((dragonfly_visual_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((dragonfly_visual_bridge_t*)bridge)->base.mutex);
     *config = bridge->config;
-    nimcp_mutex_unlock(((dragonfly_visual_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((dragonfly_visual_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -724,9 +723,9 @@ int dragonfly_visual_bridge_set_calibration(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->config.calibration = *calibration;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

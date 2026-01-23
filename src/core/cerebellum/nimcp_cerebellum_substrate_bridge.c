@@ -3,12 +3,14 @@
  * @brief Cerebellum-Neural Substrate Bridge Implementation
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/cerebellum/nimcp_cerebellum_substrate_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 struct cerebellum_substrate_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* cerebellum;
     neural_substrate_t* substrate;
     cerebellum_substrate_config_t config;

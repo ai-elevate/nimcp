@@ -85,7 +85,7 @@ swarm_consciousness_sleep_bridge_t swarm_consciousness_sleep_bridge_create(
     memcpy(&bridge->config, config, sizeof(swarm_consciousness_sleep_config_t));
     bridge->sleep_system = sleep_system;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "swarm_consciousness_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for swarm consciousness sleep bridge");
         nimcp_free(bridge);
@@ -121,7 +121,7 @@ void swarm_consciousness_sleep_bridge_destroy(swarm_consciousness_sleep_bridge_t
     }
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

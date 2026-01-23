@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/recursive/nimcp_rcog_collective_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/platform/nimcp_platform_time.h"
@@ -35,6 +36,8 @@ struct rcog_collective_handle {
  * @brief Collective bridge internal structure
  */
 struct rcog_collective_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     rcog_collective_bridge_config_t config;
 
@@ -71,9 +74,6 @@ struct rcog_collective_bridge {
 
     /* Statistics */
     rcog_collective_bridge_stats_t stats;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 };
 
 /*=============================================================================
@@ -117,10 +117,8 @@ rcog_collective_bridge_t* rcog_collective_bridge_create(
         bridge->config = rcog_collective_bridge_default_config();
     }
 
-    mutex_attr_t attr = {0};
-    attr.type = MUTEX_TYPE_NORMAL;
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
+    /* Initialize bridge base infrastructure (includes mutex) */
+    if (bridge_base_init(&bridge->base, 0, "rcog_collective") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -144,9 +142,8 @@ void rcog_collective_bridge_destroy(rcog_collective_bridge_t* bridge) {
         }
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }
@@ -163,12 +160,12 @@ int rcog_collective_bridge_connect_workspace(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->workspace = workspace;
     bridge->connected = (bridge->workspace != NULL &&
                          bridge->consciousness != NULL &&
                          bridge->engine != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -181,12 +178,12 @@ int rcog_collective_bridge_connect_consciousness(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->consciousness = consciousness;
     bridge->connected = (bridge->workspace != NULL &&
                          bridge->consciousness != NULL &&
                          bridge->engine != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -199,12 +196,12 @@ int rcog_collective_bridge_connect_engine(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->engine = engine;
     bridge->connected = (bridge->workspace != NULL &&
                          bridge->consciousness != NULL &&
                          bridge->engine != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -225,7 +222,7 @@ int rcog_collective_bridge_update(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Decay stigmergy salience over time */
     if (bridge->config.enable_stigmergy) {
@@ -276,7 +273,7 @@ int rcog_collective_bridge_update(
     bridge->outgoing_effects.sync_answer_state = false;
     bridge->outgoing_effects.request_handoff = false;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -294,22 +291,22 @@ int rcog_collective_bridge_broadcast_subtask(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_SWARM_DISCONNECTED;
     }
 
     if (bridge->num_active_handles >= RCOG_COLLECTIVE_MAX_CONCURRENT_SUBTASKS) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_CONTEXT_FULL;
     }
 
     /* Create handle */
     struct rcog_collective_handle* h = nimcp_calloc(1, sizeof(struct rcog_collective_handle));
     if (!h) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_OUT_OF_MEMORY;
     }
 
@@ -325,7 +322,7 @@ int rcog_collective_bridge_broadcast_subtask(
 
     bridge->stats.subtasks_broadcast++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -341,7 +338,7 @@ int rcog_collective_bridge_collect_results(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* In full implementation, would collect results from swarm */
     *num_results = 0;
@@ -357,7 +354,7 @@ int rcog_collective_bridge_collect_results(
 
     bridge->stats.results_shared++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -371,17 +368,17 @@ int rcog_collective_bridge_volunteer_for_subtask(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_SWARM_DISCONNECTED;
     }
 
     /* Check if we have capacity to volunteer */
     float local_load = bridge->outgoing_effects.local_load;
     if (local_load > bridge->config.volunteer_threshold) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_CONTEXT_FULL;
     }
 
@@ -391,7 +388,7 @@ int rcog_collective_bridge_volunteer_for_subtask(
 
     bridge->stats.subtasks_volunteered++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -409,15 +406,15 @@ int rcog_collective_bridge_share_context(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_SWARM_DISCONNECTED;
     }
 
     if (!bridge->config.enable_stigmergy) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_TOOL_ACCESS_DENIED;
     }
 
@@ -427,14 +424,14 @@ int rcog_collective_bridge_share_context(
             /* Update salience */
             bridge->shared_vars[i].salience = salience;
             bridge->shared_vars[i].shared_at_ms = nimcp_platform_time_monotonic_ms();
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return RCOG_OK;
         }
     }
 
     /* Add new shared variable */
     if (bridge->num_shared_vars >= RCOG_COLLECTIVE_MAX_SHARED_VARS) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_CONTEXT_FULL;
     }
 
@@ -453,7 +450,7 @@ int rcog_collective_bridge_share_context(
 
     bridge->stats.context_vars_shared++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -467,10 +464,10 @@ int rcog_collective_bridge_import_context(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_SWARM_DISCONNECTED;
     }
 
@@ -480,12 +477,12 @@ int rcog_collective_bridge_import_context(
             strcmp(bridge->shared_vars[i].name, variable_name) == 0) {
             bridge->shared_vars[i].is_local = true;
             bridge->stats.context_vars_imported++;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return RCOG_OK;
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return RCOG_ERROR_CONTEXT_NOT_FOUND;
 }
 
@@ -499,7 +496,7 @@ int rcog_collective_bridge_list_shared_context(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(((rcog_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((rcog_collective_bridge_t*)bridge)->base.mutex);
 
     size_t to_copy = bridge->num_shared_vars;
     if (to_copy > max_vars) {
@@ -509,7 +506,7 @@ int rcog_collective_bridge_list_shared_context(
     memcpy(vars, bridge->shared_vars, to_copy * sizeof(rcog_shared_variable_info_t));
     *num_vars = to_copy;
 
-    nimcp_mutex_unlock(((rcog_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((rcog_collective_bridge_t*)bridge)->base.mutex);
 
     return RCOG_OK;
 }
@@ -526,10 +523,10 @@ int rcog_collective_bridge_refine_answer(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_SWARM_DISCONNECTED;
     }
 
@@ -538,7 +535,7 @@ int rcog_collective_bridge_refine_answer(
 
     /* In full implementation, would initiate distributed refinement */
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -581,7 +578,7 @@ int rcog_collective_bridge_get_swarm_members(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(((rcog_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((rcog_collective_bridge_t*)bridge)->base.mutex);
 
     size_t to_copy = bridge->num_members;
     if (to_copy > max_members) {
@@ -591,7 +588,7 @@ int rcog_collective_bridge_get_swarm_members(
     memcpy(members, bridge->members, to_copy * sizeof(rcog_swarm_member_info_t));
     *num_members = to_copy;
 
-    nimcp_mutex_unlock(((rcog_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((rcog_collective_bridge_t*)bridge)->base.mutex);
 
     return RCOG_OK;
 }
@@ -626,9 +623,9 @@ int rcog_collective_bridge_get_outgoing_effects(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(((rcog_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((rcog_collective_bridge_t*)bridge)->base.mutex);
     *effects = bridge->outgoing_effects;
-    nimcp_mutex_unlock(((rcog_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((rcog_collective_bridge_t*)bridge)->base.mutex);
 
     return RCOG_OK;
 }
@@ -641,9 +638,9 @@ int rcog_collective_bridge_get_incoming_effects(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(((rcog_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((rcog_collective_bridge_t*)bridge)->base.mutex);
     *effects = bridge->incoming_effects;
-    nimcp_mutex_unlock(((rcog_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((rcog_collective_bridge_t*)bridge)->base.mutex);
 
     return RCOG_OK;
 }
@@ -660,9 +657,9 @@ int rcog_collective_bridge_get_stats(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(((rcog_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((rcog_collective_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(((rcog_collective_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((rcog_collective_bridge_t*)bridge)->base.mutex);
 
     return RCOG_OK;
 }
@@ -672,9 +669,9 @@ void rcog_collective_bridge_reset_stats(rcog_collective_bridge_t* bridge) {
         return;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(rcog_collective_bridge_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 /* ============================================================================

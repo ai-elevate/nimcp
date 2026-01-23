@@ -9,6 +9,7 @@
  * HOW:  Encode decision contexts as spike patterns, decode bias detection from population activity
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/bias/nimcp_bias_snn_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -30,6 +31,7 @@ typedef struct {
 } bias_neuron_t;
 
 struct bias_snn_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     bias_snn_config_t config;
     bias_snn_state_t state;
 

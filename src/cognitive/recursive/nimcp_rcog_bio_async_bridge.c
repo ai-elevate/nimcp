@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/recursive/nimcp_rcog_bio_async_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/platform/nimcp_platform_time.h"
@@ -31,6 +32,8 @@ typedef struct {
  * @brief Bio-async bridge internal structure
  */
 struct rcog_bio_async_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     rcog_bio_async_bridge_config_t config;
 
@@ -49,9 +52,6 @@ struct rcog_bio_async_bridge {
 
     /* Statistics */
     rcog_bio_async_bridge_stats_t stats;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 };
 
 /*=============================================================================
@@ -94,11 +94,8 @@ rcog_bio_async_bridge_t* rcog_bio_async_bridge_create(
         bridge->config = rcog_bio_async_bridge_default_config();
     }
 
-    /* Initialize mutex */
-    mutex_attr_t attr = {0};
-    attr.type = MUTEX_TYPE_NORMAL;
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
+    /* Initialize bridge base infrastructure (includes mutex) */
+    if (bridge_base_init(&bridge->base, 0, "rcog_bio_async") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -127,10 +124,8 @@ void rcog_bio_async_bridge_destroy(rcog_bio_async_bridge_t* bridge) {
         rcog_bio_async_bridge_disconnect(bridge);
     }
 
-    /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }
@@ -147,13 +142,13 @@ int rcog_bio_async_bridge_connect(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async = bio_async;
 
     /* Update connection status */
     bridge->connected = (bridge->bio_async != NULL && bridge->engine != NULL);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -166,13 +161,13 @@ int rcog_bio_async_bridge_connect_engine(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->engine = engine;
 
     /* Update connection status */
     bridge->connected = (bridge->bio_async != NULL && bridge->engine != NULL);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -182,12 +177,12 @@ int rcog_bio_async_bridge_disconnect(rcog_bio_async_bridge_t* bridge) {
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->bio_async = NULL;
     bridge->connected = false;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -213,10 +208,10 @@ int rcog_bio_async_bridge_update(
 
     uint64_t start_time = nimcp_platform_time_monotonic_us();
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_BIO_ASYNC_DISCONNECTED;
     }
 
@@ -237,7 +232,7 @@ int rcog_bio_async_bridge_update(
     uint64_t elapsed = nimcp_platform_time_monotonic_us() - start_time;
     bridge->stats.total_update_time_us += elapsed;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -256,10 +251,10 @@ int rcog_bio_async_bridge_send_message(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_BIO_ASYNC_DISCONNECTED;
     }
 
@@ -270,7 +265,7 @@ int rcog_bio_async_bridge_send_message(
 
     bridge->stats.messages_sent++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -285,10 +280,10 @@ int rcog_bio_async_bridge_register_handler(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->num_handlers >= 32) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_CONTEXT_FULL;
     }
 
@@ -297,7 +292,7 @@ int rcog_bio_async_bridge_register_handler(
     entry->handler = handler;
     entry->user_data = user_data;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -315,10 +310,10 @@ int rcog_bio_async_bridge_create_future(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_BIO_ASYNC_DISCONNECTED;
     }
 
@@ -328,7 +323,7 @@ int rcog_bio_async_bridge_create_future(
 
     bridge->stats.futures_created++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -345,9 +340,9 @@ int rcog_bio_async_bridge_await_future(
     /* In a full implementation, this would wait on the bio-async future */
     (void)timeout_ms;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.futures_completed++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -367,10 +362,10 @@ int rcog_bio_async_bridge_create_phase_sync(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_BIO_ASYNC_DISCONNECTED;
     }
 
@@ -381,7 +376,7 @@ int rcog_bio_async_bridge_create_phase_sync(
 
     bridge->stats.phase_syncs_created++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -400,10 +395,10 @@ int rcog_bio_async_bridge_wait_coherent(
     (void)coherence_threshold;
     (void)timeout_ms;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.phase_syncs_achieved++;
     bridge->stats.avg_coherence = coherence_threshold; /* Simplified */
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -421,10 +416,10 @@ int rcog_bio_async_bridge_initiate_glial_wave(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_BIO_ASYNC_DISCONNECTED;
     }
 
@@ -437,7 +432,7 @@ int rcog_bio_async_bridge_initiate_glial_wave(
 
     bridge->stats.glial_waves_initiated++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -459,7 +454,7 @@ int rcog_bio_async_bridge_release_dopamine(
         return RCOG_ERROR_INVALID_CONFIG;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->outgoing_effects.dopamine_release = amount;
     bridge->outgoing_effects.completed_subtask_count++;
@@ -468,7 +463,7 @@ int rcog_bio_async_bridge_release_dopamine(
     bridge->stats.avg_dopamine_release =
         (bridge->stats.avg_dopamine_release * 0.9f) + (amount * 0.1f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -482,14 +477,14 @@ int rcog_bio_async_bridge_signal_priority(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->outgoing_effects.norepinephrine_level = priority;
     bridge->outgoing_effects.priority_escalation =
         (priority > RCOG_BIO_DEFAULT_NE_PRIORITY_THRESHOLD);
     (void)subtask_id;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -503,12 +498,12 @@ int rcog_bio_async_bridge_modulate_attention(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->outgoing_effects.acetylcholine_level = attention;
     bridge->outgoing_effects.focused_variable = target;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -526,9 +521,9 @@ int rcog_bio_async_bridge_get_outgoing_effects(
     }
 
     /* Cast away const for mutex lock - safe since we only read */
-    nimcp_mutex_lock(((rcog_bio_async_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((rcog_bio_async_bridge_t*)bridge)->base.mutex);
     *effects = bridge->outgoing_effects;
-    nimcp_mutex_unlock(((rcog_bio_async_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((rcog_bio_async_bridge_t*)bridge)->base.mutex);
 
     return RCOG_OK;
 }
@@ -541,9 +536,9 @@ int rcog_bio_async_bridge_get_incoming_effects(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(((rcog_bio_async_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((rcog_bio_async_bridge_t*)bridge)->base.mutex);
     *effects = bridge->incoming_effects;
-    nimcp_mutex_unlock(((rcog_bio_async_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((rcog_bio_async_bridge_t*)bridge)->base.mutex);
 
     return RCOG_OK;
 }
@@ -560,9 +555,9 @@ int rcog_bio_async_bridge_get_stats(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(((rcog_bio_async_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((rcog_bio_async_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(((rcog_bio_async_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((rcog_bio_async_bridge_t*)bridge)->base.mutex);
 
     return RCOG_OK;
 }
@@ -572,9 +567,9 @@ void rcog_bio_async_bridge_reset_stats(rcog_bio_async_bridge_t* bridge) {
         return;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(rcog_bio_async_bridge_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 /* ============================================================================

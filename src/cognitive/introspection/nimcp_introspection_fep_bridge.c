@@ -33,7 +33,7 @@ introspection_fep_bridge_t* introspection_fep_bridge_create(const introspection_
     memset(bridge, 0, sizeof(introspection_fep_bridge_t));
     if (config) bridge->config = *config;
     else introspection_fep_bridge_default_config(&bridge->config);
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "introspection_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
     bridge->state.current_precision = 0.5f;
     NIMCP_LOGGING_INFO(LOG_MODULE_INTROSPECTION_FEP " Bridge created");
@@ -44,7 +44,7 @@ void introspection_fep_bridge_destroy(introspection_fep_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.bio_async_enabled) introspection_fep_bridge_disconnect_bio_async(bridge);
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
 }

@@ -3,6 +3,7 @@
  * @brief Working Memory-Thalamic Bridge Implementation
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/working_memory/nimcp_working_memory_thalamic_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "utils/memory/nimcp_memory.h"
@@ -12,6 +13,7 @@
 #include <string.h>
 
 struct working_memory_thalamic_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* working_memory;
     thalamic_router_t* router;
     working_memory_thalamic_config_t config;

@@ -2,6 +2,7 @@
 // nimcp_language_insula_bridge.c - Language-Insula Articulatory Bridge
 //=============================================================================
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "language/bridges/nimcp_language_insula_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -14,6 +15,7 @@
 //=============================================================================
 
 struct language_insula_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     language_orchestrator_t* language;
     insula_adapter_t* insula;
     language_insula_config_t config;

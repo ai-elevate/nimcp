@@ -18,6 +18,7 @@
  */
 
 #include "dragonfly/nimcp_dragonfly_medulla_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "dragonfly/nimcp_dragonfly.h"
 #include "core/medulla/nimcp_medulla.h"
 #include "utils/memory/nimcp_memory.h"
@@ -33,6 +34,8 @@
 //=============================================================================
 
 struct dragonfly_medulla_bridge_s {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     dragonfly_medulla_config_t config;
 
@@ -50,9 +53,6 @@ struct dragonfly_medulla_bridge_s {
     /* Timing */
     uint64_t last_update_us;
     uint64_t creation_time_us;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 };
 
 //=============================================================================
@@ -215,10 +215,8 @@ dragonfly_medulla_bridge_t dragonfly_medulla_bridge_create(
         bridge->config = dragonfly_medulla_default_config();
     }
 
-    /* Create mutex */
-    mutex_attr_t attr = { .type = MUTEX_TYPE_NORMAL };
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "dragonfly_medulla") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -256,10 +254,7 @@ void dragonfly_medulla_bridge_destroy(dragonfly_medulla_bridge_t bridge) {
         dragonfly_medulla_bridge_disconnect(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
-
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 
@@ -276,10 +271,10 @@ int dragonfly_medulla_bridge_connect(
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;  /* Already connected */
     }
 
@@ -293,14 +288,14 @@ int dragonfly_medulla_bridge_connect(
         fprintf(stderr, "[DRAGONFLY-MEDULLA] Bridge connected to dragonfly and medulla\n");
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int dragonfly_medulla_bridge_disconnect(dragonfly_medulla_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->dragonfly = NULL;
     bridge->medulla = NULL;
@@ -311,7 +306,7 @@ int dragonfly_medulla_bridge_disconnect(dragonfly_medulla_bridge_t bridge) {
         fprintf(stderr, "[DRAGONFLY-MEDULLA] Bridge disconnected\n");
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -327,10 +322,10 @@ bool dragonfly_medulla_bridge_is_connected(const dragonfly_medulla_bridge_t brid
 int dragonfly_medulla_bridge_update(dragonfly_medulla_bridge_t bridge, float dt) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->connected) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -477,7 +472,7 @@ int dragonfly_medulla_bridge_update(dragonfly_medulla_bridge_t bridge, float dt)
     }
     bridge->stats.last_update_us = start_time;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -487,9 +482,9 @@ int dragonfly_medulla_bridge_get_modulation(
 ) {
     if (!bridge || !modulation) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *modulation = bridge->modulation;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -501,7 +496,7 @@ int dragonfly_medulla_bridge_get_modulation(
 int dragonfly_medulla_bridge_notify_pursuit_start(dragonfly_medulla_bridge_t bridge) {
     if (!bridge || !bridge->connected) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->config.enable_arousal_feedback && bridge->medulla) {
         /* Pursuit increases arousal - send boost to medulla */
@@ -516,14 +511,14 @@ int dragonfly_medulla_bridge_notify_pursuit_start(dragonfly_medulla_bridge_t bri
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int dragonfly_medulla_bridge_notify_intercept_success(dragonfly_medulla_bridge_t bridge) {
     if (!bridge || !bridge->connected) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->config.enable_arousal_feedback && bridge->medulla) {
         /* Success gives bigger arousal boost */
@@ -538,7 +533,7 @@ int dragonfly_medulla_bridge_notify_intercept_success(dragonfly_medulla_bridge_t
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -548,7 +543,7 @@ int dragonfly_medulla_bridge_notify_pursuit_failure(
 ) {
     if (!bridge || !bridge->connected) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->config.enable_arousal_feedback && bridge->medulla) {
         /* Failure slightly decreases arousal */
@@ -562,7 +557,7 @@ int dragonfly_medulla_bridge_notify_pursuit_failure(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -583,9 +578,9 @@ int dragonfly_medulla_bridge_get_stats(
 ) {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -593,7 +588,7 @@ int dragonfly_medulla_bridge_get_stats(
 int dragonfly_medulla_bridge_reset_stats(dragonfly_medulla_bridge_t bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bool was_connected = bridge->stats.is_connected;
     uint64_t conn_time = bridge->stats.connection_time_us;
@@ -604,6 +599,6 @@ int dragonfly_medulla_bridge_reset_stats(dragonfly_medulla_bridge_t bridge) {
     bridge->stats.is_connected = was_connected;
     bridge->stats.connection_time_us = conn_time;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }

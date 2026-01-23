@@ -7,6 +7,7 @@
  */
 
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_drive_quantum_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -253,7 +254,7 @@ hypo_drive_quantum_bridge_t* hypo_drive_quantum_bridge_create(
     /* Create mutex */
     mutex_attr_t attr;
     attr.type = MUTEX_TYPE_NORMAL;
-    bridge->mutex = nimcp_mutex_create(&attr);
+    bridge->base.mutex = nimcp_mutex_create(&attr);
 
     NIMCP_LOG_INFO("Drive-quantum bridge created (quantum=%s)",
                    quantum ? "available" : "unavailable");
@@ -267,8 +268,8 @@ void hypo_drive_quantum_bridge_destroy(hypo_drive_quantum_bridge_t* bridge) {
     free_drive_qubo(&bridge->qubo);
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);
@@ -278,7 +279,7 @@ void hypo_drive_quantum_bridge_destroy(hypo_drive_quantum_bridge_t* bridge) {
 void hypo_drive_quantum_bridge_reset(hypo_drive_quantum_bridge_t* bridge) {
     if (!bridge) return;
 
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset state */
     memset(&bridge->last_result, 0, sizeof(bridge->last_result));
@@ -300,7 +301,7 @@ void hypo_drive_quantum_bridge_reset(hypo_drive_quantum_bridge_t* bridge) {
     bridge->avg_quantum_contribution = 0.0f;
     bridge->avg_compute_time_us = 0.0f;
 
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOG_DEBUG("Drive-quantum bridge reset");
 }
@@ -488,7 +489,7 @@ int hypo_drive_quantum_optimize(
 
     if (!bridge || !result) return -1;
 
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t start_time = nimcp_time_get_us();
     memset(result, 0, sizeof(*result));
@@ -515,14 +516,14 @@ int hypo_drive_quantum_optimize(
             (now_us - bridge->cache_timestamp_us) < bridge->config.cache_validity_ms * 1000) {
             *result = bridge->last_result;
             bridge->cache_hits++;
-            if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+            if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
             return 0;
         }
     }
 
     /* Formulate QUBO */
     if (hypo_drive_quantum_formulate_qubo(bridge) < 0) {
-        if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+        if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -589,7 +590,7 @@ int hypo_drive_quantum_optimize(
 
     bridge->last_optimization_us = nimcp_time_get_us();
 
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
     return ret;
 }
 

@@ -384,8 +384,8 @@ sec_immune_unified_bridge_t* sec_immune_unified_create(
     }
 
     /* Create mutex */
-    bridge->mutex = nimcp_platform_mutex_create();
-    if (!bridge->mutex) {
+    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for unified bridge");
         nimcp_free(bridge);
         return NULL;
@@ -446,8 +446,8 @@ void sec_immune_unified_destroy(sec_immune_unified_bridge_t* bridge) {
     }
 
     /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_platform_mutex_destroy(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_platform_mutex_destroy(bridge->base.mutex);
     }
 
     nimcp_free(bridge);
@@ -457,7 +457,7 @@ void sec_immune_unified_destroy(sec_immune_unified_bridge_t* bridge) {
 int sec_immune_unified_reset(sec_immune_unified_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Reset cytokine effects */
     memset(&bridge->cytokine_effects, 0, sizeof(sec_immune_cytokine_effects_t));
@@ -492,7 +492,7 @@ int sec_immune_unified_reset(sec_immune_unified_bridge_t* bridge) {
     /* Reset timing */
     bridge->last_update_time = get_current_time_ms();
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -506,10 +506,10 @@ int sec_immune_unified_connect_bbb(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->bbb_system = bbb_system;
     bridge->bbb_state.effective_threshold_factor = 1.0f;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected BBB to unified security-immune bridge");
     return 0;
@@ -521,10 +521,10 @@ int sec_immune_unified_connect_anomaly(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->anomaly_detector = detector;
     bridge->anomaly_state.effective_threshold = bridge->config.anomaly_base_threshold;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected anomaly detector to unified security-immune bridge");
     return 0;
@@ -536,10 +536,10 @@ int sec_immune_unified_connect_pattern_db(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->pattern_db = pattern_db;
     bridge->pattern_state.effective_weight_factor = 1.0f;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected pattern DB to unified security-immune bridge");
     return 0;
@@ -551,11 +551,11 @@ int sec_immune_unified_connect_rate_limiter(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->rate_limiter = rate_limiter;
     bridge->rate_state.effective_rps_factor = 1.0f;
     bridge->rate_state.effective_burst_factor = 1.0f;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected rate limiter to unified security-immune bridge");
     return 0;
@@ -567,10 +567,10 @@ int sec_immune_unified_connect_policy_engine(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->policy_engine = policy_engine;
     bridge->policy_state.effective_strictness_factor = 1.0f;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     NIMCP_LOGGING_INFO("Connected policy engine to unified security-immune bridge");
     return 0;
@@ -612,7 +612,7 @@ int sec_immune_unified_connect_all(
 int sec_immune_unified_update(sec_immune_unified_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     uint64_t now = get_current_time_ms();
 
@@ -638,7 +638,7 @@ int sec_immune_unified_update(sec_immune_unified_bridge_t* bridge) {
                                           bridge->inflammation_state.emergency_lockdown;
     bridge->stats.tolerance_learning_active = bridge->tolerance.learning_mode_active;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -748,14 +748,14 @@ int sec_immune_unified_present_bbb_threat(
     if (!bridge->config.enable_bbb_antigen_presentation) return 0;
     if (severity < SEC_IMMUNE_BBB_MIN_SEVERITY_FOR_ANTIGEN) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Check tolerance */
     if (bridge->config.enable_tolerance_system && threat_data && data_len > 0) {
         if (find_tolerance_entry(bridge, threat_data, data_len) != NULL) {
             bridge->tolerance.false_positives_prevented++;
             bridge->stats.false_positives_prevented++;
-            nimcp_platform_mutex_unlock(bridge->mutex);
+            nimcp_platform_mutex_unlock(bridge->base.mutex);
             return 0; /* Tolerated - don't present */
         }
     }
@@ -798,7 +798,7 @@ int sec_immune_unified_present_bbb_threat(
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return ret;
 }
 
@@ -811,7 +811,7 @@ int sec_immune_unified_present_anomaly(
     if (!bridge->config.enable_anomaly_antigen_presentation) return 0;
     if (result->anomaly_score < SEC_IMMUNE_ANOMALY_MIN_SCORE_FOR_ANTIGEN) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Map anomaly score to severity */
     uint32_t severity = (uint32_t)(result->anomaly_score * SEC_IMMUNE_ANOMALY_SCORE_MULTIPLIER);
@@ -827,7 +827,7 @@ int sec_immune_unified_present_anomaly(
         if (find_tolerance_entry(bridge, epitope, sizeof(uint32_t)) != NULL) {
             bridge->tolerance.false_positives_prevented++;
             bridge->stats.false_positives_prevented++;
-            nimcp_platform_mutex_unlock(bridge->mutex);
+            nimcp_platform_mutex_unlock(bridge->base.mutex);
             return 0;
         }
     }
@@ -850,7 +850,7 @@ int sec_immune_unified_present_anomaly(
         bridge->stats.total_antigens_presented++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return ret;
 }
 
@@ -864,7 +864,7 @@ int sec_immune_unified_present_pattern_match(
     if (!match_result->matched) return 0;
     if (match_result->threat_score < SEC_IMMUNE_PATTERN_MIN_SCORE_FOR_ANTIGEN) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Map threat score to severity */
     uint32_t severity = (uint32_t)(match_result->threat_score * SEC_IMMUNE_PATTERN_SCORE_MULTIPLIER);
@@ -898,7 +898,7 @@ int sec_immune_unified_present_pattern_match(
         bridge->stats.total_antigens_presented++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return ret;
 }
 
@@ -912,7 +912,7 @@ int sec_immune_unified_present_rate_violation(
     if (!bridge->config.enable_rate_violation_antigen_presentation) return 0;
     if (violation_count < SEC_IMMUNE_RATE_MIN_VIOLATIONS_FOR_ANTIGEN) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Map violations to severity */
     uint32_t severity = SEC_IMMUNE_RATE_SEVERITY_BASE +
@@ -950,7 +950,7 @@ int sec_immune_unified_present_rate_violation(
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return ret;
 }
 
@@ -964,7 +964,7 @@ int sec_immune_unified_present_policy_violation(
     if (result->action == NIMCP_POLICY_ACTION_ALLOW) return 0;
     if (result->severity < SEC_IMMUNE_POLICY_MIN_SEVERITY_FOR_ANTIGEN) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Map policy severity to immune severity */
     uint32_t severity = (uint32_t)(result->severity * SEC_IMMUNE_POLICY_SEVERITY_MULTIPLIER);
@@ -997,7 +997,7 @@ int sec_immune_unified_present_policy_violation(
         bridge->stats.total_antigens_presented++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return ret;
 }
 
@@ -1012,7 +1012,7 @@ int sec_immune_unified_execute_antibody_action(
     if (!bridge) return -1;
     if (!bridge->config.enable_antibody_action_execution) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Execute the antibody response via brain immune system */
     int ret = brain_immune_execute_antibody(bridge->immune_system, antibody_id);
@@ -1021,7 +1021,7 @@ int sec_immune_unified_execute_antibody_action(
         bridge->stats.antibody_actions_executed++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return ret;
 }
 
@@ -1032,7 +1032,7 @@ int sec_immune_unified_execute_killer_action(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Execute killer T cell action */
     int ret = brain_immune_t_cell_kill(bridge->immune_system, t_cell_id, target);
@@ -1051,7 +1051,7 @@ int sec_immune_unified_execute_killer_action(
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return ret;
 }
 
@@ -1061,7 +1061,7 @@ int sec_immune_unified_execute_helper_action(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Helper T cell coordinates escalation */
     if (bridge->policy_engine && bridge->policy_state.effective_strictness_factor < 2.0f) {
@@ -1069,7 +1069,7 @@ int sec_immune_unified_execute_helper_action(
         bridge->policy_state.escalation_count++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -1086,19 +1086,19 @@ int sec_immune_unified_form_memory(
     if (!bridge || !memory_id) return -1;
     if (!bridge->config.enable_memory_cell_formation) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Check if we have capacity */
     if (bridge->memory_cell_count >= bridge->memory_cell_capacity) {
         /* Would need to grow array or evict old entries */
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
     /* Get antigen info */
     const brain_antigen_t* antigen = brain_immune_get_antigen(bridge->immune_system, antigen_id);
     if (!antigen) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -1121,7 +1121,7 @@ int sec_immune_unified_form_memory(
 
     bridge->stats.memory_cells_formed++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -1133,11 +1133,11 @@ int sec_immune_unified_sync_memory_to_pattern(
     if (!bridge->config.enable_pattern_memory_sync) return 0;
     if (!bridge->pattern_db) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     sec_immune_memory_cell_t* cell = find_memory_cell_by_id(bridge, memory_id);
     if (!cell || cell->synced_to_pattern_db) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return cell ? 0 : -1;
     }
 
@@ -1159,7 +1159,7 @@ int sec_immune_unified_sync_memory_to_pattern(
         bridge->pattern_state.synced_memory_cells++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return (err == NIMCP_SUCCESS) ? 0 : -1;
 }
 
@@ -1172,7 +1172,7 @@ int sec_immune_unified_check_memory(
     if (!bridge || !epitope || !memory_id) return -1;
     if (!bridge->memory_cells || epitope_len == 0) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     size_t compare_len = epitope_len < BRAIN_IMMUNE_EPITOPE_SIZE ?
                          epitope_len : BRAIN_IMMUNE_EPITOPE_SIZE;
@@ -1182,12 +1182,12 @@ int sec_immune_unified_check_memory(
         if (cell->epitope_len == compare_len &&
             memcmp(cell->epitope, epitope, compare_len) == 0) {
             *memory_id = cell->memory_id;
-            nimcp_platform_mutex_unlock(bridge->mutex);
+            nimcp_platform_mutex_unlock(bridge->base.mutex);
             return 0;
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return -1;
 }
 
@@ -1198,11 +1198,11 @@ int sec_immune_unified_secondary_response(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     sec_immune_memory_cell_t* cell = find_memory_cell_by_id(bridge, memory_id);
     if (!cell) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -1214,7 +1214,7 @@ int sec_immune_unified_secondary_response(
         cell->neutralization_count++;
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return ret;
 }
 
@@ -1233,17 +1233,17 @@ int sec_immune_unified_add_tolerance(
     if (!bridge->config.enable_tolerance_system) return 0;
     if (!bridge->tolerance.whitelist) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     /* Check if already exists */
     if (find_tolerance_entry(bridge, pattern, pattern_len) != NULL) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return 0; /* Already whitelisted */
     }
 
     /* Check capacity */
     if (bridge->tolerance.whitelist_count >= bridge->tolerance.whitelist_capacity) {
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -1266,7 +1266,7 @@ int sec_immune_unified_add_tolerance(
     bridge->tolerance.patterns_whitelisted++;
     bridge->stats.patterns_whitelisted++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -1278,7 +1278,7 @@ int sec_immune_unified_remove_tolerance(
     if (!bridge || !pattern || pattern_len == 0) return -1;
     if (!bridge->tolerance.whitelist) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     size_t compare_len = pattern_len < BRAIN_IMMUNE_EPITOPE_SIZE ?
                          pattern_len : BRAIN_IMMUNE_EPITOPE_SIZE;
@@ -1295,12 +1295,12 @@ int sec_immune_unified_remove_tolerance(
                         (bridge->tolerance.whitelist_count - i - 1));
             }
             bridge->tolerance.whitelist_count--;
-            nimcp_platform_mutex_unlock(bridge->mutex);
+            nimcp_platform_mutex_unlock(bridge->base.mutex);
             return 0;
         }
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return -1; /* Not found */
 }
 
@@ -1312,9 +1312,9 @@ bool sec_immune_unified_is_tolerated(
     if (!bridge || !pattern || pattern_len == 0) return false;
     if (!bridge->config.enable_tolerance_system) return false;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bool result = (find_tolerance_entry(bridge, pattern, pattern_len) != NULL);
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -1326,7 +1326,7 @@ int sec_immune_unified_confirm_benign(
 ) {
     if (!bridge || !pattern || pattern_len == 0) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     sec_immune_tolerance_entry_t* entry = find_tolerance_entry(bridge, pattern, pattern_len);
 
@@ -1337,11 +1337,11 @@ int sec_immune_unified_confirm_benign(
         bridge->tolerance.patterns_confirmed++;
     } else if (bridge->tolerance.learning_mode_active) {
         /* In learning mode - add to whitelist with confirmation count */
-        nimcp_platform_mutex_unlock(bridge->mutex);
+        nimcp_platform_mutex_unlock(bridge->base.mutex);
         return sec_immune_unified_add_tolerance(bridge, pattern, pattern_len, NULL, false);
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -1351,7 +1351,7 @@ int sec_immune_unified_set_learning_mode(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->tolerance.learning_mode_active = enable;
     if (enable) {
@@ -1359,7 +1359,7 @@ int sec_immune_unified_set_learning_mode(
     }
     bridge->stats.tolerance_learning_active = enable;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -1370,14 +1370,14 @@ int sec_immune_unified_activate_regulatory(
     if (!bridge) return -1;
     if (!bridge->config.enable_regulatory_t_cells) return 0;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     suppression_level = clamp_float(suppression_level, 0.0f, 1.0f);
     bridge->tolerance.regulatory_activity = suppression_level;
     bridge->policy_state.regulatory_suppression = suppression_level;
     bridge->stats.regulatory_suppressions++;
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -1391,9 +1391,9 @@ int sec_immune_unified_feedback_true_positive(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->anomaly_state.true_positives++;
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -1403,7 +1403,7 @@ int sec_immune_unified_feedback_false_positive(
 ) {
     if (!bridge) return -1;
 
-    nimcp_platform_mutex_lock(bridge->mutex);
+    nimcp_platform_mutex_lock(bridge->base.mutex);
 
     bridge->anomaly_state.false_positives++;
     bridge->stats.false_positives_prevented++;
@@ -1414,7 +1414,7 @@ int sec_immune_unified_feedback_false_positive(
         sec_immune_unified_confirm_benign(bridge, antigen->epitope, antigen->epitope_len);
     }
 
-    nimcp_platform_mutex_unlock(bridge->mutex);
+    nimcp_platform_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 

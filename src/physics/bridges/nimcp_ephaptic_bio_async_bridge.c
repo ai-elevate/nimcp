@@ -10,6 +10,7 @@
  * @version 1.0.0
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "physics/bridges/nimcp_ephaptic_bio_async_bridge.h"
 #include "async/nimcp_bio_router.h"
 #include "utils/memory/nimcp_memory.h"
@@ -36,6 +37,7 @@ typedef struct {
  * @brief Internal bridge structure
  */
 struct ephaptic_bio_async_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /** Configuration */
     ephaptic_bio_async_config_t config;
 

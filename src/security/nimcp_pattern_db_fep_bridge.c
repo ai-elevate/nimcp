@@ -44,7 +44,7 @@ pattern_fep_bridge_t* pattern_fep_create(const pattern_fep_config_t* config,
 
     bridge->fep_system = fep_system;
     bridge->pattern_db = pattern_db;
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "pattern_db_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MUTEX_INIT, "Failed to create pattern FEP bridge mutex");
         nimcp_free(bridge);
@@ -60,7 +60,7 @@ pattern_fep_bridge_t* pattern_fep_create(const pattern_fep_config_t* config,
 void pattern_fep_destroy(pattern_fep_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.bio_async_enabled) pattern_fep_disconnect_bio_async(bridge);
-    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

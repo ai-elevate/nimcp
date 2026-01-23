@@ -7,7 +7,7 @@
  * DEADLOCK PREVENTION STRATEGY
  * ============================
  *
- * This module uses a single mutex (bridge->mutex) to protect internal state.
+ * This module uses a single mutex (bridge->base.mutex) to protect internal state.
  * The locking strategy follows these rules to prevent deadlocks:
  *
  * 1. LOCK ORDERING: The bridge mutex is always acquired AFTER any external
@@ -25,15 +25,15 @@
  *    ensuring the mutex is never left locked on failure.
  *
  * 5. EXTERNAL CALLS UNLOCKED: Calls to bio_router_broadcast() are made
- *    without holding bridge->mutex to prevent lock inversion deadlocks.
+ *    without holding bridge->base.mutex to prevent lock inversion deadlocks.
  *
  * Lock acquisition pattern in broadcast functions:
  *   1. Validate parameters (no lock)
  *   2. Build message (no lock)
  *   3. Call bio_router_broadcast() (no lock - router has its own locks)
- *   4. Acquire bridge->mutex
+ *   4. Acquire bridge->base.mutex
  *   5. Update internal state/statistics
- *   6. Release bridge->mutex
+ *   6. Release bridge->base.mutex
  *   7. Return result
  *
  * This pattern ensures that even if bio_router internally tries to call
@@ -42,6 +42,7 @@
  */
 
 #include "quantum/integration/nimcp_quantum_bio_async_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory_guards.h"
 #include "utils/thread/nimcp_thread.h"
 #include "async/nimcp_bio_router.h"
@@ -69,6 +70,7 @@ typedef struct {
  * ============================================================================ */
 
 struct quantum_bio_async_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     quantum_bio_async_config_t config;
     bio_router_t router;
     bio_module_context_t module_ctx;    /**< Module context for router API */
@@ -80,9 +82,6 @@ struct quantum_bio_async_bridge_struct {
     bool connected;
     uint64_t last_broadcast_us;
     uint32_t time_since_broadcast_ms;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;               /**< Protects subscriptions and stats */
 
     /* Cached state */
     quantum_internal_state_t state;
@@ -153,8 +152,8 @@ quantum_bio_async_bridge_t* quantum_bio_async_bridge_create(
     }
 
     /* Create mutex for thread safety */
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    if (bridge_base_init(&bridge->base, 0, "quantum_bio_async") != 0) { nimcp_free(bridge); return NULL; }
+    if (!bridge->base.mutex) {
         LOG_ERROR("Failed to create mutex for quantum bio-async bridge");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to create quantum bio-async bridge mutex");
         nimcp_free(bridge);
@@ -168,7 +167,7 @@ quantum_bio_async_bridge_t* quantum_bio_async_bridge_create(
     if (!bridge->subscriptions) {
         LOG_ERROR("Failed to allocate subscriptions for quantum bio-async bridge");
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate quantum bio-async bridge subscriptions");
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -189,8 +188,8 @@ void quantum_bio_async_bridge_destroy(quantum_bio_async_bridge_t* bridge) {
         quantum_bio_async_disconnect(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
+    if (bridge->base.mutex) {
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge->subscriptions);
@@ -277,12 +276,12 @@ int quantum_bio_async_process_inbox(
     uint32_t processed = bio_router_process_inbox(bridge->module_ctx, limit);
 
     /* Update statistics with mutex protection */
-    if (bridge->mutex) {
-        nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_lock(bridge->base.mutex);
     }
     bridge->stats.messages_received += processed;
-    if (bridge->mutex) {
-        nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) {
+        nimcp_mutex_unlock(bridge->base.mutex);
     }
 
     return (int)processed;
@@ -338,9 +337,9 @@ static int quantum_broadcast_via_router(
 
     nimcp_error_t err = bio_router_broadcast(bridge->module_ctx, msg, msg_size);
     if (err != NIMCP_SUCCESS) {
-        if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+        if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.routing_errors++;
-        if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+        if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
         NIMCP_THROW(err, "Bio-router broadcast failed");
         return -1;
     }
@@ -390,7 +389,7 @@ int quantum_bio_async_broadcast_coherence(
     int result = quantum_broadcast_via_router(bridge, &msg, sizeof(msg));
 
     /* Update internal state with mutex protection */
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state.coherence_level = coherence_level;
     bridge->state.num_qubits = num_qubits;
@@ -409,7 +408,7 @@ int quantum_bio_async_broadcast_coherence(
     bridge->stats.broadcasts_sent++;
     bridge->last_broadcast_us = msg.timestamp_us;
 
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -452,7 +451,7 @@ int quantum_bio_async_broadcast_entanglement(
     int result = quantum_broadcast_via_router(bridge, &msg, sizeof(msg));
 
     /* Update state with mutex protection */
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     if (is_creation) {
         bridge->state.entangled_pairs++;
@@ -465,7 +464,7 @@ int quantum_bio_async_broadcast_entanglement(
     bridge->stats.entanglement_events_sent++;
     bridge->stats.broadcasts_sent++;
 
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -506,10 +505,10 @@ int quantum_bio_async_broadcast_measurement(
     int result = quantum_broadcast_via_router(bridge, &msg, sizeof(msg));
 
     /* Update stats with mutex protection */
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.measurements_sent++;
     bridge->stats.broadcasts_sent++;
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -548,10 +547,10 @@ int quantum_bio_async_broadcast_walk_update(
     int result = quantum_broadcast_via_router(bridge, &msg, sizeof(msg));
 
     /* Update stats with mutex protection */
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.walk_updates_sent++;
     bridge->stats.broadcasts_sent++;
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -592,9 +591,9 @@ int quantum_bio_async_broadcast_annealing(
     int result = quantum_broadcast_via_router(bridge, &msg, sizeof(msg));
 
     /* Update stats with mutex protection */
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.broadcasts_sent++;
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -633,9 +632,9 @@ int quantum_bio_async_broadcast_gate(
     int result = quantum_broadcast_via_router(bridge, &msg, sizeof(msg));
 
     /* Update stats with mutex protection */
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.broadcasts_sent++;
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -675,12 +674,12 @@ int quantum_bio_async_broadcast_error(
     int result = quantum_broadcast_via_router(bridge, &msg, sizeof(msg));
 
     /* Update state with mutex protection */
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
     bridge->state.errors_detected++;
     msg.error_count = bridge->state.errors_detected;
     bridge->stats.errors_detected++;
     bridge->stats.broadcasts_sent++;
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -720,9 +719,9 @@ int quantum_bio_async_broadcast_amplitude(
     int result = quantum_broadcast_via_router(bridge, &msg, sizeof(msg));
 
     /* Update stats with mutex protection */
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.broadcasts_sent++;
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 
     return result;
 }
@@ -742,17 +741,17 @@ int quantum_bio_async_subscribe_module(
         return -1;
     }
 
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     quantum_bio_subscription_t* existing = quantum_find_subscription(bridge, module_id);
     if (existing) {
         existing->msg_type_mask |= msg_types;
-        if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+        if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
     if (bridge->subscription_count >= bridge->subscription_capacity) {
-        if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+        if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
         NIMCP_THROW(NIMCP_ERROR_BUFFER_FULL, "Subscription capacity exceeded");
         return -1;
     }
@@ -769,7 +768,7 @@ int quantum_bio_async_subscribe_module(
         bridge->stats.peak_subscriptions = bridge->subscription_count;
     }
 
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -784,18 +783,18 @@ int quantum_bio_async_unsubscribe_module(
         return -1;
     }
 
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->subscription_count; i++) {
         if (bridge->subscriptions[i].module_id == module_id) {
             bridge->subscriptions[i].active = false;
             bridge->stats.active_subscriptions--;
-            if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+            if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
             return 0;
         }
     }
 
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 
     NIMCP_THROW(NIMCP_ERROR_NOT_FOUND, "Subscription not found for module");
     return -1;
@@ -809,7 +808,7 @@ uint32_t quantum_bio_async_get_subscriber_count(
 
     /* Note: casting away const for mutex - safe since we're only reading */
     quantum_bio_async_bridge_t* mutable_bridge = (quantum_bio_async_bridge_t*)bridge;
-    if (mutable_bridge->mutex) nimcp_mutex_lock(mutable_bridge->mutex);
+    if (mutable_bridge->base.mutex) nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     uint32_t count = 0;
     uint32_t mask = (1U << msg_type);
@@ -821,7 +820,7 @@ uint32_t quantum_bio_async_get_subscriber_count(
         }
     }
 
-    if (mutable_bridge->mutex) nimcp_mutex_unlock(mutable_bridge->mutex);
+    if (mutable_bridge->base.mutex) nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return count;
 }
@@ -847,11 +846,11 @@ int quantum_bio_async_get_stats(
 
     /* Note: casting away const for mutex - safe since we're only reading */
     quantum_bio_async_bridge_t* mutable_bridge = (quantum_bio_async_bridge_t*)bridge;
-    if (mutable_bridge->mutex) nimcp_mutex_lock(mutable_bridge->mutex);
+    if (mutable_bridge->base.mutex) nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     *stats = bridge->stats;
 
-    if (mutable_bridge->mutex) nimcp_mutex_unlock(mutable_bridge->mutex);
+    if (mutable_bridge->base.mutex) nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return 0;
 }
@@ -863,7 +862,7 @@ int quantum_bio_async_reset_stats(quantum_bio_async_bridge_t* bridge) {
         return -1;
     }
 
-    if (bridge->mutex) nimcp_mutex_lock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
     uint32_t active = bridge->stats.active_subscriptions;
     uint32_t peak = bridge->stats.peak_subscriptions;
@@ -873,7 +872,7 @@ int quantum_bio_async_reset_stats(quantum_bio_async_bridge_t* bridge) {
     bridge->stats.avg_coherence = 1.0f;
     bridge->stats.min_coherence = 1.0f;
 
-    if (bridge->mutex) nimcp_mutex_unlock(bridge->mutex);
+    if (bridge->base.mutex) nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

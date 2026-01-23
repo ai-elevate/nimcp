@@ -34,7 +34,7 @@ symbolic_logic_fep_bridge_t* symbolic_logic_fep_bridge_create(const symbolic_log
     memset(bridge, 0, sizeof(symbolic_logic_fep_bridge_t));
     if (config) bridge->config = *config;
     else symbolic_logic_fep_bridge_default_config(&bridge->config);
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "symbolic_logic_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
     return bridge;
 }
@@ -43,7 +43,7 @@ void symbolic_logic_fep_bridge_destroy(symbolic_logic_fep_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.bio_async_enabled) symbolic_logic_fep_bridge_disconnect_bio_async(bridge);
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
 }

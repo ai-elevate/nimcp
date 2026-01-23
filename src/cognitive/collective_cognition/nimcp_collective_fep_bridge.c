@@ -34,6 +34,7 @@
  */
 
 #include "cognitive/collective_cognition/nimcp_collective_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/collective_cognition/nimcp_collective_cognition.h"
 #include "cognitive/collective_cognition/nimcp_collective_phi.h"
 #include "cognitive/free_energy/nimcp_fep_orchestrator.h"
@@ -52,6 +53,8 @@
  * @brief Internal bridge state
  */
 struct collective_fep_bridge {
+    bridge_base_t base;  /* MUST be first member for bridge_base pattern */
+
     /* Configuration */
     collective_fep_config_t config;
 
@@ -75,9 +78,6 @@ struct collective_fep_bridge {
     float free_energy_history[COLLECTIVE_FEP_MAX_HISTORY];
     uint32_t history_index;
     uint32_t history_count;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 
     /* State flags */
     bool initialized;
@@ -333,9 +333,8 @@ collective_fep_bridge_t* collective_fep_bridge_create(
         bridge->config = collective_fep_config_default();
     }
 
-    /* Create mutex */
-    bridge->mutex = nimcp_mutex_create(NULL);
-    if (!bridge->mutex) {
+    /* Initialize bridge base (includes mutex) */
+    if (bridge_base_init(&bridge->base, 0, "collective_fep") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -367,9 +366,7 @@ void collective_fep_bridge_destroy(collective_fep_bridge_t* bridge) {
         collective_cognition_fep_bridge_unregister(g_collective_fep_state.bridge->orchestrator);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }
@@ -377,7 +374,7 @@ void collective_fep_bridge_destroy(collective_fep_bridge_t* bridge) {
 int collective_fep_bridge_reset(collective_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset metrics */
     bridge->metrics.free_energy = 1.0f;
@@ -408,7 +405,7 @@ int collective_fep_bridge_reset(collective_fep_bridge_t* bridge) {
     /* Reset statistics */
     memset(&bridge->stats, 0, sizeof(collective_fep_stats_t));
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -531,12 +528,12 @@ int collective_cognition_fep_update_callback(void* handle) {
 
     uint64_t start_time = nimcp_platform_time_monotonic_us();
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get collective cognition state */
     collective_cognition_state_t cog_state;
     if (collective_cognition_get_state(bridge->collective, &cog_state) != 0) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         bridge->stats.update_errors++;
         return -1;
     }
@@ -623,7 +620,7 @@ int collective_cognition_fep_update_callback(void* handle) {
     /* Update history */
     update_history(bridge, free_energy);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -647,9 +644,9 @@ int collective_cognition_fep_get_metrics(collective_fep_metrics_t* metrics_out) 
         return 0;
     }
 
-    nimcp_mutex_lock(g_collective_fep_state.bridge->mutex);
+    nimcp_mutex_lock(g_collective_fep_state.bridge->base.mutex);
     *metrics_out = g_collective_fep_state.bridge->metrics;
-    nimcp_mutex_unlock(g_collective_fep_state.bridge->mutex);
+    nimcp_mutex_unlock(g_collective_fep_state.bridge->base.mutex);
 
     return 0;
 }
@@ -663,9 +660,9 @@ int collective_cognition_fep_get_stats(collective_fep_stats_t* stats_out) {
         return 0;
     }
 
-    nimcp_mutex_lock(g_collective_fep_state.bridge->mutex);
+    nimcp_mutex_lock(g_collective_fep_state.bridge->base.mutex);
     *stats_out = g_collective_fep_state.bridge->stats;
-    nimcp_mutex_unlock(g_collective_fep_state.bridge->mutex);
+    nimcp_mutex_unlock(g_collective_fep_state.bridge->base.mutex);
 
     return 0;
 }
@@ -689,9 +686,9 @@ int collective_cognition_fep_set_config(const collective_fep_config_t* config) {
         return -1;
     }
 
-    nimcp_mutex_lock(g_collective_fep_state.bridge->mutex);
+    nimcp_mutex_lock(g_collective_fep_state.bridge->base.mutex);
     g_collective_fep_state.bridge->config = *config;
-    nimcp_mutex_unlock(g_collective_fep_state.bridge->mutex);
+    nimcp_mutex_unlock(g_collective_fep_state.bridge->base.mutex);
 
     return 0;
 }
@@ -704,9 +701,9 @@ int collective_cognition_fep_get_config(collective_fep_config_t* config_out) {
         return 0;
     }
 
-    nimcp_mutex_lock(g_collective_fep_state.bridge->mutex);
+    nimcp_mutex_lock(g_collective_fep_state.bridge->base.mutex);
     *config_out = g_collective_fep_state.bridge->config;
-    nimcp_mutex_unlock(g_collective_fep_state.bridge->mutex);
+    nimcp_mutex_unlock(g_collective_fep_state.bridge->base.mutex);
 
     return 0;
 }
@@ -742,7 +739,7 @@ int collective_cognition_fep_get_contributions(
         return 0;
     }
 
-    nimcp_mutex_lock(g_collective_fep_state.bridge->mutex);
+    nimcp_mutex_lock(g_collective_fep_state.bridge->base.mutex);
 
     if (phi_contrib) {
         *phi_contrib = g_collective_fep_state.bridge->metrics.phi_contribution;
@@ -757,6 +754,6 @@ int collective_cognition_fep_get_contributions(
         *consensus_contrib = g_collective_fep_state.bridge->metrics.consensus_contribution;
     }
 
-    nimcp_mutex_unlock(g_collective_fep_state.bridge->mutex);
+    nimcp_mutex_unlock(g_collective_fep_state.bridge->base.mutex);
     return 0;
 }

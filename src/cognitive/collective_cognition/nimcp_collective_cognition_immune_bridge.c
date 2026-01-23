@@ -17,6 +17,7 @@
  */
 
 #include "cognitive/collective_cognition/nimcp_collective_cognition_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/collective_cognition/nimcp_collective_cognition.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
@@ -44,6 +45,8 @@
  * @brief Collective immune bridge internal state
  */
 struct collective_immune_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     collective_immune_bridge_config_t config;
 
@@ -63,9 +66,6 @@ struct collective_immune_bridge {
     float cumulative_severity;
     uint64_t cumulative_response_time_us;
     uint64_t response_count;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 
     /* Validation */
     bool initialized;
@@ -195,11 +195,9 @@ collective_immune_bridge_t* collective_immune_bridge_create(
         bridge->config = collective_immune_bridge_default_config();
     }
 
-    /* Create mutex */
-    mutex_attr_t attr = { .type = MUTEX_TYPE_NORMAL };
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
-        LOG_ERROR("Failed to create collective immune bridge mutex");
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "collective_immune") != 0) {
+        LOG_ERROR("Failed to init collective immune bridge base");
         nimcp_free(bridge);
         return NULL;
     }
@@ -222,9 +220,7 @@ void collective_immune_bridge_destroy(collective_immune_bridge_t* bridge)
 {
     if (!bridge) return;
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
     LOG_DEBUG("Collective immune bridge destroyed");
@@ -234,7 +230,7 @@ int collective_immune_bridge_reset(collective_immune_bridge_t* bridge)
 {
     if (!bridge || !bridge->initialized) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->pending_threat_count = 0;
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -243,7 +239,7 @@ int collective_immune_bridge_reset(collective_immune_bridge_t* bridge)
     bridge->cumulative_response_time_us = 0;
     bridge->response_count = 0;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     LOG_DEBUG("Collective immune bridge reset");
     return 0;
@@ -260,9 +256,9 @@ int collective_immune_bridge_connect_collective_cognition(
 {
     if (!bridge || !bridge->initialized) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->collective_cognition = cc;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     LOG_DEBUG("Collective immune bridge connected to collective cognition");
     return 0;
@@ -275,9 +271,9 @@ int collective_immune_bridge_connect_immune(
 {
     if (!bridge || !bridge->initialized) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->immune_system = immune;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     LOG_DEBUG("Collective immune bridge connected to brain immune system");
     return 0;
@@ -298,18 +294,18 @@ int collective_immune_bridge_report_threat(
 
     if (!bridge || !bridge->initialized || !threat) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check capacity */
     if (bridge->pending_threat_count >= MAX_PENDING_THREATS) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         LOG_WARNING("Collective immune bridge threat queue full");
         return -1;
     }
 
     /* Check threshold */
     if (threat->severity < bridge->config.threat_threshold) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;  /* Below threshold, ignore */
     }
 
@@ -321,7 +317,7 @@ int collective_immune_bridge_report_threat(
     bridge->stats.threats_detected++;
     bridge->cumulative_severity += threat->severity;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     LOG_DEBUG("Collective threat reported: type=%d severity=%.2f",
               threat->type, threat->severity);
@@ -347,7 +343,7 @@ uint32_t collective_immune_bridge_check_threats(
 
     uint32_t threats_detected = 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t now_us = nimcp_time_monotonic_us();
 
@@ -424,7 +420,7 @@ uint32_t collective_immune_bridge_check_threats(
 
     bridge->stats.threats_detected += threats_detected;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return threats_detected;
 }
@@ -441,7 +437,7 @@ uint32_t collective_immune_bridge_get_threats(
     collective_immune_bridge_t* mutable_bridge =
         (collective_immune_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     uint32_t count = bridge->pending_threat_count;
     if (count > max_threats) {
@@ -450,7 +446,7 @@ uint32_t collective_immune_bridge_get_threats(
 
     memcpy(threats, bridge->pending_threats, count * sizeof(collective_threat_t));
 
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return count;
 }
@@ -494,9 +490,9 @@ int collective_immune_bridge_present_antigen(
     );
 
     if (result == 0) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.antigens_presented++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         LOG_DEBUG("Collective threat presented as antigen %u", *antigen_id);
     }
 
@@ -522,18 +518,18 @@ int collective_immune_bridge_sync_inflammation(
 
     uint64_t now_us = nimcp_time_monotonic_us();
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check sync interval */
     float interval_us = bridge->config.sync_interval_ms * 1000.0f;
     if (now_us - bridge->last_sync_time_us < (uint64_t)interval_us) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
     bridge->last_sync_time_us = now_us;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Get current inflammation level */
     brain_inflammation_level_t level = brain_immune_get_inflammation_level(
@@ -543,9 +539,9 @@ int collective_immune_bridge_sync_inflammation(
     /* TODO: Broadcast via collective cognition when API is available */
     /* For now, just track the sync */
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.inflammation_syncs++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     LOG_DEBUG("Inflammation synced: level=%d", level);
     return 0;
@@ -571,9 +567,9 @@ int collective_immune_bridge_propagate_memory(
     int result = brain_immune_sync_memory_to_swarm(bridge->immune_system, b_cell_id);
 
     if (result == 0) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->stats.memory_propagations++;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         LOG_DEBUG("Immune memory propagated: b_cell=%u", b_cell_id);
     }
 
@@ -643,11 +639,11 @@ int collective_immune_bridge_we_mode_response(
 
     uint64_t end_time_us = nimcp_time_monotonic_us();
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->stats.we_mode_responses++;
     bridge->cumulative_response_time_us += (end_time_us - start_time_us);
     bridge->response_count++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     LOG_INFO("We-mode coordinated response triggered for threat type %d",
              threat->type);
@@ -670,7 +666,7 @@ int collective_immune_bridge_update(collective_immune_bridge_t* bridge)
     uint32_t new_threats = collective_immune_bridge_check_threats(bridge);
 
     /* Process pending threats */
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->pending_threat_count; i++) {
         collective_threat_t* threat = &bridge->pending_threats[i];
@@ -687,7 +683,7 @@ int collective_immune_bridge_update(collective_immune_bridge_t* bridge)
     /* Clear processed threats */
     bridge->pending_threat_count = 0;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Sync inflammation */
     collective_immune_bridge_sync_inflammation(bridge);
@@ -706,7 +702,7 @@ int collective_immune_bridge_get_stats(
     collective_immune_bridge_t* mutable_bridge =
         (collective_immune_bridge_t*)bridge;
 
-    nimcp_mutex_lock(mutable_bridge->mutex);
+    nimcp_mutex_lock(mutable_bridge->base.mutex);
 
     *stats = bridge->stats;
 
@@ -722,7 +718,7 @@ int collective_immune_bridge_get_stats(
             (float)bridge->response_count / 1000.0f;
     }
 
-    nimcp_mutex_unlock(mutable_bridge->mutex);
+    nimcp_mutex_unlock(mutable_bridge->base.mutex);
 
     return 0;
 }
@@ -731,14 +727,14 @@ void collective_immune_bridge_reset_stats(collective_immune_bridge_t* bridge)
 {
     if (!bridge || !bridge->initialized) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     bridge->cumulative_severity = 0.0f;
     bridge->cumulative_response_time_us = 0;
     bridge->response_count = 0;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 /*=============================================================================

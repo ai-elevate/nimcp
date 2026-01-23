@@ -29,7 +29,7 @@ swarm_signal_fep_bridge_t* swarm_signal_fep_create(const swarm_signal_fep_config
     else swarm_signal_fep_default_config(&bridge->config);
     bridge->fep_system = fep_system;
     bridge->signal_ctx = signal_ctx;
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "swarm_signal_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
     return bridge;
 }
@@ -37,7 +37,7 @@ swarm_signal_fep_bridge_t* swarm_signal_fep_create(const swarm_signal_fep_config
 void swarm_signal_fep_destroy(swarm_signal_fep_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.bio_async_enabled) swarm_signal_fep_disconnect_bio_async(bridge);
-    if (bridge->base.mutex) nimcp_platform_mutex_destroy(bridge->base.mutex);
+    if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

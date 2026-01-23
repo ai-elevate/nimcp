@@ -169,7 +169,7 @@ global_workspace_fep_bridge_t* global_workspace_fep_bridge_create(
     memset(&bridge->stats, 0, sizeof(global_workspace_fep_stats_t));
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "global_workspace_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for global workspace FEP bridge");
         global_workspace_fep_bridge_destroy(bridge);
@@ -193,7 +193,7 @@ void global_workspace_fep_bridge_destroy(global_workspace_fep_bridge_t* bridge) 
     }
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

@@ -7,6 +7,7 @@
  * @author NIMCP Development Team
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/sensory_integration/nimcp_trigeminal_oral_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 
@@ -20,6 +21,7 @@
  * ============================================================================ */
 
 struct trigeminal_oral_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     trigeminal_oral_config_t config;
 
     /* Connected modules */

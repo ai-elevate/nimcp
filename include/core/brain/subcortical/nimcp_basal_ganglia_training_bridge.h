@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "core/brain/subcortical/nimcp_basal_ganglia.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "middleware/training/nimcp_training_module.h"
 
 #ifdef __cplusplus
@@ -153,6 +154,8 @@ typedef struct {
  * @brief BG-Training bridge instance
  */
 typedef struct bgtr_bridge {
+    bridge_base_t base;           /**< MUST be first: base bridge infrastructure */
+
     /* Connected components */
     basal_ganglia_t* bg;          /**< Connected basal ganglia */
     nimcp_training_context_t* training; /**< Training context */
@@ -178,10 +181,7 @@ typedef struct bgtr_bridge {
     bgtr_bridge_config_t config;  /**< Configuration */
 
     /* Statistics */
-    bgtr_bridge_stats_t stats;    /**< Runtime statistics */
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;         /**< Mutex for thread safety */
+    bgtr_bridge_stats_t stats;    /**< Runtime statistics *//**< Mutex for thread safety */
 } bgtr_bridge_t;
 
 /* ============================================================================

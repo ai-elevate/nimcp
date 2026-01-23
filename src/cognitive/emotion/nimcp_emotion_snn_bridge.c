@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/emotion/nimcp_emotion_snn_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
@@ -19,6 +20,8 @@
 //=============================================================================
 
 struct emotion_snn_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     emotion_snn_config_t config;
 
@@ -52,9 +55,6 @@ struct emotion_snn_bridge {
 
     /* Bio-async */
     bool bio_async_connected;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 };
 
 //=============================================================================
@@ -133,10 +133,8 @@ emotion_snn_bridge_t* emotion_snn_create(const emotion_snn_config_t* config) {
         bridge->config = emotion_snn_config_default();
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize bridge base infrastructure (includes mutex) */
+    if (bridge_base_init(&bridge->base, 0, "emotion_snn") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -154,7 +152,7 @@ emotion_snn_bridge_t* emotion_snn_create(const emotion_snn_config_t* config) {
 
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -227,9 +225,8 @@ void emotion_snn_destroy(emotion_snn_bridge_t* bridge) {
     if (bridge->output_buffer) nimcp_free(bridge->output_buffer);
     if (bridge->va_buffer) nimcp_free(bridge->va_buffer);
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }
@@ -237,7 +234,7 @@ void emotion_snn_destroy(emotion_snn_bridge_t* bridge) {
 int emotion_snn_reset(emotion_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->snn) {
         snn_network_reset(bridge->snn);
@@ -258,7 +255,7 @@ int emotion_snn_reset(emotion_snn_bridge_t* bridge) {
     bridge->current_intensity_mod = 1.0f;
     bridge->current_arousal_mod = 1.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -273,7 +270,7 @@ int emotion_snn_encode_observation(
 {
     if (!bridge || !result) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = EMOTION_SNN_STATE_ENCODING;
 
@@ -319,7 +316,7 @@ int emotion_snn_encode_observation(
     int ret = snn_network_set_inputs(bridge->snn, bridge->input_buffer, bridge->config.input_dim);
     if (ret != SNN_SUCCESS) {
         bridge->state = EMOTION_SNN_STATE_IDLE;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -342,7 +339,7 @@ int emotion_snn_encode_observation(
 
     bridge->state = EMOTION_SNN_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return total_spikes;
 }
@@ -356,7 +353,7 @@ int emotion_snn_encode_features(
 {
     if (!bridge || !features) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = EMOTION_SNN_STATE_ENCODING;
 
@@ -383,7 +380,7 @@ int emotion_snn_encode_features(
     int ret = snn_network_set_inputs(bridge->snn, bridge->input_buffer, bridge->config.input_dim);
     if (ret != SNN_SUCCESS) {
         bridge->state = EMOTION_SNN_STATE_IDLE;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -398,7 +395,7 @@ int emotion_snn_encode_features(
 
     bridge->state = EMOTION_SNN_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return total_spikes;
 }
@@ -460,7 +457,7 @@ int emotion_snn_encode_valence_arousal(
 int emotion_snn_simulate(emotion_snn_bridge_t* bridge, float duration_ms) {
     if (!bridge || !bridge->snn) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = EMOTION_SNN_STATE_SIMULATING;
 
@@ -471,7 +468,7 @@ int emotion_snn_simulate(emotion_snn_bridge_t* bridge, float duration_ms) {
 
     bridge->state = EMOTION_SNN_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -479,11 +476,11 @@ int emotion_snn_simulate(emotion_snn_bridge_t* bridge, float duration_ms) {
 int emotion_snn_step(emotion_snn_bridge_t* bridge) {
     if (!bridge || !bridge->snn) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     snn_network_step(bridge->snn, bridge->config.dt_ms);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -498,7 +495,7 @@ emotion_category_t emotion_snn_get_category_confidences(
 {
     if (!bridge || !confidences) return EMOTION_UNKNOWN;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = EMOTION_SNN_STATE_DECODING;
 
@@ -511,7 +508,7 @@ emotion_category_t emotion_snn_get_category_confidences(
     int ret = snn_network_get_outputs(bridge->snn, rates, n_outputs);
     if (ret != SNN_SUCCESS) {
         bridge->state = EMOTION_SNN_STATE_IDLE;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return EMOTION_UNKNOWN;
     }
 
@@ -587,7 +584,7 @@ emotion_category_t emotion_snn_get_category_confidences(
 
     bridge->state = EMOTION_SNN_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return best_cat;
 }
@@ -599,12 +596,12 @@ int emotion_snn_get_valence_arousal(
 {
     if (!bridge || !valence || !arousal) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->config.enable_va_encoding) {
         *valence = 0.0f;
         *arousal = 0.5f;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
@@ -640,7 +637,7 @@ int emotion_snn_get_valence_arousal(
     bridge->emotion_state.valence = *valence;
     bridge->emotion_state.arousal = *arousal;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -651,11 +648,11 @@ int emotion_snn_get_emotion_state(
 {
     if (!bridge || !emotion_state) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     *emotion_state = bridge->emotion_state;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -668,7 +665,7 @@ float emotion_snn_get_transition_prob(
     if (!bridge) return 0.0f;
     if (from_category >= EMOTION_COUNT || to_category >= EMOTION_COUNT) return 0.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Get current confidences */
     float from_conf = bridge->emotion_state.category_confidences[from_category];
@@ -680,7 +677,7 @@ float emotion_snn_get_transition_prob(
         prob = to_conf / (from_conf + to_conf + 0.01f);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return prob;
 }
@@ -695,7 +692,7 @@ int emotion_snn_get_state(
 {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(((emotion_snn_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((emotion_snn_bridge_t*)bridge)->base.mutex);
 
     state->state = bridge->state;
     state->emotion = bridge->emotion_state;
@@ -710,7 +707,7 @@ int emotion_snn_get_state(
             bridge->snn, bridge->output_pop, 100.0f);
     }
 
-    nimcp_mutex_unlock(((emotion_snn_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((emotion_snn_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -721,11 +718,11 @@ int emotion_snn_get_stats(
 {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(((emotion_snn_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((emotion_snn_bridge_t*)bridge)->base.mutex);
 
     *stats = bridge->stats;
 
-    nimcp_mutex_unlock(((emotion_snn_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((emotion_snn_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -733,11 +730,11 @@ int emotion_snn_get_stats(
 void emotion_snn_reset_stats(emotion_snn_bridge_t* bridge) {
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     memset(&bridge->stats, 0, sizeof(bridge->stats));
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 //=============================================================================
@@ -748,12 +745,12 @@ int emotion_snn_connect_bio_async(emotion_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -761,11 +758,11 @@ int emotion_snn_connect_bio_async(emotion_snn_bridge_t* bridge) {
 int emotion_snn_disconnect_bio_async(emotion_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->bio_async_connected = false;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -785,12 +782,12 @@ int emotion_snn_modulate_by_arousal(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Higher arousal increases gain */
     bridge->current_arousal_mod = 0.5f + arousal_level;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -801,12 +798,12 @@ int emotion_snn_set_intensity_modulation(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->current_intensity_mod = clamp_f(intensity * bridge->config.intensity_gain, 0.1f, 3.0f);
     bridge->emotion_state.intensity = intensity;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

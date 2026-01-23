@@ -6,6 +6,7 @@
  * for motor cortex coordination and attention gating.
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/broca/nimcp_broca_thalamic_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
@@ -17,6 +18,7 @@
 //=============================================================================
 
 struct broca_thalamic_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* broca;                         /**< Broca adapter handle */
     thalamic_router_t* router;           /**< Thalamic router handle */
     broca_thalamic_config_t config;      /**< Configuration */

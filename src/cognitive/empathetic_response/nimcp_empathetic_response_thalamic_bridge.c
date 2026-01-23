@@ -34,7 +34,7 @@ empathetic_response_thalamic_bridge_t* empathetic_response_thalamic_bridge_creat
     if (!bridge) return NULL;
 
     /* Initialize mutex for thread safety */
-    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (bridge_base_init(&bridge->base, 0, "empathetic_response_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -51,7 +51,7 @@ empathetic_response_thalamic_bridge_t* empathetic_response_thalamic_bridge_creat
 void empathetic_response_thalamic_bridge_destroy(empathetic_response_thalamic_bridge_t* bridge) {
     if (bridge) {
         if (bridge->base.mutex) {
-            nimcp_mutex_free(bridge->base.mutex);
+            bridge_base_cleanup(&bridge->base);
         }
         nimcp_free(bridge);
     }

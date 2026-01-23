@@ -80,7 +80,7 @@ hetero_sleep_bridge_t hetero_sleep_bridge_create(
     bridge->effects.competition_enabled = true;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "heterosynaptic_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge);
@@ -94,7 +94,7 @@ hetero_sleep_bridge_t hetero_sleep_bridge_create(
 void hetero_sleep_bridge_destroy(hetero_sleep_bridge_t bridge) {
     if (!bridge) return;
 
-    nimcp_platform_mutex_destroy(bridge->base.mutex);
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 
     NIMCP_LOGGING_INFO("Destroyed hetero-sleep bridge");

@@ -5,6 +5,7 @@
  * @date 2026-01-13
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "security/integration/nimcp_security_bio_async_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -31,6 +32,7 @@ typedef struct {
  * ============================================================================ */
 
 struct security_bio_bridge_struct {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     security_bio_bridge_config_t config;
     bio_router_t router;
 

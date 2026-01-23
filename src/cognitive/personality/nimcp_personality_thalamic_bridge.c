@@ -45,7 +45,7 @@ personality_thalamic_config_t personality_thalamic_default_config(void) {
 personality_thalamic_bridge_t* personality_thalamic_bridge_create(void* personality, thalamic_router_t* router, const personality_thalamic_config_t* config) {
     personality_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(personality_thalamic_bridge_t));
     if (!bridge) return NULL;
-    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (bridge_base_init(&bridge->base, 0, "personality_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -61,7 +61,7 @@ personality_thalamic_bridge_t* personality_thalamic_bridge_create(void* personal
 void personality_thalamic_bridge_destroy(personality_thalamic_bridge_t* bridge) {
     if (!bridge) return;
     if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
     nimcp_free(bridge);
 }

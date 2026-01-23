@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/recursive/nimcp_rcog_brain_kg_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/platform/nimcp_platform_time.h"
@@ -41,6 +42,8 @@ typedef struct {
  * @brief Brain KG bridge internal structure
  */
 struct rcog_brain_kg_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     rcog_brain_kg_bridge_config_t config;
 
@@ -73,9 +76,6 @@ struct rcog_brain_kg_bridge {
 
     /* Statistics */
     rcog_brain_kg_bridge_stats_t stats;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 };
 
 /*=============================================================================
@@ -128,10 +128,8 @@ rcog_brain_kg_bridge_t* rcog_brain_kg_bridge_create(
         bridge->config = rcog_brain_kg_bridge_default_config();
     }
 
-    mutex_attr_t attr = {0};
-    attr.type = MUTEX_TYPE_NORMAL;
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
+    /* Initialize bridge base infrastructure (includes mutex) */
+    if (bridge_base_init(&bridge->base, 0, "rcog_brain_kg") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -152,9 +150,8 @@ void rcog_brain_kg_bridge_destroy(rcog_brain_kg_bridge_t* bridge) {
         return;
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }
@@ -171,7 +168,7 @@ int rcog_brain_kg_bridge_connect(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->kg = kg;
     bridge->connected = (bridge->kg != NULL && bridge->engine != NULL);
 
@@ -179,12 +176,12 @@ int rcog_brain_kg_bridge_connect(
     if (bridge->connected && bridge->config.auto_register_on_connect && !bridge->engine_registered) {
         rcog_kg_node_id_t node_id;
         /* Note: recursive call requires unlock/relock */
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         rcog_brain_kg_bridge_register_engine(bridge, &node_id);
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -197,9 +194,9 @@ int rcog_brain_kg_bridge_connect_reader(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->reader = reader;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -212,10 +209,10 @@ int rcog_brain_kg_bridge_connect_engine(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->engine = engine;
     bridge->connected = (bridge->kg != NULL && bridge->engine != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -238,7 +235,7 @@ int rcog_brain_kg_bridge_update(
 
     uint64_t now = nimcp_platform_time_monotonic_ms();
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if state update is due */
     if (bridge->config.enable_continuous_updates) {
@@ -280,7 +277,7 @@ int rcog_brain_kg_bridge_update(
 
     (void)delta_time_ms;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -297,16 +294,16 @@ int rcog_brain_kg_bridge_register_engine(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->kg) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_KG_NOT_CONNECTED;
     }
 
     if (bridge->engine_registered) {
         *node_id = bridge->engine_node_id;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_OK;
     }
 
@@ -333,7 +330,7 @@ int rcog_brain_kg_bridge_register_engine(
 
     bridge->stats.registrations_performed++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -351,16 +348,16 @@ int rcog_brain_kg_bridge_register_component(
         return RCOG_ERROR_INVALID_CONFIG;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->kg) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_KG_NOT_CONNECTED;
     }
 
     if (bridge->registered_nodes[component_type].registered) {
         *node_id = bridge->registered_nodes[component_type].node_id;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_OK;
     }
 
@@ -372,7 +369,7 @@ int rcog_brain_kg_bridge_register_component(
 
     bridge->stats.registrations_performed++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -385,10 +382,10 @@ int rcog_brain_kg_bridge_register_capability(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (bridge->num_capabilities >= RCOG_KG_MAX_CAPABILITIES) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_CONTEXT_FULL;
     }
 
@@ -401,7 +398,7 @@ int rcog_brain_kg_bridge_register_capability(
             bridge->capabilities[i].info = *capability;
             bridge->capabilities[i].cached_at_ms = nimcp_platform_time_monotonic_ms();
             bridge->capabilities[i].valid = true;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return RCOG_OK;
         }
     }
@@ -416,7 +413,7 @@ int rcog_brain_kg_bridge_register_capability(
     bridge->outgoing_effects.register_capabilities = true;
     bridge->outgoing_effects.num_capabilities = (uint32_t)bridge->num_capabilities;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -431,10 +428,10 @@ int rcog_brain_kg_bridge_create_edge(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->kg) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_KG_NOT_CONNECTED;
     }
 
@@ -445,7 +442,7 @@ int rcog_brain_kg_bridge_create_edge(
 
     bridge->stats.edges_created++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -462,7 +459,7 @@ int rcog_brain_kg_bridge_update_state(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->current_state = *state;
     bridge->outgoing_effects.update_processing_state = true;
@@ -479,7 +476,7 @@ int rcog_brain_kg_bridge_update_state(
 
     bridge->stats.state_updates++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -494,10 +491,10 @@ int rcog_brain_kg_bridge_set_property(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->kg) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_KG_NOT_CONNECTED;
     }
 
@@ -506,7 +503,7 @@ int rcog_brain_kg_bridge_set_property(
 
     bridge->stats.properties_updated++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -525,7 +522,7 @@ int rcog_brain_kg_bridge_query_capabilities(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     size_t to_copy = bridge->num_capabilities;
     if (to_copy > max_capabilities) {
@@ -539,7 +536,7 @@ int rcog_brain_kg_bridge_query_capabilities(
 
     bridge->stats.capability_queries++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -552,19 +549,19 @@ bool rcog_brain_kg_bridge_has_capability(
         return false;
     }
 
-    nimcp_mutex_lock(((rcog_brain_kg_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((rcog_brain_kg_bridge_t*)bridge)->base.mutex);
 
     for (size_t i = 0; i < bridge->num_capabilities; i++) {
         if (bridge->capabilities[i].valid &&
             bridge->capabilities[i].info.name &&
             strcmp(bridge->capabilities[i].info.name, capability_name) == 0 &&
             bridge->capabilities[i].info.currently_available) {
-            nimcp_mutex_unlock(((rcog_brain_kg_bridge_t*)bridge)->mutex);
+            nimcp_mutex_unlock(((rcog_brain_kg_bridge_t*)bridge)->base.mutex);
             return true;
         }
     }
 
-    nimcp_mutex_unlock(((rcog_brain_kg_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((rcog_brain_kg_bridge_t*)bridge)->base.mutex);
     return false;
 }
 
@@ -583,15 +580,15 @@ int rcog_brain_kg_bridge_load_semantic_knowledge(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->reader) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_KG_NOT_CONNECTED;
     }
 
     if (!bridge->config.enable_semantic_queries) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_TOOL_ACCESS_DENIED;
     }
 
@@ -600,7 +597,7 @@ int rcog_brain_kg_bridge_load_semantic_knowledge(
 
     bridge->stats.semantic_queries++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -614,15 +611,15 @@ int rcog_brain_kg_bridge_semantic_query(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->reader) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_KG_NOT_CONNECTED;
     }
 
     if (!bridge->config.enable_semantic_queries) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return RCOG_ERROR_TOOL_ACCESS_DENIED;
     }
 
@@ -636,7 +633,7 @@ int rcog_brain_kg_bridge_semantic_query(
     bridge->stats.semantic_queries++;
     bridge->incoming_effects.semantic_results_ready = true;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -669,12 +666,12 @@ int rcog_brain_kg_bridge_get_focus(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(((rcog_brain_kg_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((rcog_brain_kg_bridge_t*)bridge)->base.mutex);
 
     strncpy(focus, bridge->current_focus, max_len - 1);
     focus[max_len - 1] = '\0';
 
-    nimcp_mutex_unlock(((rcog_brain_kg_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((rcog_brain_kg_bridge_t*)bridge)->base.mutex);
 
     return RCOG_OK;
 }
@@ -717,9 +714,9 @@ int rcog_brain_kg_bridge_get_outgoing_effects(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(((rcog_brain_kg_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((rcog_brain_kg_bridge_t*)bridge)->base.mutex);
     *effects = bridge->outgoing_effects;
-    nimcp_mutex_unlock(((rcog_brain_kg_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((rcog_brain_kg_bridge_t*)bridge)->base.mutex);
 
     return RCOG_OK;
 }
@@ -732,9 +729,9 @@ int rcog_brain_kg_bridge_get_incoming_effects(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(((rcog_brain_kg_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((rcog_brain_kg_bridge_t*)bridge)->base.mutex);
     *effects = bridge->incoming_effects;
-    nimcp_mutex_unlock(((rcog_brain_kg_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((rcog_brain_kg_bridge_t*)bridge)->base.mutex);
 
     return RCOG_OK;
 }
@@ -751,9 +748,9 @@ int rcog_brain_kg_bridge_get_stats(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(((rcog_brain_kg_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((rcog_brain_kg_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(((rcog_brain_kg_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((rcog_brain_kg_bridge_t*)bridge)->base.mutex);
 
     return RCOG_OK;
 }
@@ -763,9 +760,9 @@ void rcog_brain_kg_bridge_reset_stats(rcog_brain_kg_bridge_t* bridge) {
         return;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(rcog_brain_kg_bridge_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 /* ============================================================================

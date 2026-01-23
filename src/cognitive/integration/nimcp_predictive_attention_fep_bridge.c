@@ -12,6 +12,7 @@
  */
 
 #include "cognitive/integration/nimcp_predictive_attention_fep_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/integration/nimcp_predictive_attention_bridge.h"
 #include "cognitive/free_energy/nimcp_fep_orchestrator.h"
 #include "utils/memory/nimcp_memory.h"
@@ -27,12 +28,13 @@
  *===========================================================================*/
 
 struct pa_fep_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     pa_fep_config_t config;
 
     /* State */
     pa_fep_state_t state;
-    nimcp_mutex_t* mutex;
 
     /* References */
     fep_orchestrator_t* orchestrator;
@@ -296,10 +298,8 @@ pa_fep_bridge_t* pa_fep_bridge_create(const pa_fep_config_t* config) {
         bridge->config = pa_fep_config_default();
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize base bridge infrastructure */
+    if (bridge_base_init(&bridge->base, 0, "predictive_attention_fep") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -339,10 +339,8 @@ void pa_fep_bridge_destroy(pa_fep_bridge_t* bridge) {
         pa_fep_bridge_unregister(bridge);
     }
 
-    /* Destroy mutex */
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }
@@ -350,7 +348,7 @@ void pa_fep_bridge_destroy(pa_fep_bridge_t* bridge) {
 int pa_fep_bridge_reset(pa_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset metrics */
     memset(&bridge->metrics, 0, sizeof(pa_fep_metrics_t));
@@ -375,7 +373,7 @@ int pa_fep_bridge_reset(pa_fep_bridge_t* bridge) {
 
     bridge->state = PA_FEP_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -391,11 +389,11 @@ int pa_fep_bridge_register(
 ) {
     if (!bridge || !orchestrator) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if already registered */
     if (bridge->registered) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         if (bridge_id_out) {
             *bridge_id_out = bridge->bridge_id;
         }
@@ -406,7 +404,7 @@ int pa_fep_bridge_register(
     bridge->orchestrator = orchestrator;
     bridge->pa_bridge = pa_bridge;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Register with FEP orchestrator */
     uint32_t assigned_id = 0;
@@ -421,18 +419,18 @@ int pa_fep_bridge_register(
     );
 
     if (ret != 0) {
-        nimcp_mutex_lock(bridge->mutex);
+        nimcp_mutex_lock(bridge->base.mutex);
         bridge->orchestrator = NULL;
         bridge->pa_bridge = NULL;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bridge_id = assigned_id;
     bridge->registered = true;
     bridge->state = PA_FEP_STATE_ACTIVE;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     if (bridge_id_out) {
         *bridge_id_out = assigned_id;
@@ -444,30 +442,30 @@ int pa_fep_bridge_register(
 int pa_fep_bridge_unregister(pa_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     if (!bridge->registered) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;  /* Not registered, nothing to do */
     }
 
     fep_orchestrator_t* orchestrator = bridge->orchestrator;
     uint32_t bridge_id = bridge->bridge_id;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     /* Unregister from orchestrator */
     if (orchestrator) {
         fep_orchestrator_unregister_bridge(orchestrator, bridge_id);
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->registered = false;
     bridge->bridge_id = 0;
     bridge->orchestrator = NULL;
     bridge->pa_bridge = NULL;
     bridge->state = PA_FEP_STATE_IDLE;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -475,9 +473,9 @@ int pa_fep_bridge_unregister(pa_fep_bridge_t* bridge) {
 bool pa_fep_bridge_is_registered(const pa_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->base.mutex);
     bool registered = bridge->registered;
-    nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->base.mutex);
 
     return registered;
 }
@@ -485,9 +483,9 @@ bool pa_fep_bridge_is_registered(const pa_fep_bridge_t* bridge) {
 uint32_t pa_fep_bridge_get_id(const pa_fep_bridge_t* bridge) {
     if (!bridge) return 0;
 
-    nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->base.mutex);
     uint32_t id = bridge->registered ? bridge->bridge_id : 0;
-    nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->base.mutex);
 
     return id;
 }
@@ -500,11 +498,11 @@ int pa_fep_update_callback(void* handle) {
     pa_fep_bridge_t* bridge = (pa_fep_bridge_t*)handle;
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Ensure we're registered */
     if (!bridge->registered) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -516,7 +514,7 @@ int pa_fep_update_callback(void* handle) {
     /* If we have a predictive-attention bridge, query it for statistics */
     predictive_attention_bridge_t* pa_bridge = bridge->pa_bridge;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     if (pa_bridge) {
         predictive_attention_bridge_stats_t pa_stats;
@@ -524,7 +522,7 @@ int pa_fep_update_callback(void* handle) {
 
         int err = predictive_attention_bridge_get_stats(pa_bridge, &pa_stats);
         if (err == 0) {
-            nimcp_mutex_lock(bridge->mutex);
+            nimcp_mutex_lock(bridge->base.mutex);
 
             /* Update prediction accuracy from bridge statistics */
             bridge->stats.prediction_computations++;
@@ -567,11 +565,11 @@ int pa_fep_update_callback(void* handle) {
             bridge->metrics.attention_shifts = pa_stats.surprise_shifts;
 
             bridge->stats.precision_updates++;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
         }
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Compute free energy from current metrics */
     compute_free_energy(bridge);
@@ -586,7 +584,7 @@ int pa_fep_update_callback(void* handle) {
     /* Check and trigger callbacks */
     check_callbacks(bridge);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -602,7 +600,7 @@ void pa_fep_destroy_callback(void* handle) {
 int pa_fep_bridge_force_update(pa_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     uint64_t start_us = get_time_us();
 
@@ -622,7 +620,7 @@ int pa_fep_bridge_force_update(pa_fep_bridge_t* bridge) {
     /* Check and trigger callbacks */
     check_callbacks(bridge);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -632,10 +630,10 @@ int pa_fep_bridge_update_prediction_accuracy(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.prediction_accuracy = clamp_f(accuracy, 0.0f, 1.0f);
     bridge->stats.prediction_computations++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -646,10 +644,10 @@ int pa_fep_bridge_update_attention_precision(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.attention_precision = clamp_f(precision, 0.0f, 1.0f);
     bridge->stats.precision_updates++;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -660,9 +658,9 @@ int pa_fep_bridge_update_error_signal_quality(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics.error_signal_quality = clamp_f(quality, 0.0f, 1.0f);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -677,9 +675,9 @@ int pa_fep_bridge_get_metrics(
 ) {
     if (!bridge || !metrics_out) return -1;
 
-    nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->base.mutex);
     *metrics_out = bridge->metrics;
-    nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -690,9 +688,9 @@ int pa_fep_bridge_get_stats(
 ) {
     if (!bridge || !stats_out) return -1;
 
-    nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->base.mutex);
     *stats_out = bridge->stats;
-    nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -700,11 +698,11 @@ int pa_fep_bridge_get_stats(
 int pa_fep_bridge_reset_stats(pa_fep_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(pa_fep_stats_t));
     bridge->running_avg_fe = 0.0f;
     bridge->running_count = 0;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -712,9 +710,9 @@ int pa_fep_bridge_reset_stats(pa_fep_bridge_t* bridge) {
 float pa_fep_bridge_get_free_energy(const pa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->base.mutex);
     float fe = bridge->metrics.free_energy;
-    nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->base.mutex);
 
     return fe;
 }
@@ -722,9 +720,9 @@ float pa_fep_bridge_get_free_energy(const pa_fep_bridge_t* bridge) {
 float pa_fep_bridge_get_prediction_accuracy(const pa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->base.mutex);
     float pa = bridge->metrics.prediction_accuracy;
-    nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->base.mutex);
 
     return pa;
 }
@@ -732,9 +730,9 @@ float pa_fep_bridge_get_prediction_accuracy(const pa_fep_bridge_t* bridge) {
 float pa_fep_bridge_get_prediction_error(const pa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->base.mutex);
     float pe = bridge->metrics.prediction_error;
-    nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->base.mutex);
 
     return pe;
 }
@@ -742,9 +740,9 @@ float pa_fep_bridge_get_prediction_error(const pa_fep_bridge_t* bridge) {
 float pa_fep_bridge_get_attention_precision(const pa_fep_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->base.mutex);
     float ap = bridge->metrics.attention_precision;
-    nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->base.mutex);
 
     return ap;
 }
@@ -756,9 +754,9 @@ float pa_fep_bridge_get_attention_precision(const pa_fep_bridge_t* bridge) {
 pa_fep_state_t pa_fep_bridge_get_state(const pa_fep_bridge_t* bridge) {
     if (!bridge) return PA_FEP_STATE_ERROR;
 
-    nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->base.mutex);
     pa_fep_state_t state = bridge->state;
-    nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->base.mutex);
 
     return state;
 }
@@ -766,9 +764,9 @@ pa_fep_state_t pa_fep_bridge_get_state(const pa_fep_bridge_t* bridge) {
 bool pa_fep_bridge_is_degraded(const pa_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->base.mutex);
     bool degraded = (bridge->state == PA_FEP_STATE_DEGRADED);
-    nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->base.mutex);
 
     return degraded;
 }
@@ -776,9 +774,9 @@ bool pa_fep_bridge_is_degraded(const pa_fep_bridge_t* bridge) {
 bool pa_fep_bridge_is_high_precision(const pa_fep_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->base.mutex);
     bool high_precision = bridge->metrics.high_precision_mode;
-    nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->base.mutex);
 
     return high_precision;
 }
@@ -805,10 +803,10 @@ int pa_fep_bridge_set_high_fe_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->high_fe_callback = callback;
     bridge->high_fe_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -820,10 +818,10 @@ int pa_fep_bridge_set_surprise_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->surprise_callback = callback;
     bridge->surprise_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -835,10 +833,10 @@ int pa_fep_bridge_set_metrics_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->metrics_callback = callback;
     bridge->metrics_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -853,9 +851,9 @@ int pa_fep_bridge_set_config(
 ) {
     if (!bridge || !config) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->config = *config;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -866,9 +864,9 @@ int pa_fep_bridge_get_config(
 ) {
     if (!bridge || !config_out) return -1;
 
-    nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((pa_fep_bridge_t*)bridge)->base.mutex);
     *config_out = bridge->config;
-    nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((pa_fep_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }

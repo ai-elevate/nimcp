@@ -9,6 +9,7 @@
  * HOW:  Track attention events for spike-timing dependent synaptic changes
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/salience/nimcp_salience_plasticity_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -20,6 +21,7 @@
 //=============================================================================
 
 struct salience_plasticity_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     salience_plasticity_config_t config;
     salience_plasticity_state_t state;
 

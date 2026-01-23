@@ -8804,6 +8804,32 @@ e2e_fault_tolerance_test_exception_module_e2e/fast:
 .PHONY : e2e_fault_tolerance_test_exception_module_e2e/fast
 
 #=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_exception_e2e_comprehensive
+
+# Build rule for target.
+e2e_fault_tolerance_test_exception_e2e_comprehensive: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_exception_e2e_comprehensive
+.PHONY : e2e_fault_tolerance_test_exception_e2e_comprehensive
+
+# fast build rule for target.
+e2e_fault_tolerance_test_exception_e2e_comprehensive/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_e2e_comprehensive.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_e2e_comprehensive.dir/build
+.PHONY : e2e_fault_tolerance_test_exception_e2e_comprehensive/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_brain_state_manager_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_brain_state_manager_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_brain_state_manager_e2e
+.PHONY : e2e_fault_tolerance_test_brain_state_manager_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_brain_state_manager_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_brain_state_manager_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_brain_state_manager_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_brain_state_manager_e2e/fast
+
+#=============================================================================
 # Target rules for targets named unit_middleware_integration
 
 # Build rule for target.
@@ -16201,6 +16227,19 @@ regression_test_kg_module_wiring/fast:
 .PHONY : regression_test_kg_module_wiring/fast
 
 #=============================================================================
+# Target rules for targets named regression_test_brain_state_manager
+
+# Build rule for target.
+regression_test_brain_state_manager: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_test_brain_state_manager
+.PHONY : regression_test_brain_state_manager
+
+# fast build rule for target.
+regression_test_brain_state_manager/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/brain/CMakeFiles/regression_test_brain_state_manager.dir/build.make test/regression/brain/CMakeFiles/regression_test_brain_state_manager.dir/build
+.PHONY : regression_test_brain_state_manager/fast
+
+#=============================================================================
 # Target rules for targets named regression_bridges_test_bridge_memory_leaks
 
 # Build rule for target.
@@ -19256,6 +19295,19 @@ unit_exception_test_swarm_memory_macros/fast:
 .PHONY : unit_exception_test_swarm_memory_macros/fast
 
 #=============================================================================
+# Target rules for targets named unit_exception_test_macro_comprehensive
+
+# Build rule for target.
+unit_exception_test_macro_comprehensive: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_exception_test_macro_comprehensive
+.PHONY : unit_exception_test_macro_comprehensive
+
+# fast build rule for target.
+unit_exception_test_macro_comprehensive/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/exception/CMakeFiles/unit_exception_test_macro_comprehensive.dir/build.make test/unit/exception/CMakeFiles/unit_exception_test_macro_comprehensive.dir/build
+.PHONY : unit_exception_test_macro_comprehensive/fast
+
+#=============================================================================
 # Target rules for targets named unit_brain_test_kg_module_wiring
 
 # Build rule for target.
@@ -19267,6 +19319,19 @@ unit_brain_test_kg_module_wiring: cmake_check_build_system
 unit_brain_test_kg_module_wiring/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/brain/CMakeFiles/unit_brain_test_kg_module_wiring.dir/build.make test/unit/brain/CMakeFiles/unit_brain_test_kg_module_wiring.dir/build
 .PHONY : unit_brain_test_kg_module_wiring/fast
+
+#=============================================================================
+# Target rules for targets named unit_brain_test_state_manager
+
+# Build rule for target.
+unit_brain_test_state_manager: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_brain_test_state_manager
+.PHONY : unit_brain_test_state_manager
+
+# fast build rule for target.
+unit_brain_test_state_manager/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/brain/CMakeFiles/unit_brain_test_state_manager.dir/build.make test/unit/brain/CMakeFiles/unit_brain_test_state_manager.dir/build
+.PHONY : unit_brain_test_state_manager/fast
 
 #=============================================================================
 # Target rules for targets named unit_utils_memory_test_memory_pool
@@ -27459,6 +27524,19 @@ integration_test_kg_module_wiring/fast:
 .PHONY : integration_test_kg_module_wiring/fast
 
 #=============================================================================
+# Target rules for targets named integration_test_brain_state_manager
+
+# Build rule for target.
+integration_test_brain_state_manager: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_test_brain_state_manager
+.PHONY : integration_test_brain_state_manager
+
+# fast build rule for target.
+integration_test_brain_state_manager/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/brain/CMakeFiles/integration_test_brain_state_manager.dir/build.make test/integration/brain/CMakeFiles/integration_test_brain_state_manager.dir/build
+.PHONY : integration_test_brain_state_manager/fast
+
+#=============================================================================
 # Target rules for targets named integration_exception_test_signal_exception_integration
 
 # Build rule for target.
@@ -27613,6 +27691,19 @@ integration_exception_test_exception_cross_module_flow: cmake_check_build_system
 integration_exception_test_exception_cross_module_flow/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/exception/CMakeFiles/integration_exception_test_exception_cross_module_flow.dir/build.make test/integration/exception/CMakeFiles/integration_exception_test_exception_cross_module_flow.dir/build
 .PHONY : integration_exception_test_exception_cross_module_flow/fast
+
+#=============================================================================
+# Target rules for targets named integration_exception_test_exception_flow_comprehensive
+
+# Build rule for target.
+integration_exception_test_exception_flow_comprehensive: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_exception_test_exception_flow_comprehensive
+.PHONY : integration_exception_test_exception_flow_comprehensive
+
+# fast build rule for target.
+integration_exception_test_exception_flow_comprehensive/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/exception/CMakeFiles/integration_exception_test_exception_flow_comprehensive.dir/build.make test/integration/exception/CMakeFiles/integration_exception_test_exception_flow_comprehensive.dir/build
+.PHONY : integration_exception_test_exception_flow_comprehensive/fast
 
 #=============================================================================
 # Target rules for targets named integration_gpu_test_gpu_cpu_equivalence
@@ -30774,6 +30865,19 @@ test_exception_performance_only/fast:
 .PHONY : test_exception_performance_only/fast
 
 #=============================================================================
+# Target rules for targets named regression_exception_api_comprehensive
+
+# Build rule for target.
+regression_exception_api_comprehensive: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_exception_api_comprehensive
+.PHONY : regression_exception_api_comprehensive
+
+# fast build rule for target.
+regression_exception_api_comprehensive/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/exception/CMakeFiles/regression_exception_api_comprehensive.dir/build.make test/regression/exception/CMakeFiles/regression_exception_api_comprehensive.dir/build
+.PHONY : regression_exception_api_comprehensive/fast
+
+#=============================================================================
 # Target rules for targets named e2e_cognitive_test_world_model_e2e
 
 # Build rule for target.
@@ -31258,10 +31362,12 @@ help:
 	@echo "... e2e_core_brain_regions_motor_test_motor_e2e"
 	@echo "... e2e_core_geometry_surface"
 	@echo "... e2e_fault_tolerance_test_brain_probe_health_e2e"
+	@echo "... e2e_fault_tolerance_test_brain_state_manager_e2e"
 	@echo "... e2e_fault_tolerance_test_capacity_manager_e2e"
 	@echo "... e2e_fault_tolerance_test_crash_recovery"
 	@echo "... e2e_fault_tolerance_test_exception_brain_integration_e2e"
 	@echo "... e2e_fault_tolerance_test_exception_complete_flow_e2e"
+	@echo "... e2e_fault_tolerance_test_exception_e2e_comprehensive"
 	@echo "... e2e_fault_tolerance_test_exception_flow_e2e"
 	@echo "... e2e_fault_tolerance_test_exception_immune_e2e"
 	@echo "... e2e_fault_tolerance_test_exception_macro_e2e"
@@ -31682,6 +31788,7 @@ help:
 	@echo "... integration_exception_test_exception_cognitive_integration"
 	@echo "... integration_exception_test_exception_cross_module"
 	@echo "... integration_exception_test_exception_cross_module_flow"
+	@echo "... integration_exception_test_exception_flow_comprehensive"
 	@echo "... integration_exception_test_exception_health_integration"
 	@echo "... integration_exception_test_exception_immune_integration"
 	@echo "... integration_exception_test_exception_module_integration"
@@ -31864,6 +31971,7 @@ help:
 	@echo "... integration_ternary_test_neuralnet_ternary_integration"
 	@echo "... integration_ternary_test_sparse_ternary_integration"
 	@echo "... integration_ternary_test_training_ternary_integration"
+	@echo "... integration_test_brain_state_manager"
 	@echo "... integration_test_kg_module_wiring"
 	@echo "... integration_thalamic_substrate_bridges"
 	@echo "... integration_training_dispatch"
@@ -32070,6 +32178,7 @@ help:
 	@echo "... regression_dragonfly_parameters"
 	@echo "... regression_dragonfly_performance"
 	@echo "... regression_exception_api_compatibility"
+	@echo "... regression_exception_api_comprehensive"
 	@echo "... regression_exception_api_stability"
 	@echo "... regression_exception_error_code_stability"
 	@echo "... regression_exception_error_codes"
@@ -32256,6 +32365,7 @@ help:
 	@echo "... regression_snn_test_regression"
 	@echo "... regression_social_fep"
 	@echo "... regression_swarm_bridges"
+	@echo "... regression_test_brain_state_manager"
 	@echo "... regression_test_kg_module_wiring"
 	@echo "... regression_training_dispatch"
 	@echo "... regression_training_symbolic_logic_hub"
@@ -32544,6 +32654,7 @@ help:
 	@echo "... unit_brain_population_coding"
 	@echo "... unit_brain_spike_features"
 	@echo "... unit_brain_test_kg_module_wiring"
+	@echo "... unit_brain_test_state_manager"
 	@echo "... unit_chemistry_exception_handling"
 	@echo "... unit_chemistry_gasotransmitters_test_nitric_oxide"
 	@echo "... unit_chemistry_ph_test_ph_dynamics"
@@ -33020,6 +33131,7 @@ help:
 	@echo "... unit_dragonfly_test_visual_bridge"
 	@echo "... unit_dragonfly_test_workspace_bridge"
 	@echo "... unit_exception_test_macro_behavior"
+	@echo "... unit_exception_test_macro_comprehensive"
 	@echo "... unit_exception_test_security_lgss_macros"
 	@echo "... unit_exception_test_security_macros"
 	@echo "... unit_exception_test_swarm_macros"

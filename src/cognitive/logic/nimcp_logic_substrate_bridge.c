@@ -7,6 +7,7 @@
  * HOW: Monitors ATP/fatigue; modulates inference depth, accuracy, speed
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/logic/nimcp_logic_substrate_bridge.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
 #include "utils/memory/nimcp_memory.h"
@@ -17,6 +18,7 @@
 #include <math.h>
 
 struct logic_substrate_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* logic;
     neural_substrate_t* substrate;
     logic_substrate_config_t config;

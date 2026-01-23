@@ -3,12 +3,14 @@
  * @brief Prefrontal Cortex-Neural Substrate Bridge Implementation
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/prefrontal/nimcp_prefrontal_substrate_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 struct prefrontal_substrate_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* prefrontal;
     neural_substrate_t* substrate;
     prefrontal_substrate_config_t config;

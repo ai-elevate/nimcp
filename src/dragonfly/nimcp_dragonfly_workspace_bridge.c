@@ -3,6 +3,7 @@
  * @brief Dragonfly-to-Global Workspace Integration Bridge Implementation
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "dragonfly/nimcp_dragonfly_workspace_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -16,6 +17,7 @@
 #define WS_RECEIVE_QUEUE_SIZE 16
 
 struct dragonfly_workspace_bridge_s {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     dragonfly_system_t* dragonfly;
     void* global_workspace;
     dragonfly_ws_config_t config;

@@ -3,6 +3,7 @@
  * @brief Love/Loyalty/Friendship-Neural Substrate Bridge Implementation
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/love_loyalty_friendship/nimcp_llf_substrate_bridge.h"
 #include "cognitive/knowledge/nimcp_kg_reader.h"
 #include "cognitive/common/nimcp_metabolic_modulation.h"
@@ -12,6 +13,7 @@
 #include <string.h>
 
 struct llf_substrate_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     void* llf;
     neural_substrate_t* substrate;
     llf_substrate_config_t config;

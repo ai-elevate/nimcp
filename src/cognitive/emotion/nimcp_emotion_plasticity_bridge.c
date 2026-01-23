@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/emotion/nimcp_emotion_plasticity_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
@@ -19,6 +20,8 @@
 //=============================================================================
 
 struct emotion_plasticity_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     emotion_plasticity_config_t config;
 
@@ -51,9 +54,6 @@ struct emotion_plasticity_bridge {
 
     /* Bio-async */
     bool bio_async_connected;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 };
 
 //=============================================================================
@@ -252,10 +252,8 @@ emotion_plasticity_bridge_t* emotion_plasticity_create(
         bridge->config = emotion_plasticity_config_default();
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize bridge base infrastructure (includes mutex) */
+    if (bridge_base_init(&bridge->base, 0, "emotion_plasticity") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -287,9 +285,8 @@ void emotion_plasticity_destroy(emotion_plasticity_bridge_t* bridge) {
         emotion_plasticity_disconnect_bio_async(bridge);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }
@@ -297,7 +294,7 @@ void emotion_plasticity_destroy(emotion_plasticity_bridge_t* bridge) {
 int emotion_plasticity_reset(emotion_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset synapses to initial state */
     for (uint32_t i = 0; i < bridge->n_synapses; i++) {
@@ -321,7 +318,7 @@ int emotion_plasticity_reset(emotion_plasticity_bridge_t* bridge) {
         bridge->emotion_extinction[i] = 0.0f;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -340,17 +337,17 @@ int emotion_plasticity_register_synapse(
     if (!bridge) return -1;
     if (associated_emotion >= EMOTION_COUNT) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Check if already registered */
     if (find_synapse(bridge, synapse_id) != NULL) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;  /* Already registered */
     }
 
     /* Check capacity */
     if (bridge->n_synapses >= EMOTION_PLASTICITY_MAX_SYNAPSES) {
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return -1;
     }
 
@@ -371,7 +368,7 @@ int emotion_plasticity_register_synapse(
 
     bridge->n_synapses++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -382,7 +379,7 @@ int emotion_plasticity_unregister_synapse(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     for (uint32_t i = 0; i < bridge->n_synapses; i++) {
         if (bridge->synapses[i].synapse_id == synapse_id) {
@@ -391,12 +388,12 @@ int emotion_plasticity_unregister_synapse(
                 bridge->synapses[j] = bridge->synapses[j + 1];
             }
             bridge->n_synapses--;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return 0;
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return -1;  /* Not found */
 }
 
@@ -407,16 +404,16 @@ int emotion_plasticity_get_synapse(
 {
     if (!bridge || !synapse) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     emotion_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
     if (syn) {
         *synapse = *syn;
-        nimcp_mutex_unlock(bridge->mutex);
+        nimcp_mutex_unlock(bridge->base.mutex);
         return 0;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return -1;
 }
 
@@ -433,7 +430,7 @@ int emotion_plasticity_stimulus(
     if (!bridge) return -1;
     if (emotion >= EMOTION_COUNT) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = EMOTION_PLASTICITY_STATE_OBSERVING;
 
@@ -482,7 +479,7 @@ int emotion_plasticity_stimulus(
 
     bridge->state = EMOTION_PLASTICITY_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -496,7 +493,7 @@ int emotion_plasticity_response(
     if (!bridge) return -1;
     if (emotion >= EMOTION_COUNT) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = EMOTION_PLASTICITY_STATE_RESPONDING;
 
@@ -546,7 +543,7 @@ int emotion_plasticity_response(
 
     bridge->state = EMOTION_PLASTICITY_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -558,7 +555,7 @@ int emotion_plasticity_reward(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->pending_reward = reward;
     bridge->last_reward_time_us = timestamp_us;
@@ -566,7 +563,7 @@ int emotion_plasticity_reward(
     /* Apply reward-modulated plasticity */
     apply_reward_modulated_plasticity_unlocked(bridge);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -580,7 +577,7 @@ int emotion_plasticity_extinction_trial(
     if (emotion >= EMOTION_COUNT) return -1;
     if (!bridge->config.enable_extinction) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Apply extinction to all synapses associated with this emotion */
     for (uint32_t i = 0; i < bridge->n_synapses; i++) {
@@ -618,7 +615,7 @@ int emotion_plasticity_extinction_trial(
 
     bridge->stats.extinction_events++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -633,7 +630,7 @@ int emotion_plasticity_update(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = EMOTION_PLASTICITY_STATE_UPDATING;
 
@@ -681,7 +678,7 @@ int emotion_plasticity_update(
 
     bridge->state = EMOTION_PLASTICITY_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -689,7 +686,7 @@ int emotion_plasticity_update(
 int emotion_plasticity_consolidate(emotion_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->state = EMOTION_PLASTICITY_STATE_CONSOLIDATING;
 
@@ -716,7 +713,7 @@ int emotion_plasticity_consolidate(emotion_plasticity_bridge_t* bridge) {
 
     bridge->state = EMOTION_PLASTICITY_STATE_IDLE;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -733,13 +730,13 @@ int emotion_plasticity_get_response_modulation(
     if (!bridge || !modulation) return -1;
     if (emotion >= EMOTION_COUNT) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Modulation based on learned sensitivity and extinction */
     *modulation = bridge->emotion_sensitivity[emotion] *
                  (1.0f - bridge->emotion_extinction[emotion]);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -751,9 +748,9 @@ float emotion_plasticity_get_extinction_level(
     if (!bridge) return 0.0f;
     if (emotion >= EMOTION_COUNT) return 0.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->emotion_extinction[emotion];
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return level;
 }
@@ -765,9 +762,9 @@ float emotion_plasticity_get_sensitivity(
     if (!bridge) return 1.0f;
     if (emotion >= EMOTION_COUNT) return 1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float sens = bridge->emotion_sensitivity[emotion];
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return sens;
 }
@@ -782,7 +779,7 @@ int emotion_plasticity_get_state(
 {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(((emotion_plasticity_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((emotion_plasticity_bridge_t*)bridge)->base.mutex);
 
     state->state = bridge->state;
     state->registered_synapses = bridge->n_synapses;
@@ -791,7 +788,7 @@ int emotion_plasticity_get_state(
     state->current_arousal_mod = bridge->current_arousal_mod;
     state->bio_async_connected = bridge->bio_async_connected;
 
-    nimcp_mutex_unlock(((emotion_plasticity_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((emotion_plasticity_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -802,7 +799,7 @@ int emotion_plasticity_get_stats(
 {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(((emotion_plasticity_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((emotion_plasticity_bridge_t*)bridge)->base.mutex);
 
     *stats = bridge->stats;
 
@@ -814,7 +811,7 @@ int emotion_plasticity_get_stats(
             (bridge->stats.ltp_events + bridge->stats.ltd_events);
     }
 
-    nimcp_mutex_unlock(((emotion_plasticity_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((emotion_plasticity_bridge_t*)bridge)->base.mutex);
 
     return 0;
 }
@@ -822,9 +819,9 @@ int emotion_plasticity_get_stats(
 void emotion_plasticity_reset_stats(emotion_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 //=============================================================================
@@ -838,10 +835,10 @@ int emotion_plasticity_set_weight_callback(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->weight_callback = callback;
     bridge->callback_user_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -856,9 +853,9 @@ int emotion_plasticity_set_valence_modulation(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->current_valence_mod = clamp_f(valence, -1.0f, 1.0f);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -869,9 +866,9 @@ int emotion_plasticity_set_arousal_modulation(
 {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->current_arousal_mod = clamp_f(arousal, 0.0f, 1.0f);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -884,9 +881,9 @@ int emotion_plasticity_connect_bio_async(emotion_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return 0;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -894,9 +891,9 @@ int emotion_plasticity_connect_bio_async(emotion_plasticity_bridge_t* bridge) {
 int emotion_plasticity_disconnect_bio_async(emotion_plasticity_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }

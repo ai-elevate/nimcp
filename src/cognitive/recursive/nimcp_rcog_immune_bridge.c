@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/recursive/nimcp_rcog_immune_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/platform/nimcp_platform_time.h"
@@ -22,6 +23,8 @@
  * @brief Immune bridge internal structure
  */
 struct rcog_immune_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     rcog_immune_bridge_config_t config;
 
@@ -45,9 +48,6 @@ struct rcog_immune_bridge {
 
     /* Statistics */
     rcog_immune_bridge_stats_t stats;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 };
 
 /*=============================================================================
@@ -90,10 +90,8 @@ rcog_immune_bridge_t* rcog_immune_bridge_create(
         bridge->config = rcog_immune_bridge_default_config();
     }
 
-    mutex_attr_t attr = {0};
-    attr.type = MUTEX_TYPE_NORMAL;
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
+    /* Initialize bridge base infrastructure (includes mutex) */
+    if (bridge_base_init(&bridge->base, 0, "rcog_immune") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -119,9 +117,8 @@ void rcog_immune_bridge_destroy(rcog_immune_bridge_t* bridge) {
         return;
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
 
     nimcp_free(bridge);
 }
@@ -138,10 +135,10 @@ int rcog_immune_bridge_connect(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->immune = immune;
     bridge->connected = (bridge->immune != NULL && bridge->engine != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -154,10 +151,10 @@ int rcog_immune_bridge_connect_engine(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->engine = engine;
     bridge->connected = (bridge->immune != NULL && bridge->engine != NULL);
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -178,7 +175,7 @@ int rcog_immune_bridge_update(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Decay quarantine strength over time */
     float decay = delta_time_ms / 1000.0f * bridge->config.quarantine_decay_rate;
@@ -208,7 +205,7 @@ int rcog_immune_bridge_update(
     bridge->incoming_effects.cytokines = bridge->cytokines;
     bridge->incoming_effects.num_quarantined = (uint32_t)bridge->num_quarantined;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -225,9 +222,9 @@ int rcog_immune_bridge_get_modulation(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(((rcog_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((rcog_immune_bridge_t*)bridge)->base.mutex);
     *modulation = bridge->current_modulation;
-    nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->base.mutex);
 
     return RCOG_OK;
 }
@@ -240,12 +237,12 @@ int rcog_immune_bridge_apply_modulation(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* In full implementation, would apply modulation to orchestrator config */
     bridge->stats.modulations_applied++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -267,9 +264,9 @@ int rcog_immune_bridge_get_cytokines(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(((rcog_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((rcog_immune_bridge_t*)bridge)->base.mutex);
     *cytokines = bridge->cytokines;
-    nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->base.mutex);
 
     return RCOG_OK;
 }
@@ -300,7 +297,7 @@ int rcog_immune_bridge_report_failure(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Hash the subtask to identify the pattern */
     uint64_t pattern_hash = hash_pattern(&subtask, sizeof(void*));
@@ -341,7 +338,7 @@ int rcog_immune_bridge_report_failure(
     bridge->outgoing_effects.total_failures++;
     bridge->outgoing_effects.consecutive_failures++;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return RCOG_OK;
 }
@@ -358,13 +355,13 @@ int rcog_immune_bridge_report_pattern_failure(
     /* Use the decomposition pointer as pattern identifier */
     uint64_t pattern_hash = hash_pattern(&decomposition, sizeof(void*));
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     bridge->outgoing_effects.failure_pattern_hash = pattern_hash;
     bridge->outgoing_effects.failure_error = error;
     bridge->outgoing_effects.report_subtask_failure = true;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return rcog_immune_bridge_report_failure(bridge, NULL, error);
 }
@@ -383,18 +380,18 @@ bool rcog_immune_bridge_is_quarantined(
 
     uint64_t pattern_hash = hash_pattern(&decomposition, sizeof(void*));
 
-    nimcp_mutex_lock(((rcog_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((rcog_immune_bridge_t*)bridge)->base.mutex);
 
     for (size_t i = 0; i < bridge->num_quarantined; i++) {
         if (bridge->quarantine[i].pattern_hash == pattern_hash &&
             bridge->quarantine[i].quarantine_strength > 0.5f) {
             ((rcog_immune_bridge_t*)bridge)->stats.patterns_blocked++;
-            nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->mutex);
+            nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->base.mutex);
             return true;
         }
     }
 
-    nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->base.mutex);
     return false;
 }
 
@@ -408,17 +405,17 @@ float rcog_immune_bridge_get_quarantine_strength(
 
     uint64_t pattern_hash = hash_pattern(&decomposition, sizeof(void*));
 
-    nimcp_mutex_lock(((rcog_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((rcog_immune_bridge_t*)bridge)->base.mutex);
 
     for (size_t i = 0; i < bridge->num_quarantined; i++) {
         if (bridge->quarantine[i].pattern_hash == pattern_hash) {
             float strength = bridge->quarantine[i].quarantine_strength;
-            nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->mutex);
+            nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->base.mutex);
             return strength;
         }
     }
 
-    nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->base.mutex);
     return 0.0f;
 }
 
@@ -432,7 +429,7 @@ int rcog_immune_bridge_get_quarantine_list(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(((rcog_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((rcog_immune_bridge_t*)bridge)->base.mutex);
 
     size_t to_copy = bridge->num_quarantined;
     if (to_copy > max_entries) {
@@ -442,7 +439,7 @@ int rcog_immune_bridge_get_quarantine_list(
     memcpy(entries, bridge->quarantine, to_copy * sizeof(rcog_quarantine_entry_t));
     *num_entries = to_copy;
 
-    nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->base.mutex);
 
     return RCOG_OK;
 }
@@ -455,7 +452,7 @@ int rcog_immune_bridge_clear_quarantine(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     for (size_t i = 0; i < bridge->num_quarantined; i++) {
         if (bridge->quarantine[i].pattern_hash == pattern_hash) {
@@ -463,12 +460,12 @@ int rcog_immune_bridge_clear_quarantine(
             memmove(&bridge->quarantine[i], &bridge->quarantine[i + 1],
                     (bridge->num_quarantined - i - 1) * sizeof(rcog_quarantine_entry_t));
             bridge->num_quarantined--;
-            nimcp_mutex_unlock(bridge->mutex);
+            nimcp_mutex_unlock(bridge->base.mutex);
             return RCOG_OK;
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return RCOG_ERROR_CONTEXT_NOT_FOUND;
 }
 
@@ -484,9 +481,9 @@ int rcog_immune_bridge_get_outgoing_effects(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(((rcog_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((rcog_immune_bridge_t*)bridge)->base.mutex);
     *effects = bridge->outgoing_effects;
-    nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->base.mutex);
 
     return RCOG_OK;
 }
@@ -499,9 +496,9 @@ int rcog_immune_bridge_get_incoming_effects(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(((rcog_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((rcog_immune_bridge_t*)bridge)->base.mutex);
     *effects = bridge->incoming_effects;
-    nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->base.mutex);
 
     return RCOG_OK;
 }
@@ -518,9 +515,9 @@ int rcog_immune_bridge_get_stats(
         return RCOG_ERROR_NULL_POINTER;
     }
 
-    nimcp_mutex_lock(((rcog_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_lock(((rcog_immune_bridge_t*)bridge)->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->mutex);
+    nimcp_mutex_unlock(((rcog_immune_bridge_t*)bridge)->base.mutex);
 
     return RCOG_OK;
 }
@@ -530,9 +527,9 @@ void rcog_immune_bridge_reset_stats(rcog_immune_bridge_t* bridge) {
         return;
     }
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(rcog_immune_bridge_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 }
 
 /* ============================================================================

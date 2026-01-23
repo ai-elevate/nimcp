@@ -6,6 +6,7 @@
  */
 
 #include "cognitive/mental_health/nimcp_mental_health_snn_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "snn/nimcp_snn_network.h"
 #include "snn/nimcp_snn_config.h"
 #include "core/neuron_types/nimcp_neuron_types.h"
@@ -25,9 +26,9 @@
 //=============================================================================
 
 struct mental_health_snn_bridge {
+    bridge_base_t base;
     mental_health_snn_config_t config;
     snn_network_t* snn;
-    nimcp_mutex_t* mutex;
 
     /* State */
     mental_health_snn_state_t state;
@@ -149,10 +150,8 @@ mental_health_snn_bridge_t* mental_health_snn_create(const mental_health_snn_con
         return NULL;
     }
 
-    /* Create mutex */
-    mutex_attr_t mutex_attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&mutex_attr);
-    if (!bridge->mutex) {
+    /* Initialize bridge base */
+    if (bridge_base_init(&bridge->base, 0, "mental_health_snn") != 0) {
         nimcp_free(bridge);
         return NULL;
     }
@@ -169,7 +168,7 @@ mental_health_snn_bridge_t* mental_health_snn_create(const mental_health_snn_con
 
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
-        nimcp_mutex_free(bridge->mutex);
+        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -223,10 +222,7 @@ void mental_health_snn_destroy(mental_health_snn_bridge_t* bridge) {
         snn_network_destroy(bridge->snn);
     }
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
-
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge->encoding_buffer);
     nimcp_free(bridge->output_buffer);
     nimcp_free(bridge->mood_buffer);
@@ -237,7 +233,7 @@ void mental_health_snn_destroy(mental_health_snn_bridge_t* bridge) {
 int mental_health_snn_reset(mental_health_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     /* Reset SNN network */
     if (bridge->snn) {
@@ -271,7 +267,7 @@ int mental_health_snn_reset(mental_health_snn_bridge_t* bridge) {
     bridge->anxiety_signal = 0.0f;
     bridge->depression_signal = 0.0f;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -287,7 +283,7 @@ int mental_health_snn_encode_state(
     if (!bridge || !dimensions) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = MENTAL_HEALTH_SNN_STATE_ENCODING;
 
     uint32_t neurons_per_dim = bridge->config.neurons_per_dim;
@@ -332,7 +328,7 @@ int mental_health_snn_encode_state(
 
     bridge->stats.total_spikes += total_spikes;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return total_spikes;
 }
 
@@ -343,7 +339,7 @@ int mental_health_snn_encode_mood(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[MENTAL_HEALTH_DIM_COUNT] = {0};
     /* Convert mood from [-1,1] to [0,1] for encoding */
@@ -351,7 +347,7 @@ int mental_health_snn_encode_mood(
     dims[MENTAL_HEALTH_DIM_EMOTIONAL_REGULATION] = clamp_f(stability, 0.0f, 1.0f);
     dims[MENTAL_HEALTH_DIM_RESILIENCE] = clamp_f(stability * 0.8f, 0.0f, 1.0f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return mental_health_snn_encode_state(bridge, dims, 3);
 }
@@ -363,7 +359,7 @@ int mental_health_snn_encode_anxiety(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[MENTAL_HEALTH_DIM_COUNT] = {0};
     dims[MENTAL_HEALTH_DIM_ANXIETY_LEVEL] = clamp_f(anxiety, 0.0f, 1.0f);
@@ -373,7 +369,7 @@ int mental_health_snn_encode_anxiety(
 
     bridge->anxiety_signal = anxiety;
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return mental_health_snn_encode_state(bridge, dims, 3);
 }
@@ -385,7 +381,7 @@ int mental_health_snn_encode_depression(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[MENTAL_HEALTH_DIM_COUNT] = {0};
     dims[MENTAL_HEALTH_DIM_DEPRESSION_LEVEL] = clamp_f(depression, 0.0f, 1.0f);
@@ -408,7 +404,7 @@ int mental_health_snn_encode_depression(
         }
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return mental_health_snn_encode_state(bridge, dims, 4);
 }
@@ -420,7 +416,7 @@ int mental_health_snn_encode_stress(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     float dims[MENTAL_HEALTH_DIM_COUNT] = {0};
     dims[MENTAL_HEALTH_DIM_STRESS_RESPONSE] = clamp_f(stress, 0.0f, 1.0f);
@@ -435,7 +431,7 @@ int mental_health_snn_encode_stress(
     /* Sleep quality affected by stress */
     dims[MENTAL_HEALTH_DIM_SLEEP_QUALITY] = clamp_f(1.0f - stress * 0.4f, 0.0f, 1.0f);
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return mental_health_snn_encode_state(bridge, dims, 4);
 }
@@ -448,7 +444,7 @@ int mental_health_snn_simulate(mental_health_snn_bridge_t* bridge, float duratio
     if (!bridge) return -1;
     if (duration_ms <= 0.0f) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = MENTAL_HEALTH_SNN_STATE_SIMULATING;
 
     float dt = bridge->config.dt_ms;
@@ -519,7 +515,7 @@ int mental_health_snn_simulate(mental_health_snn_bridge_t* bridge, float duratio
         bridge->state_callback(bridge, &bridge->last_emotional_state, bridge->state_callback_data);
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
@@ -555,9 +551,9 @@ int mental_health_snn_get_emotional_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->last_emotional_state;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -570,11 +566,11 @@ int mental_health_snn_get_activations(
     if (!bridge || !activations) return -1;
     if (num_dims == 0 || num_dims > bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     for (uint32_t d = 0; d < num_dims; d++) {
         activations[d] = bridge->dim_states[d].activation;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -585,13 +581,13 @@ bool mental_health_snn_check_anxiety(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_emotional_state.anxiety_level;
     if (anxiety_level) {
         *anxiety_level = level;
     }
     bool detected = level > bridge->config.anxiety_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return detected;
 }
@@ -602,13 +598,13 @@ bool mental_health_snn_check_depression(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float level = bridge->last_emotional_state.depression_level;
     if (depression_level) {
         *depression_level = level;
     }
     bool detected = level > bridge->config.depression_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return detected;
 }
@@ -619,7 +615,7 @@ bool mental_health_snn_check_state_change(
 ) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     /* Calculate magnitude from prev_state differences */
     float mag = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
@@ -632,7 +628,7 @@ bool mental_health_snn_check_state_change(
         *change_magnitude = mag;
     }
     bool changed = mag > bridge->config.state_change_threshold;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return changed;
 }
@@ -649,9 +645,9 @@ int mental_health_snn_get_dim_state(
     if (!bridge || !state) return -1;
     if (dim >= bridge->config.num_dimensions) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *state = bridge->dim_states[dim];
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -662,7 +658,7 @@ int mental_health_snn_get_state(
 ) {
     if (!bridge || !state) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
 
     state->state = bridge->state;
     state->mean_mood = bridge->last_emotional_state.mood_level;
@@ -679,16 +675,16 @@ int mental_health_snn_get_state(
         state->total_activity += bridge->dim_states[d].activation;
     }
 
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
     return 0;
 }
 
 int mental_health_snn_get_stats(mental_health_snn_bridge_t* bridge, mental_health_snn_stats_t* stats) {
     if (!bridge || !stats) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -696,9 +692,9 @@ int mental_health_snn_get_stats(mental_health_snn_bridge_t* bridge, mental_healt
 int mental_health_snn_reset_stats(mental_health_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(mental_health_snn_stats_t));
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -706,9 +702,9 @@ int mental_health_snn_reset_stats(mental_health_snn_bridge_t* bridge) {
 float mental_health_snn_get_mood(mental_health_snn_bridge_t* bridge) {
     if (!bridge) return -2.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float mood = bridge->last_emotional_state.mood_level;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return mood;
 }
@@ -716,12 +712,12 @@ float mental_health_snn_get_mood(mental_health_snn_bridge_t* bridge) {
 float mental_health_snn_get_total_activity(mental_health_snn_bridge_t* bridge) {
     if (!bridge) return -1.0f;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     float total = 0.0f;
     for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
         total += bridge->dim_states[d].activation;
     }
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return total;
 }
@@ -737,10 +733,10 @@ int mental_health_snn_register_anxiety_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->anxiety_callback = callback;
     bridge->anxiety_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -752,10 +748,10 @@ int mental_health_snn_register_state_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->state_callback = callback;
     bridge->state_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -767,10 +763,10 @@ int mental_health_snn_register_depression_callback(
 ) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->depression_callback = callback;
     bridge->depression_callback_data = user_data;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -783,10 +779,10 @@ int mental_health_snn_bio_async_connect(mental_health_snn_bridge_t* bridge) {
     if (!bridge) return -1;
     if (!bridge->config.enable_bio_async) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     /* Bio-async connection would be implemented here */
     bridge->bio_async_connected = true;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -794,9 +790,9 @@ int mental_health_snn_bio_async_connect(mental_health_snn_bridge_t* bridge) {
 int mental_health_snn_bio_async_disconnect(mental_health_snn_bridge_t* bridge) {
     if (!bridge) return -1;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return 0;
 }
@@ -804,9 +800,9 @@ int mental_health_snn_bio_async_disconnect(mental_health_snn_bridge_t* bridge) {
 bool mental_health_snn_is_bio_async_connected(mental_health_snn_bridge_t* bridge) {
     if (!bridge) return false;
 
-    nimcp_mutex_lock(bridge->mutex);
+    nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;
-    nimcp_mutex_unlock(bridge->mutex);
+    nimcp_mutex_unlock(bridge->base.mutex);
 
     return connected;
 }

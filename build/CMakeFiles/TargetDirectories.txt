@@ -802,6 +802,8 @@
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_recovery_scenarios_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_stress_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_module_e2e.dir
+/home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_exception_e2e_comprehensive.dir
+/home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_brain_state_manager_e2e.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/e2e/fault_tolerance/CMakeFiles/rebuild_cache.dir
@@ -2295,6 +2297,7 @@
 /home/bbrelin/nimcp/build/test/regression/brain_regions/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/regression/brain_regions/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/regression/brain/CMakeFiles/regression_test_kg_module_wiring.dir
+/home/bbrelin/nimcp/build/test/regression/brain/CMakeFiles/regression_test_brain_state_manager.dir
 /home/bbrelin/nimcp/build/test/regression/brain/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/brain/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/brain/CMakeFiles/rebuild_cache.dir
@@ -2866,6 +2869,7 @@
 /home/bbrelin/nimcp/build/test/unit/exception/CMakeFiles/unit_exception_test_swarm_macros.dir
 /home/bbrelin/nimcp/build/test/unit/exception/CMakeFiles/unit_exception_test_security_lgss_macros.dir
 /home/bbrelin/nimcp/build/test/unit/exception/CMakeFiles/unit_exception_test_swarm_memory_macros.dir
+/home/bbrelin/nimcp/build/test/unit/exception/CMakeFiles/unit_exception_test_macro_comprehensive.dir
 /home/bbrelin/nimcp/build/test/unit/exception/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/exception/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/exception/CMakeFiles/rebuild_cache.dir
@@ -2874,6 +2878,7 @@
 /home/bbrelin/nimcp/build/test/unit/exception/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/unit/exception/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/unit/brain/CMakeFiles/unit_brain_test_kg_module_wiring.dir
+/home/bbrelin/nimcp/build/test/unit/brain/CMakeFiles/unit_brain_test_state_manager.dir
 /home/bbrelin/nimcp/build/test/unit/brain/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/unit/brain/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/unit/brain/CMakeFiles/rebuild_cache.dir
@@ -4792,6 +4797,7 @@
 /home/bbrelin/nimcp/build/test/integration/CMakeFiles/install/local.dir
 /home/bbrelin/nimcp/build/test/integration/CMakeFiles/install/strip.dir
 /home/bbrelin/nimcp/build/test/integration/brain/CMakeFiles/integration_test_kg_module_wiring.dir
+/home/bbrelin/nimcp/build/test/integration/brain/CMakeFiles/integration_test_brain_state_manager.dir
 /home/bbrelin/nimcp/build/test/integration/brain/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/brain/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/brain/CMakeFiles/rebuild_cache.dir
@@ -4811,6 +4817,7 @@
 /home/bbrelin/nimcp/build/test/integration/exception/CMakeFiles/integration_exception_test_exception_health_integration.dir
 /home/bbrelin/nimcp/build/test/integration/exception/CMakeFiles/integration_exception_test_exception_cross_module.dir
 /home/bbrelin/nimcp/build/test/integration/exception/CMakeFiles/integration_exception_test_exception_cross_module_flow.dir
+/home/bbrelin/nimcp/build/test/integration/exception/CMakeFiles/integration_exception_test_exception_flow_comprehensive.dir
 /home/bbrelin/nimcp/build/test/integration/exception/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/integration/exception/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/integration/exception/CMakeFiles/rebuild_cache.dir
@@ -5488,6 +5495,7 @@
 /home/bbrelin/nimcp/build/test/regression/exception/CMakeFiles/test_exception_regression.dir
 /home/bbrelin/nimcp/build/test/regression/exception/CMakeFiles/test_exception_stability.dir
 /home/bbrelin/nimcp/build/test/regression/exception/CMakeFiles/test_exception_performance_only.dir
+/home/bbrelin/nimcp/build/test/regression/exception/CMakeFiles/regression_exception_api_comprehensive.dir
 /home/bbrelin/nimcp/build/test/regression/exception/CMakeFiles/test.dir
 /home/bbrelin/nimcp/build/test/regression/exception/CMakeFiles/edit_cache.dir
 /home/bbrelin/nimcp/build/test/regression/exception/CMakeFiles/rebuild_cache.dir

@@ -253,7 +253,7 @@ introspection_substrate_bridge_t* introspection_substrate_bridge_create(
     bridge->base.bio_ctx = NULL;
 
     /* Create mutex for thread safety */
-    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (bridge_base_init(&bridge->base, 0, "introspection_substrate") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for introspection substrate bridge");
         nimcp_free(bridge);
@@ -282,7 +282,7 @@ void introspection_substrate_bridge_destroy(introspection_substrate_bridge_t* br
 
     /* Destroy mutex */
     if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
         bridge->base.mutex = NULL;
     }
 

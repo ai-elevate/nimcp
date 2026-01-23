@@ -10,6 +10,7 @@
  */
 
 #include "cognitive/mirror_neurons/nimcp_mirror_tom_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
@@ -40,6 +41,8 @@
  * @brief Internal bridge structure
  */
 struct mirror_tom_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     mirror_tom_config_t config;
 
@@ -57,9 +60,6 @@ struct mirror_tom_bridge {
 
     /* Statistics */
     mirror_tom_stats_t stats;
-
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 };
 
 /* ============================================================================
@@ -287,11 +287,9 @@ mirror_tom_bridge_t mirror_tom_create(const mirror_tom_config_t* config) {
     /* Apply configuration */
     bridge->config = config ? *config : mirror_tom_get_default_config();
 
-    /* Create mutex */
-    mutex_attr_t attr = {.type = MUTEX_TYPE_NORMAL};
-    bridge->mutex = nimcp_mutex_create(&attr);
-    if (!bridge->mutex) {
-        nimcp_log(LOG_LEVEL_ERROR, "Mirror-ToM: failed to create mutex");
+    /* Initialize bridge base infrastructure (includes mutex) */
+    if (bridge_base_init(&bridge->base, 0, "mirror_tom") != 0) {
+        nimcp_log(LOG_LEVEL_ERROR, "Mirror-ToM: failed to initialize bridge base");
         nimcp_free(bridge);
         return NULL;
     }
@@ -312,9 +310,8 @@ void mirror_tom_destroy(mirror_tom_bridge_t bridge) {
     nimcp_log(LOG_LEVEL_INFO, "Mirror-ToM bridge destroyed (tracked %u agents, %u observations)",
               bridge->agent_count, bridge->stats.total_observations);
 
-    if (bridge->mutex) {
-        nimcp_mutex_free(bridge->mutex);
-    }
+    /* Cleanup base bridge infrastructure */
+    bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 

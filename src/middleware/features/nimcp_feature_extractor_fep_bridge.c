@@ -63,7 +63,7 @@ feature_extractor_fep_bridge_t* feature_extractor_fep_bridge_create(
     bridge->effects.enabled_feature_count = FEP_PRECISION_MED_FEATURE_COUNT;
     bridge->effects.extract_rate_features = true;
 
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "feature_extractor_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         feature_extractor_fep_bridge_destroy(bridge);
         return NULL;
@@ -83,7 +83,7 @@ void feature_extractor_fep_bridge_destroy(
     }
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

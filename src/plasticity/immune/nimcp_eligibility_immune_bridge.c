@@ -178,7 +178,7 @@ eligibility_immune_bridge_t* eligibility_immune_bridge_create(
     }
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "eligibility_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);    return NULL;
     }

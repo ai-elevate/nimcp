@@ -9,6 +9,7 @@
  * HOW:  Encode novelty, surprise, and urgency as spike patterns
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "cognitive/salience/nimcp_salience_snn_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
@@ -35,6 +36,7 @@ typedef struct {
 } history_entry_t;
 
 struct salience_snn_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     salience_snn_config_t config;
     salience_snn_state_t state;
 

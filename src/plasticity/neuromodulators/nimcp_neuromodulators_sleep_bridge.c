@@ -180,7 +180,7 @@ neuromod_sleep_bridge_t neuromod_sleep_bridge_create(
     bridge->effects.sleep_inhibited = false;
 
     /* Create mutex */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "neuromodulators_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("neuromod_sleep_bridge_create: mutex creation failed");
         nimcp_free(bridge);
@@ -230,7 +230,7 @@ void neuromod_sleep_bridge_destroy(neuromod_sleep_bridge_t bridge) {
     }
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

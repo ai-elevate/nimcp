@@ -363,7 +363,7 @@ astro_sleep_bridge_t astro_sleep_create(
      * WHY:  Protect concurrent access to effects
      * HOW:  Platform-agnostic mutex creation
      */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "astrocytes_sleep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for astrocyte-sleep bridge");
         nimcp_free(bridge);
@@ -429,7 +429,7 @@ void astro_sleep_destroy(astro_sleep_bridge_t bridge)
      * HOW:  Platform-agnostic mutex destruction
      */
     if (bridge->base.mutex) {
-        nimcp_mutex_free(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     /* WHAT: Free bridge structure

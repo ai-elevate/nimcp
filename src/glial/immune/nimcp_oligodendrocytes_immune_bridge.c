@@ -125,7 +125,7 @@ oligo_immune_bridge_t* oligo_immune_create(
     bridge->myelination_rate_modifier = 1.0f;
 
     /* Create mutex using platform API (allocates + initializes internally) */
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "oligodendrocytes_immune") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -150,7 +150,7 @@ void oligo_immune_destroy(oligo_immune_bridge_t* bridge)
 
     /* Destroy mutex (created with nimcp_platform_mutex_create) */
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

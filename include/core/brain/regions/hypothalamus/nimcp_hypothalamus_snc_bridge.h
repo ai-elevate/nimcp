@@ -42,6 +42,7 @@ extern "C" {
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_drives.h"
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_drives_bio.h"
 #include "async/nimcp_bio_async.h"
+#include "utils/bridge/nimcp_bridge_base.h"
 
 /*=============================================================================
  * CONSTANTS
@@ -182,6 +183,8 @@ typedef struct {
  * @brief SNc/VTA bridge context
  */
 typedef struct {
+    bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
+
     /* Configuration */
     hypo_snc_bridge_config_t config;
 
@@ -202,8 +205,6 @@ typedef struct {
     float cumulative_reward;
     float cumulative_alignment_reward;
 
-    /* Thread safety */
-    nimcp_mutex_t* mutex;
 } hypo_snc_bridge_t;
 
 /*=============================================================================

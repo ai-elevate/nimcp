@@ -3,6 +3,7 @@
  * @brief Bidirectional Hypothalamus-Logic Integration Bridge Implementation
  */
 
+#include "utils/bridge/nimcp_bridge_base.h"
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_logic_bridge.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
@@ -19,6 +20,7 @@
  *===========================================================================*/
 
 struct hypo_logic_bridge {
+    bridge_base_t base;              /**< MUST be first: base bridge infrastructure */
     /* Connected systems */
     hypo_drive_system_handle_t* drives;
     symbolic_logic_t* logic;

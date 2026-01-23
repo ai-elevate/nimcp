@@ -63,7 +63,7 @@ hypo_gw_fep_bridge_t* hypo_gw_fep_create(
     }
 
     bridge->fep_system = fep_system;
-    bridge->base.mutex = nimcp_platform_mutex_create();
+    if (bridge_base_init(&bridge->base, 0, "hypo_global_workspace_fep") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -85,7 +85,7 @@ void hypo_gw_fep_destroy(hypo_gw_fep_bridge_t* bridge) {
     }
 
     if (bridge->base.mutex) {
-        nimcp_platform_mutex_destroy(bridge->base.mutex);
+        bridge_base_cleanup(&bridge->base);
     }
 
     nimcp_free(bridge);

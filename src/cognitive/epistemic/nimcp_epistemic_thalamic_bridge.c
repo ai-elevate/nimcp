@@ -38,7 +38,7 @@ epistemic_thalamic_bridge_t* epistemic_thalamic_bridge_create(
     if (!bridge) return NULL;
 
     /* Initialize mutex for thread safety */
-    bridge->base.mutex = nimcp_mutex_create(NULL);
+    if (bridge_base_init(&bridge->base, 0, "epistemic_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         return NULL;
@@ -56,7 +56,7 @@ epistemic_thalamic_bridge_t* epistemic_thalamic_bridge_create(
 void epistemic_thalamic_bridge_destroy(epistemic_thalamic_bridge_t* bridge) {
     if (bridge) {
         if (bridge->base.mutex) {
-            nimcp_mutex_free(bridge->base.mutex);
+            bridge_base_cleanup(&bridge->base);
         }
         nimcp_free(bridge);
     }
