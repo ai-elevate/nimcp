@@ -152,7 +152,14 @@ int broca_quantum_search_lexicon(
     uint32_t lexicon_size,
     quantum_lexical_result_t* result
 ) {
-    if (!bridge || !result) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+        return -1;
+    }
     if (!bridge->config.enabled) return -1;
 
     memset(result, 0, sizeof(*result));
@@ -244,7 +251,14 @@ int broca_quantum_optimize_syntax(
     float max_complexity,
     quantum_syntax_result_t* result
 ) {
-    if (!bridge || !result) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+        return -1;
+    }
     if (!bridge->config.enabled) return -1;
 
     memset(result, 0, sizeof(*result));
@@ -316,7 +330,18 @@ int broca_quantum_optimize_phonemes(
     uint32_t phoneme_count,
     quantum_phoneme_result_t* result
 ) {
-    if (!bridge || !target_phonemes || !result) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (!target_phonemes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "target_phonemes is NULL");
+        return -1;
+    }
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+        return -1;
+    }
     if (!bridge->config.enabled) return -1;
 
     memset(result, 0, sizeof(*result));
@@ -395,7 +420,14 @@ int broca_quantum_get_stats(
     const broca_quantum_bridge_t* bridge,
     broca_quantum_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats is NULL");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
@@ -410,7 +442,14 @@ int broca_quantum_get_config(
     const broca_quantum_bridge_t* bridge,
     broca_quantum_config_t* config
 ) {
-    if (!bridge || !config) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+        return -1;
+    }
     *config = bridge->config;
     return 0;
 }

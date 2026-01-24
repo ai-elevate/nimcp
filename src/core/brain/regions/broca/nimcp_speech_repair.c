@@ -112,6 +112,7 @@ speech_repair_t* speech_repair_create(const speech_repair_config_t* config) {
     processor->repair_history = (repair_instance_t*)calloc(
         processor->config.max_repairs, sizeof(repair_instance_t));
     if (!processor->repair_history) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate repair history");
         free(processor);
         return NULL;
     }
@@ -129,7 +130,10 @@ void speech_repair_destroy(speech_repair_t* processor) {
 }
 
 bool speech_repair_reset(speech_repair_t* processor) {
-    if (!processor) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
 
     processor->repair_count = 0;
     processor->status = REPAIR_STATUS_IDLE;
@@ -148,7 +152,22 @@ uint32_t speech_repair_detect_disfluencies(
     disfluency_t* disfluencies,
     uint32_t max_disfluencies) {
 
-    if (!processor || !utterance || !disfluencies || max_disfluencies == 0) return 0;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return 0;
+    }
+    if (!utterance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utterance is NULL");
+        return 0;
+    }
+    if (!disfluencies) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "disfluencies is NULL");
+        return 0;
+    }
+    if (max_disfluencies == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "max_disfluencies is zero");
+        return 0;
+    }
 
     processor->status = REPAIR_STATUS_DETECTING;
     uint32_t count = 0;
@@ -225,7 +244,22 @@ uint32_t speech_repair_detect_repairs(
     repair_instance_t* repairs,
     uint32_t max_repairs) {
 
-    if (!processor || !utterance || !repairs || max_repairs == 0) return 0;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return 0;
+    }
+    if (!utterance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utterance is NULL");
+        return 0;
+    }
+    if (!repairs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "repairs is NULL");
+        return 0;
+    }
+    if (max_repairs == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "max_repairs is zero");
+        return 0;
+    }
 
     processor->status = REPAIR_STATUS_DETECTING;
     uint32_t count = 0;
@@ -332,7 +366,18 @@ bool speech_repair_analyze(
     const char* utterance,
     repair_analysis_t* analysis) {
 
-    if (!processor || !utterance || !analysis) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!utterance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utterance is NULL");
+        return false;
+    }
+    if (!analysis) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis is NULL");
+        return false;
+    }
 
     memset(analysis, 0, sizeof(repair_analysis_t));
 
@@ -387,7 +432,22 @@ bool speech_repair_clean(
     char* cleaned,
     size_t cleaned_size) {
 
-    if (!processor || !utterance || !cleaned || cleaned_size == 0) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!utterance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utterance is NULL");
+        return false;
+    }
+    if (!cleaned) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cleaned buffer is NULL");
+        return false;
+    }
+    if (cleaned_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cleaned_size is zero");
+        return false;
+    }
 
     /* Simple cleaning: remove filler words */
     char lower[512];
@@ -466,7 +526,26 @@ bool speech_repair_generate_correction(
     char* output,
     size_t output_size) {
 
-    if (!processor || !original || !correction || !output || output_size == 0) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!original) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "original is NULL");
+        return false;
+    }
+    if (!correction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "correction is NULL");
+        return false;
+    }
+    if (!output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "output buffer is NULL");
+        return false;
+    }
+    if (output_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "output_size is zero");
+        return false;
+    }
 
     switch (type) {
         case REPAIR_TYPE_CORRECTION:
@@ -497,7 +576,22 @@ bool speech_repair_insert_hesitation(
     char* output,
     size_t output_size) {
 
-    if (!processor || !input || !output || output_size == 0) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "input is NULL");
+        return false;
+    }
+    if (!output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "output buffer is NULL");
+        return false;
+    }
+    if (output_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "output_size is zero");
+        return false;
+    }
 
     const char* hesitation = "um";
     switch (type) {
@@ -537,7 +631,14 @@ repair_error_t speech_repair_get_last_error(const speech_repair_t* processor) {
 }
 
 bool speech_repair_get_stats(const speech_repair_t* processor, repair_stats_t* stats) {
-    if (!processor || !stats) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats is NULL");
+        return false;
+    }
     *stats = processor->stats;
     return true;
 }
@@ -548,7 +649,14 @@ void speech_repair_reset_stats(speech_repair_t* processor) {
 }
 
 bool speech_repair_get_config(const speech_repair_t* processor, speech_repair_config_t* config) {
-    if (!processor || !config) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+        return false;
+    }
     *config = processor->config;
     return true;
 }
@@ -561,7 +669,14 @@ bool speech_repair_register_bio_handler(
     speech_repair_t* processor,
     bio_router_t* router) {
 
-    if (!processor || !router) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router is NULL");
+        return false;
+    }
 
     processor->router = router;
     processor->bio_registered = true;

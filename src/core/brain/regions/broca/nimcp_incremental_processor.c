@@ -111,7 +111,10 @@ void incremental_destroy(incremental_processor_t* processor) {
 }
 
 bool incremental_reset(incremental_processor_t* processor) {
-    if (!processor) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
 
     processor->input_count = 0;
     processor->input_head = 0;
@@ -136,7 +139,14 @@ uint32_t incremental_add_unit(
     incremental_unit_type_t type,
     uint64_t timestamp_ms) {
 
-    if (!processor || !content) return 0;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return 0;
+    }
+    if (!content) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "content is NULL");
+        return 0;
+    }
 
     if (processor->input_count >= processor->config.input_buffer_size) {
         processor->last_error = INCREMENTAL_ERROR_BUFFER_FULL;
@@ -181,7 +191,10 @@ uint32_t incremental_add_word(
 }
 
 bool incremental_end_input(incremental_processor_t* processor) {
-    if (!processor) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
 
     processor->input_ended = true;
     return true;
@@ -195,7 +208,10 @@ bool incremental_process(
     incremental_processor_t* processor,
     uint64_t current_time_ms) {
 
-    if (!processor) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
 
     processor->status = INCREMENTAL_STATUS_PROCESSING;
     processor->last_process_time_ms = current_time_ms;
@@ -243,7 +259,10 @@ bool incremental_process(
 }
 
 bool incremental_force_commit(incremental_processor_t* processor) {
-    if (!processor) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
 
     for (uint32_t i = 0; i < processor->input_count; i++) {
         uint32_t slot = (processor->input_head + i) % processor->config.input_buffer_size;
@@ -263,7 +282,14 @@ bool incremental_get_output(
     incremental_processor_t* processor,
     incremental_output_t* output) {
 
-    if (!processor || !output) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "output is NULL");
+        return false;
+    }
 
     if (processor->output_count == 0) {
         output->units = NULL;
@@ -306,7 +332,14 @@ bool incremental_revise_unit(
     uint32_t unit_id,
     const char* new_content) {
 
-    if (!processor || !new_content) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!new_content) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_content is NULL");
+        return false;
+    }
     if (!processor->config.enable_revision) return false;
 
     /* Find the unit */
@@ -346,7 +379,18 @@ uint32_t incremental_get_revisions(
     revision_record_t* revisions,
     uint32_t max_revisions) {
 
-    if (!processor || !revisions || max_revisions == 0) return 0;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return 0;
+    }
+    if (!revisions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "revisions is NULL");
+        return 0;
+    }
+    if (max_revisions == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "max_revisions is zero");
+        return 0;
+    }
 
     uint32_t count = (processor->revision_count < max_revisions) ?
                      processor->revision_count : max_revisions;
@@ -397,7 +441,10 @@ uint32_t incremental_get_committed_count(const incremental_processor_t* processo
 }
 
 bool incremental_clear_pending(incremental_processor_t* processor) {
-    if (!processor) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
 
     /* Remove all non-committed units */
     uint32_t new_count = 0;
@@ -427,7 +474,14 @@ incremental_error_t incremental_get_last_error(const incremental_processor_t* pr
 }
 
 bool incremental_get_stats(const incremental_processor_t* processor, incremental_stats_t* stats) {
-    if (!processor || !stats) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats is NULL");
+        return false;
+    }
 
     *stats = processor->stats;
 
@@ -445,7 +499,14 @@ void incremental_reset_stats(incremental_processor_t* processor) {
 }
 
 bool incremental_get_config(const incremental_processor_t* processor, incremental_config_t* config) {
-    if (!processor || !config) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+        return false;
+    }
     *config = processor->config;
     return true;
 }
@@ -458,7 +519,14 @@ bool incremental_register_bio_handler(
     incremental_processor_t* processor,
     bio_router_t* router) {
 
-    if (!processor || !router) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router is NULL");
+        return false;
+    }
 
     processor->router = router;
     processor->bio_registered = true;

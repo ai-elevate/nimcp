@@ -86,3 +86,8 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/thalamic")
     add_subdirectory(thalamic)
 endif()
+
+# Add language subdirectory (Broca, Wernicke, Wernicke-Broca bridge)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/language")
+    add_subdirectory(language)
+endif()

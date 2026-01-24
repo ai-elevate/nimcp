@@ -23,3 +23,8 @@ endif()
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/thalamic/CMakeLists.txt)
     add_subdirectory(thalamic)
 endif()
+
+# Include Language Processing E2E tests (Broca/Wernicke)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/language/CMakeLists.txt)
+    add_subdirectory(language)
+endif()

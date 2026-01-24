@@ -189,7 +189,10 @@ static void init_kg_sync(omni_wernicke_bridge_t* bridge) {
  *=============================================================================*/
 
 int omni_wernicke_default_config(omni_wernicke_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+        return -1;
+    }
 
     *config = (omni_wernicke_config_t){
         /* Prediction horizons */
@@ -322,49 +325,73 @@ void omni_wernicke_bridge_destroy(omni_wernicke_bridge_t* bridge) {
  *=============================================================================*/
 
 int omni_wernicke_connect_jepa(omni_wernicke_bridge_t* bridge, void* jepa) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
     bridge->jepa = jepa;
     return 0;
 }
 
 int omni_wernicke_connect_pred_hier(omni_wernicke_bridge_t* bridge, void* pred_hier) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
     bridge->pred_hier = pred_hier;
     return 0;
 }
 
 int omni_wernicke_connect_hopfield(omni_wernicke_bridge_t* bridge, void* hopfield) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
     bridge->hopfield = hopfield;
     return 0;
 }
 
 int omni_wernicke_connect_wernicke(omni_wernicke_bridge_t* bridge, void* wernicke) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
     bridge->wernicke = wernicke;
     return 0;
 }
 
 int omni_wernicke_connect_broca_bridge(omni_wernicke_bridge_t* bridge, void* broca_bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
     bridge->broca_bridge = broca_bridge;
     return 0;
 }
 
 int omni_wernicke_connect_audiovisual(omni_wernicke_bridge_t* bridge, void* audiovisual) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
     bridge->audiovisual = audiovisual;
     return 0;
 }
 
 int omni_wernicke_connect_semantic(omni_wernicke_bridge_t* bridge, void* semantic_memory) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
     bridge->semantic_memory = semantic_memory;
     return 0;
 }
 
 int omni_wernicke_connect_kg(omni_wernicke_bridge_t* bridge, void* brain_kg) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
     bridge->brain_kg = brain_kg;
     return 0;
 }
@@ -374,7 +401,10 @@ int omni_wernicke_connect_kg(omni_wernicke_bridge_t* bridge, void* brain_kg) {
  *=============================================================================*/
 
 int omni_wernicke_update(omni_wernicke_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
 
     /* Update statistics */
     bridge->stats.total_updates++;
@@ -440,7 +470,10 @@ int omni_wernicke_update(omni_wernicke_bridge_t* bridge) {
 }
 
 int omni_wernicke_apply_to_wernicke(omni_wernicke_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
 
     /* Apply top-down predictions to Wernicke adapter */
     /* This would call Wernicke API to set expectations */
@@ -449,7 +482,10 @@ int omni_wernicke_apply_to_wernicke(omni_wernicke_bridge_t* bridge) {
 }
 
 int omni_wernicke_apply_to_omni(omni_wernicke_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
 
     /* Apply bottom-up prediction errors to omni system */
     /* This would call JEPA/pred_hier APIs */
@@ -463,7 +499,14 @@ int omni_wernicke_apply_to_omni(omni_wernicke_bridge_t* bridge) {
 
 int omni_wernicke_predict_phoneme(omni_wernicke_bridge_t* bridge,
                                    omni_phoneme_prediction_t* prediction) {
-    if (!bridge || !prediction) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (!prediction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prediction is NULL");
+        return -1;
+    }
 
     /* For now, use uniform distribution as placeholder */
     /* In full implementation, would use:
@@ -521,7 +564,14 @@ int omni_wernicke_predict_phoneme(omni_wernicke_bridge_t* bridge,
 
 int omni_wernicke_predict_word(omni_wernicke_bridge_t* bridge,
                                 omni_word_prediction_t* prediction) {
-    if (!bridge || !prediction) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (!prediction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prediction is NULL");
+        return -1;
+    }
 
     /* Placeholder: would use semantic memory and lexicon */
     /* For now, return empty prediction */
@@ -538,7 +588,14 @@ int omni_wernicke_predict_word(omni_wernicke_bridge_t* bridge,
 
 int omni_wernicke_predict_semantic(omni_wernicke_bridge_t* bridge,
                                     omni_semantic_prediction_t* prediction) {
-    if (!bridge || !prediction) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (!prediction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prediction is NULL");
+        return -1;
+    }
 
     /* Placeholder: would use semantic memory spreading activation */
 
@@ -554,7 +611,14 @@ int omni_wernicke_predict_semantic(omni_wernicke_bridge_t* bridge,
 
 int omni_wernicke_predict_crossmodal(omni_wernicke_bridge_t* bridge,
                                       omni_crossmodal_prediction_t* prediction) {
-    if (!bridge || !prediction) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (!prediction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prediction is NULL");
+        return -1;
+    }
 
     /* Placeholder: would integrate audio and visual predictions */
 
@@ -574,7 +638,10 @@ float omni_wernicke_observe_phoneme(omni_wernicke_bridge_t* bridge,
                                      uint32_t phoneme_id,
                                      const float* features,
                                      uint32_t feature_dim) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return 0.0f;
+    }
 
     /* Update phoneme history */
     if (bridge->phoneme_history_len < PHONEME_HISTORY_SIZE) {
@@ -617,7 +684,14 @@ float omni_wernicke_observe_phoneme(omni_wernicke_bridge_t* bridge,
 
 float omni_wernicke_observe_word(omni_wernicke_bridge_t* bridge,
                                   const char* word) {
-    if (!bridge || !word) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return 0.0f;
+    }
+    if (!word) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "word is NULL");
+        return 0.0f;
+    }
 
     /* Compute word prediction error */
     float pe = 0.0f;
@@ -665,7 +739,10 @@ float omni_wernicke_observe_word(omni_wernicke_bridge_t* bridge,
 float omni_wernicke_observe_semantic(omni_wernicke_bridge_t* bridge,
                                       uint32_t concept_id,
                                       float activation) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return 0.0f;
+    }
 
     /* Compute N400-like prediction error */
     float n400 = 0.0f;
@@ -716,7 +793,22 @@ int omni_wernicke_infer_meaning(omni_wernicke_bridge_t* bridge,
                                  float* activations,
                                  uint32_t max_concepts,
                                  uint32_t* num_concepts) {
-    if (!bridge || !concepts || !activations || !num_concepts) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (!concepts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "concepts is NULL");
+        return -1;
+    }
+    if (!activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "activations is NULL");
+        return -1;
+    }
+    if (!num_concepts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "num_concepts is NULL");
+        return -1;
+    }
 
     /* Backward inference: given word context, infer concepts */
     /* Would use semantic memory for spreading activation */
@@ -740,7 +832,10 @@ float omni_wernicke_process_audiovisual(omni_wernicke_bridge_t* bridge,
                                          uint32_t audio_dim,
                                          const float* visual_features,
                                          uint32_t visual_dim) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return 0.0f;
+    }
 
     /* Compute audiovisual coherence */
     /* Simplified: compare feature norms as proxy for coherence */
@@ -790,7 +885,18 @@ bool omni_wernicke_has_mcgurk_conflict(const omni_wernicke_bridge_t* bridge) {
 int omni_wernicke_get_fused_percept(const omni_wernicke_bridge_t* bridge,
                                      uint32_t* fused_phoneme,
                                      float* confidence) {
-    if (!bridge || !fused_phoneme || !confidence) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (!fused_phoneme) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fused_phoneme is NULL");
+        return -1;
+    }
+    if (!confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "confidence is NULL");
+        return -1;
+    }
 
     /* Return predicted phoneme with fusion-weighted confidence */
     *fused_phoneme = bridge->omni_effects.phoneme_pred.predicted_phoneme;
@@ -812,7 +918,10 @@ int omni_wernicke_get_fused_percept(const omni_wernicke_bridge_t* bridge,
 int omni_wernicke_set_precision(omni_wernicke_bridge_t* bridge,
                                  omni_wernicke_level_t level,
                                  float precision) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
 
     precision = clamp01(precision);
 
@@ -859,7 +968,10 @@ float omni_wernicke_get_precision(const omni_wernicke_bridge_t* bridge,
 }
 
 int omni_wernicke_update_precision(omni_wernicke_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
 
     /* Adapt precision based on prediction success */
     /* Higher PE → lower precision (less confident predictions) */
@@ -891,13 +1003,23 @@ int omni_wernicke_update_precision(omni_wernicke_bridge_t* bridge) {
 
 int omni_wernicke_get_world_update(const omni_wernicke_bridge_t* bridge,
                                     omni_wernicke_world_update_t* update) {
-    if (!bridge || !update) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (!update) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "update is NULL");
+        return -1;
+    }
     *update = bridge->world_update;
     return 0;
 }
 
 int omni_wernicke_apply_world_update(omni_wernicke_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
 
     /* Would apply updates to world model via JEPA/pred_hier */
     if (bridge->world_update.significant_update) {
@@ -920,7 +1042,14 @@ void omni_wernicke_clear_world_update(omni_wernicke_bridge_t* bridge) {
  *=============================================================================*/
 
 int omni_wernicke_kg_register(omni_wernicke_bridge_t* bridge) {
-    if (!bridge || !bridge->brain_kg) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (!bridge->brain_kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain_kg is NULL");
+        return -1;
+    }
 
     /* Would call brain_kg_add_node() to register Wernicke */
     bridge->kg_sync.kg_registered = true;
@@ -933,7 +1062,10 @@ int omni_wernicke_kg_register(omni_wernicke_bridge_t* bridge) {
 }
 
 int omni_wernicke_kg_sync(omni_wernicke_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
 
     /* Synchronize current capabilities with KG */
     /* Update based on recent performance */
@@ -957,7 +1089,14 @@ int omni_wernicke_kg_sync(omni_wernicke_bridge_t* bridge) {
 
 int omni_wernicke_get_kg_sync(const omni_wernicke_bridge_t* bridge,
                                omni_wernicke_kg_sync_t* sync) {
-    if (!bridge || !sync) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (!sync) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sync is NULL");
+        return -1;
+    }
     *sync = bridge->kg_sync;
     return 0;
 }
@@ -968,27 +1107,51 @@ int omni_wernicke_get_kg_sync(const omni_wernicke_bridge_t* bridge,
 
 int omni_wernicke_get_omni_effects(const omni_wernicke_bridge_t* bridge,
                                     omni_to_wernicke_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "effects is NULL");
+        return -1;
+    }
     *effects = bridge->omni_effects;
     return 0;
 }
 
 int omni_wernicke_get_wernicke_effects(const omni_wernicke_bridge_t* bridge,
                                         wernicke_to_omni_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "effects is NULL");
+        return -1;
+    }
     *effects = bridge->wernicke_effects;
     return 0;
 }
 
 int omni_wernicke_get_stats(const omni_wernicke_bridge_t* bridge,
                              omni_wernicke_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats is NULL");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 int omni_wernicke_reset_stats(omni_wernicke_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(omni_wernicke_stats_t));
     return 0;
 }
@@ -1000,7 +1163,10 @@ omni_wernicke_mode_t omni_wernicke_get_mode(const omni_wernicke_bridge_t* bridge
 
 int omni_wernicke_set_mode(omni_wernicke_bridge_t* bridge,
                             omni_wernicke_mode_t mode) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
     bridge->omni_effects.mode = mode;
     return 0;
 }
@@ -1139,7 +1305,10 @@ static nimcp_error_t handle_wernicke_pred_hier_backward(
  *=============================================================================*/
 
 int omni_wernicke_connect_bio_async(omni_wernicke_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
     if (bridge->bio_async_connected) return NIMCP_SUCCESS;
 
     /* Register with bio-async router */
@@ -1174,7 +1343,10 @@ int omni_wernicke_connect_bio_async(omni_wernicke_bridge_t* bridge) {
 }
 
 int omni_wernicke_disconnect_bio_async(omni_wernicke_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
     if (!bridge->bio_async_connected) return NIMCP_SUCCESS;
 
     if (bridge->bio_context) {

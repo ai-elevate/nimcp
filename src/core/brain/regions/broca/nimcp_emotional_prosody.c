@@ -101,7 +101,10 @@ void emotional_prosody_destroy(emotional_prosody_t* processor) {
 }
 
 bool emotional_prosody_reset(emotional_prosody_t* processor) {
-    if (!processor) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
 
     processor->status = PROSODY_STATUS_IDLE;
     processor->last_error = PROSODY_ERROR_NONE;
@@ -121,7 +124,18 @@ bool emotional_prosody_get_params(
     const emotional_state_t* emotion,
     prosodic_params_t* params) {
 
-    if (!processor || !emotion || !params) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!emotion) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion is NULL");
+        return false;
+    }
+    if (!params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "params is NULL");
+        return false;
+    }
 
     processor->status = PROSODY_STATUS_PROCESSING;
 
@@ -171,7 +185,14 @@ bool emotional_prosody_set_emotion(
     emotional_prosody_t* processor,
     const emotional_state_t* emotion) {
 
-    if (!processor || !emotion) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!emotion) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion is NULL");
+        return false;
+    }
 
     processor->current_emotion = *emotion;
     return emotional_prosody_get_params(processor, emotion, &processor->current_params);
@@ -181,7 +202,14 @@ bool emotional_prosody_get_emotion(
     const emotional_prosody_t* processor,
     emotional_state_t* emotion) {
 
-    if (!processor || !emotion) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!emotion) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion is NULL");
+        return false;
+    }
     *emotion = processor->current_emotion;
     return true;
 }
@@ -193,7 +221,22 @@ bool emotional_prosody_blend_emotions(
     float blend_factor,
     emotional_state_t* result) {
 
-    if (!processor || !emotion1 || !emotion2 || !result) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!emotion1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion1 is NULL");
+        return false;
+    }
+    if (!emotion2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion2 is NULL");
+        return false;
+    }
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+        return false;
+    }
 
     /* Clamp blend factor */
     if (blend_factor < 0.0f) blend_factor = 0.0f;
@@ -229,7 +272,22 @@ bool emotional_prosody_generate_contour(
     float duration_ms,
     prosodic_contour_t* contour) {
 
-    if (!processor || !utterance || !contour || duration_ms <= 0) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!utterance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utterance is NULL");
+        return false;
+    }
+    if (!contour) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contour is NULL");
+        return false;
+    }
+    if (duration_ms <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "duration_ms <= 0");
+        return false;
+    }
 
     processor->status = PROSODY_STATUS_PROCESSING;
 
@@ -283,7 +341,26 @@ bool emotional_prosody_apply_contour(
     float* pitch_targets,
     float* duration_targets) {
 
-    if (!processor || !contour || !phonemes || !pitch_targets || !duration_targets) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!contour) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "contour is NULL");
+        return false;
+    }
+    if (!phonemes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phonemes is NULL");
+        return false;
+    }
+    if (!pitch_targets) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pitch_targets is NULL");
+        return false;
+    }
+    if (!duration_targets) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "duration_targets is NULL");
+        return false;
+    }
     if (phoneme_count == 0 || contour->point_count == 0) return false;
 
     /* Distribute contour points across phonemes */
@@ -347,7 +424,14 @@ prosody_error_t emotional_prosody_get_last_error(const emotional_prosody_t* proc
 }
 
 bool emotional_prosody_get_stats(const emotional_prosody_t* processor, prosody_stats_t* stats) {
-    if (!processor || !stats) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats is NULL");
+        return false;
+    }
     *stats = processor->stats;
     return true;
 }
@@ -358,7 +442,14 @@ void emotional_prosody_reset_stats(emotional_prosody_t* processor) {
 }
 
 bool emotional_prosody_get_config(const emotional_prosody_t* processor, emotional_prosody_config_t* config) {
-    if (!processor || !config) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+        return false;
+    }
     *config = processor->config;
     return true;
 }
@@ -371,7 +462,14 @@ bool emotional_prosody_register_bio_handler(
     emotional_prosody_t* processor,
     bio_router_t* router) {
 
-    if (!processor || !router) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router is NULL");
+        return false;
+    }
 
     processor->router = router;
     processor->bio_registered = true;

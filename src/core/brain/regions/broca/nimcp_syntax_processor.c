@@ -131,6 +131,7 @@ syntax_processor_t* syntax_create(const syntax_config_t* config) {
     // Allocate processor
     syntax_processor_t* processor = (syntax_processor_t*)nimcp_calloc(1, sizeof(syntax_processor_t));
     if (processor == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate syntax processor");
         return NULL;
     }
 
@@ -140,6 +141,7 @@ syntax_processor_t* syntax_create(const syntax_config_t* config) {
     // Allocate unit buffer
     processor->units = (syntactic_unit_t*)nimcp_calloc(config->max_units, sizeof(syntactic_unit_t));
     if (processor->units == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate unit buffer");
         nimcp_free(processor);
         return NULL;
     }
@@ -148,6 +150,7 @@ syntax_processor_t* syntax_create(const syntax_config_t* config) {
     // Allocate rule table
     processor->rules = (phrase_structure_rule_t*)nimcp_calloc(config->max_rules, sizeof(phrase_structure_rule_t));
     if (processor->rules == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate rule table");
         nimcp_free(processor->units);
         nimcp_free(processor);
         return NULL;
@@ -158,6 +161,7 @@ syntax_processor_t* syntax_create(const syntax_config_t* config) {
     processor->chart_size = config->max_units;
     processor->chart = (chart_cell_t**)nimcp_calloc(config->max_units, sizeof(chart_cell_t*));
     if (processor->chart == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate chart");
         nimcp_free(processor->rules);
         nimcp_free(processor->units);
         nimcp_free(processor);
@@ -252,11 +256,17 @@ void syntax_destroy(syntax_processor_t* processor) {
 //=============================================================================
 
 bool syntax_add_unit(syntax_processor_t* processor, const syntactic_unit_t* unit) {
-    if (processor == NULL || unit == NULL) {
+    if (processor == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (unit == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unit is NULL");
         return false;
     }
 
     if (processor->unit_count >= processor->config.max_units) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Unit buffer full");
         return false;
     }
 
@@ -273,11 +283,17 @@ bool syntax_add_unit(syntax_processor_t* processor, const syntactic_unit_t* unit
 bool syntax_get_unit(const syntax_processor_t* processor,
                      uint32_t index,
                      syntactic_unit_t* unit) {
-    if (processor == NULL || unit == NULL) {
+    if (processor == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (unit == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unit output is NULL");
         return false;
     }
 
     if (index >= processor->unit_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Index out of bounds");
         return false;
     }
 
@@ -286,7 +302,12 @@ bool syntax_get_unit(const syntax_processor_t* processor,
 }
 
 bool syntax_build_tree(syntax_processor_t* processor) {
-    if (processor == NULL || processor->unit_count == 0) {
+    if (processor == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (processor->unit_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "No units to build tree");
         return false;
     }
 
@@ -399,7 +420,12 @@ bool syntax_build_tree(syntax_processor_t* processor) {
 }
 
 bool syntax_validate_grammar(syntax_processor_t* processor, bool* is_valid) {
-    if (processor == NULL || is_valid == NULL) {
+    if (processor == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (is_valid == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_valid output is NULL");
         return false;
     }
 
@@ -524,7 +550,16 @@ bool syntax_apply_inflection(
     char* inflected_form,
     uint32_t buffer_size
 ) {
-    if (processor == NULL || unit == NULL || inflected_form == NULL) {
+    if (processor == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (unit == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unit is NULL");
+        return false;
+    }
+    if (inflected_form == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "inflected_form buffer is NULL");
         return false;
     }
 
@@ -567,7 +602,20 @@ bool syntax_decompose_morphemes(
     uint32_t max_morphemes,
     uint32_t* num_morphemes
 ) {
-    if (processor == NULL || word == NULL || morphemes == NULL || num_morphemes == NULL) {
+    if (processor == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (word == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "word is NULL");
+        return false;
+    }
+    if (morphemes == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "morphemes buffer is NULL");
+        return false;
+    }
+    if (num_morphemes == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "num_morphemes output is NULL");
         return false;
     }
 
@@ -625,11 +673,17 @@ bool syntax_decompose_morphemes(
 //=============================================================================
 
 bool syntax_add_rule(syntax_processor_t* processor, const phrase_structure_rule_t* rule) {
-    if (processor == NULL || rule == NULL) {
+    if (processor == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (rule == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rule is NULL");
         return false;
     }
 
     if (processor->rule_count >= processor->config.max_rules) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Rule table full");
         return false;
     }
 
@@ -845,7 +899,12 @@ bool syntax_load_default_rules(syntax_processor_t* processor) {
 //=============================================================================
 
 bool syntax_get_stats(const syntax_processor_t* processor, syntax_stats_t* stats) {
-    if (processor == NULL || stats == NULL) {
+    if (processor == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (stats == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats output is NULL");
         return false;
     }
 

@@ -81,7 +81,10 @@ void broca_thalamic_bridge_destroy(broca_thalamic_bridge_t* bridge) {
 }
 
 int broca_thalamic_bridge_reset(broca_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
 
     bridge->attention_weight = 1.0f;
     bridge->current_sequence_id = 0;
@@ -99,7 +102,14 @@ int broca_thalamic_route_signal(
     broca_thalamic_bridge_t* bridge,
     const broca_thalamic_signal_t* signal
 ) {
-    if (!bridge || !signal) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (!signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "signal is NULL");
+        return -1;
+    }
 
     /* Apply attention gating */
     if (bridge->config.enable_attention_gating) {
@@ -180,7 +190,10 @@ int broca_thalamic_route_motor_command(
     uint32_t command_size,
     float urgency
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
 
     broca_thalamic_signal_t signal = {
         .signal_type = BROCA_SIGNAL_MOTOR_COMMAND,
@@ -200,7 +213,14 @@ int broca_thalamic_route_phonemes(
     const uint8_t* phonemes,
     uint32_t count
 ) {
-    if (!bridge || !phonemes) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (!phonemes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phonemes is NULL");
+        return -1;
+    }
 
     broca_thalamic_signal_t signal = {
         .signal_type = BROCA_SIGNAL_PHONEME_SEQUENCE,
@@ -221,7 +241,10 @@ int broca_thalamic_signal_utterance_start(
     uint32_t sequence_id,
     uint32_t word_count
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
 
     broca_thalamic_signal_t signal = {
         .signal_type = BROCA_SIGNAL_UTTERANCE_START,
@@ -239,7 +262,10 @@ int broca_thalamic_signal_utterance_end(
     broca_thalamic_bridge_t* bridge,
     uint32_t sequence_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
 
     broca_thalamic_signal_t signal = {
         .signal_type = BROCA_SIGNAL_UTTERANCE_END,
@@ -257,7 +283,10 @@ int broca_thalamic_signal_utterance_end(
 //=============================================================================
 
 int broca_thalamic_set_attention(broca_thalamic_bridge_t* bridge, float attention) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
 
     bridge->attention_weight = attention < 0.0f ? 0.0f :
                                (attention > 1.0f ? 1.0f : attention);
@@ -265,7 +294,14 @@ int broca_thalamic_set_attention(broca_thalamic_bridge_t* bridge, float attentio
 }
 
 int broca_thalamic_get_attention(const broca_thalamic_bridge_t* bridge, float* attention) {
-    if (!bridge || !attention) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (!attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention is NULL");
+        return -1;
+    }
 
     *attention = bridge->attention_weight;
     return 0;
@@ -279,7 +315,14 @@ int broca_thalamic_bridge_get_stats(
     const broca_thalamic_bridge_t* bridge,
     broca_thalamic_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats is NULL");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }

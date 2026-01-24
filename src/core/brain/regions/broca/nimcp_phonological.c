@@ -298,7 +298,10 @@ bool phonological_reset(phonological_processor_t* processor) {
      * WHY:  Prepare for new utterance
      * HOW:  Clear buffers, reset counters */
 
-    if (!processor) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
 
     /* Clear buffers */
     memset(processor->phoneme_buffer, 0, processor->phoneme_capacity * sizeof(phoneme_t));
@@ -325,7 +328,10 @@ bool phonological_add_phoneme(phonological_processor_t* processor, uint8_t phone
      * WHY:  Build up phoneme sequence with correct categorization
      * HOW:  Detect category from symbol, add to buffer with defaults */
 
-    if (!processor) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
 
     /* Check capacity */
     if (processor->phoneme_count >= processor->phoneme_capacity) {
@@ -392,7 +398,10 @@ bool phonological_add_phoneme_detailed(phonological_processor_t* processor,
      * WHY:  Fine-grained control over phoneme properties
      * HOW:  Populate full phoneme_t structure */
 
-    if (!processor) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
 
     /* Check capacity */
     if (processor->phoneme_count >= processor->phoneme_capacity) {
@@ -434,7 +443,14 @@ bool phonological_get_phoneme(const phonological_processor_t* processor,
      * WHY:  Enable iteration over phoneme sequence
      * HOW:  Bounds check and copy */
 
-    if (!processor || !output) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "output is NULL");
+        return false;
+    }
     if (index >= processor->phoneme_count) return false;
 
     *output = processor->phoneme_buffer[index];
@@ -442,7 +458,10 @@ bool phonological_get_phoneme(const phonological_processor_t* processor,
 }
 
 bool phonological_clear_phonemes(phonological_processor_t* processor) {
-    if (!processor) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
 
     memset(processor->phoneme_buffer, 0, processor->phoneme_capacity * sizeof(phoneme_t));
     processor->phoneme_count = 0;
@@ -460,7 +479,10 @@ bool phonological_generate_syllables(phonological_processor_t* processor) {
      * WHY:  Syllables are basic unit of speech production
      * HOW:  Apply syllabification rules (onset maximization) */
 
-    if (!processor) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
     if (processor->phoneme_count == 0) return false;
 
     processor->status = PHONOLOGICAL_STATUS_SYLLABIFYING;
@@ -586,7 +608,10 @@ bool phonological_apply_stress(phonological_processor_t* processor,
      * WHY:  Stress is critical for intelligibility
      * HOW:  Update syllable stress field, adjust duration */
 
-    if (!processor) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
     if (syllable_idx >= processor->syllable_count) return false;
 
     /* Clamp stress level */
@@ -629,7 +654,14 @@ uint32_t phonological_get_syllable_count(const phonological_processor_t* process
 bool phonological_get_syllable(const phonological_processor_t* processor,
                                uint32_t syllable_idx,
                                syllable_t* output) {
-    if (!processor || !output) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "output is NULL");
+        return false;
+    }
     if (syllable_idx >= processor->syllable_count) return false;
 
     *output = processor->syllable_buffer[syllable_idx];
@@ -646,7 +678,10 @@ bool phonological_generate_prosody(phonological_processor_t* processor,
      * WHY:  Prosody conveys meaning and emotion
      * HOW:  Apply intonation pattern to F0 values */
 
-    if (!processor) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
     if (!processor->config.enable_prosody) return false;
     if (processor->phoneme_count == 0) return false;
 
@@ -657,7 +692,10 @@ bool phonological_generate_prosody(phonological_processor_t* processor,
 }
 
 bool phonological_set_baseline_f0(phonological_processor_t* processor, float f0_hz) {
-    if (!processor) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
 
     /* Clamp to valid range */
     f0_hz = clamp(f0_hz, PROSODY_F0_MIN, PROSODY_F0_MAX);
@@ -668,7 +706,14 @@ bool phonological_set_baseline_f0(phonological_processor_t* processor, float f0_
 
 bool phonological_get_prosody(const phonological_processor_t* processor,
                               prosody_curve_t* output) {
-    if (!processor || !output) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "output is NULL");
+        return false;
+    }
     if (!processor->prosody_generated) return false;
 
     *output = processor->prosody;
@@ -684,7 +729,10 @@ bool phonological_plan_coarticulation(phonological_processor_t* processor) {
      * WHY:  Natural speech has overlapping articulation
      * HOW:  Modify durations and features based on context */
 
-    if (!processor) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
     if (!processor->config.enable_coarticulation) return true;  /* Disabled is a valid no-op */
     if (processor->phoneme_count < 2) return true;  /* Nothing to coarticulate */
 
@@ -738,7 +786,14 @@ bool phonological_is_ready(const phonological_processor_t* processor) {
 
 bool phonological_get_config(const phonological_processor_t* processor,
                              phonological_config_t* output) {
-    if (!processor || !output) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "output is NULL");
+        return false;
+    }
 
     *output = processor->config;
     return true;

@@ -329,7 +329,10 @@ void lexical_destroy(lexical_access_t* lex)
 
 bool lexical_reset(lexical_access_t* lex)
 {
-    if (!lex) return false;
+    if (!lex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lex is NULL");
+        return false;
+    }
 
     /* Reset cohort */
     lex->cohort.num_members = 0;
@@ -350,7 +353,14 @@ bool lexical_reset(lexical_access_t* lex)
 
 bool lexical_add_entry(lexical_access_t* lex, const lexical_entry_t* entry)
 {
-    if (!lex || !entry) return false;
+    if (!lex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lex is NULL");
+        return false;
+    }
+    if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+        return false;
+    }
 
     if (lex->num_words >= lex->config.lexicon_size) {
         NIMCP_LOG_WARN("lexical", "Lexicon full (%u words)", lex->num_words);
@@ -421,7 +431,22 @@ uint32_t lexical_add_word(
     float frequency,
     uint32_t concept_id)
 {
-    if (!lex || !word || !phonemes || num_phonemes == 0) return 0;
+    if (!lex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lex is NULL");
+        return 0;
+    }
+    if (!word) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "word is NULL");
+        return 0;
+    }
+    if (!phonemes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phonemes is NULL");
+        return 0;
+    }
+    if (num_phonemes == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "num_phonemes is 0");
+        return 0;
+    }
 
     lexical_entry_t entry;
     memset(&entry, 0, sizeof(entry));
@@ -454,7 +479,18 @@ bool lexical_get_entry(
     uint32_t word_id,
     lexical_entry_t* entry)
 {
-    if (!lex || !entry || word_id == 0) return false;
+    if (!lex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lex is NULL");
+        return false;
+    }
+    if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+        return false;
+    }
+    if (word_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "word_id is 0");
+        return false;
+    }
 
     if (word_id < lex->entries_capacity && lex->entries[word_id]) {
         *entry = *lex->entries[word_id];
@@ -469,7 +505,18 @@ bool lexical_lookup_word(
     const char* word,
     lexical_entry_t* entry)
 {
-    if (!lex || !word || !entry) return false;
+    if (!lex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lex is NULL");
+        return false;
+    }
+    if (!word) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "word is NULL");
+        return false;
+    }
+    if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+        return false;
+    }
 
     uint32_t hash = hash_string(word, lex->hash_buckets);
     lexicon_node_t* node = lex->hash_table[hash];
@@ -518,7 +565,10 @@ bool lexical_set_embedding(
 
 bool lexical_begin_recognition(lexical_access_t* lex)
 {
-    if (!lex) return false;
+    if (!lex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lex is NULL");
+        return false;
+    }
 
     /* Reset recognition state */
     lex->cohort.num_members = 0;
@@ -537,7 +587,10 @@ bool lexical_process_phoneme(
     phoneme_t phoneme,
     float confidence)
 {
-    if (!lex) return false;
+    if (!lex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lex is NULL");
+        return false;
+    }
 
     /* Store phoneme */
     if (lex->current_phoneme_count < lex->current_phoneme_capacity) {
@@ -692,7 +745,14 @@ bool lexical_get_result(
     const lexical_access_t* lex,
     lexical_result_t* result)
 {
-    if (!lex || !result) return false;
+    if (!lex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lex is NULL");
+        return false;
+    }
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+        return false;
+    }
 
     memset(result, 0, sizeof(lexical_result_t));
 
@@ -760,7 +820,22 @@ bool lexical_recognize_word(
     uint32_t num_phonemes,
     lexical_result_t* result)
 {
-    if (!lex || !phonemes || num_phonemes == 0 || !result) return false;
+    if (!lex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lex is NULL");
+        return false;
+    }
+    if (!phonemes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phonemes is NULL");
+        return false;
+    }
+    if (num_phonemes == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "num_phonemes is 0");
+        return false;
+    }
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+        return false;
+    }
 
     lex->stats.lookups++;
 
@@ -827,7 +902,14 @@ bool lexical_get_cohort(
     const lexical_access_t* lex,
     const cohort_state_t** state)
 {
-    if (!lex || !state) return false;
+    if (!lex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lex is NULL");
+        return false;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+        return false;
+    }
     *state = &lex->cohort;
     return true;
 }
@@ -837,7 +919,18 @@ bool lexical_get_cohort_member(
     uint32_t index,
     cohort_member_t* member)
 {
-    if (!lex || !member || index >= lex->cohort.num_members) return false;
+    if (!lex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lex is NULL");
+        return false;
+    }
+    if (!member) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "member is NULL");
+        return false;
+    }
+    if (index >= lex->cohort.num_members) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "index out of range");
+        return false;
+    }
     *member = lex->cohort.members[index];
     return true;
 }
@@ -847,7 +940,14 @@ bool lexical_boost_word(
     uint32_t word_id,
     float boost)
 {
-    if (!lex || word_id == 0) return false;
+    if (!lex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lex is NULL");
+        return false;
+    }
+    if (word_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "word_id is 0");
+        return false;
+    }
 
     for (uint32_t i = 0; i < lex->cohort.num_members; i++) {
         if (lex->cohort.members[i].word_id == word_id) {
@@ -872,7 +972,15 @@ bool lexical_prime_concept(
     uint32_t concept_id,
     float strength)
 {
-    if (!lex || !lex->config.enable_priming || concept_id == 0) return false;
+    if (!lex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lex is NULL");
+        return false;
+    }
+    if (!lex->config.enable_priming) return false;
+    if (concept_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "concept_id is 0");
+        return false;
+    }
 
     /* Check if already primed */
     for (uint32_t i = 0; i < lex->priming.num_primed; i++) {
@@ -901,7 +1009,14 @@ bool lexical_prime_word(
     uint32_t word_id,
     float strength)
 {
-    if (!lex || word_id == 0) return false;
+    if (!lex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lex is NULL");
+        return false;
+    }
+    if (word_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "word_id is 0");
+        return false;
+    }
 
     lexical_entry_t entry;
     if (!lexical_get_entry(lex, word_id, &entry)) return false;
@@ -911,7 +1026,11 @@ bool lexical_prime_word(
 
 bool lexical_decay_priming(lexical_access_t* lex)
 {
-    if (!lex || !lex->config.enable_priming) return false;
+    if (!lex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lex is NULL");
+        return false;
+    }
+    if (!lex->config.enable_priming) return false;
 
     uint32_t new_count = 0;
     for (uint32_t i = 0; i < lex->priming.num_primed; i++) {
@@ -940,7 +1059,14 @@ bool lexical_get_priming(
     const lexical_access_t* lex,
     const priming_context_t** context)
 {
-    if (!lex || !context) return false;
+    if (!lex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lex is NULL");
+        return false;
+    }
+    if (!context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "context is NULL");
+        return false;
+    }
     *context = &lex->priming;
     return true;
 }
@@ -956,7 +1082,18 @@ bool lexical_get_neighbors(
     uint32_t max_neighbors,
     uint32_t* num_neighbors)
 {
-    if (!lex || !neighbors || !num_neighbors) return false;
+    if (!lex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lex is NULL");
+        return false;
+    }
+    if (!neighbors) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neighbors is NULL");
+        return false;
+    }
+    if (!num_neighbors) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "num_neighbors is NULL");
+        return false;
+    }
 
     *num_neighbors = 0;
 
@@ -1057,7 +1194,14 @@ bool lexical_get_stats(
     const lexical_access_t* lex,
     lexical_stats_t* stats)
 {
-    if (!lex || !stats) return false;
+    if (!lex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lex is NULL");
+        return false;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats is NULL");
+        return false;
+    }
     *stats = lex->stats;
     return true;
 }
@@ -1070,7 +1214,14 @@ int32_t lexical_load_lexicon(
     lexical_access_t* lex,
     const char* filepath)
 {
-    if (!lex || !filepath) return -1;
+    if (!lex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lex is NULL");
+        return -1;
+    }
+    if (!filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "filepath is NULL");
+        return -1;
+    }
 
     /* Phase 3 will implement file loading */
     NIMCP_LOG_WARN("lexical", "lexical_load_lexicon not yet implemented");
@@ -1081,7 +1232,14 @@ bool lexical_save_lexicon(
     const lexical_access_t* lex,
     const char* filepath)
 {
-    if (!lex || !filepath) return false;
+    if (!lex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lex is NULL");
+        return false;
+    }
+    if (!filepath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "filepath is NULL");
+        return false;
+    }
 
     /* Phase 3 will implement file saving */
     NIMCP_LOG_WARN("lexical", "lexical_save_lexicon not yet implemented");
@@ -1090,7 +1248,10 @@ bool lexical_save_lexicon(
 
 uint32_t lexical_build_common_english(lexical_access_t* lex)
 {
-    if (!lex) return 0;
+    if (!lex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lex is NULL");
+        return 0;
+    }
 
     /* Common English words with phoneme transcriptions */
     /* Format: word, phonemes, count, frequency (Zipf 1-7), concept_id */

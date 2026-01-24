@@ -285,8 +285,18 @@ bool pragmatics_classify_speech_act(
     uint32_t speaker_id,
     speech_act_result_t* result) {
 
-    if (!processor || !utterance || !result) {
-        if (processor) processor->last_error = PRAGMATICS_ERROR_INVALID_INPUT;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!utterance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utterance is NULL");
+        processor->last_error = PRAGMATICS_ERROR_INVALID_INPUT;
+        return false;
+    }
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+        processor->last_error = PRAGMATICS_ERROR_INVALID_INPUT;
         return false;
     }
 
@@ -379,7 +389,18 @@ float pragmatics_detect_indirect_act(
     speech_act_type_t surface_act,
     speech_act_type_t* indirect_act) {
 
-    if (!processor || !utterance || !indirect_act) return 0.0f;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return 0.0f;
+    }
+    if (!utterance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utterance is NULL");
+        return 0.0f;
+    }
+    if (!indirect_act) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "indirect_act is NULL");
+        return 0.0f;
+    }
 
     *indirect_act = surface_act;
 
@@ -436,8 +457,18 @@ bool pragmatics_analyze_grice(
     const utterance_context_t* context,
     grice_analysis_result_t* result) {
 
-    if (!processor || !utterance || !result) {
-        if (processor) processor->last_error = PRAGMATICS_ERROR_INVALID_INPUT;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!utterance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utterance is NULL");
+        processor->last_error = PRAGMATICS_ERROR_INVALID_INPUT;
+        return false;
+    }
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+        processor->last_error = PRAGMATICS_ERROR_INVALID_INPUT;
         return false;
     }
 
@@ -531,7 +562,20 @@ uint32_t pragmatics_detect_implicatures(
     implicature_result_t* implicatures,
     uint32_t max_implicatures) {
 
-    if (!processor || !utterance || !implicatures || max_implicatures == 0) {
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return 0;
+    }
+    if (!utterance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utterance is NULL");
+        return 0;
+    }
+    if (!implicatures) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "implicatures is NULL");
+        return 0;
+    }
+    if (max_implicatures == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "max_implicatures is zero");
         return 0;
     }
 
@@ -573,7 +617,18 @@ bool pragmatics_detect_scalar_implicature(
     const char* utterance,
     implicature_result_t* result) {
 
-    if (!processor || !utterance || !result) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!utterance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utterance is NULL");
+        return false;
+    }
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+        return false;
+    }
 
     for (const scalar_pair_t* pair = SCALAR_PAIRS; pair->weak; pair++) {
         if (contains_ci(utterance, pair->weak) &&
@@ -601,7 +656,14 @@ uint32_t pragmatics_add_to_context(
     uint32_t speaker_id,
     uint64_t timestamp_ms) {
 
-    if (!processor || !utterance) return 0;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return 0;
+    }
+    if (!utterance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utterance is NULL");
+        return 0;
+    }
 
     /* Get slot in circular buffer */
     uint32_t slot = processor->context_head;
@@ -642,7 +704,18 @@ uint32_t pragmatics_get_context(
     utterance_context_t* context,
     uint32_t max_entries) {
 
-    if (!processor || !context || max_entries == 0) return 0;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return 0;
+    }
+    if (!context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "context is NULL");
+        return 0;
+    }
+    if (max_entries == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "max_entries is zero");
+        return 0;
+    }
 
     uint32_t count = (processor->context_count < max_entries) ?
                      processor->context_count : max_entries;
@@ -674,7 +747,14 @@ bool pragmatics_register_participant(
     uint32_t participant_id,
     const char* name) {
 
-    if (!processor || !name) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "name is NULL");
+        return false;
+    }
     if (processor->participant_count >= PRAGMATICS_MAX_PARTICIPANTS) return false;
 
     /* Check for existing participant */
@@ -707,8 +787,18 @@ bool pragmatics_analyze(
     uint64_t timestamp_ms,
     pragmatic_analysis_t* analysis) {
 
-    if (!processor || !utterance || !analysis) {
-        if (processor) processor->last_error = PRAGMATICS_ERROR_INVALID_INPUT;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!utterance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utterance is NULL");
+        processor->last_error = PRAGMATICS_ERROR_INVALID_INPUT;
+        return false;
+    }
+    if (!analysis) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis is NULL");
+        processor->last_error = PRAGMATICS_ERROR_INVALID_INPUT;
         return false;
     }
 
@@ -773,7 +863,14 @@ pragmatics_error_t pragmatics_get_last_error(const pragmatics_processor_t* proce
 }
 
 bool pragmatics_get_stats(const pragmatics_processor_t* processor, pragmatics_stats_t* stats) {
-    if (!processor || !stats) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats is NULL");
+        return false;
+    }
     *stats = processor->stats;
     return true;
 }
@@ -784,7 +881,14 @@ void pragmatics_reset_stats(pragmatics_processor_t* processor) {
 }
 
 bool pragmatics_get_config(const pragmatics_processor_t* processor, pragmatics_config_t* config) {
-    if (!processor || !config) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+        return false;
+    }
     *config = processor->config;
     return true;
 }
@@ -797,7 +901,14 @@ bool pragmatics_register_bio_handler(
     pragmatics_processor_t* processor,
     bio_router_t* router) {
 
-    if (!processor || !router) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router is NULL");
+        return false;
+    }
 
     processor->router = router;
     processor->bio_registered = true;
@@ -808,7 +919,14 @@ bool pragmatics_send_analysis(
     pragmatics_processor_t* processor,
     const pragmatic_analysis_t* analysis) {
 
-    if (!processor || !analysis) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!analysis) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analysis is NULL");
+        return false;
+    }
     if (!processor->bio_registered || !processor->router) return false;
 
     /* Would send via bio-async in real implementation */

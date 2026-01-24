@@ -100,7 +100,10 @@ void broca_substrate_bridge_destroy(broca_substrate_bridge_t* bridge) {
 //=============================================================================
 
 int broca_substrate_bridge_update(broca_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
 
     float atp_level = 1.0f;
     float fatigue_level = 0.0f;
@@ -191,13 +194,23 @@ int broca_substrate_bridge_get_effects(
     const broca_substrate_bridge_t* bridge,
     broca_substrate_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "effects is NULL");
+        return -1;
+    }
     *effects = bridge->effects;
     return 0;
 }
 
 int broca_substrate_bridge_apply_effects(broca_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
 
     /* Update effects from substrate first */
     broca_substrate_bridge_update(bridge);
@@ -220,7 +233,14 @@ int broca_substrate_bridge_register_bio_async(
     broca_substrate_bridge_t* bridge,
     bio_router_t* router
 ) {
-    if (!bridge || !router) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_bio_async) return 0;
 
     bridge->router = router;
@@ -240,7 +260,14 @@ int broca_substrate_bridge_get_stats(
     const broca_substrate_bridge_t* bridge,
     broca_substrate_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats is NULL");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }

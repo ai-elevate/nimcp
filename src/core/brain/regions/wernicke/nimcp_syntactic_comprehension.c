@@ -365,7 +365,10 @@ static void update_predictions(syntactic_comprehension_t* ctx) {
  *=============================================================================*/
 
 int syntactic_default_config(syntactic_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+        return -1;
+    }
 
     *config = (syntactic_config_t){
         .max_sentence_length = DEFAULT_MAX_SENTENCE_LENGTH,
@@ -431,7 +434,22 @@ int syntactic_parse_sentence(syntactic_comprehension_t* ctx,
                               const syntactic_word_t* words,
                               uint32_t num_words,
                               syntactic_parse_t* parse) {
-    if (!ctx || !words || !parse || num_words == 0) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        return -1;
+    }
+    if (!words) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "words is NULL");
+        return -1;
+    }
+    if (!parse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse is NULL");
+        return -1;
+    }
+    if (num_words == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "num_words is zero");
+        return -1;
+    }
     if (num_words > SYNTACTIC_MAX_SENTENCE_LEN) return -1;
 
     /* Begin incremental parse */
@@ -450,7 +468,10 @@ int syntactic_parse_sentence(syntactic_comprehension_t* ctx,
 }
 
 int syntactic_begin_incremental(syntactic_comprehension_t* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        return -1;
+    }
 
     /* Reset state */
     ctx->buffer_len = 0;
@@ -467,7 +488,14 @@ int syntactic_begin_incremental(syntactic_comprehension_t* ctx) {
 
 parse_state_t syntactic_add_word(syntactic_comprehension_t* ctx,
                                   const syntactic_word_t* word) {
-    if (!ctx || !word) return PARSE_STATE_ERROR;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        return PARSE_STATE_ERROR;
+    }
+    if (!word) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "word is NULL");
+        return PARSE_STATE_ERROR;
+    }
     if (ctx->buffer_len >= SYNTACTIC_MAX_SENTENCE_LEN) return PARSE_STATE_ERROR;
 
     /* Add to buffer */
@@ -551,7 +579,14 @@ parse_state_t syntactic_add_word(syntactic_comprehension_t* ctx,
 
 int syntactic_finish_incremental(syntactic_comprehension_t* ctx,
                                   syntactic_parse_t* parse) {
-    if (!ctx || !parse) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        return -1;
+    }
+    if (!parse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse is NULL");
+        return -1;
+    }
 
     memset(parse, 0, sizeof(syntactic_parse_t));
 
@@ -633,7 +668,14 @@ int syntactic_finish_incremental(syntactic_comprehension_t* ctx,
 
 int syntactic_get_incremental_state(const syntactic_comprehension_t* ctx,
                                      incremental_state_t* state) {
-    if (!ctx || !state) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        return -1;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+        return -1;
+    }
 
     state->buffer = (syntactic_word_t*)ctx->word_buffer;
     state->buffer_len = ctx->buffer_len;
@@ -676,7 +718,18 @@ syntactic_category_t syntactic_predict_category(
 int syntactic_predict_phrase(const syntactic_comprehension_t* ctx,
                               phrase_type_t* phrase_type,
                               float* confidence) {
-    if (!ctx || !phrase_type || !confidence) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        return -1;
+    }
+    if (!phrase_type) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phrase_type is NULL");
+        return -1;
+    }
+    if (!confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "confidence is NULL");
+        return -1;
+    }
 
     /* Predict based on stack state */
     if (ctx->stack_depth == 0) {
@@ -711,7 +764,22 @@ int syntactic_extract_dependencies(syntactic_comprehension_t* ctx,
                                     syntactic_dependency_t* dependencies,
                                     uint32_t max_deps,
                                     uint32_t* num_deps) {
-    if (!ctx || !parse || !dependencies || !num_deps) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        return -1;
+    }
+    if (!parse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse is NULL");
+        return -1;
+    }
+    if (!dependencies) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dependencies is NULL");
+        return -1;
+    }
+    if (!num_deps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "num_deps is NULL");
+        return -1;
+    }
 
     *num_deps = 0;
 
@@ -816,7 +884,22 @@ int syntactic_assign_roles(syntactic_comprehension_t* ctx,
                             thematic_assignment_t* roles,
                             uint32_t max_roles,
                             uint32_t* num_roles) {
-    if (!ctx || !parse || !roles || !num_roles) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        return -1;
+    }
+    if (!parse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse is NULL");
+        return -1;
+    }
+    if (!roles) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "roles is NULL");
+        return -1;
+    }
+    if (!num_roles) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "num_roles is NULL");
+        return -1;
+    }
 
     *num_roles = 0;
 
@@ -866,7 +949,22 @@ int syntactic_get_argument_structure(syntactic_comprehension_t* ctx,
                                       const syntactic_word_t* verb_word,
                                       thematic_role_t* expected_roles,
                                       uint32_t* num_roles) {
-    if (!ctx || !verb_word || !expected_roles || !num_roles) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        return -1;
+    }
+    if (!verb_word) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "verb_word is NULL");
+        return -1;
+    }
+    if (!expected_roles) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "expected_roles is NULL");
+        return -1;
+    }
+    if (!num_roles) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "num_roles is NULL");
+        return -1;
+    }
 
     /* Look up verb in frames */
     for (uint32_t i = 0; i < ctx->num_frames; i++) {
@@ -897,7 +995,14 @@ bool syntactic_is_garden_path(const syntactic_comprehension_t* ctx) {
 
 int syntactic_reanalyze(syntactic_comprehension_t* ctx,
                          syntactic_parse_t* parse) {
-    if (!ctx || !parse) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        return -1;
+    }
+    if (!parse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parse is NULL");
+        return -1;
+    }
 
     if (ctx->reanalysis_count >= ctx->config.max_reanalyses) {
         return -1;  /* Too many reanalyses */
@@ -920,7 +1025,18 @@ int syntactic_get_reanalysis_suggestions(
     uint32_t max_suggestions,
     uint32_t* num_suggestions
 ) {
-    if (!ctx || !suggestions || !num_suggestions) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        return -1;
+    }
+    if (!suggestions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "suggestions is NULL");
+        return -1;
+    }
+    if (!num_suggestions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "num_suggestions is NULL");
+        return -1;
+    }
 
     /* Return PP attachment points as suggestions */
     *num_suggestions = 0;
@@ -941,7 +1057,14 @@ int syntactic_get_reanalysis_suggestions(
 
 int syntactic_get_stats(const syntactic_comprehension_t* ctx,
                          syntactic_stats_t* stats) {
-    if (!ctx || !stats) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats is NULL");
+        return -1;
+    }
     *stats = ctx->stats;
     return 0;
 }
@@ -998,7 +1121,14 @@ void syntactic_parse_free(syntactic_parse_t* parse) {
 
 int syntactic_parse_clone(const syntactic_parse_t* src,
                            syntactic_parse_t* dst) {
-    if (!src || !dst) return -1;
+    if (!src) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "src is NULL");
+        return -1;
+    }
+    if (!dst) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dst is NULL");
+        return -1;
+    }
 
     memset(dst, 0, sizeof(syntactic_parse_t));
 

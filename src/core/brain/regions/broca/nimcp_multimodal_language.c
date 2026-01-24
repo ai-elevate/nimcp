@@ -72,7 +72,10 @@ void multimodal_lang_destroy(multimodal_language_t* processor) {
 }
 
 bool multimodal_lang_reset(multimodal_language_t* processor) {
-    if (!processor) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
 
     processor->status = MULTIMODAL_STATUS_IDLE;
     processor->last_error = MULTIMODAL_ERROR_NONE;
@@ -90,7 +93,22 @@ bool multimodal_lang_generate_plan(
     float speech_duration_ms,
     multimodal_plan_t* plan) {
 
-    if (!processor || !utterance || !plan || speech_duration_ms <= 0) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!utterance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utterance is NULL");
+        return false;
+    }
+    if (!plan) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plan is NULL");
+        return false;
+    }
+    if (speech_duration_ms <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "speech_duration_ms <= 0");
+        return false;
+    }
 
     processor->status = MULTIMODAL_STATUS_PLANNING;
     memset(plan, 0, sizeof(multimodal_plan_t));
@@ -144,7 +162,18 @@ bool multimodal_lang_add_gesture(
     multimodal_plan_t* plan,
     const gesture_spec_t* gesture) {
 
-    if (!processor || !plan || !gesture) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!plan) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plan is NULL");
+        return false;
+    }
+    if (!gesture) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gesture is NULL");
+        return false;
+    }
 
     if (!plan->gestures) {
         plan->gestures = (gesture_spec_t*)calloc(processor->config.max_gestures, sizeof(gesture_spec_t));
@@ -166,7 +195,18 @@ bool multimodal_lang_add_expression(
     multimodal_plan_t* plan,
     const expression_spec_t* expression) {
 
-    if (!processor || !plan || !expression) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!plan) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plan is NULL");
+        return false;
+    }
+    if (!expression) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "expression is NULL");
+        return false;
+    }
 
     if (!plan->expressions) {
         plan->expressions = (expression_spec_t*)calloc(processor->config.max_expressions, sizeof(expression_spec_t));
@@ -188,7 +228,18 @@ bool multimodal_lang_add_gaze(
     multimodal_plan_t* plan,
     const gaze_spec_t* gaze) {
 
-    if (!processor || !plan || !gaze) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!plan) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plan is NULL");
+        return false;
+    }
+    if (!gaze) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gaze is NULL");
+        return false;
+    }
 
     if (!plan->gaze_events) {
         plan->gaze_events = (gaze_spec_t*)calloc(16, sizeof(gaze_spec_t));
@@ -228,7 +279,14 @@ bool multimodal_lang_synchronize_plan(
     multimodal_language_t* processor,
     multimodal_plan_t* plan) {
 
-    if (!processor || !plan) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!plan) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plan is NULL");
+        return false;
+    }
 
     processor->status = MULTIMODAL_STATUS_SYNCHRONIZING;
 
@@ -345,7 +403,22 @@ uint32_t multimodal_lang_auto_gestures(
     gesture_spec_t* gestures,
     uint32_t max_gestures) {
 
-    if (!processor || !utterance || !gestures || max_gestures == 0) return 0;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return 0;
+    }
+    if (!utterance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utterance is NULL");
+        return 0;
+    }
+    if (!gestures) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gestures is NULL");
+        return 0;
+    }
+    if (max_gestures == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "max_gestures is zero");
+        return 0;
+    }
 
     uint32_t count = 0;
     float duration_per_word = 200.0f;  /* Rough estimate */
@@ -416,7 +489,22 @@ uint32_t multimodal_lang_auto_expressions(
     expression_spec_t* expressions,
     uint32_t max_expressions) {
 
-    if (!processor || !utterance || !expressions || max_expressions == 0) return 0;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return 0;
+    }
+    if (!utterance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "utterance is NULL");
+        return 0;
+    }
+    if (!expressions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "expressions is NULL");
+        return 0;
+    }
+    if (max_expressions == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "max_expressions is zero");
+        return 0;
+    }
 
     uint32_t count = 0;
 
@@ -502,7 +590,14 @@ multimodal_error_t multimodal_lang_get_last_error(const multimodal_language_t* p
 }
 
 bool multimodal_lang_get_stats(const multimodal_language_t* processor, multimodal_stats_t* stats) {
-    if (!processor || !stats) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats is NULL");
+        return false;
+    }
     *stats = processor->stats;
     return true;
 }
@@ -513,7 +608,14 @@ void multimodal_lang_reset_stats(multimodal_language_t* processor) {
 }
 
 bool multimodal_lang_get_config(const multimodal_language_t* processor, multimodal_config_t* config) {
-    if (!processor || !config) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+        return false;
+    }
     *config = processor->config;
     return true;
 }
@@ -526,7 +628,14 @@ bool multimodal_lang_register_bio_handler(
     multimodal_language_t* processor,
     bio_router_t* router) {
 
-    if (!processor || !router) return false;
+    if (!processor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+        return false;
+    }
+    if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router is NULL");
+        return false;
+    }
 
     processor->router = router;
     processor->bio_registered = true;

@@ -429,6 +429,7 @@ speech_motor_planner_t* speech_motor_create(const speech_motor_config_t* config)
     planner->command_queue =
         (motor_command_t*)nimcp_calloc(config->max_commands, sizeof(motor_command_t));
     if (!planner->command_queue) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate command queue");
         nimcp_free(planner);
         return NULL;
     }
@@ -476,7 +477,10 @@ void speech_motor_destroy(speech_motor_planner_t* planner) {
 }
 
 bool speech_motor_plan_phoneme(speech_motor_planner_t* planner, uint8_t phoneme) {
-    if (!planner) return false;
+    if (!planner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "planner is NULL");
+        return false;
+    }
 
     // Get phoneme features
     phoneme_features_t features = get_phoneme_features(phoneme);
@@ -501,7 +505,18 @@ bool speech_motor_get_commands(
     motor_command_t* commands,
     uint32_t* count
 ) {
-    if (!planner || !commands || !count) return false;
+    if (!planner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "planner is NULL");
+        return false;
+    }
+    if (!commands) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "commands is NULL");
+        return false;
+    }
+    if (!count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "count is NULL");
+        return false;
+    }
 
     // Return false if queue is empty - no commands to retrieve
     if (planner->queue_count == 0) {
@@ -525,7 +540,10 @@ bool speech_motor_get_commands(
 }
 
 bool speech_motor_reset(speech_motor_planner_t* planner) {
-    if (!planner) return false;
+    if (!planner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "planner is NULL");
+        return false;
+    }
 
     // Clear command queue
     planner->queue_head = 0;
@@ -557,7 +575,18 @@ bool speech_motor_plan_sequence(
     const uint8_t* phonemes,
     uint32_t num_phonemes
 ) {
-    if (!planner || !phonemes || num_phonemes == 0) return false;
+    if (!planner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "planner is NULL");
+        return false;
+    }
+    if (!phonemes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phonemes is NULL");
+        return false;
+    }
+    if (num_phonemes == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "num_phonemes is zero");
+        return false;
+    }
 
     // Plan each phoneme in sequence
     for (uint32_t i = 0; i < num_phonemes; i++) {
@@ -574,9 +603,18 @@ bool speech_motor_set_articulator(
     articulator_type_t articulator,
     float position
 ) {
-    if (!planner) return false;
-    if (articulator >= SPEECH_MOTOR_NUM_ARTICULATORS) return false;
-    if (position < 0.0F || position > 1.0F) return false;
+    if (!planner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "planner is NULL");
+        return false;
+    }
+    if (articulator >= SPEECH_MOTOR_NUM_ARTICULATORS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "invalid articulator type");
+        return false;
+    }
+    if (position < 0.0F || position > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "position out of range [0.0, 1.0]");
+        return false;
+    }
 
     planner->articulators[articulator].position = position;
     planner->articulators[articulator].last_update_time = planner->current_time_ms;
@@ -589,8 +627,18 @@ bool speech_motor_get_articulator(
     articulator_type_t articulator,
     float* position
 ) {
-    if (!planner || !position) return false;
-    if (articulator >= SPEECH_MOTOR_NUM_ARTICULATORS) return false;
+    if (!planner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "planner is NULL");
+        return false;
+    }
+    if (!position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "position is NULL");
+        return false;
+    }
+    if (articulator >= SPEECH_MOTOR_NUM_ARTICULATORS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "invalid articulator type");
+        return false;
+    }
 
     *position = planner->articulators[articulator].position;
     return true;
@@ -600,7 +648,14 @@ bool speech_motor_get_stats(
     const speech_motor_planner_t* planner,
     speech_motor_stats_t* stats
 ) {
-    if (!planner || !stats) return false;
+    if (!planner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "planner is NULL");
+        return false;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats is NULL");
+        return false;
+    }
 
     *stats = planner->stats;
     stats->queue_size = planner->queue_count;
@@ -697,7 +752,10 @@ bool speech_motor_set_interpolation(
     bool enable,
     uint32_t num_interpolation_points
 ) {
-    if (!planner) return false;
+    if (!planner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "planner is NULL");
+        return false;
+    }
 
     /* Validate interpolation points (2-10 is reasonable) */
     if (enable && (num_interpolation_points < 2 || num_interpolation_points > 10)) {
