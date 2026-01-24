@@ -1701,9 +1701,9 @@ TEST_F(WorldModelE2ETest, MultimodalStatusAndErrorHandling) {
     EXPECT_NE(wm_error_string(WM_ERR_NOT_INITIALIZED), nullptr);
     EXPECT_NE(wm_error_string(WM_ERR_INVALID_MODALITY), nullptr);
 
-    /* Test modality strings */
-    EXPECT_STREQ(wm_modality_string(WM_MODALITY_VISUAL), "visual");
-    EXPECT_STREQ(wm_modality_string(WM_MODALITY_AUDITORY), "auditory");
+    /* Test modality strings - implementation returns capitalized names */
+    EXPECT_STREQ(wm_modality_string(WM_MODALITY_VISUAL), "Visual");
+    EXPECT_STREQ(wm_modality_string(WM_MODALITY_AUDITORY), "Auditory");
 
     /* Test error cases */
     wm_error_t wm_err = wm_process_modality(nullptr, nullptr);

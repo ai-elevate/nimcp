@@ -143,11 +143,8 @@ wm_config_t wm_default_config(void) {
 nimcp_world_model_t* wm_create(const wm_config_t* config) {
     nimcp_world_model_t* wm = calloc(1, sizeof(nimcp_world_model_t));
     if (!wm) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_create: failed to allocate world model");
         return NULL;
-
     }
 
     if (config) {
@@ -159,20 +156,46 @@ nimcp_world_model_t* wm_create(const wm_config_t* config) {
     /* Allocate global state */
     wm->global_state_dim = wm->config.latent_dim;
     wm->global_state = calloc(wm->global_state_dim, sizeof(float));
+    if (!wm->global_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_create: failed to allocate global state");
+        free(wm);
+        return NULL;
+    }
 
     /* Allocate context buffer */
     wm->context_buffer = calloc(wm->config.context_size * wm->config.latent_dim, sizeof(float));
+    if (!wm->context_buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_create: failed to allocate context buffer");
+        free(wm->global_state);
+        free(wm);
+        return NULL;
+    }
     wm->context_pos = 0;
 
     /* Allocate entities */
     wm->entity_capacity = wm->config.max_entities;
     wm->entities = calloc(wm->entity_capacity, sizeof(wm_entity_t));
+    if (!wm->entities) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_create: failed to allocate entities");
+        free(wm->context_buffer);
+        free(wm->global_state);
+        free(wm);
+        return NULL;
+    }
     wm->num_entities = 0;
 
     /* Allocate prediction buffer */
     wm->prediction_buffer = calloc(
         wm->config.max_prediction_steps * wm->config.latent_dim,
         sizeof(float));
+    if (!wm->prediction_buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_create: failed to allocate prediction buffer");
+        free(wm->entities);
+        free(wm->context_buffer);
+        free(wm->global_state);
+        free(wm);
+        return NULL;
+    }
 
     /* Initialize modality encoders */
     init_modality_encoders(wm);
@@ -391,12 +414,34 @@ wm_error_t wm_predict(
 
     /* Initialize prediction with current state */
     float* current = calloc(wm->global_state_dim, sizeof(float));
+    if (!current) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_predict: failed to allocate current state");
+        wm->status = WM_STATUS_ERROR;
+        wm->last_error = WM_ERR_MEMORY_ALLOC;
+        return WM_ERR_MEMORY_ALLOC;
+    }
     memcpy(current, wm->global_state, wm->global_state_dim * sizeof(float));
 
     prediction->horizon_steps = horizon_steps;
     prediction->state_dim = wm->global_state_dim;
     prediction->predicted_states = calloc(horizon_steps * wm->global_state_dim, sizeof(float));
+    if (!prediction->predicted_states) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_predict: failed to allocate predicted states");
+        free(current);
+        wm->status = WM_STATUS_ERROR;
+        wm->last_error = WM_ERR_MEMORY_ALLOC;
+        return WM_ERR_MEMORY_ALLOC;
+    }
     prediction->uncertainties = calloc(horizon_steps, sizeof(float));
+    if (!prediction->uncertainties) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "wm_predict: failed to allocate uncertainties");
+        free(prediction->predicted_states);
+        prediction->predicted_states = NULL;
+        free(current);
+        wm->status = WM_STATUS_ERROR;
+        wm->last_error = WM_ERR_MEMORY_ALLOC;
+        return WM_ERR_MEMORY_ALLOC;
+    }
 
     /* Simple autoregressive prediction */
     float uncertainty = 0.1f;

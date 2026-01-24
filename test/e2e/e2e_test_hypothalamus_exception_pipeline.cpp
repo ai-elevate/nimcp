@@ -43,6 +43,7 @@
 #include "core/brain/regions/hypothalamus/nimcp_hypothalamus_adapter.h"
 #include "core/brain/regions/hypothalamus/fep/nimcp_hypo_immune_fep_bridge.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
+#include "cognitive/free_energy/nimcp_free_energy.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include "utils/exception/nimcp_exception.h"
 #include "utils/exception/nimcp_exception_immune.h"
@@ -596,6 +597,16 @@ TEST_F(HypothalamusExceptionPipelineTest, FEPIntegrationErrors) {
     E2E_PIPELINE_START("FEP Integration Errors");
 
     hypo_immune_fep_bridge_t* fep_bridge = nullptr;
+    fep_system_t* fep_system = nullptr;
+
+    E2E_STAGE_BEGIN("Create FEP system", 100);
+    // Create FEP system for the bridge
+    fep_config_t fep_sys_config;
+    EXPECT_EQ(0, fep_default_config(&fep_sys_config));
+    // Use small dimensions for testing: 8 observations (cytokines + state), 4 actions
+    fep_system = fep_create(&fep_sys_config, 8, 4);
+    ASSERT_NE(nullptr, fep_system) << "Failed to create FEP system";
+    E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Create FEP bridges", 200);
     // Create FEP bridge configuration
@@ -604,14 +615,9 @@ TEST_F(HypothalamusExceptionPipelineTest, FEPIntegrationErrors) {
     fep_config.enable_active_inference = true;
     fep_config.enable_bio_async = false;  // Simpler for testing
 
-    // Create FEP bridge - requires valid fep_system, which may not be available
-    // in this test environment. Skip if creation fails.
-    fep_bridge = hypo_immune_fep_create(&fep_config, drives, immune, nullptr);
-    if (!fep_bridge) {
-        // FEP system not available - this is expected in environments without
-        // a full FEP setup. Skip the test.
-        GTEST_SKIP() << "FEP bridge creation failed - FEP system not available in test environment";
-    }
+    // Create FEP bridge with the created FEP system
+    fep_bridge = hypo_immune_fep_create(&fep_config, drives, immune, fep_system);
+    ASSERT_NE(nullptr, fep_bridge) << "Failed to create FEP bridge";
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Setup exception tracking", 100);
@@ -692,10 +698,14 @@ TEST_F(HypothalamusExceptionPipelineTest, FEPIntegrationErrors) {
     // (Note: may still be elevated due to recent events)
     E2E_STAGE_END();
 
-    E2E_STAGE_BEGIN("Cleanup FEP bridge", 100);
+    E2E_STAGE_BEGIN("Cleanup FEP bridge and system", 100);
     if (fep_bridge) {
         hypo_immune_fep_destroy(fep_bridge);
         fep_bridge = nullptr;
+    }
+    if (fep_system) {
+        fep_destroy(fep_system);
+        fep_system = nullptr;
     }
     E2E_STAGE_END();
 

@@ -48,3 +48,37 @@ nimcp_error_t genius_erdos_analyze_impl(
 
     return NIMCP_SUCCESS;
 }
+
+/* ============================================================================
+ * Ramsey Theory Functions
+ * ============================================================================ */
+
+/**
+ * @brief Compute lower bound for Ramsey number R(r,s)
+ *
+ * Uses Erdős probabilistic lower bound: R(r,s) > floor(2^((r+s-2)/2))
+ * This is the classic result from Erdős's 1947 probabilistic method proof.
+ *
+ * @param genius Genius instance (unused, for API consistency)
+ * @param r First parameter of R(r,s)
+ * @param s Second parameter of R(r,s)
+ * @return Lower bound for R(r,s)
+ */
+uint32_t genius_erdos_ramsey_lower_bound(
+    mathematical_genius_t* genius,
+    uint32_t r,
+    uint32_t s) {
+
+    (void)genius;  /* Unused - function is stateless */
+
+    if (r < 2 || s < 2) {
+        return 1;  /* Base cases */
+    }
+
+    /* Erdős probabilistic lower bound: R(r,s) > 2^((r+s-2)/2) */
+    double exponent = (double)(r + s - 2) / 2.0;
+    double lower_bound = pow(2.0, exponent);
+
+    /* Return floor of the bound */
+    return (uint32_t)floor(lower_bound);
+}

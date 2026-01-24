@@ -1210,18 +1210,18 @@ TEST_F(ExperienceReplayTest, SampleExperiences) {
 
     EXPECT_EQ(omni_wm_get_replay_size(omni_wm), 100u);
 
-    /* Sample batch */
+    /* Sample batch - function returns pointers to internal experiences
+     * Do NOT pre-allocate or destroy these - they're owned by the buffer */
     omni_wm_experience_t* batch[32];
-    for (int i = 0; i < 32; i++) {
-        batch[i] = omni_wm_experience_create(TEST_STATE_DIM, TEST_ACTION_DIM, TEST_OBS_DIM);
-    }
+    memset(batch, 0, sizeof(batch));
 
     uint32_t sampled = omni_wm_sample_experiences(omni_wm, batch, 32);
     EXPECT_GT(sampled, 0u);
     EXPECT_LE(sampled, 32u);
 
-    for (int i = 0; i < 32; i++) {
-        omni_wm_experience_destroy(batch[i]);
+    /* Verify sampled experiences are valid (but don't destroy them) */
+    for (uint32_t i = 0; i < sampled; i++) {
+        EXPECT_NE(batch[i], nullptr);
     }
 }
 
@@ -1384,6 +1384,173 @@ TEST_F(WorldModelIntegrationTest, FullIntegrationWorkflow) {
     omni_ai_action_result_destroy(result);
     omni_wm_state_destroy(next_state);
     omni_wm_state_destroy(state);
+}
+
+/* ============================================================================
+ * 13. Exception Handling Integration Tests
+ * ============================================================================ */
+
+class ExceptionHandlingIntegrationTest : public WorldModelIntegrationTest {
+protected:
+    void SetUp() override {
+        WorldModelIntegrationTest::SetUp();
+        ASSERT_TRUE(create_omni_world_model());
+        ASSERT_TRUE(create_multimodal_world_model());
+    }
+};
+
+TEST_F(ExceptionHandlingIntegrationTest, NullPointerHandlingAcrossModules) {
+    /* Test that all modules handle NULL pointers gracefully */
+
+    /* Omni World Model */
+    EXPECT_NE(omni_wm_get_default_config(nullptr), NIMCP_SUCCESS);
+    EXPECT_NE(omni_wm_set_state(omni_wm, nullptr), NIMCP_SUCCESS);
+    EXPECT_EQ(omni_wm_get_state(nullptr), nullptr);
+
+    /* Multimodal World Model */
+    EXPECT_EQ(wm_init(nullptr), WM_ERR_NULL_PTR);
+    EXPECT_EQ(wm_reset(nullptr), WM_ERR_NULL_PTR);
+    EXPECT_EQ(wm_fuse_modalities(nullptr), WM_ERR_NULL_PTR);
+    EXPECT_EQ(wm_update(nullptr, 16.0f), WM_ERR_NULL_PTR);
+}
+
+TEST_F(ExceptionHandlingIntegrationTest, RecoveryAfterFailedAllocation) {
+    /* Test that systems recover from failed operations */
+
+    /* Try invalid operations that should fail */
+    omni_wm_transition_t transition;
+    memset(&transition, 0, sizeof(transition));
+
+    /* Predict without state should fail but not crash */
+    float action[TEST_ACTION_DIM];
+    generate_random_vector(action, TEST_ACTION_DIM);
+
+    int ret = omni_wm_predict_forward(omni_wm, action, TEST_ACTION_DIM, &transition);
+    /* May succeed or fail depending on internal state */
+
+    /* System should still be functional */
+    omni_wm_state_t* state = omni_wm_state_create(TEST_STATE_DIM);
+    ASSERT_NE(state, nullptr);
+    generate_random_vector(state->values, TEST_STATE_DIM);
+
+    ret = omni_wm_set_state(omni_wm, state);
+    EXPECT_EQ(ret, NIMCP_SUCCESS);
+
+    /* Now prediction should work */
+    ret = omni_wm_predict_forward(omni_wm, action, TEST_ACTION_DIM, &transition);
+    EXPECT_EQ(ret, NIMCP_SUCCESS);
+
+    if (transition.next_state) {
+        omni_wm_state_destroy(transition.next_state);
+    }
+    omni_wm_state_destroy(state);
+}
+
+TEST_F(ExceptionHandlingIntegrationTest, ErrorPropagationBetweenModules) {
+    /* Test that errors don't corrupt state between modules */
+
+    /* Set valid state in omni world model */
+    omni_wm_state_t* state = omni_wm_state_create(TEST_STATE_DIM);
+    ASSERT_NE(state, nullptr);
+    generate_random_vector(state->values, TEST_STATE_DIM);
+    ASSERT_EQ(omni_wm_set_state(omni_wm, state), NIMCP_SUCCESS);
+
+    /* Cause error in multimodal world model */
+    wm_prediction_t prediction;
+    memset(&prediction, 0, sizeof(prediction));
+    wm_error_t err = wm_predict(multimodal_wm, 99999, &prediction);  /* Invalid horizon */
+    EXPECT_NE(err, WM_OK);
+
+    /* Omni world model should still be functional */
+    const omni_wm_state_t* retrieved = omni_wm_get_state(omni_wm);
+    EXPECT_NE(retrieved, nullptr);
+
+    float action[TEST_ACTION_DIM];
+    generate_random_vector(action, TEST_ACTION_DIM);
+
+    omni_wm_transition_t transition;
+    memset(&transition, 0, sizeof(transition));
+    int ret = omni_wm_predict_forward(omni_wm, action, TEST_ACTION_DIM, &transition);
+    EXPECT_EQ(ret, NIMCP_SUCCESS);
+
+    if (transition.next_state) {
+        omni_wm_state_destroy(transition.next_state);
+    }
+    omni_wm_state_destroy(state);
+}
+
+TEST_F(ExceptionHandlingIntegrationTest, ConcurrentErrorHandling) {
+    /* Test error handling doesn't cause issues with concurrent access */
+
+    omni_wm_state_t* state = omni_wm_state_create(TEST_STATE_DIM);
+    ASSERT_NE(state, nullptr);
+    generate_random_vector(state->values, TEST_STATE_DIM);
+    ASSERT_EQ(omni_wm_set_state(omni_wm, state), NIMCP_SUCCESS);
+
+    std::atomic<int> success_count{0};
+    std::atomic<int> error_count{0};
+
+    /* Simulate multiple operations */
+    for (int i = 0; i < 10; i++) {
+        float action[TEST_ACTION_DIM];
+        generate_random_vector(action, TEST_ACTION_DIM);
+
+        omni_wm_transition_t transition;
+        memset(&transition, 0, sizeof(transition));
+
+        int ret = omni_wm_predict_forward(omni_wm, action, TEST_ACTION_DIM, &transition);
+        if (ret == NIMCP_SUCCESS) {
+            success_count++;
+            if (transition.next_state) {
+                omni_wm_state_destroy(transition.next_state);
+            }
+        } else {
+            error_count++;
+        }
+    }
+
+    /* At least some should succeed */
+    EXPECT_GT(success_count.load(), 0);
+
+    /* System should still be stable */
+    omni_wm_stats_t stats;
+    EXPECT_EQ(omni_wm_get_stats(omni_wm, &stats), NIMCP_SUCCESS);
+
+    omni_wm_state_destroy(state);
+}
+
+TEST_F(ExceptionHandlingIntegrationTest, ResourceCleanupAfterErrors) {
+    /* Test that resources are properly cleaned up after errors */
+
+    /* Get initial memory footprint (approximation via stats) */
+    omni_wm_stats_t initial_stats;
+    ASSERT_EQ(omni_wm_get_stats(omni_wm, &initial_stats), NIMCP_SUCCESS);
+
+    /* Perform operations that may cause errors */
+    for (int i = 0; i < 100; i++) {
+        omni_wm_state_t* state = omni_wm_state_create(TEST_STATE_DIM);
+        if (state) {
+            generate_random_vector(state->values, TEST_STATE_DIM);
+
+            /* Try invalid operations */
+            omni_wm_transition_t transition;
+            memset(&transition, 0, sizeof(transition));
+
+            float action[TEST_ACTION_DIM];
+            generate_random_vector(action, TEST_ACTION_DIM);
+
+            /* This may fail but should not leak */
+            int ret = omni_wm_predict_forward(nullptr, action, TEST_ACTION_DIM, &transition);
+            (void)ret;  /* Ignore result */
+
+            omni_wm_state_destroy(state);
+        }
+    }
+
+    /* System should still be functional */
+    omni_wm_state_t* final_state = omni_wm_state_create(TEST_STATE_DIM);
+    EXPECT_NE(final_state, nullptr);
+    omni_wm_state_destroy(final_state);
 }
 
 /* ============================================================================
