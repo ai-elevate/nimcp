@@ -234,12 +234,13 @@ TEST_F(HypothalamusExceptionTest, Drives_GetStateInvalidDrive_ReturnsFalse) {
     hypo_drive_destroy(drives);
 }
 
-TEST_F(HypothalamusExceptionTest, Drives_SatisfyNull_ReturnsNegative) {
+TEST_F(HypothalamusExceptionTest, Drives_SatisfyNull_ReturnsZero) {
     reset_counters();
 
     float reward = hypo_drive_satisfy(nullptr, HYPO_DRIVE_HUNGER, 0.5f);
 
-    EXPECT_TRUE(std::isnan(reward) || reward < 0.0f);
+    // Function returns 0.0f on error (NULL system)
+    EXPECT_EQ(reward, 0.0f);
 }
 
 TEST_F(HypothalamusExceptionTest, Drives_SatisfyInvalidAmount_ReturnsNegative) {
@@ -343,12 +344,13 @@ TEST_F(HypothalamusExceptionTest, Homeostasis_UpdateNull_ReturnsFalse) {
     EXPECT_FALSE(result);
 }
 
-TEST_F(HypothalamusExceptionTest, Homeostasis_GetRewardNull_ReturnsNaN) {
+TEST_F(HypothalamusExceptionTest, Homeostasis_GetRewardNull_ReturnsZero) {
     reset_counters();
 
     float reward = hypo_homeostasis_get_reward(nullptr);
 
-    EXPECT_TRUE(std::isnan(reward) || reward < -100.0f);
+    // Function returns 0.0f on error (NULL system)
+    EXPECT_EQ(reward, 0.0f);
 }
 
 TEST_F(HypothalamusExceptionTest, Homeostasis_ComputeRewardNull_ReturnsFalse) {
