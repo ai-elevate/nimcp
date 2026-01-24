@@ -30,7 +30,8 @@
 
 bool nimcp_brain_init_brainstem(struct brain_struct* brain) {
     if (!brain) {
-        LOG_ERROR("[%s] NULL brain provided", BRAINSTEM_INIT_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "nimcp_brain_init_brainstem: brain is NULL");
         return false;
     }
 

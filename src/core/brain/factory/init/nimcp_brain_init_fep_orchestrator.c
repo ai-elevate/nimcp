@@ -108,7 +108,8 @@ static void register_core_bridges(brain_t brain, fep_orchestrator_t* orch) {
 
 bool nimcp_brain_factory_init_fep_orchestrator_subsystem(brain_t brain) {
     if (!brain) {
-        NIMCP_LOGGING_ERROR("Null brain in init_fep_orchestrator_subsystem");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "nimcp_brain_factory_init_fep_orchestrator_subsystem: brain is NULL");
         return false;
     }
 
