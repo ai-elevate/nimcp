@@ -1,0 +1,642 @@
+/**
+ * @file nimcp_genius_snn_bridge.c
+ * @brief Mathematical Genius - SNN Bidirectional Integration Bridge Implementation
+ * @version 1.0.0
+ * @date 2026-01-24
+ */
+
+#include "cognitive/parietal/nimcp_genius_snn_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
+#include "snn/nimcp_snn_network.h"
+#include "snn/nimcp_snn_config.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
+#include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
+
+#include <string.h>
+#include <math.h>
+#include <stdio.h>
+
+//=============================================================================
+// Internal Structures
+//=============================================================================
+
+struct genius_snn_bridge {
+    bridge_base_t base;
+    genius_snn_config_t config;
+    struct snn_network* snn;
+    struct mathematical_genius* genius;
+
+    /* State */
+    genius_snn_state_t state;
+    uint64_t current_time_us;
+    bool bio_async_connected;
+
+    /* Dimension state */
+    genius_dim_state_t dim_states[GENIUS_SNN_MAX_DIMENSIONS];
+
+    /* Buffers */
+    float* encoding_buffer;
+    float* output_buffer;
+    float* mode_buffer;
+
+    /* Insight output state */
+    genius_insight_output_t last_insight;
+    genius_mode_t current_mode;
+    float insight_accumulator;
+
+    /* Previous state for change detection */
+    float* prev_state;
+
+    /* Callbacks */
+    genius_snn_insight_callback_t insight_callback;
+    void* insight_callback_data;
+    genius_snn_breakthrough_callback_t breakthrough_callback;
+    void* breakthrough_callback_data;
+    genius_snn_mode_callback_t mode_callback;
+    void* mode_callback_data;
+
+    /* Statistics */
+    genius_snn_stats_t stats;
+};
+
+//=============================================================================
+// Helper Functions
+//=============================================================================
+
+static inline float clamp_f(float x, float min_val, float max_val) {
+    if (x < min_val) return min_val;
+    if (x > max_val) return max_val;
+    return x;
+}
+
+static void softmax(float* values, uint32_t n) {
+    if (n == 0) return;
+
+    float max_val = values[0];
+    for (uint32_t i = 1; i < n; i++) {
+        if (values[i] > max_val) max_val = values[i];
+    }
+
+    float sum = 0.0f;
+    for (uint32_t i = 0; i < n; i++) {
+        values[i] = expf(values[i] - max_val);
+        sum += values[i];
+    }
+
+    if (sum > 0.0f) {
+        for (uint32_t i = 0; i < n; i++) {
+            values[i] /= sum;
+        }
+    }
+}
+
+static genius_mode_t find_dominant_mode(const genius_insight_output_t* insight) {
+    float max_activity = insight->gauss_activity;
+    genius_mode_t mode = GENIUS_MODE_GAUSS;
+
+    if (insight->newton_activity > max_activity) {
+        max_activity = insight->newton_activity;
+        mode = GENIUS_MODE_NEWTON;
+    }
+    if (insight->erdos_activity > max_activity) {
+        mode = GENIUS_MODE_ERDOS;
+    }
+    return mode;
+}
+
+//=============================================================================
+// Lifecycle Functions
+//=============================================================================
+
+genius_snn_config_t genius_snn_config_default(void) {
+    genius_snn_config_t config = {
+        .num_dimensions = GENIUS_DIM_COUNT,
+        .neurons_per_dim = GENIUS_SNN_NEURONS_PER_CONCEPT,
+        .hidden_dim = 256,
+
+        .dt_ms = 1.0f,
+        .encoding_window_ms = GENIUS_SNN_ENCODING_WINDOW,
+        .integration_tau_ms = 100.0f,
+        .insight_tau_ms = 200.0f,
+
+        .encoding = GENIUS_SNN_ENCODE_POPULATION,
+        .encoding_gain = 1.0f,
+        .baseline_rate_hz = 5.0f,
+        .max_rate_hz = 100.0f,
+
+        .decoding = GENIUS_SNN_DECODE_INTEGRATION,
+        .insight_threshold = GENIUS_SNN_INSIGHT_THRESH,
+        .elegance_threshold = 0.6f,
+        .mode_switch_threshold = 0.3f,
+
+        .enable_competition = true,
+        .inhibition_strength = 0.2f,
+        .enable_insight_detection = true,
+        .insight_sensitivity = 1.0f,
+
+        .enable_gauss_circuits = true,
+        .enable_newton_circuits = true,
+        .enable_erdos_circuits = true,
+        .mode_coupling_strength = 0.1f,
+
+        .enable_bio_async = false,
+        .enable_plasticity_integration = true
+    };
+    return config;
+}
+
+genius_snn_bridge_t* genius_snn_create(const genius_snn_config_t* config) {
+    genius_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(genius_snn_bridge_t));
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge allocation failed");
+        return NULL;
+    }
+
+    if (config) {
+        bridge->config = *config;
+    } else {
+        bridge->config = genius_snn_config_default();
+    }
+
+    /* Validate config */
+    if (bridge->config.num_dimensions == 0 ||
+        bridge->config.num_dimensions > GENIUS_SNN_MAX_DIMENSIONS) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    /* Initialize bridge base */
+    if (bridge_base_init(&bridge->base, 0, "genius_snn") != 0) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    /* Allocate buffers */
+    uint32_t input_dim = bridge->config.num_dimensions * bridge->config.neurons_per_dim;
+    uint32_t output_dim = 8; /* insight, elegance, pattern, conjecture, gauss, newton, erdos, creativity */
+
+    bridge->encoding_buffer = nimcp_calloc(input_dim, sizeof(float));
+    bridge->output_buffer = nimcp_calloc(output_dim, sizeof(float));
+    bridge->mode_buffer = nimcp_calloc(GENIUS_MODE_COUNT, sizeof(float));
+    bridge->prev_state = nimcp_calloc(bridge->config.num_dimensions, sizeof(float));
+
+    if (!bridge->encoding_buffer || !bridge->output_buffer ||
+        !bridge->mode_buffer || !bridge->prev_state) {
+        genius_snn_destroy(bridge);
+        return NULL;
+    }
+
+    /* Initialize dimension states */
+    for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        bridge->dim_states[i].activation = 0.0f;
+        bridge->dim_states[i].accumulated_evidence = 0.0f;
+        bridge->dim_states[i].spike_count = 0;
+        bridge->dim_states[i].mean_rate_hz = bridge->config.baseline_rate_hz;
+        bridge->dim_states[i].last_spike_time_us = 0;
+        bridge->dim_states[i].insight_contribution = 0.0f;
+    }
+
+    /* Initialize state */
+    bridge->state = GENIUS_SNN_STATE_IDLE;
+    bridge->current_time_us = 0;
+    bridge->current_mode = GENIUS_MODE_ADAPTIVE;
+    bridge->insight_accumulator = 0.0f;
+
+    memset(&bridge->last_insight, 0, sizeof(genius_insight_output_t));
+    memset(&bridge->stats, 0, sizeof(genius_snn_stats_t));
+
+    return bridge;
+}
+
+void genius_snn_destroy(genius_snn_bridge_t* bridge) {
+    if (!bridge) return;
+
+    if (bridge->encoding_buffer) nimcp_free(bridge->encoding_buffer);
+    if (bridge->output_buffer) nimcp_free(bridge->output_buffer);
+    if (bridge->mode_buffer) nimcp_free(bridge->mode_buffer);
+    if (bridge->prev_state) nimcp_free(bridge->prev_state);
+
+    bridge_base_cleanup(&bridge->base);
+    nimcp_free(bridge);
+}
+
+int genius_snn_reset(genius_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    /* Reset dimension states */
+    for (uint32_t i = 0; i < bridge->config.num_dimensions; i++) {
+        bridge->dim_states[i].activation = 0.0f;
+        bridge->dim_states[i].accumulated_evidence = 0.0f;
+        bridge->dim_states[i].spike_count = 0;
+        bridge->dim_states[i].mean_rate_hz = bridge->config.baseline_rate_hz;
+        bridge->dim_states[i].insight_contribution = 0.0f;
+    }
+
+    bridge->state = GENIUS_SNN_STATE_IDLE;
+    bridge->current_time_us = 0;
+    bridge->insight_accumulator = 0.0f;
+
+    memset(&bridge->last_insight, 0, sizeof(genius_insight_output_t));
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_snn_link_genius(genius_snn_bridge_t* bridge, struct mathematical_genius* genius) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->genius = genius;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_snn_link_snn(genius_snn_bridge_t* bridge, struct snn_network* snn) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->snn = snn;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+//=============================================================================
+// Encoding Functions
+//=============================================================================
+
+int genius_snn_encode_state(genius_snn_bridge_t* bridge, const float* dimensions, uint32_t num_dims) {
+    if (!bridge || !dimensions) return -1;
+    if (num_dims > bridge->config.num_dimensions) {
+        num_dims = bridge->config.num_dimensions;
+    }
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->state = GENIUS_SNN_STATE_ENCODING;
+
+    int total_spikes = 0;
+    uint32_t neurons_per_dim = bridge->config.neurons_per_dim;
+
+    for (uint32_t d = 0; d < num_dims; d++) {
+        float value = clamp_f(dimensions[d], 0.0f, 1.0f);
+        bridge->dim_states[d].activation = value;
+
+        /* Population coding */
+        float rate = bridge->config.baseline_rate_hz +
+                    value * (bridge->config.max_rate_hz - bridge->config.baseline_rate_hz);
+
+        /* Encode into buffer */
+        for (uint32_t n = 0; n < neurons_per_dim; n++) {
+            float neuron_pref = (float)n / (float)(neurons_per_dim - 1);
+            float tuning = expf(-4.0f * (value - neuron_pref) * (value - neuron_pref));
+            bridge->encoding_buffer[d * neurons_per_dim + n] = tuning * rate * bridge->config.encoding_gain;
+
+            if (tuning > 0.5f) total_spikes++;
+        }
+
+        bridge->dim_states[d].spike_count += (uint32_t)(rate * bridge->config.dt_ms / 1000.0f);
+        bridge->dim_states[d].mean_rate_hz = 0.9f * bridge->dim_states[d].mean_rate_hz + 0.1f * rate;
+    }
+
+    bridge->stats.total_spikes += total_spikes;
+    bridge->stats.total_evaluations++;
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return total_spikes;
+}
+
+int genius_snn_encode_pattern(genius_snn_bridge_t* bridge, float pattern_strength, uint32_t pattern_type) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    bridge->dim_states[GENIUS_DIM_PATTERN_RECOGNITION].activation = clamp_f(pattern_strength, 0.0f, 1.0f);
+    bridge->dim_states[GENIUS_DIM_PATTERN_RECOGNITION].accumulated_evidence += pattern_strength * 0.1f;
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_snn_encode_proof_state(genius_snn_bridge_t* bridge, float progress, float elegance, uint32_t depth) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    bridge->dim_states[GENIUS_DIM_PROOF_SEARCH].activation = clamp_f(progress, 0.0f, 1.0f);
+    bridge->dim_states[GENIUS_DIM_ELEGANCE_SIGNAL].activation = clamp_f(elegance, 0.0f, 1.0f);
+    bridge->dim_states[GENIUS_DIM_RIGOR_LEVEL].activation = clamp_f(1.0f - (float)depth / 100.0f, 0.0f, 1.0f);
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_snn_encode_mode(genius_snn_bridge_t* bridge, genius_mode_t mode, float activation) {
+    if (!bridge || mode >= GENIUS_MODE_COUNT) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    activation = clamp_f(activation, 0.0f, 1.0f);
+
+    switch (mode) {
+        case GENIUS_MODE_GAUSS:
+            bridge->dim_states[GENIUS_DIM_GAUSS_ACTIVITY].activation = activation;
+            break;
+        case GENIUS_MODE_NEWTON:
+            bridge->dim_states[GENIUS_DIM_NEWTON_ACTIVITY].activation = activation;
+            break;
+        case GENIUS_MODE_ERDOS:
+            bridge->dim_states[GENIUS_DIM_ERDOS_ACTIVITY].activation = activation;
+            break;
+        default:
+            break;
+    }
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+//=============================================================================
+// Simulation Functions
+//=============================================================================
+
+int genius_snn_simulate(genius_snn_bridge_t* bridge, float duration_ms) {
+    if (!bridge || duration_ms <= 0.0f) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->state = GENIUS_SNN_STATE_PROCESSING;
+
+    float dt = bridge->config.dt_ms;
+    int steps = (int)(duration_ms / dt);
+
+    for (int s = 0; s < steps; s++) {
+        /* Update insight accumulator */
+        float insight_input = 0.0f;
+        for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+            insight_input += bridge->dim_states[d].activation * bridge->dim_states[d].insight_contribution;
+        }
+
+        float tau = bridge->config.insight_tau_ms;
+        bridge->insight_accumulator += dt * (insight_input - bridge->insight_accumulator) / tau;
+
+        /* Update time */
+        bridge->current_time_us += (uint64_t)(dt * 1000.0f);
+        bridge->stats.total_simulations++;
+    }
+
+    /* Check for insight emergence */
+    if (bridge->config.enable_insight_detection &&
+        bridge->insight_accumulator > bridge->config.insight_threshold) {
+        bridge->state = GENIUS_SNN_STATE_INSIGHT_EMERGING;
+        bridge->stats.insights_detected++;
+
+        if (bridge->insight_callback) {
+            bridge->insight_callback(bridge, bridge->insight_accumulator,
+                                    bridge->current_mode, bridge->insight_callback_data);
+        }
+    }
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_snn_step(genius_snn_bridge_t* bridge) {
+    return genius_snn_simulate(bridge, bridge->config.dt_ms);
+}
+
+int genius_snn_forward(genius_snn_bridge_t* bridge, const float* inputs, uint32_t input_count) {
+    if (!bridge || !inputs) return -1;
+
+    return genius_snn_encode_state(bridge, inputs, input_count);
+}
+
+//=============================================================================
+// Decoding Functions
+//=============================================================================
+
+int genius_snn_get_insight_output(genius_snn_bridge_t* bridge, genius_insight_output_t* insight) {
+    if (!bridge || !insight) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->state = GENIUS_SNN_STATE_DECODING;
+
+    insight->insight_strength = bridge->insight_accumulator;
+    insight->elegance_signal = bridge->dim_states[GENIUS_DIM_ELEGANCE_SIGNAL].activation;
+    insight->pattern_confidence = bridge->dim_states[GENIUS_DIM_PATTERN_RECOGNITION].activation;
+    insight->conjecture_strength = bridge->dim_states[GENIUS_DIM_CONJECTURE_CONFIDENCE].activation;
+
+    insight->gauss_activity = bridge->dim_states[GENIUS_DIM_GAUSS_ACTIVITY].activation;
+    insight->newton_activity = bridge->dim_states[GENIUS_DIM_NEWTON_ACTIVITY].activation;
+    insight->erdos_activity = bridge->dim_states[GENIUS_DIM_ERDOS_ACTIVITY].activation;
+
+    insight->active_mode = find_dominant_mode(insight);
+    insight->insight_detected = bridge->insight_accumulator > bridge->config.insight_threshold;
+    insight->breakthrough_imminent = bridge->insight_accumulator > 0.9f;
+
+    insight->creativity_level = bridge->dim_states[GENIUS_DIM_CREATIVITY_LEVEL].activation;
+    insight->rigor_level = bridge->dim_states[GENIUS_DIM_RIGOR_LEVEL].activation;
+
+    bridge->last_insight = *insight;
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_snn_get_activations(genius_snn_bridge_t* bridge, float* activations, uint32_t num_dims) {
+    if (!bridge || !activations) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    if (num_dims > bridge->config.num_dimensions) {
+        num_dims = bridge->config.num_dimensions;
+    }
+
+    for (uint32_t d = 0; d < num_dims; d++) {
+        activations[d] = bridge->dim_states[d].activation;
+    }
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+bool genius_snn_check_insight(genius_snn_bridge_t* bridge, float* insight_level) {
+    if (!bridge) return false;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    bool detected = bridge->insight_accumulator > bridge->config.insight_threshold;
+    if (insight_level) {
+        *insight_level = bridge->insight_accumulator;
+    }
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return detected;
+}
+
+genius_mode_t genius_snn_recommend_mode(genius_snn_bridge_t* bridge, float* confidence) {
+    if (!bridge) return GENIUS_MODE_ADAPTIVE;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    float gauss = bridge->dim_states[GENIUS_DIM_GAUSS_ACTIVITY].activation;
+    float newton = bridge->dim_states[GENIUS_DIM_NEWTON_ACTIVITY].activation;
+    float erdos = bridge->dim_states[GENIUS_DIM_ERDOS_ACTIVITY].activation;
+
+    genius_mode_t mode = GENIUS_MODE_GAUSS;
+    float max_act = gauss;
+
+    if (newton > max_act) {
+        max_act = newton;
+        mode = GENIUS_MODE_NEWTON;
+    }
+    if (erdos > max_act) {
+        max_act = erdos;
+        mode = GENIUS_MODE_ERDOS;
+    }
+
+    if (confidence) {
+        float total = gauss + newton + erdos;
+        *confidence = (total > 0.0f) ? max_act / total : 0.33f;
+    }
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return mode;
+}
+
+//=============================================================================
+// State Query Functions
+//=============================================================================
+
+int genius_snn_get_dim_state(genius_snn_bridge_t* bridge, uint32_t dim, genius_dim_state_t* state) {
+    if (!bridge || !state || dim >= bridge->config.num_dimensions) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    *state = bridge->dim_states[dim];
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_snn_get_state(genius_snn_bridge_t* bridge, genius_snn_bridge_state_t* state) {
+    if (!bridge || !state) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    state->state = bridge->state;
+    state->active_dimensions = 0;
+    state->total_activity = 0.0f;
+    state->mean_insight = bridge->insight_accumulator;
+
+    for (uint32_t d = 0; d < bridge->config.num_dimensions; d++) {
+        if (bridge->dim_states[d].activation > 0.1f) {
+            state->active_dimensions++;
+        }
+        state->total_activity += bridge->dim_states[d].activation;
+    }
+
+    float gauss = bridge->dim_states[GENIUS_DIM_GAUSS_ACTIVITY].activation;
+    float newton = bridge->dim_states[GENIUS_DIM_NEWTON_ACTIVITY].activation;
+    float erdos = bridge->dim_states[GENIUS_DIM_ERDOS_ACTIVITY].activation;
+    float total = gauss + newton + erdos;
+    state->mode_coherence = (total > 0.0f) ? fmaxf(gauss, fmaxf(newton, erdos)) / total : 0.0f;
+
+    genius_insight_output_t insight = {0};
+    insight.gauss_activity = gauss;
+    insight.newton_activity = newton;
+    insight.erdos_activity = erdos;
+    state->dominant_mode = find_dominant_mode(&insight);
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_snn_get_stats(genius_snn_bridge_t* bridge, genius_snn_stats_t* stats) {
+    if (!bridge || !stats) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    *stats = bridge->stats;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_snn_reset_stats(genius_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    memset(&bridge->stats, 0, sizeof(genius_snn_stats_t));
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+//=============================================================================
+// Callback Registration
+//=============================================================================
+
+int genius_snn_register_insight_callback(genius_snn_bridge_t* bridge,
+                                         genius_snn_insight_callback_t callback,
+                                         void* user_data) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->insight_callback = callback;
+    bridge->insight_callback_data = user_data;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_snn_register_breakthrough_callback(genius_snn_bridge_t* bridge,
+                                              genius_snn_breakthrough_callback_t callback,
+                                              void* user_data) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->breakthrough_callback = callback;
+    bridge->breakthrough_callback_data = user_data;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_snn_register_mode_callback(genius_snn_bridge_t* bridge,
+                                      genius_snn_mode_callback_t callback,
+                                      void* user_data) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->mode_callback = callback;
+    bridge->mode_callback_data = user_data;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+//=============================================================================
+// Bio-Async Integration
+//=============================================================================
+
+int genius_snn_bio_async_connect(genius_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->bio_async_connected = true;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_snn_bio_async_disconnect(genius_snn_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->bio_async_connected = false;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+bool genius_snn_is_bio_async_connected(genius_snn_bridge_t* bridge) {
+    if (!bridge) return false;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bool connected = bridge->bio_async_connected;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return connected;
+}

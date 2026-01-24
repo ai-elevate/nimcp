@@ -1,0 +1,834 @@
+/**
+ * @file nimcp_genius_training_bridge.c
+ * @brief Mathematical Genius - Training System Integration Bridge Implementation
+ * @version 1.0.0
+ * @date 2026-01-24
+ */
+
+#include "cognitive/parietal/nimcp_genius_training_bridge.h"
+#include "utils/bridge/nimcp_bridge_base.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/logging/nimcp_logging.h"
+#include "utils/thread/nimcp_thread.h"
+#include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
+
+#include <string.h>
+#include <math.h>
+#include <stdio.h>
+
+//=============================================================================
+// Internal Structures
+//=============================================================================
+
+struct genius_training_bridge {
+    bridge_base_t base;
+    genius_training_config_t config;
+    struct mathematical_genius* genius;
+    struct nimcp_brain_training_ctx* brain_training;
+
+    /* State */
+    genius_training_state_t state;
+    uint64_t current_time_us;
+    bool bio_async_connected;
+
+    /* Task management */
+    genius_training_task_t* tasks;
+    uint32_t task_count;
+    uint32_t task_capacity;
+
+    /* Curriculum state */
+    genius_curriculum_state_t curriculum;
+
+    /* Training progress */
+    genius_training_progress_t progress;
+
+    /* Mode-specific state */
+    genius_mode_training_state_t mode_state;
+
+    /* Learning rate scheduling */
+    float current_learning_rate;
+    uint64_t lr_step_count;
+
+    /* Callbacks */
+    genius_training_epoch_callback_t epoch_callback;
+    void* epoch_callback_data;
+    genius_training_curriculum_callback_t curriculum_callback;
+    void* curriculum_callback_data;
+    genius_training_checkpoint_callback_t checkpoint_callback;
+    void* checkpoint_callback_data;
+
+    /* Statistics */
+    genius_training_stats_t stats;
+};
+
+//=============================================================================
+// Helper Functions
+//=============================================================================
+
+static inline float clamp_f(float x, float min_val, float max_val) {
+    if (x < min_val) return min_val;
+    if (x > max_val) return max_val;
+    return x;
+}
+
+static genius_training_task_t* find_task(genius_training_bridge_t* bridge, uint32_t task_id) {
+    for (uint32_t i = 0; i < bridge->task_count; i++) {
+        if (bridge->tasks[i].task_id == task_id) {
+            return &bridge->tasks[i];
+        }
+    }
+    return NULL;
+}
+
+static void update_curriculum_state(genius_training_bridge_t* bridge, float score) {
+    genius_curriculum_state_t* cur = &bridge->curriculum;
+
+    cur->stage_score = 0.9f * cur->stage_score + 0.1f * score;
+    cur->examples_in_stage++;
+    cur->domain_scores[cur->current_domain] =
+        0.95f * cur->domain_scores[cur->current_domain] + 0.05f * score;
+
+    /* Check for advancement */
+    if (cur->examples_in_stage >= bridge->config.min_examples_per_stage) {
+        if (cur->stage_score >= bridge->config.curriculum_advancement_thresh &&
+            cur->current_stage < GENIUS_STAGE_RESEARCH) {
+
+            genius_curriculum_stage_t old_stage = cur->current_stage;
+            cur->current_stage++;
+            cur->examples_in_stage = 0;
+            cur->stages_completed++;
+            cur->advancements++;
+
+            if (bridge->curriculum_callback) {
+                bridge->curriculum_callback(bridge, old_stage, cur->current_stage,
+                                           cur->current_domain, bridge->curriculum_callback_data);
+            }
+        }
+        /* Check for regression */
+        else if (cur->stage_score < bridge->config.curriculum_regression_thresh &&
+                 cur->current_stage > GENIUS_STAGE_NOVICE) {
+
+            genius_curriculum_stage_t old_stage = cur->current_stage;
+            cur->current_stage--;
+            cur->examples_in_stage = 0;
+            cur->regressions++;
+
+            if (bridge->curriculum_callback) {
+                bridge->curriculum_callback(bridge, old_stage, cur->current_stage,
+                                           cur->current_domain, bridge->curriculum_callback_data);
+            }
+        }
+    }
+
+    /* Update progress */
+    cur->stage_progress = (float)cur->examples_in_stage /
+                          (float)bridge->config.min_examples_per_stage;
+}
+
+//=============================================================================
+// Lifecycle Functions
+//=============================================================================
+
+genius_training_config_t genius_training_config_default(void) {
+    genius_training_config_t config = {
+        .base_learning_rate = 0.001f,
+        .learning_rate_decay = 0.95f,
+        .momentum = 0.9f,
+        .weight_decay = 0.0001f,
+        .batch_size = GENIUS_TRAINING_DEFAULT_BATCH,
+
+        .enable_curriculum = true,
+        .curriculum_advancement_thresh = 0.8f,
+        .curriculum_regression_thresh = 0.4f,
+        .min_examples_per_stage = 100,
+
+        .enable_continual_learning = true,
+        .ewc_lambda = 0.1f,
+        .enable_replay = true,
+        .replay_buffer_size = 1000,
+
+        .enable_transfer = true,
+        .transfer_weight = 0.1f,
+
+        .enable_meta_learning = false,
+        .meta_learning_rate = 0.0001f,
+
+        .train_gauss_mode = true,
+        .train_newton_mode = true,
+        .train_erdos_mode = true,
+        .mode_specific_weight = 0.3f,
+
+        .epochs_per_domain = 10,
+        .enable_domain_rotation = true,
+        .domain_rotation_period = 5.0f,
+
+        .validation_split = 0.2f,
+        .validation_frequency = 100,
+
+        .enable_checkpointing = true,
+        .checkpoint_frequency = 10,
+
+        .enable_bio_async = false
+    };
+    return config;
+}
+
+genius_training_bridge_t* genius_training_create(const genius_training_config_t* config) {
+    genius_training_bridge_t* bridge = nimcp_calloc(1, sizeof(genius_training_bridge_t));
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge allocation failed");
+        return NULL;
+    }
+
+    if (config) {
+        bridge->config = *config;
+    } else {
+        bridge->config = genius_training_config_default();
+    }
+
+    /* Initialize bridge base */
+    if (bridge_base_init(&bridge->base, 0, "genius_training") != 0) {
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    /* Allocate task array */
+    bridge->task_capacity = GENIUS_TRAINING_MAX_TASKS;
+    bridge->tasks = nimcp_calloc(bridge->task_capacity, sizeof(genius_training_task_t));
+    if (!bridge->tasks) {
+        bridge_base_cleanup(&bridge->base);
+        nimcp_free(bridge);
+        return NULL;
+    }
+
+    /* Initialize curriculum state */
+    bridge->curriculum.current_stage = GENIUS_STAGE_NOVICE;
+    bridge->curriculum.current_domain = GENIUS_TRAIN_DOMAIN_NUMBER_THEORY;
+    bridge->curriculum.examples_in_stage = 0;
+    bridge->curriculum.stage_score = 0.5f;
+    for (int i = 0; i < GENIUS_TRAIN_DOMAIN_COUNT; i++) {
+        bridge->curriculum.domain_scores[i] = 0.0f;
+    }
+
+    /* Initialize mode state */
+    bridge->mode_state.gauss_skill = 0.3f;
+    bridge->mode_state.newton_skill = 0.3f;
+    bridge->mode_state.erdos_skill = 0.3f;
+    bridge->mode_state.best_mode = GENIUS_MODE_ADAPTIVE;
+    bridge->mode_state.mode_selection_accuracy = 0.5f;
+
+    /* Initialize learning rate */
+    bridge->current_learning_rate = bridge->config.base_learning_rate;
+    bridge->lr_step_count = 0;
+
+    /* Initialize state */
+    bridge->state = GENIUS_TRAINING_STATE_IDLE;
+    bridge->task_count = 0;
+    bridge->current_time_us = 0;
+
+    memset(&bridge->progress, 0, sizeof(genius_training_progress_t));
+    memset(&bridge->stats, 0, sizeof(genius_training_stats_t));
+
+    return bridge;
+}
+
+void genius_training_destroy(genius_training_bridge_t* bridge) {
+    if (!bridge) return;
+
+    if (bridge->tasks) nimcp_free(bridge->tasks);
+
+    bridge_base_cleanup(&bridge->base);
+    nimcp_free(bridge);
+}
+
+int genius_training_reset(genius_training_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    /* Reset curriculum */
+    bridge->curriculum.current_stage = GENIUS_STAGE_NOVICE;
+    bridge->curriculum.examples_in_stage = 0;
+    bridge->curriculum.stage_score = 0.5f;
+    bridge->curriculum.stages_completed = 0;
+    bridge->curriculum.advancements = 0;
+    bridge->curriculum.regressions = 0;
+
+    /* Reset progress */
+    memset(&bridge->progress, 0, sizeof(genius_training_progress_t));
+
+    /* Reset mode state */
+    bridge->mode_state.gauss_skill = 0.3f;
+    bridge->mode_state.newton_skill = 0.3f;
+    bridge->mode_state.erdos_skill = 0.3f;
+
+    /* Reset learning rate */
+    bridge->current_learning_rate = bridge->config.base_learning_rate;
+    bridge->lr_step_count = 0;
+
+    bridge->state = GENIUS_TRAINING_STATE_IDLE;
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_training_link_genius(genius_training_bridge_t* bridge, struct mathematical_genius* genius) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->genius = genius;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_training_link_brain_training(genius_training_bridge_t* bridge,
+                                        struct nimcp_brain_training_ctx* ctx) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->brain_training = ctx;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+//=============================================================================
+// Task Management
+//=============================================================================
+
+int genius_training_register_task(genius_training_bridge_t* bridge,
+                                  const genius_training_task_t* task) {
+    if (!bridge || !task) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    if (bridge->task_count >= bridge->task_capacity) {
+        nimcp_mutex_unlock(bridge->base.mutex);
+        return -1;
+    }
+
+    /* Assign task ID */
+    uint32_t task_id = bridge->task_count;
+    bridge->tasks[bridge->task_count] = *task;
+    bridge->tasks[bridge->task_count].task_id = task_id;
+    bridge->task_count++;
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return (int)task_id;
+}
+
+int genius_training_unregister_task(genius_training_bridge_t* bridge, uint32_t task_id) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    for (uint32_t i = 0; i < bridge->task_count; i++) {
+        if (bridge->tasks[i].task_id == task_id) {
+            /* Swap with last and decrement */
+            bridge->tasks[i] = bridge->tasks[--bridge->task_count];
+            nimcp_mutex_unlock(bridge->base.mutex);
+            return 0;
+        }
+    }
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return -1;
+}
+
+int genius_training_get_task(genius_training_bridge_t* bridge,
+                             uint32_t task_id,
+                             genius_training_task_t* task) {
+    if (!bridge || !task) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    genius_training_task_t* t = find_task(bridge, task_id);
+    if (t) {
+        *task = *t;
+        nimcp_mutex_unlock(bridge->base.mutex);
+        return 0;
+    }
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return -1;
+}
+
+//=============================================================================
+// Training Functions
+//=============================================================================
+
+int genius_training_start(genius_training_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->state = GENIUS_TRAINING_STATE_TRAINING;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_training_pause(genius_training_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->state = GENIUS_TRAINING_STATE_PAUSED;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_training_resume(genius_training_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    if (bridge->state == GENIUS_TRAINING_STATE_PAUSED) {
+        bridge->state = GENIUS_TRAINING_STATE_TRAINING;
+    }
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_training_stop(genius_training_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->state = GENIUS_TRAINING_STATE_IDLE;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+float genius_training_train_batch(genius_training_bridge_t* bridge,
+                                  const void* inputs,
+                                  const void* targets,
+                                  uint32_t batch_size) {
+    if (!bridge || !inputs || !targets || batch_size == 0) return -1.0f;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->state = GENIUS_TRAINING_STATE_TRAINING;
+
+    /* Simulate batch training */
+    float batch_loss = 0.0f;
+    float batch_accuracy = 0.0f;
+
+    /* In a real implementation, this would forward through the genius module
+     * and compute gradients. For now, simulate training dynamics. */
+    for (uint32_t i = 0; i < batch_size; i++) {
+        /* Simulated loss computation */
+        float sample_loss = 0.5f * (1.0f - bridge->mode_state.gauss_skill) +
+                           0.3f * (1.0f - bridge->mode_state.newton_skill) +
+                           0.2f * (1.0f - bridge->mode_state.erdos_skill);
+        batch_loss += sample_loss;
+
+        /* Simulated accuracy */
+        float sample_acc = (bridge->mode_state.gauss_skill +
+                           bridge->mode_state.newton_skill +
+                           bridge->mode_state.erdos_skill) / 3.0f;
+        batch_accuracy += sample_acc;
+    }
+
+    batch_loss /= (float)batch_size;
+    batch_accuracy /= (float)batch_size;
+
+    /* Update skills based on training (simulated gradient descent) */
+    float lr = bridge->current_learning_rate;
+    bridge->mode_state.gauss_skill += lr * 0.01f * (1.0f - batch_loss);
+    bridge->mode_state.newton_skill += lr * 0.01f * (1.0f - batch_loss);
+    bridge->mode_state.erdos_skill += lr * 0.01f * (1.0f - batch_loss);
+
+    bridge->mode_state.gauss_skill = clamp_f(bridge->mode_state.gauss_skill, 0.0f, 1.0f);
+    bridge->mode_state.newton_skill = clamp_f(bridge->mode_state.newton_skill, 0.0f, 1.0f);
+    bridge->mode_state.erdos_skill = clamp_f(bridge->mode_state.erdos_skill, 0.0f, 1.0f);
+
+    /* Update progress */
+    bridge->progress.total_examples_trained += batch_size;
+    bridge->progress.total_batches++;
+    bridge->progress.current_loss = batch_loss;
+    bridge->progress.current_accuracy = batch_accuracy;
+    bridge->progress.learning_rate_current = bridge->current_learning_rate;
+
+    /* Update curriculum */
+    if (bridge->config.enable_curriculum) {
+        update_curriculum_state(bridge, batch_accuracy);
+    }
+
+    /* Update stats */
+    bridge->stats.total_examples += batch_size;
+    if (batch_accuracy > 0.8f) {
+        bridge->stats.successful_proofs += batch_size / 2;
+    }
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return batch_loss;
+}
+
+float genius_training_train_epoch(genius_training_bridge_t* bridge) {
+    if (!bridge) return -1.0f;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->state = GENIUS_TRAINING_STATE_TRAINING;
+
+    uint64_t start_time = nimcp_time_get_us();
+    float epoch_loss = 0.0f;
+    uint32_t num_batches = 100; /* Simulated */
+
+    for (uint32_t b = 0; b < num_batches; b++) {
+        /* Simulated batch */
+        float batch_loss = 0.5f * expf(-0.01f * (float)bridge->progress.total_batches);
+        epoch_loss += batch_loss;
+
+        bridge->progress.total_batches++;
+        bridge->progress.total_examples_trained += bridge->config.batch_size;
+    }
+
+    epoch_loss /= (float)num_batches;
+    bridge->progress.total_epochs++;
+    bridge->progress.current_loss = epoch_loss;
+
+    uint64_t elapsed = nimcp_time_get_us() - start_time;
+    bridge->stats.total_training_time_us += elapsed;
+    bridge->stats.mean_batch_time_ms = (float)elapsed / (float)num_batches / 1000.0f;
+    bridge->stats.total_examples += num_batches * bridge->config.batch_size;
+
+    /* Callback */
+    if (bridge->epoch_callback) {
+        bridge->epoch_callback(bridge, bridge->progress.total_epochs,
+                              epoch_loss, bridge->progress.current_accuracy,
+                              bridge->epoch_callback_data);
+    }
+
+    /* Checkpoint */
+    if (bridge->config.enable_checkpointing &&
+        bridge->progress.total_epochs % bridge->config.checkpoint_frequency == 0) {
+        if (bridge->checkpoint_callback) {
+            bridge->checkpoint_callback(bridge, bridge->progress.total_epochs,
+                                       bridge->progress.validation_accuracy,
+                                       bridge->checkpoint_callback_data);
+        }
+    }
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return epoch_loss;
+}
+
+float genius_training_validate(genius_training_bridge_t* bridge) {
+    if (!bridge) return -1.0f;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->state = GENIUS_TRAINING_STATE_VALIDATING;
+
+    uint64_t start_time = nimcp_time_get_us();
+
+    /* Simulated validation */
+    float validation_loss = bridge->progress.current_loss * 1.1f;
+    float validation_accuracy = (bridge->mode_state.gauss_skill +
+                                 bridge->mode_state.newton_skill +
+                                 bridge->mode_state.erdos_skill) / 3.0f;
+
+    bridge->progress.validation_loss = validation_loss;
+    bridge->progress.validation_accuracy = validation_accuracy;
+
+    if (validation_accuracy > bridge->progress.best_validation_score) {
+        bridge->progress.best_validation_score = validation_accuracy;
+    }
+
+    bridge->stats.peak_accuracy = fmaxf(bridge->stats.peak_accuracy, validation_accuracy);
+    bridge->stats.final_accuracy = validation_accuracy;
+
+    uint64_t elapsed = nimcp_time_get_us() - start_time;
+    bridge->stats.total_validation_time_us += elapsed;
+
+    bridge->state = GENIUS_TRAINING_STATE_TRAINING;
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    return validation_accuracy;
+}
+
+int genius_training_consolidate(genius_training_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->state = GENIUS_TRAINING_STATE_CONSOLIDATING;
+
+    /* Consolidation: strengthen well-learned skills */
+    if (bridge->mode_state.gauss_skill > 0.7f) {
+        bridge->mode_state.gauss_skill *= 1.02f;
+    }
+    if (bridge->mode_state.newton_skill > 0.7f) {
+        bridge->mode_state.newton_skill *= 1.02f;
+    }
+    if (bridge->mode_state.erdos_skill > 0.7f) {
+        bridge->mode_state.erdos_skill *= 1.02f;
+    }
+
+    bridge->mode_state.gauss_skill = clamp_f(bridge->mode_state.gauss_skill, 0.0f, 1.0f);
+    bridge->mode_state.newton_skill = clamp_f(bridge->mode_state.newton_skill, 0.0f, 1.0f);
+    bridge->mode_state.erdos_skill = clamp_f(bridge->mode_state.erdos_skill, 0.0f, 1.0f);
+
+    bridge->state = GENIUS_TRAINING_STATE_IDLE;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+//=============================================================================
+// Curriculum Functions
+//=============================================================================
+
+int genius_training_get_curriculum_state(genius_training_bridge_t* bridge,
+                                         genius_curriculum_state_t* state) {
+    if (!bridge || !state) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    *state = bridge->curriculum;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_training_advance_curriculum(genius_training_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    if (bridge->curriculum.current_stage < GENIUS_STAGE_RESEARCH) {
+        genius_curriculum_stage_t old_stage = bridge->curriculum.current_stage;
+        bridge->curriculum.current_stage++;
+        bridge->curriculum.examples_in_stage = 0;
+        bridge->curriculum.stages_completed++;
+        bridge->curriculum.advancements++;
+
+        if (bridge->curriculum_callback) {
+            bridge->curriculum_callback(bridge, old_stage, bridge->curriculum.current_stage,
+                                       bridge->curriculum.current_domain,
+                                       bridge->curriculum_callback_data);
+        }
+
+        nimcp_mutex_unlock(bridge->base.mutex);
+        return (int)bridge->curriculum.current_stage;
+    }
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return -1;
+}
+
+int genius_training_set_curriculum_stage(genius_training_bridge_t* bridge,
+                                         genius_curriculum_stage_t stage) {
+    if (!bridge || stage > GENIUS_STAGE_RESEARCH) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->curriculum.current_stage = stage;
+    bridge->curriculum.examples_in_stage = 0;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_training_set_domain(genius_training_bridge_t* bridge,
+                               genius_train_domain_t domain) {
+    if (!bridge || domain >= GENIUS_TRAIN_DOMAIN_COUNT) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->curriculum.current_domain = domain;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+//=============================================================================
+// Learning Rate Functions
+//=============================================================================
+
+float genius_training_get_learning_rate(genius_training_bridge_t* bridge) {
+    if (!bridge) return -1.0f;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    float lr = bridge->current_learning_rate;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return lr;
+}
+
+int genius_training_set_learning_rate(genius_training_bridge_t* bridge, float lr) {
+    if (!bridge || lr <= 0.0f) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->current_learning_rate = lr;
+    bridge->progress.learning_rate_current = lr;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+float genius_training_lr_step(genius_training_bridge_t* bridge) {
+    if (!bridge) return -1.0f;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    bridge->lr_step_count++;
+    bridge->current_learning_rate *= bridge->config.learning_rate_decay;
+    bridge->progress.learning_rate_current = bridge->current_learning_rate;
+
+    float lr = bridge->current_learning_rate;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return lr;
+}
+
+//=============================================================================
+// State Query Functions
+//=============================================================================
+
+int genius_training_get_progress(genius_training_bridge_t* bridge,
+                                 genius_training_progress_t* progress) {
+    if (!bridge || !progress) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    *progress = bridge->progress;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_training_get_mode_state(genius_training_bridge_t* bridge,
+                                   genius_mode_training_state_t* state) {
+    if (!bridge || !state) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    *state = bridge->mode_state;
+
+    /* Determine best mode */
+    float max_skill = state->gauss_skill;
+    state->best_mode = GENIUS_MODE_GAUSS;
+    if (state->newton_skill > max_skill) {
+        max_skill = state->newton_skill;
+        state->best_mode = GENIUS_MODE_NEWTON;
+    }
+    if (state->erdos_skill > max_skill) {
+        state->best_mode = GENIUS_MODE_ERDOS;
+    }
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_training_get_state(genius_training_bridge_t* bridge,
+                              genius_training_bridge_state_t* state) {
+    if (!bridge || !state) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    state->state = bridge->state;
+    state->active_tasks = bridge->task_count;
+    state->overall_progress = (float)bridge->progress.total_epochs / 100.0f; /* Normalized */
+    state->overall_skill = (bridge->mode_state.gauss_skill +
+                            bridge->mode_state.newton_skill +
+                            bridge->mode_state.erdos_skill) / 3.0f;
+    state->max_stage = bridge->curriculum.current_stage;
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_training_get_stats(genius_training_bridge_t* bridge,
+                              genius_training_stats_t* stats) {
+    if (!bridge || !stats) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    *stats = bridge->stats;
+    stats->curriculum_efficiency = (bridge->curriculum.advancements > 0) ?
+        (float)bridge->curriculum.stages_completed /
+        (float)(bridge->curriculum.advancements + bridge->curriculum.regressions + 1) : 0.0f;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_training_reset_stats(genius_training_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    memset(&bridge->stats, 0, sizeof(genius_training_stats_t));
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+//=============================================================================
+// Checkpoint Functions
+//=============================================================================
+
+int genius_training_save_checkpoint(genius_training_bridge_t* bridge, const char* path) {
+    if (!bridge || !path) return -1;
+
+    /* In a full implementation, this would serialize the bridge state to disk */
+    /* For now, just log the action */
+    NIMCP_LOG_INFO("Saving genius training checkpoint to: %s", path);
+    return 0;
+}
+
+int genius_training_load_checkpoint(genius_training_bridge_t* bridge, const char* path) {
+    if (!bridge || !path) return -1;
+
+    /* In a full implementation, this would deserialize the bridge state from disk */
+    NIMCP_LOG_INFO("Loading genius training checkpoint from: %s", path);
+    return 0;
+}
+
+//=============================================================================
+// Callback Registration
+//=============================================================================
+
+int genius_training_register_epoch_callback(genius_training_bridge_t* bridge,
+                                            genius_training_epoch_callback_t callback,
+                                            void* user_data) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->epoch_callback = callback;
+    bridge->epoch_callback_data = user_data;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_training_register_curriculum_callback(genius_training_bridge_t* bridge,
+                                                 genius_training_curriculum_callback_t callback,
+                                                 void* user_data) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->curriculum_callback = callback;
+    bridge->curriculum_callback_data = user_data;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_training_register_checkpoint_callback(genius_training_bridge_t* bridge,
+                                                 genius_training_checkpoint_callback_t callback,
+                                                 void* user_data) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->checkpoint_callback = callback;
+    bridge->checkpoint_callback_data = user_data;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+//=============================================================================
+// Bio-Async Integration
+//=============================================================================
+
+int genius_training_bio_async_connect(genius_training_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->bio_async_connected = true;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_training_bio_async_disconnect(genius_training_bridge_t* bridge) {
+    if (!bridge) return -1;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->bio_async_connected = false;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+bool genius_training_is_bio_async_connected(genius_training_bridge_t* bridge) {
+    if (!bridge) return false;
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bool connected = bridge->bio_async_connected;
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return connected;
+}

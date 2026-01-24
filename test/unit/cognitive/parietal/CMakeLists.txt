@@ -697,3 +697,102 @@ gtest_discover_tests(unit_parietal_training_bridge
         LABELS "unit;cognitive;parietal;training-bridge"
         TIMEOUT 120
 )
+
+#=============================================================================
+# Mathematical Genius SNN Bridge Tests
+#=============================================================================
+
+add_executable(unit_genius_snn_bridge
+    test_genius_snn_bridge.cpp
+)
+
+target_link_libraries(unit_genius_snn_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_genius_snn_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_genius_snn_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_genius_snn_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;parietal;genius;snn-bridge"
+        TIMEOUT 90
+)
+
+#=============================================================================
+# Mathematical Genius Plasticity Bridge Tests
+#=============================================================================
+
+add_executable(unit_genius_plasticity_bridge
+    test_genius_plasticity_bridge.cpp
+)
+
+target_link_libraries(unit_genius_plasticity_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_genius_plasticity_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_genius_plasticity_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_genius_plasticity_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;parietal;genius;plasticity-bridge"
+        TIMEOUT 90
+)
+
+#=============================================================================
+# Mathematical Genius Training Bridge Tests
+#=============================================================================
+
+add_executable(unit_genius_training_bridge
+    test_genius_training_bridge.cpp
+)
+
+target_link_libraries(unit_genius_training_bridge
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_genius_training_bridge
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_genius_training_bridge PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_genius_training_bridge
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;parietal;genius;training-bridge"
+        TIMEOUT 90
+)

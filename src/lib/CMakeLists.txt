@@ -2528,6 +2528,11 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_genius_newton.c                # Calculus mode
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_genius_erdos.c                 # Combinatorics mode
 
+    # Phase 3.1: Genius SNN/Plasticity/Training Integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_genius_snn_bridge.c            # Genius-SNN spike-based reasoning
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_genius_plasticity_bridge.c     # Genius-STDP/BCM learning integration
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_genius_training_bridge.c       # Genius curriculum training
+
     # Phase 4: Evolutionary Proof Search
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/neuro_symbolic/nimcp_evolutionary_proof.c     # GA+RL hybrid theorem prover
 
