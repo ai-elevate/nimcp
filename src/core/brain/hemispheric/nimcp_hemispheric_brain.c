@@ -97,12 +97,16 @@ hemispheric_brain_t* hemispheric_brain_create(
 
     if (!hemispheric_brain_validate_config(&cfg)) {
         NIMCP_LOGGING_ERROR("Invalid hemispheric brain configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hemispheric_brain_create: invalid configuration");
         return NULL;
     }
 
     hemispheric_brain_t* brain = nimcp_calloc(1, sizeof(hemispheric_brain_t));
     if (!brain) {
         NIMCP_LOGGING_ERROR("Failed to allocate hemispheric brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "hemispheric_brain_create: failed to allocate brain");
         return NULL;
     }
 
@@ -115,6 +119,8 @@ hemispheric_brain_t* hemispheric_brain_create(
     brain->left = hemisphere_create(&cfg.left_config);
     if (!brain->left) {
         NIMCP_LOGGING_ERROR("Failed to create left hemisphere");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "hemispheric_brain_create: failed to create left hemisphere");
         nimcp_free(brain);
         return NULL;
     }
@@ -128,6 +134,8 @@ hemispheric_brain_t* hemispheric_brain_create(
     brain->right = hemisphere_create(&cfg.right_config);
     if (!brain->right) {
         NIMCP_LOGGING_ERROR("Failed to create right hemisphere");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "hemispheric_brain_create: failed to create right hemisphere");
         hemisphere_destroy(brain->left);
         nimcp_free(brain);
         return NULL;
@@ -137,6 +145,8 @@ hemispheric_brain_t* hemispheric_brain_create(
     brain->callosum = callosum_create(&cfg.callosum_config);
     if (!brain->callosum) {
         NIMCP_LOGGING_ERROR("Failed to create corpus callosum");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "hemispheric_brain_create: failed to create corpus callosum");
         hemisphere_destroy(brain->left);
         hemisphere_destroy(brain->right);
         nimcp_free(brain);
@@ -178,6 +188,8 @@ hemispheric_brain_t* hemispheric_brain_create(
     // Mutex
     brain->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!brain->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "hemispheric_brain_create: failed to allocate mutex");
         callosum_destroy(brain->callosum);
         hemisphere_destroy(brain->left);
         hemisphere_destroy(brain->right);
@@ -241,11 +253,15 @@ void hemispheric_brain_destroy(hemispheric_brain_t* brain) {
 
 int hemispheric_brain_update(hemispheric_brain_t* brain, float dt) {
     if (!brain || !brain->is_active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_update: brain is NULL or inactive");
         return -1;
     }
 
     if (nimcp_mutex_lock(brain->mutex) != 0) {
         NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "hemispheric_brain_update: failed to acquire mutex");
         return -1;
     }
 
@@ -308,11 +324,15 @@ int hemispheric_brain_process_lateralized(
     uint32_t output_size
 ) {
     if (!brain || !input || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_process_lateralized: NULL parameter");
         return -1;
     }
 
     if (nimcp_mutex_lock(brain->mutex) != 0) {
         NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "hemispheric_brain_process_lateralized: failed to acquire mutex");
         return -1;
     }
 
@@ -348,11 +368,15 @@ int hemispheric_brain_process_parallel(
     uint32_t output_size
 ) {
     if (!brain || !input || !left_output || !right_output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_process_parallel: NULL parameter");
         return -1;
     }
 
     if (nimcp_mutex_lock(brain->mutex) != 0) {
         NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "hemispheric_brain_process_parallel: failed to acquire mutex");
         return -1;
     }
 
@@ -382,6 +406,8 @@ int hemispheric_brain_process_competitive(
     hemisphere_id_t* winner
 ) {
     if (!brain || !input || !output || !winner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_process_competitive: NULL parameter");
         return -1;
     }
 
@@ -448,6 +474,8 @@ int hemispheric_brain_process_cooperative(
     uint32_t output_size
 ) {
     if (!brain || !input || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_process_cooperative: NULL parameter");
         return -1;
     }
 
@@ -583,7 +611,11 @@ int hemispheric_brain_infer(
         case HEMISPHERIC_MODE_PARALLEL: {
             // Allocate right output, use output for left
             float* right_out = nimcp_malloc(output_size * sizeof(float));
-            if (!right_out) return -1;
+            if (!right_out) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                    "hemispheric_brain_infer: failed to allocate right_out");
+                return -1;
+            }
             int result = hemispheric_brain_process_parallel(
                 brain, input, input_size, output, right_out, output_size);
             // Average for final output
@@ -614,11 +646,15 @@ float hemispheric_brain_train(
     uint32_t size
 ) {
     if (!brain || !input || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_train: NULL parameter");
         return -1.0f;
     }
 
     if (nimcp_mutex_lock(brain->mutex) != 0) {
         NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "hemispheric_brain_train: failed to acquire mutex");
         return -1.0f;
     }
 
@@ -636,11 +672,21 @@ float hemispheric_brain_train(
 //=============================================================================
 
 brain_hemisphere_t* hemispheric_brain_get_left(hemispheric_brain_t* brain) {
-    return brain ? brain->left : NULL;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_get_left: brain is NULL");
+        return NULL;
+    }
+    return brain->left;
 }
 
 brain_hemisphere_t* hemispheric_brain_get_right(hemispheric_brain_t* brain) {
-    return brain ? brain->right : NULL;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_get_right: brain is NULL");
+        return NULL;
+    }
+    return brain->right;
 }
 
 brain_hemisphere_t* hemispheric_brain_get_hemisphere(
@@ -685,7 +731,11 @@ hemisphere_id_t hemispheric_brain_get_dominant_for(
     const hemispheric_brain_t* brain,
     cognitive_domain_t domain
 ) {
-    if (!brain) return HEMISPHERE_LEFT;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_get_dominant_for: brain is NULL");
+        return HEMISPHERE_LEFT;
+    }
     return lateralization_get_dominant_hemisphere(&brain->lateralization, domain);
 }
 
@@ -693,7 +743,11 @@ float hemispheric_brain_get_dominance(
     const hemispheric_brain_t* brain,
     cognitive_domain_t domain
 ) {
-    if (!brain) return 0.5f;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_get_dominance: brain is NULL");
+        return 0.5f;
+    }
     return lateralization_get_dominance(&brain->lateralization, domain);
 }
 
@@ -702,10 +756,16 @@ int hemispheric_brain_shift_dominance(
     cognitive_domain_t domain,
     float shift
 ) {
-    if (!brain) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_shift_dominance: brain is NULL");
+        return -1;
+    }
 
     if (nimcp_mutex_lock(brain->mutex) != 0) {
         NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "hemispheric_brain_shift_dominance: failed to acquire mutex");
         return -1;
     }
 
@@ -719,10 +779,16 @@ int hemispheric_brain_set_lateralization(
     hemispheric_brain_t* brain,
     const lateralization_profile_t* profile
 ) {
-    if (!brain || !profile) return -1;
+    if (!brain || !profile) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_set_lateralization: NULL parameter");
+        return -1;
+    }
 
     if (nimcp_mutex_lock(brain->mutex) != 0) {
         NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "hemispheric_brain_set_lateralization: failed to acquire mutex");
         return -1;
     }
 
@@ -735,7 +801,11 @@ int hemispheric_brain_get_lateralization(
     const hemispheric_brain_t* brain,
     lateralization_profile_t* profile
 ) {
-    if (!brain || !profile) return -1;
+    if (!brain || !profile) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_get_lateralization: NULL parameter");
+        return -1;
+    }
     memcpy(profile, &brain->lateralization, sizeof(lateralization_profile_t));
     return 0;
 }
@@ -745,14 +815,25 @@ int hemispheric_brain_get_lateralization(
 //=============================================================================
 
 corpus_callosum_t* hemispheric_brain_get_callosum(hemispheric_brain_t* brain) {
-    return brain ? brain->callosum : NULL;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_get_callosum: brain is NULL");
+        return NULL;
+    }
+    return brain->callosum;
 }
 
 int hemispheric_brain_disconnect_callosum(hemispheric_brain_t* brain) {
-    if (!brain || !brain->callosum) return -1;
+    if (!brain || !brain->callosum) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_disconnect_callosum: brain or callosum is NULL");
+        return -1;
+    }
 
     if (nimcp_mutex_lock(brain->mutex) != 0) {
         NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "hemispheric_brain_disconnect_callosum: failed to acquire mutex");
         return -1;
     }
 
@@ -766,10 +847,16 @@ int hemispheric_brain_disconnect_callosum(hemispheric_brain_t* brain) {
 }
 
 int hemispheric_brain_reconnect_callosum(hemispheric_brain_t* brain) {
-    if (!brain || !brain->callosum) return -1;
+    if (!brain || !brain->callosum) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_reconnect_callosum: brain or callosum is NULL");
+        return -1;
+    }
 
     if (nimcp_mutex_lock(brain->mutex) != 0) {
         NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "hemispheric_brain_reconnect_callosum: failed to acquire mutex");
         return -1;
     }
 
@@ -790,7 +877,11 @@ int hemispheric_brain_set_callosum_bandwidth(
     hemispheric_brain_t* brain,
     callosum_bandwidth_mode_t mode
 ) {
-    if (!brain || !brain->callosum) return -1;
+    if (!brain || !brain->callosum) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_set_callosum_bandwidth: brain or callosum is NULL");
+        return -1;
+    }
     return callosum_set_bandwidth_mode(brain->callosum, mode);
 }
 
@@ -803,7 +894,11 @@ int hemispheric_brain_set_tier(
     hemisphere_id_t hemisphere,
     platform_tier_t tier
 ) {
-    if (!brain) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_set_tier: brain is NULL");
+        return -1;
+    }
 
     brain_hemisphere_t* hemi = (hemisphere == HEMISPHERE_LEFT)
         ? brain->left : brain->right;
@@ -814,7 +909,11 @@ platform_tier_t hemispheric_brain_get_tier(
     const hemispheric_brain_t* brain,
     hemisphere_id_t hemisphere
 ) {
-    if (!brain) return PLATFORM_TIER_MINIMAL;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_get_tier: brain is NULL");
+        return PLATFORM_TIER_MINIMAL;
+    }
 
     brain_hemisphere_t* hemi = (hemisphere == HEMISPHERE_LEFT)
         ? brain->left : brain->right;
@@ -827,11 +926,15 @@ int hemispheric_brain_set_asymmetric_resources(
     bool rebalance_immediately
 ) {
     if (!brain || left_fraction < 0.0f || left_fraction > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hemispheric_brain_set_asymmetric_resources: invalid parameter");
         return -1;
     }
 
     if (nimcp_mutex_lock(brain->mutex) != 0) {
         NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "hemispheric_brain_set_asymmetric_resources: failed to acquire mutex");
         return -1;
     }
 
@@ -860,7 +963,11 @@ int hemispheric_brain_enable_asymmetric_resources(
     hemispheric_brain_t* brain,
     bool enable
 ) {
-    if (!brain) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_enable_asymmetric_resources: brain is NULL");
+        return -1;
+    }
     brain->asymmetric_resources = enable;
     return 0;
 }
@@ -873,7 +980,11 @@ int hemispheric_brain_set_mode(
     hemispheric_brain_t* brain,
     hemispheric_mode_t mode
 ) {
-    if (!brain) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_set_mode: brain is NULL");
+        return -1;
+    }
     brain->default_mode = mode;
     return 0;
 }
@@ -886,7 +997,11 @@ int hemispheric_brain_set_cooperation_strategy(
     hemispheric_brain_t* brain,
     cooperation_strategy_t strategy
 ) {
-    if (!brain) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_set_cooperation_strategy: brain is NULL");
+        return -1;
+    }
     brain->cooperation_strategy = strategy;
     return 0;
 }
@@ -899,7 +1014,11 @@ int hemispheric_brain_get_stats(
     const hemispheric_brain_t* brain,
     hemispheric_brain_stats_t* stats
 ) {
-    if (!brain || !stats) return -1;
+    if (!brain || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_get_stats: NULL parameter");
+        return -1;
+    }
 
     // Note: Must cast away const to lock mutex for thread-safe read
     // This is safe because we only read stats, not modify brain state
@@ -922,10 +1041,16 @@ int hemispheric_brain_get_stats(
 }
 
 int hemispheric_brain_reset_stats(hemispheric_brain_t* brain) {
-    if (!brain) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_reset_stats: brain is NULL");
+        return -1;
+    }
 
     if (nimcp_mutex_lock(brain->mutex) != 0) {
         NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "hemispheric_brain_reset_stats: failed to acquire mutex");
         return -1;
     }
 
@@ -946,7 +1071,11 @@ bool hemispheric_brain_is_active(const hemispheric_brain_t* brain) {
 }
 
 int hemispheric_brain_set_active(hemispheric_brain_t* brain, bool active) {
-    if (!brain) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_set_active: brain is NULL");
+        return -1;
+    }
     brain->is_active = active;
     hemisphere_set_active(brain->left, active);
     hemisphere_set_active(brain->right, active);
@@ -958,7 +1087,11 @@ int hemispheric_brain_set_active(hemispheric_brain_t* brain, bool active) {
 //=============================================================================
 
 int hemispheric_brain_connect_bio_async(hemispheric_brain_t* brain) {
-    if (!brain) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_connect_bio_async: brain is NULL");
+        return -1;
+    }
 
     if (brain->bio_async_enabled) return 0;
 
@@ -986,7 +1119,11 @@ int hemispheric_brain_connect_bio_async(hemispheric_brain_t* brain) {
 }
 
 int hemispheric_brain_disconnect_bio_async(hemispheric_brain_t* brain) {
-    if (!brain || !brain->bio_async_enabled) return -1;
+    if (!brain || !brain->bio_async_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_disconnect_bio_async: brain is NULL or not connected");
+        return -1;
+    }
 
     if (brain->callosum) {
         callosum_disconnect_bio_async(brain->callosum);
@@ -1011,7 +1148,11 @@ int hemispheric_brain_connect_immune(
     hemispheric_brain_t* brain,
     brain_immune_system_t* immune
 ) {
-    if (!brain) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemispheric_brain_connect_immune: brain is NULL");
+        return -1;
+    }
     brain->immune = immune;
     return 0;
 }

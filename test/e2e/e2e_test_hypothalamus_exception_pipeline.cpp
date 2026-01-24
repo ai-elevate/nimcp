@@ -603,7 +603,7 @@ TEST_F(HypothalamusExceptionPipelineTest, FEPIntegrationErrors) {
 
     E2E_STAGE_BEGIN("Trigger FEP-related errors", 300);
     // Simulate cytokine storm condition via exception
-    TriggerTestException(NIMCP_ERROR_OVERFLOW, "Simulated cytokine storm overflow");
+    TriggerTestException(NIMCP_ERROR_BUFFER_OVERFLOW, "Simulated cytokine storm overflow");
     brain_immune_update(immune, 50);
 
     // Update FEP bridge with extreme values
@@ -723,7 +723,7 @@ TEST_F(HypothalamusExceptionPipelineTest, ConcurrentErrorHandling) {
     std::thread orch_error_thread([this, &running, &errors_from_orchestrator]() {
         while (running.load()) {
             nimcp_exception_t* ex = nimcp_exception_create(
-                NIMCP_ERROR_BUSY,
+                NIMCP_ERROR_OPERATION_FAILED,
                 EXCEPTION_SEVERITY_ERROR,
                 __FILE__, __LINE__, __func__,
                 "Orchestrator error %d", errors_from_orchestrator.load()
