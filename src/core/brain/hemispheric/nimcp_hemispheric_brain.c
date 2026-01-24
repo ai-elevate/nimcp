@@ -413,6 +413,8 @@ int hemispheric_brain_process_competitive(
 
     if (nimcp_mutex_lock(brain->mutex) != 0) {
         NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "hemispheric_brain_process_competitive: failed to acquire mutex");
         return -1;
     }
 
@@ -420,6 +422,8 @@ int hemispheric_brain_process_competitive(
     float* left_out = nimcp_malloc(output_size * sizeof(float));
     float* right_out = nimcp_malloc(output_size * sizeof(float));
     if (!left_out || !right_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "hemispheric_brain_process_competitive: failed to allocate buffers");
         if (left_out) nimcp_free(left_out);
         if (right_out) nimcp_free(right_out);
         nimcp_mutex_unlock(brain->mutex);
@@ -481,6 +485,8 @@ int hemispheric_brain_process_cooperative(
 
     if (nimcp_mutex_lock(brain->mutex) != 0) {
         NIMCP_LOGGING_ERROR("Failed to acquire hemispheric brain mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "hemispheric_brain_process_cooperative: failed to acquire mutex");
         return -1;
     }
 
@@ -488,6 +494,8 @@ int hemispheric_brain_process_cooperative(
     float* left_out = nimcp_malloc(output_size * sizeof(float));
     float* right_out = nimcp_malloc(output_size * sizeof(float));
     if (!left_out || !right_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "hemispheric_brain_process_cooperative: failed to allocate buffers");
         if (left_out) nimcp_free(left_out);
         if (right_out) nimcp_free(right_out);
         nimcp_mutex_unlock(brain->mutex);

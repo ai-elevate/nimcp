@@ -81,12 +81,16 @@ hemisphere_config_t hemisphere_default_config(hemisphere_id_t hemisphere_id) {
 brain_hemisphere_t* hemisphere_create(const hemisphere_config_t* config) {
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config for hemisphere creation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemisphere_create: config is NULL");
         return NULL;
     }
 
     brain_hemisphere_t* hemi = nimcp_calloc(1, sizeof(brain_hemisphere_t));
     if (!hemi) {
         NIMCP_LOGGING_ERROR("Failed to allocate hemisphere");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "hemisphere_create: failed to allocate hemisphere");
         return NULL;
     }
 
@@ -127,6 +131,8 @@ brain_hemisphere_t* hemisphere_create(const hemisphere_config_t* config) {
     // Mutex
     hemi->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!hemi->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "hemisphere_create: failed to allocate mutex");
         brain_destroy(hemi->brain);
         if (hemi->neuromod) {
             neuromodulator_system_destroy(hemi->neuromod);
@@ -197,6 +203,8 @@ void hemisphere_destroy(brain_hemisphere_t* hemisphere) {
 
 int hemisphere_update(brain_hemisphere_t* hemisphere, float dt) {
     if (!hemisphere || !hemisphere->is_active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemisphere_update: hemisphere is NULL or inactive");
         return -1;
     }
 
@@ -258,6 +266,8 @@ int hemisphere_infer(
     uint32_t output_size
 ) {
     if (!hemisphere || !input || !output || !hemisphere->is_active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemisphere_infer: NULL parameter or hemisphere inactive");
         return -1;
     }
 
@@ -312,12 +322,16 @@ float hemisphere_train(
     uint32_t size
 ) {
     if (!hemisphere || !input || !target || !hemisphere->is_active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemisphere_train: NULL parameter or hemisphere inactive");
         return -1.0f;
     }
 
     // First, run inference to get current output and activate neurons
     float* output = nimcp_malloc(size * sizeof(float));
     if (!output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "hemisphere_train: failed to allocate output buffer");
         return -1.0f;
     }
 
@@ -367,6 +381,8 @@ float hemisphere_train(
 
 brain_t hemisphere_get_brain(brain_hemisphere_t* hemisphere) {
     if (!hemisphere) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemisphere_get_brain: hemisphere is NULL");
         brain_t empty = {0};
         return empty;
     }
@@ -390,6 +406,8 @@ int hemisphere_get_stats(
     hemisphere_stats_t* stats
 ) {
     if (!hemisphere || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemisphere_get_stats: NULL parameter");
         return -1;
     }
 
@@ -472,6 +490,8 @@ int hemisphere_set_neuromod(
     float level
 ) {
     if (!hemisphere || !hemisphere->neuromod) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemisphere_set_neuromod: hemisphere or neuromod is NULL");
         return -1;
     }
 
@@ -519,6 +539,8 @@ int hemisphere_map_motor_output(
     float* body_output
 ) {
     if (!hemisphere || !motor_commands || !body_output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemisphere_map_motor_output: NULL parameter");
         return -1;
     }
 
@@ -536,6 +558,8 @@ int hemisphere_map_sensory_input(
     float* sensory_input
 ) {
     if (!hemisphere || !body_input || !sensory_input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemisphere_map_sensory_input: NULL parameter");
         return -1;
     }
 
@@ -605,6 +629,8 @@ int hemisphere_connect_bio_async(brain_hemisphere_t* hemisphere) {
 
 int hemisphere_disconnect_bio_async(brain_hemisphere_t* hemisphere) {
     if (!hemisphere || !hemisphere->bio_async_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hemisphere_disconnect_bio_async: hemisphere is NULL or not connected");
         return -1;
     }
 
@@ -634,8 +660,16 @@ int brain_hemisphere_set_learning_rate(
     brain_hemisphere_t* hemisphere,
     float lr
 ) {
-    if (!hemisphere) return -1;
-    if (lr < 0.0f || lr > 1.0f) return -2;
+    if (!hemisphere) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "brain_hemisphere_set_learning_rate: hemisphere is NULL");
+        return -1;
+    }
+    if (lr < 0.0f || lr > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "brain_hemisphere_set_learning_rate: lr out of range [0.0, 1.0]");
+        return -2;
+    }
 
     // Set the underlying brain's learning rate
     hemisphere->brain->base_learning_rate = lr;

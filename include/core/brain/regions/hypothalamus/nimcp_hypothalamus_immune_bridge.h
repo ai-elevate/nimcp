@@ -33,20 +33,22 @@
 #ifndef NIMCP_HYPOTHALAMUS_IMMUNE_BRIDGE_H
 #define NIMCP_HYPOTHALAMUS_IMMUNE_BRIDGE_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
 
+/* Include headers BEFORE extern "C" - they have their own C linkage guards
+ * This prevents CUDA template headers from being included inside extern "C" */
 #include "nimcp_hypothalamus_drives.h"
 #include "cognitive/immune/nimcp_brain_immune.h"
 #include "glial/microglia/nimcp_microglia.h"
 #include "async/nimcp_bio_router.h"
 #include "async/nimcp_bio_messages.h"
 #include "utils/thread/nimcp_thread.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Forward declaration of orchestrator type (avoid header conflict) */
 typedef struct hypo_orchestrator_struct* hypo_orchestrator_t;
