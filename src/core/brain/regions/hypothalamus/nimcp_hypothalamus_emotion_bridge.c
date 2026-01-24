@@ -147,7 +147,10 @@ int hypo_emotion_bridge_update_emotion(
     hypo_emotion_bridge_t* bridge,
     const hypo_emotion_input_t* emotion)
 {
-    if (!bridge || !emotion) return -1;
+    if (!bridge || !emotion) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_emotion_bridge_update_emotion: bridge or emotion is NULL");
+        return -1;
+    }
 
     bridge->emotion_input = *emotion;
     bridge->last_update_time_ms = get_current_time_ms();
@@ -298,7 +301,10 @@ int hypo_emotion_bridge_get_hpa_output(
     const hypo_emotion_bridge_t* bridge,
     hypo_hpa_output_t* output)
 {
-    if (!bridge || !output) return -1;
+    if (!bridge || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_emotion_bridge_get_hpa_output: bridge or output is NULL");
+        return -1;
+    }
 
     *output = bridge->hpa_output;
     return 0;
@@ -312,7 +318,10 @@ int hypo_emotion_bridge_compute_emotional_modulation(
     hypo_emotion_bridge_t* bridge,
     float* dampening_factor)
 {
-    if (!bridge || !dampening_factor) return -1;
+    if (!bridge || !dampening_factor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_emotion_bridge_compute_emotional_modulation: bridge or dampening_factor is NULL");
+        return -1;
+    }
 
     if (!bridge->config.enable_emotional_dampening) {
         *dampening_factor = 1.0f;  /* No dampening */
@@ -354,7 +363,10 @@ int hypo_emotion_bridge_get_emotion_input(
     const hypo_emotion_bridge_t* bridge,
     hypo_emotion_input_t* emotion)
 {
-    if (!bridge || !emotion) return -1;
+    if (!bridge || !emotion) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_emotion_bridge_get_emotion_input: bridge or emotion is NULL");
+        return -1;
+    }
 
     *emotion = bridge->emotion_input;
     return 0;

@@ -118,6 +118,7 @@ static nimcp_error_t med_handle_state(const void* msg, size_t msg_size,
                                        nimcp_bio_promise_t promise, void* ctx) {
     hypo_medulla_bridge_t* bridge = (hypo_medulla_bridge_t*)ctx;
     if (!bridge || !msg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "med_handle_state: bridge or msg is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -252,6 +253,7 @@ void hypo_medulla_bridge_reset(hypo_medulla_bridge_t* bridge) {
 
 int hypo_medulla_bridge_update(hypo_medulla_bridge_t* bridge, float dt_ms) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_medulla_bridge_update: bridge is NULL");
         return -1;
     }
 
@@ -460,6 +462,7 @@ int hypo_medulla_bridge_send_arousal(
     const hypo_medulla_arousal_cmd_t* cmd) {
 
     if (!bridge || !cmd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_medulla_bridge_send_arousal: bridge or cmd is NULL");
         return -1;
     }
 
@@ -493,6 +496,7 @@ int hypo_medulla_bridge_send_protection(
     const hypo_medulla_protection_cmd_t* cmd) {
 
     if (!bridge || !cmd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_medulla_bridge_send_protection: bridge or cmd is NULL");
         return -1;
     }
 
@@ -516,6 +520,7 @@ int hypo_medulla_bridge_request_emergency(
     const char* reason) {
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_medulla_bridge_request_emergency: bridge is NULL");
         return -1;
     }
 
@@ -587,6 +592,7 @@ nimcp_error_t hypo_medulla_bridge_broadcast_arousal(
     hypo_medulla_bridge_t* bridge) {
 
     if (!bridge || !bridge->bio_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_medulla_bridge_broadcast_arousal: bridge or bio_ctx is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -617,6 +623,7 @@ nimcp_error_t hypo_medulla_bridge_broadcast_protection(
     hypo_medulla_bridge_t* bridge) {
 
     if (!bridge || !bridge->bio_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_medulla_bridge_broadcast_protection: bridge or bio_ctx is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 

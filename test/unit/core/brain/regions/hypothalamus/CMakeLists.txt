@@ -41,5 +41,10 @@ add_hypothalamus_test(test_hypothalamus_logic_bridge)
 # Internal bus tests (pub-sub, modulation, thread safety)
 add_hypothalamus_test(test_hypothalamus_internal_bus)
 
+# Exception handling tests (NIMCP_THROW_TO_IMMUNE integration)
+# Tests NULL params, invalid configs, and boundary conditions for:
+# orchestrator, drives, homeostasis, perception_bridge, alignment, internal_bus
+add_hypothalamus_test(test_hypothalamus_exception_handling)
+
 # Add FEP bridge tests subdirectory
 add_subdirectory(fep)

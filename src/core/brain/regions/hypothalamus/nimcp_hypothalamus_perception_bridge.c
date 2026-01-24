@@ -358,7 +358,10 @@ int hypo_perception_bridge_apply_enhanced_config(
     hypo_perception_bridge_t* bridge,
     const hypo_perception_enhanced_config_t* config)
 {
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_perception_bridge_apply_enhanced_config: bridge or config is NULL");
+        return -1;
+    }
 
     bridge->config = config->base;
 
@@ -401,7 +404,10 @@ int hypo_perception_bridge_apply_enhanced_config(
  *===========================================================================*/
 
 int hypo_perception_bridge_compute_modulation(hypo_perception_bridge_t* bridge) {
-    if (!bridge || !bridge->drives) return -1;
+    if (!bridge || !bridge->drives) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_perception_bridge_compute_modulation: bridge or drives is NULL");
+        return -1;
+    }
 
     const hypo_perception_config_t* cfg = &bridge->config;
     hypo_perception_modulation_t* mod = &bridge->modulation;
@@ -540,7 +546,10 @@ int hypo_perception_bridge_get_modulation(
     const hypo_perception_bridge_t* bridge,
     hypo_perception_modulation_t* modulation)
 {
-    if (!bridge || !modulation) return -1;
+    if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_perception_bridge_get_modulation: bridge or modulation is NULL");
+        return -1;
+    }
 
     *modulation = bridge->modulation;
     return 0;
@@ -570,7 +579,10 @@ int hypo_perception_bridge_process_detection(
     hypo_perception_bridge_t* bridge,
     const hypo_sensory_detection_t* detection)
 {
-    if (!bridge || !detection) return -1;
+    if (!bridge || !detection) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_perception_bridge_process_detection: bridge or detection is NULL");
+        return -1;
+    }
 
     bridge->last_detection = *detection;
     bridge->has_recent_detection = true;
@@ -631,7 +643,10 @@ int hypo_perception_bridge_process_interoceptive(
     hypo_interoceptive_type_t signal_type,
     float intensity)
 {
-    if (!bridge || signal_type >= HYPO_INTERO_COUNT) return -1;
+    if (!bridge || signal_type >= HYPO_INTERO_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_perception_bridge_process_interoceptive: bridge is NULL or invalid signal_type");
+        return -1;
+    }
     if (!bridge->interoception_enabled) return 0;
 
     float clamped_intensity = clamp_01(intensity);
@@ -668,7 +683,10 @@ int hypo_perception_bridge_get_interoceptive_state(
     const hypo_perception_bridge_t* bridge,
     hypo_interoceptive_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_perception_bridge_get_interoceptive_state: bridge or state is NULL");
+        return -1;
+    }
 
     *state = bridge->interoceptive;
     return 0;
@@ -700,7 +718,10 @@ int hypo_perception_bridge_process_olfactory(
     hypo_olfactory_type_t odor_type,
     float intensity)
 {
-    if (!bridge || odor_type >= HYPO_OLFACT_COUNT) return -1;
+    if (!bridge || odor_type >= HYPO_OLFACT_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_perception_bridge_process_olfactory: bridge is NULL or invalid odor_type");
+        return -1;
+    }
     if (!bridge->chemosensory_enabled) return 0;
 
     float clamped_intensity = clamp_01(intensity);
@@ -738,7 +759,10 @@ int hypo_perception_bridge_process_gustatory(
     hypo_gustatory_type_t taste_type,
     float intensity)
 {
-    if (!bridge || taste_type >= HYPO_GUST_COUNT) return -1;
+    if (!bridge || taste_type >= HYPO_GUST_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_perception_bridge_process_gustatory: bridge is NULL or invalid taste_type");
+        return -1;
+    }
     if (!bridge->chemosensory_enabled) return 0;
 
     float clamped_intensity = clamp_01(intensity);
@@ -786,7 +810,10 @@ int hypo_perception_bridge_get_chemosensory_state(
     const hypo_perception_bridge_t* bridge,
     hypo_chemosensory_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_perception_bridge_get_chemosensory_state: bridge or state is NULL");
+        return -1;
+    }
 
     *state = bridge->chemosensory;
     return 0;
@@ -802,7 +829,10 @@ int hypo_perception_bridge_generate_prediction(
     float probability,
     float precision)
 {
-    if (!bridge || pred_type >= HYPO_PRED_COUNT) return -1;
+    if (!bridge || pred_type >= HYPO_PRED_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_perception_bridge_generate_prediction: bridge is NULL or invalid pred_type");
+        return -1;
+    }
     if (!bridge->predictive_coding_enabled) return 0;
 
     bridge->predictive.predictions[pred_type] = clamp_01(probability);
@@ -818,7 +848,10 @@ int hypo_perception_bridge_update_prediction_error(
     hypo_prediction_type_t pred_type,
     float actual_value)
 {
-    if (!bridge || pred_type >= HYPO_PRED_COUNT) return -1;
+    if (!bridge || pred_type >= HYPO_PRED_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_perception_bridge_update_prediction_error: bridge is NULL or invalid pred_type");
+        return -1;
+    }
     if (!bridge->predictive_coding_enabled) return 0;
 
     float clamped_actual = clamp_01(actual_value);
@@ -844,7 +877,10 @@ int hypo_perception_bridge_get_predictive_state(
     const hypo_perception_bridge_t* bridge,
     hypo_predictive_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_perception_bridge_get_predictive_state: bridge or state is NULL");
+        return -1;
+    }
 
     *state = bridge->predictive;
     return 0;
@@ -854,7 +890,10 @@ int hypo_perception_bridge_compute_free_energy(
     hypo_perception_bridge_t* bridge,
     float* free_energy)
 {
-    if (!bridge || !free_energy) return -1;
+    if (!bridge || !free_energy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_perception_bridge_compute_free_energy: bridge or free_energy is NULL");
+        return -1;
+    }
 
     /* Free energy = sum of precision-weighted squared prediction errors */
     float fe = 0.0f;
@@ -926,7 +965,10 @@ int hypo_perception_bridge_modulate_pain(
     float raw_pain,
     float* modulated_pain)
 {
-    if (!bridge || !modulated_pain) return -1;
+    if (!bridge || !modulated_pain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_perception_bridge_modulate_pain: bridge or modulated_pain is NULL");
+        return -1;
+    }
 
     float clamped_raw = clamp_01(raw_pain);
 
@@ -957,7 +999,10 @@ int hypo_perception_bridge_get_pain_state(
     const hypo_perception_bridge_t* bridge,
     hypo_pain_modulation_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_perception_bridge_get_pain_state: bridge or state is NULL");
+        return -1;
+    }
 
     *state = bridge->pain;
     return 0;
@@ -990,7 +1035,10 @@ int hypo_perception_bridge_set_sleep_stage(
     hypo_perception_bridge_t* bridge,
     hypo_sleep_stage_t stage)
 {
-    if (!bridge || stage >= HYPO_SLEEP_COUNT) return -1;
+    if (!bridge || stage >= HYPO_SLEEP_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_perception_bridge_set_sleep_stage: bridge is NULL or invalid stage");
+        return -1;
+    }
 
     hypo_sleep_stage_t prev_stage = bridge->sleep_gating.current_stage;
     bridge->sleep_gating.current_stage = stage;
@@ -1055,7 +1103,10 @@ int hypo_perception_bridge_check_sleep_gate(
     bool is_name,
     bool* passes)
 {
-    if (!bridge || !passes) return -1;
+    if (!bridge || !passes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_perception_bridge_check_sleep_gate: bridge or passes is NULL");
+        return -1;
+    }
 
     bridge->stats.sleep_gate_checks++;
 
@@ -1100,7 +1151,10 @@ int hypo_perception_bridge_get_sleep_gating_state(
     const hypo_perception_bridge_t* bridge,
     hypo_sleep_gating_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_perception_bridge_get_sleep_gating_state: bridge or state is NULL");
+        return -1;
+    }
 
     *state = bridge->sleep_gating;
     return 0;
@@ -1174,7 +1228,10 @@ int hypo_perception_bridge_get_thermal_state(
     const hypo_perception_bridge_t* bridge,
     hypo_thermal_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_perception_bridge_get_thermal_state: bridge or state is NULL");
+        return -1;
+    }
 
     *state = bridge->thermal;
     return 0;
@@ -1184,7 +1241,10 @@ int hypo_perception_bridge_compute_thermal_salience(
     hypo_perception_bridge_t* bridge,
     float* boost)
 {
-    if (!bridge || !boost) return -1;
+    if (!bridge || !boost) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_perception_bridge_compute_thermal_salience: bridge or boost is NULL");
+        return -1;
+    }
 
     if (!bridge->thermal_salience_enabled) {
         *boost = 1.0f;
@@ -1207,7 +1267,10 @@ int hypo_perception_bridge_get_stats(
     const hypo_perception_bridge_t* bridge,
     hypo_perception_bridge_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_perception_bridge_get_stats: bridge or stats is NULL");
+        return -1;
+    }
 
     *stats = bridge->stats;
     stats->uptime_us = nimcp_time_get_us() - bridge->creation_time_us;

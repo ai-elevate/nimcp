@@ -760,7 +760,10 @@ int hypo_logging_connect(
     hypo_logging_bridge_t* bridge,
     hypo_orchestrator_t orch)
 {
-    if (!bridge || !orch) return -1;
+    if (!bridge || !orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_logging_connect: bridge or orch is NULL");
+        return -1;
+    }
 
     if (bridge->connected) {
         LOG_WARN("hypo_logging_connect: already connected");

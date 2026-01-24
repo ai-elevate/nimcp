@@ -368,6 +368,7 @@ int hypo_salience_fep_compute_fe(
     const hypo_drive_system_t* drives
 ) {
     if (!bridge || !drives) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_salience_fep_compute_fe: bridge or drives is NULL");
         return -1;
     }
 
@@ -457,6 +458,7 @@ int hypo_salience_fep_get_effects(
     hypo_salience_fep_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_salience_fep_get_effects: bridge or effects is NULL");
         return -1;
     }
 
@@ -474,6 +476,7 @@ int hypo_salience_fep_get_stats(
     hypo_salience_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_salience_fep_get_stats: bridge or stats is NULL");
         return -1;
     }
 
@@ -511,6 +514,7 @@ int hypo_salience_fep_get_weights(
     float* weights
 ) {
     if (!bridge || !weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_salience_fep_get_weights: bridge or weights is NULL");
         return -1;
     }
 
@@ -532,6 +536,7 @@ int hypo_salience_fep_detect_conflict(
     float* intensity_out
 ) {
     if (!bridge || !conflict_out || !intensity_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_salience_fep_detect_conflict: NULL parameter");
         return -1;
     }
 

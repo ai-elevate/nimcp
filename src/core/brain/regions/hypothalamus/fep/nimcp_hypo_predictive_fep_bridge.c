@@ -414,6 +414,7 @@ int hypo_pred_fep_compute_fe(
     const hypo_drive_system_t* drives
 ) {
     if (!bridge || !drives) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_pred_fep_compute_fe: bridge or drives is NULL");
         return -1;
     }
 
@@ -454,6 +455,7 @@ int hypo_pred_fep_modulate_precision(
     float precision_factor
 ) {
     if (!bridge || channel >= HYPO_PRED_CHANNEL_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_pred_fep_modulate_precision: bridge is NULL or invalid channel");
         return -1;
     }
 
@@ -493,6 +495,7 @@ int hypo_pred_fep_get_effects(
     hypo_pred_fep_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_pred_fep_get_effects: bridge or effects is NULL");
         return -1;
     }
 
@@ -510,6 +513,7 @@ int hypo_pred_fep_get_stats(
     hypo_pred_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_pred_fep_get_stats: bridge or stats is NULL");
         return -1;
     }
 
@@ -533,6 +537,7 @@ int hypo_pred_fep_register_prediction(
     float variance
 ) {
     if (!bridge || channel >= HYPO_PRED_CHANNEL_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_pred_fep_register_prediction: bridge is NULL or invalid channel");
         return -1;
     }
 
@@ -568,6 +573,7 @@ int hypo_pred_fep_report_outcome(
     float actual_value
 ) {
     if (!bridge || channel >= HYPO_PRED_CHANNEL_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_pred_fep_report_outcome: bridge is NULL or invalid channel");
         return -1;
     }
 
@@ -660,6 +666,7 @@ int hypo_pred_fep_get_all_priorities(
     float* priorities
 ) {
     if (!bridge || !priorities) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_pred_fep_get_all_priorities: bridge or priorities is NULL");
         return -1;
     }
 

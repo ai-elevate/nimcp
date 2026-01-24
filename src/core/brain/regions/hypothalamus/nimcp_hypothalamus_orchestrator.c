@@ -484,7 +484,10 @@ void hypo_orch_destroy(hypo_orchestrator_t orch)
 
 int hypo_orch_reset(hypo_orchestrator_t orch)
 {
-    if (!orch) return -1;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_reset: orch is NULL");
+        return -1;
+    }
 
     ORCH_LOCK(orch);
 
@@ -529,8 +532,12 @@ int hypo_orch_register_bridge(
     uint32_t* bridge_id_out
 )
 {
-    if (!orch) return -1;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_register_bridge: orch is NULL");
+        return -1;
+    }
     if (bridge_type <= HYPO_BRIDGE_UNKNOWN || bridge_type >= HYPO_BRIDGE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_orch_register_bridge: invalid bridge_type");
         return -1;
     }
 
@@ -600,7 +607,10 @@ int hypo_orch_unregister_bridge(
     uint32_t bridge_id
 )
 {
-    if (!orch) return -1;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_unregister_bridge: orch is NULL");
+        return -1;
+    }
 
     ORCH_LOCK(orch);
 
@@ -657,7 +667,10 @@ int hypo_orch_get_bridge_info(
     hypo_bridge_info_t* info
 )
 {
-    if (!orch || !info) return -1;
+    if (!orch || !info) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_get_bridge_info: orch or info is NULL");
+        return -1;
+    }
 
     ORCH_LOCK(orch);
 
@@ -680,7 +693,10 @@ int hypo_orch_get_bridge_by_type(
     void** bridge_handle_out
 )
 {
-    if (!orch || !bridge_handle_out) return -1;
+    if (!orch || !bridge_handle_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_get_bridge_by_type: orch or bridge_handle_out is NULL");
+        return -1;
+    }
 
     ORCH_LOCK(orch);
 
@@ -705,8 +721,14 @@ int hypo_orch_subscribe(
     void* user_data
 )
 {
-    if (!orch || !callback) return -1;
-    if (event_type >= HYPO_EVENT_COUNT) return -1;
+    if (!orch || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_subscribe: orch or callback is NULL");
+        return -1;
+    }
+    if (event_type >= HYPO_EVENT_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_orch_subscribe: invalid event_type");
+        return -1;
+    }
 
     ORCH_LOCK(orch);
 
@@ -760,8 +782,14 @@ int hypo_orch_subscribe_to_bridge(
     void* user_data
 )
 {
-    if (!orch || !callback) return -1;
-    if (source_type >= HYPO_BRIDGE_COUNT) return -1;
+    if (!orch || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_subscribe_to_bridge: orch or callback is NULL");
+        return -1;
+    }
+    if (source_type >= HYPO_BRIDGE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_orch_subscribe_to_bridge: invalid source_type");
+        return -1;
+    }
 
     ORCH_LOCK(orch);
 
@@ -803,7 +831,10 @@ int hypo_orch_unsubscribe(
     hypo_event_type_t event_type
 )
 {
-    if (!orch) return -1;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_unsubscribe: orch is NULL");
+        return -1;
+    }
 
     ORCH_LOCK(orch);
 
@@ -829,7 +860,10 @@ int hypo_orch_publish(
     const hypo_event_data_t* event
 )
 {
-    if (!orch || !event) return -1;
+    if (!orch || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_publish: orch or event is NULL");
+        return -1;
+    }
 
     ORCH_LOCK(orch);
 
@@ -865,7 +899,10 @@ int hypo_orch_publish_async(
     const hypo_event_data_t* event
 )
 {
-    if (!orch || !event) return -1;
+    if (!orch || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_publish_async: orch or event is NULL");
+        return -1;
+    }
     if (!orch->config.enable_async || !orch->event_queue) {
         /* Fall back to sync publish */
         return hypo_orch_publish(orch, publisher_id, event);
@@ -908,7 +945,10 @@ int hypo_orch_report_drive(
     const char* description
 )
 {
-    if (!orch) return -1;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_report_drive: orch is NULL");
+        return -1;
+    }
 
     hypo_event_data_t event = {
         .event_type = HYPO_EVENT_DRIVE_ACTIVATED,
@@ -943,7 +983,10 @@ int hypo_orch_get_drive_state(
     hypo_unified_drive_state_t* state
 )
 {
-    if (!orch || !state) return -1;
+    if (!orch || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_get_drive_state: orch or state is NULL");
+        return -1;
+    }
 
     ORCH_LOCK(orch);
 
@@ -1008,7 +1051,10 @@ int hypo_orch_get_drive_level(
     float* drive_level
 )
 {
-    if (!orch || !drive_level) return -1;
+    if (!orch || !drive_level) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_get_drive_level: orch or drive_level is NULL");
+        return -1;
+    }
 
     ORCH_LOCK(orch);
     *drive_level = orch->unified_drive_level;
@@ -1019,7 +1065,10 @@ int hypo_orch_get_drive_level(
 
 int hypo_orch_update_drive_decay(hypo_orchestrator_t orch)
 {
-    if (!orch) return -1;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_update_drive_decay: orch is NULL");
+        return -1;
+    }
 
     ORCH_LOCK(orch);
     apply_drive_decay(orch);
@@ -1030,7 +1079,10 @@ int hypo_orch_update_drive_decay(hypo_orchestrator_t orch)
 
 int hypo_orch_clear_drives(hypo_orchestrator_t orch)
 {
-    if (!orch) return -1;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_clear_drives: orch is NULL");
+        return -1;
+    }
 
     ORCH_LOCK(orch);
 
@@ -1052,7 +1104,10 @@ int hypo_orch_trigger_stress(
     const char* reason
 )
 {
-    if (!orch) return -1;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_trigger_stress: orch is NULL");
+        return -1;
+    }
 
     ORCH_LOCK(orch);
 
@@ -1086,7 +1141,10 @@ int hypo_orch_trigger_stress(
 
 int hypo_orch_release_stress(hypo_orchestrator_t orch)
 {
-    if (!orch) return -1;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_release_stress: orch is NULL");
+        return -1;
+    }
 
     ORCH_LOCK(orch);
 
@@ -1109,7 +1167,10 @@ int hypo_orch_is_stressed(
     bool* in_stress
 )
 {
-    if (!orch || !in_stress) return -1;
+    if (!orch || !in_stress) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_is_stressed: orch or in_stress is NULL");
+        return -1;
+    }
 
     ORCH_LOCK(orch);
     *in_stress = orch->is_stressed;
@@ -1124,7 +1185,10 @@ int hypo_orch_broadcast_response(
     const hypo_event_data_t* data
 )
 {
-    if (!orch) return -1;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_broadcast_response: orch is NULL");
+        return -1;
+    }
 
     hypo_event_data_t event;
     if (data) {
@@ -1157,7 +1221,10 @@ int hypo_orch_get_state(
     hypo_orch_state_t* state
 )
 {
-    if (!orch || !state) return -1;
+    if (!orch || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_get_state: orch or state is NULL");
+        return -1;
+    }
 
     ORCH_LOCK(orch);
     *state = orch->state;
@@ -1171,7 +1238,10 @@ int hypo_orch_get_stats(
     hypo_orch_stats_t* stats
 )
 {
-    if (!orch || !stats) return -1;
+    if (!orch || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_get_stats: orch or stats is NULL");
+        return -1;
+    }
 
     ORCH_LOCK(orch);
 
@@ -1196,7 +1266,10 @@ int hypo_orch_get_stats(
 
 int hypo_orch_reset_stats(hypo_orchestrator_t orch)
 {
-    if (!orch) return -1;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_reset_stats: orch is NULL");
+        return -1;
+    }
 
     ORCH_LOCK(orch);
 
@@ -1222,7 +1295,10 @@ int hypo_orch_connect_bio_async(
     void* router
 )
 {
-    if (!orch) return -1;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_connect_bio_async: orch is NULL");
+        return -1;
+    }
 
     ORCH_LOCK(orch);
 
@@ -1237,7 +1313,10 @@ int hypo_orch_connect_bio_async(
 
 int hypo_orch_disconnect_bio_async(hypo_orchestrator_t orch)
 {
-    if (!orch) return -1;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_disconnect_bio_async: orch is NULL");
+        return -1;
+    }
 
     ORCH_LOCK(orch);
 
@@ -1259,7 +1338,10 @@ int hypo_orch_connect_immune(
     void* immune_system
 )
 {
-    if (!orch) return -1;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_connect_immune: orch is NULL");
+        return -1;
+    }
 
     ORCH_LOCK(orch);
 
@@ -1276,7 +1358,10 @@ int hypo_orch_connect_logging(
     void* logger
 )
 {
-    if (!orch) return -1;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_orch_connect_logging: orch is NULL");
+        return -1;
+    }
 
     ORCH_LOCK(orch);
 

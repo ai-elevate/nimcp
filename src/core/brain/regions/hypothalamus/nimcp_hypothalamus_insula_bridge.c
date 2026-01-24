@@ -134,7 +134,10 @@ int hypo_insula_bridge_update_interoception(
     hypo_insula_bridge_t* bridge,
     const hypo_intero_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_insula_bridge_update_interoception: bridge or state is NULL");
+        return -1;
+    }
 
     bridge->intero_state = *state;
 
@@ -142,7 +145,10 @@ int hypo_insula_bridge_update_interoception(
 }
 
 int hypo_insula_bridge_apply_interoceptive_effects(hypo_insula_bridge_t* bridge) {
-    if (!bridge || !bridge->drives) return -1;
+    if (!bridge || !bridge->drives) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_insula_bridge_apply_interoceptive_effects: bridge or drives is NULL");
+        return -1;
+    }
 
     const hypo_intero_state_t* intero = &bridge->intero_state;
     const hypo_insula_config_t* cfg = &bridge->config;
@@ -195,7 +201,10 @@ int hypo_insula_bridge_get_intero_state(
     const hypo_insula_bridge_t* bridge,
     hypo_intero_state_t* state)
 {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_insula_bridge_get_intero_state: bridge or state is NULL");
+        return -1;
+    }
 
     *state = bridge->intero_state;
     return 0;
@@ -206,7 +215,10 @@ int hypo_insula_bridge_get_intero_state(
  *===========================================================================*/
 
 int hypo_insula_bridge_compute_attention(hypo_insula_bridge_t* bridge) {
-    if (!bridge || !bridge->drives) return -1;
+    if (!bridge || !bridge->drives) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_insula_bridge_compute_attention: bridge or drives is NULL");
+        return -1;
+    }
 
     if (!bridge->config.enable_attention_modulation) {
         return 0;
@@ -287,7 +299,10 @@ int hypo_insula_bridge_get_attention(
     const hypo_insula_bridge_t* bridge,
     hypo_intero_attention_t* attention)
 {
-    if (!bridge || !attention) return -1;
+    if (!bridge || !attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_insula_bridge_get_attention: bridge or attention is NULL");
+        return -1;
+    }
 
     *attention = bridge->attention;
     return 0;

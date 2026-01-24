@@ -38,3 +38,6 @@ add_hypothalamus_regression_test(test_hypothalamus_logic_bridge_regression)
 
 # Hypothalamus Internal Bus regression tests
 add_hypothalamus_regression_test(test_hypothalamus_internal_bus_regression)
+
+# Hypothalamus Exception handling regression tests (Phase 7)
+add_hypothalamus_regression_test(test_hypothalamus_exception_regression)

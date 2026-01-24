@@ -552,7 +552,10 @@ int hypo_logic_get_modulation(
 }
 
 int hypo_logic_apply_modulation(hypo_logic_bridge_t* bridge) {
-    if (!bridge || !bridge->logic) return -1;
+    if (!bridge || !bridge->logic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_logic_apply_modulation: bridge or logic is NULL");
+        return -1;
+    }
 
     /*
      * Apply modulation to the logic engine.
@@ -650,8 +653,14 @@ int hypo_logic_create_motivated_goal(
     logic_clause_t* goal_clause,
     float anticipated_satisfaction)
 {
-    if (!bridge || !goal_clause || drive >= HYPO_DRIVE_COUNT) return -1;
-    if (bridge->num_goals >= HYPO_LOGIC_MAX_GOALS) return -1;
+    if (!bridge || !goal_clause || drive >= HYPO_DRIVE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_logic_create_motivated_goal: invalid parameters");
+        return -1;
+    }
+    if (bridge->num_goals >= HYPO_LOGIC_MAX_GOALS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_logic_create_motivated_goal: max goals reached");
+        return -1;
+    }
 
     hypo_motivated_goal_t* goal = &bridge->goals[bridge->num_goals];
 
@@ -682,7 +691,10 @@ int hypo_logic_get_prioritized_goals(
     uint32_t max_goals,
     uint32_t* num_goals)
 {
-    if (!bridge || !goals || !num_goals) return -1;
+    if (!bridge || !goals || !num_goals) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_logic_get_prioritized_goals: NULL parameters");
+        return -1;
+    }
 
     /* Simple approach: copy active goals sorted by priority */
     uint32_t count = 0;
@@ -803,7 +815,10 @@ int hypo_logic_process_conclusion(
     logic_clause_t* conclusion,
     float confidence)
 {
-    if (!bridge || !conclusion) return -1;
+    if (!bridge || !conclusion) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_logic_process_conclusion: bridge or conclusion is NULL");
+        return -1;
+    }
 
     uint64_t start_us = nimcp_time_get_us();
 
@@ -968,7 +983,10 @@ int hypo_logic_get_anticipation(
     const hypo_logic_bridge_t* bridge,
     hypo_logic_anticipation_t* anticipation)
 {
-    if (!bridge || !anticipation) return -1;
+    if (!bridge || !anticipation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_logic_get_anticipation: bridge or anticipation is NULL");
+        return -1;
+    }
 
     *anticipation = bridge->anticipation;
     return 0;
@@ -1075,7 +1093,10 @@ int hypo_logic_compute_free_energy(
     hypo_logic_bridge_t* bridge,
     hypo_logic_fep_state_t* fe_state)
 {
-    if (!bridge || !fe_state) return -1;
+    if (!bridge || !fe_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_logic_compute_free_energy: bridge or fe_state is NULL");
+        return -1;
+    }
 
     hypo_drive_system_t drive_state;
     if (!hypo_drive_get_system_state(bridge->drives, &drive_state)) {
@@ -1137,7 +1158,10 @@ int hypo_logic_get_fep_state(
     const hypo_logic_bridge_t* bridge,
     hypo_logic_fep_state_t* fe_state)
 {
-    if (!bridge || !fe_state) return -1;
+    if (!bridge || !fe_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_logic_get_fep_state: bridge or fe_state is NULL");
+        return -1;
+    }
 
     *fe_state = bridge->fep_state;
     return 0;
@@ -1151,8 +1175,14 @@ int hypo_logic_register_predicate_map(
     hypo_logic_bridge_t* bridge,
     const hypo_logic_predicate_map_t* map)
 {
-    if (!bridge || !map) return -1;
-    if (bridge->config.num_predicate_maps >= HYPO_LOGIC_MAX_PREDICATES) return -1;
+    if (!bridge || !map) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_logic_register_predicate_map: bridge or map is NULL");
+        return -1;
+    }
+    if (bridge->config.num_predicate_maps >= HYPO_LOGIC_MAX_PREDICATES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_logic_register_predicate_map: max predicates reached");
+        return -1;
+    }
 
     bridge->config.predicate_maps[bridge->config.num_predicate_maps] = *map;
     bridge->config.num_predicate_maps++;
@@ -1333,7 +1363,10 @@ bool hypo_logic_bridge_register_bio(hypo_logic_bridge_t* bridge, bool use_kg_wir
 }
 
 int hypo_logic_broadcast_modulation(hypo_logic_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_registered) return -1;
+    if (!bridge || !bridge->bio_registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_logic_broadcast_modulation: bridge is NULL or not bio-registered");
+        return -1;
+    }
 
     /* Broadcast modulation state to all modules */
     nimcp_error_t err = bio_router_broadcast(bridge->bio_ctx,
@@ -1352,7 +1385,10 @@ int hypo_logic_broadcast_conclusion_impact(
     const logic_clause_t* conclusion,
     float impact)
 {
-    if (!bridge || !bridge->bio_registered || !conclusion) return -1;
+    if (!bridge || !bridge->bio_registered || !conclusion) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_logic_broadcast_conclusion_impact: invalid parameters");
+        return -1;
+    }
 
     struct {
         const logic_clause_t* conclusion;
@@ -1376,7 +1412,10 @@ int hypo_logic_get_stats(
     const hypo_logic_bridge_t* bridge,
     hypo_logic_stats_t* stats)
 {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_logic_get_stats: bridge or stats is NULL");
+        return -1;
+    }
 
     *stats = bridge->stats;
     return 0;

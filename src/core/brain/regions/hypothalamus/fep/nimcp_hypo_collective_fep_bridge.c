@@ -385,6 +385,7 @@ int hypo_col_fep_compute_fe(
     float* free_energy
 ) {
     if (!bridge || !free_energy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_col_fep_compute_fe: bridge or free_energy is NULL");
         return -1;
     }
 
@@ -450,6 +451,7 @@ int hypo_col_fep_get_effects(
     fep_to_col_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_col_fep_get_effects: bridge or effects is NULL");
         return -1;
     }
 
@@ -470,6 +472,7 @@ int hypo_col_fep_compute_alignment(
     float* alignment_score
 ) {
     if (!bridge || !collective_features || !individual_features || !alignment_score) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_col_fep_compute_alignment: required parameter is NULL");
         return -1;
     }
 
@@ -524,6 +527,7 @@ int hypo_col_fep_get_recommended_action(
     float* strength
 ) {
     if (!bridge || !action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_col_fep_get_recommended_action: bridge or action is NULL");
         return -1;
     }
 
@@ -629,6 +633,7 @@ int hypo_col_fep_get_state(
     hypo_col_fep_state_t* state
 ) {
     if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_col_fep_get_state: bridge or state is NULL");
         return -1;
     }
 
@@ -641,6 +646,7 @@ int hypo_col_fep_get_stats(
     hypo_col_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_col_fep_get_stats: bridge or stats is NULL");
         return -1;
     }
 

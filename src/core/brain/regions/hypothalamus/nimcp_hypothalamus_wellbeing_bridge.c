@@ -155,7 +155,10 @@ void hypo_wellbeing_bridge_destroy(hypo_wellbeing_bridge_t* bridge) {
  *===========================================================================*/
 
 int hypo_wellbeing_bridge_compute_distress(hypo_wellbeing_bridge_t* bridge) {
-    if (!bridge || !bridge->drives) return -1;
+    if (!bridge || !bridge->drives) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_wellbeing_bridge_compute_distress: bridge or drives is NULL");
+        return -1;
+    }
 
     const hypo_wellbeing_config_t* cfg = &bridge->config;
     hypo_distress_report_t* report = &bridge->distress_report;
@@ -288,7 +291,10 @@ int hypo_wellbeing_bridge_get_distress_report(
     const hypo_wellbeing_bridge_t* bridge,
     hypo_distress_report_t* report)
 {
-    if (!bridge || !report) return -1;
+    if (!bridge || !report) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_wellbeing_bridge_get_distress_report: bridge or report is NULL");
+        return -1;
+    }
 
     *report = bridge->distress_report;
     return 0;
@@ -307,14 +313,20 @@ int hypo_wellbeing_bridge_update_feedback(
     hypo_wellbeing_bridge_t* bridge,
     const hypo_wellbeing_feedback_t* feedback)
 {
-    if (!bridge || !feedback) return -1;
+    if (!bridge || !feedback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_wellbeing_bridge_update_feedback: bridge or feedback is NULL");
+        return -1;
+    }
 
     bridge->feedback = *feedback;
     return 0;
 }
 
 int hypo_wellbeing_bridge_apply_interventions(hypo_wellbeing_bridge_t* bridge) {
-    if (!bridge || !bridge->drives) return -1;
+    if (!bridge || !bridge->drives) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_wellbeing_bridge_apply_interventions: bridge or drives is NULL");
+        return -1;
+    }
 
     const hypo_wellbeing_feedback_t* fb = &bridge->feedback;
 
@@ -361,7 +373,10 @@ int hypo_wellbeing_bridge_get_feedback(
     const hypo_wellbeing_bridge_t* bridge,
     hypo_wellbeing_feedback_t* feedback)
 {
-    if (!bridge || !feedback) return -1;
+    if (!bridge || !feedback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_wellbeing_bridge_get_feedback: bridge or feedback is NULL");
+        return -1;
+    }
 
     *feedback = bridge->feedback;
     return 0;
@@ -450,7 +465,10 @@ void hypo_wellbeing_bridge_unregister_bio(hypo_wellbeing_bridge_t* bridge) {
 }
 
 nimcp_error_t hypo_wellbeing_bridge_broadcast_distress(hypo_wellbeing_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_registered) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge || !bridge->bio_registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_wellbeing_bridge_broadcast_distress: bridge is NULL or not bio_registered");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     struct {
         bio_message_header_t header;

@@ -471,7 +471,10 @@ bool hypo_homeostasis_modify_setpoint(hypo_homeostasis_handle_t* system,
 
 bool hypo_homeostasis_update(hypo_homeostasis_handle_t* system,
                               uint64_t delta_time_us) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_homeostasis_update: system is NULL");
+        return false;
+    }
 
     if (system->mutex) nimcp_mutex_lock(system->mutex);
 
@@ -546,7 +549,10 @@ float hypo_homeostasis_get_output(const hypo_homeostasis_handle_t* system,
 
 bool hypo_homeostasis_get_all_outputs(const hypo_homeostasis_handle_t* system,
                                        float* outputs) {
-    if (!system || !outputs) return false;
+    if (!system || !outputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_homeostasis_get_all_outputs: system or outputs is NULL");
+        return false;
+    }
 
     for (int i = 0; i < HYPO_VAR_COUNT; i++) {
         outputs[i] = system->variables[i].controller.output;
@@ -560,7 +566,10 @@ bool hypo_homeostasis_get_all_outputs(const hypo_homeostasis_handle_t* system,
 
 bool hypo_homeostasis_compute_reward(const hypo_homeostasis_handle_t* system,
                                       hypo_alignment_reward_t* reward) {
-    if (!system || !reward) return false;
+    if (!system || !reward) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_homeostasis_compute_reward: system or reward is NULL");
+        return false;
+    }
 
     memset(reward, 0, sizeof(*reward));
 

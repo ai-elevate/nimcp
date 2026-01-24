@@ -379,6 +379,7 @@ int hypo_tom_fep_compute_fe(
     const hypo_drive_system_t* drives
 ) {
     if (!bridge || !drives) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_tom_fep_compute_fe: bridge or drives is NULL");
         return -1;
     }
 
@@ -412,6 +413,7 @@ int hypo_tom_fep_modulate_precision(
     hypo_tom_relation_t relationship
 ) {
     if (!bridge || relationship > HYPO_TOM_RELATION_INTIMATE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_tom_fep_modulate_precision: bridge is NULL or invalid relationship");
         return -1;
     }
 
@@ -467,6 +469,7 @@ int hypo_tom_fep_get_effects(
     hypo_tom_fep_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_tom_fep_get_effects: bridge or effects is NULL");
         return -1;
     }
 
@@ -484,6 +487,7 @@ int hypo_tom_fep_get_stats(
     hypo_tom_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_tom_fep_get_stats: bridge or stats is NULL");
         return -1;
     }
 
@@ -554,6 +558,7 @@ int hypo_tom_fep_get_agent_model(
     hypo_tom_agent_model_t* model
 ) {
     if (!bridge || !model) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_tom_fep_get_agent_model: bridge or model is NULL");
         return -1;
     }
 

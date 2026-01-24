@@ -62,3 +62,6 @@ add_hypothalamus_integration_test(test_hypothalamus_logic_bridge_integration)
 
 # Internal bus integration tests - Tests bidirectional communication between hypothalamus modules
 add_hypothalamus_integration_test(test_hypothalamus_internal_bus_integration)
+
+# Exception handling integration tests - Tests exception-to-immune pipeline for hypothalamus modules
+add_hypothalamus_integration_test(test_hypothalamus_exception_integration)

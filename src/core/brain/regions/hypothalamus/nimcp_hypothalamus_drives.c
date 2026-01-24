@@ -676,7 +676,14 @@ hypo_drive_type_t hypo_drive_get_priority(const hypo_drive_system_handle_t* syst
 
 bool hypo_drive_get_urgencies(const hypo_drive_system_handle_t* system,
                                float* urgencies) {
-    if (!system || !urgencies) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_get_urgencies: system is NULL");
+        return false;
+    }
+    if (!urgencies) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_get_urgencies: urgencies is NULL");
+        return false;
+    }
 
     for (int i = 0; i < HYPO_DRIVE_COUNT; i++) {
         urgencies[i] = system->drives[i].urgency;
@@ -691,7 +698,14 @@ bool hypo_drive_get_urgencies(const hypo_drive_system_handle_t* system,
 
 bool hypo_drive_compute_reward(const hypo_drive_system_handle_t* system,
                                 hypo_reward_signal_t* signal) {
-    if (!system || !signal) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_compute_reward: system is NULL");
+        return false;
+    }
+    if (!signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_compute_reward: signal is NULL");
+        return false;
+    }
 
     memset(signal, 0, sizeof(*signal));
 
@@ -762,7 +776,14 @@ float hypo_drive_get_reward(const hypo_drive_system_handle_t* system) {
 
 bool hypo_drive_get_setpoints(const hypo_drive_system_handle_t* system,
                                hypo_setpoint_config_t* config) {
-    if (!system || !config) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_get_setpoints: system is NULL");
+        return false;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_get_setpoints: config is NULL");
+        return false;
+    }
 
     *config = system->config.setpoints;
     return true;
@@ -772,7 +793,12 @@ bool hypo_drive_modify_setpoint(hypo_drive_system_handle_t* system,
                                  hypo_drive_type_t drive_type,
                                  float new_setpoint,
                                  uint32_t modifier_id) {
-    if (!system || drive_type >= HYPO_DRIVE_COUNT) {
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_modify_setpoint: system is NULL");
+        return false;
+    }
+    if (drive_type >= HYPO_DRIVE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_drive_modify_setpoint: invalid drive_type");
         return false;
     }
 
@@ -820,7 +846,12 @@ bool hypo_drive_modify_alignment_weight(hypo_drive_system_handle_t* system,
                                          const char* weight_name,
                                          float new_weight,
                                          uint32_t modifier_id) {
-    if (!system || !weight_name) {
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_modify_alignment_weight: system is NULL");
+        return false;
+    }
+    if (!weight_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_modify_alignment_weight: weight_name is NULL");
         return false;
     }
 
@@ -886,7 +917,10 @@ bool hypo_drive_modify_alignment_weight(hypo_drive_system_handle_t* system,
 
 bool hypo_drive_lock_setpoints(hypo_drive_system_handle_t* system,
                                 hypo_lock_state_t lock_state) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_lock_setpoints: system is NULL");
+        return false;
+    }
 
     if (system->mutex) {
         nimcp_mutex_lock(system->mutex);
@@ -917,7 +951,10 @@ bool hypo_drive_lock_setpoints(hypo_drive_system_handle_t* system,
 
 bool hypo_drive_lock_alignment(hypo_drive_system_handle_t* system,
                                 hypo_lock_state_t lock_state) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_lock_alignment: system is NULL");
+        return false;
+    }
 
     if (system->mutex) {
         nimcp_mutex_lock(system->mutex);
@@ -949,7 +986,10 @@ bool hypo_drive_lock_alignment(hypo_drive_system_handle_t* system,
 
 bool hypo_drive_unlock_setpoints(hypo_drive_system_handle_t* system,
                                   uint64_t unlock_key) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_unlock_setpoints: system is NULL");
+        return false;
+    }
 
     if (system->mutex) {
         nimcp_mutex_lock(system->mutex);
@@ -1088,7 +1128,14 @@ float hypo_drive_set_nucleus_input(hypo_drive_system_handle_t* system,
 
 bool hypo_drive_get_stats(const hypo_drive_system_handle_t* system,
                            hypo_drive_stats_t* stats) {
-    if (!system || !stats) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_get_stats: system is NULL");
+        return false;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_drive_get_stats: stats is NULL");
+        return false;
+    }
 
     *stats = system->stats;
     return true;

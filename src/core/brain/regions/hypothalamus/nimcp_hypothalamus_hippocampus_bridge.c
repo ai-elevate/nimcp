@@ -187,7 +187,10 @@ void hypo_hipp_bridge_reset(hypo_hipp_bridge_t* bridge) {
  *===========================================================================*/
 
 int hypo_hipp_bridge_update(hypo_hipp_bridge_t* bridge, float dt_ms) {
-    if (!bridge || !bridge->drives) return -1;
+    if (!bridge || !bridge->drives) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_hipp_bridge_update: bridge or drives is NULL");
+        return -1;
+    }
 
     if (bridge->base.mutex) nimcp_mutex_lock(bridge->base.mutex);
 
@@ -524,7 +527,10 @@ int hypo_hipp_bridge_send_encoding_priority(
     hypo_hipp_bridge_t* bridge,
     const hypo_hipp_encoding_priority_t* priority) {
 
-    if (!bridge || !priority) return -1;
+    if (!bridge || !priority) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_hipp_bridge_send_encoding_priority: bridge or priority is NULL");
+        return -1;
+    }
 
     /* Direct hippocampus API call if connected */
     /* Note: hippocampus_adapter doesn't have a set_encoding_priority function yet,
@@ -538,7 +544,10 @@ int hypo_hipp_bridge_send_consolidation(
     hypo_hipp_bridge_t* bridge,
     const hypo_hipp_consolidation_signal_t* signal) {
 
-    if (!bridge || !signal) return -1;
+    if (!bridge || !signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_hipp_bridge_send_consolidation: bridge or signal is NULL");
+        return -1;
+    }
 
     /* If directly connected, could trigger consolidation */
     if (bridge->hippocampus && signal->consolidation_urgency > 0.6f) {
@@ -553,7 +562,10 @@ int hypo_hipp_bridge_set_nav_goal(
     hypo_hipp_bridge_t* bridge,
     const hypo_hipp_nav_goal_t* goal) {
 
-    if (!bridge || !goal) return -1;
+    if (!bridge || !goal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_hipp_bridge_set_nav_goal: bridge or goal is NULL");
+        return -1;
+    }
 
     /* Set navigation goal if hippocampus connected and location valid */
     if (bridge->hippocampus && goal->location_valid) {

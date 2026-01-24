@@ -340,6 +340,7 @@ int hypo_img_fep_compute_fe(
     float* free_energy
 ) {
     if (!bridge || !free_energy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_img_fep_compute_fe: bridge or free_energy is NULL");
         return -1;
     }
 
@@ -396,6 +397,7 @@ int hypo_img_fep_get_effects(
     fep_to_img_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_img_fep_get_effects: bridge or effects is NULL");
         return -1;
     }
 
@@ -415,6 +417,7 @@ int hypo_img_fep_evaluate_scenario(
     float* score
 ) {
     if (!bridge || !scenario_features || !plausibility) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_img_fep_evaluate_scenario: required parameter is NULL");
         return -1;
     }
 
@@ -471,6 +474,7 @@ int hypo_img_fep_get_mode(
     hypo_img_mode_t* mode
 ) {
     if (!bridge || !mode) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_img_fep_get_mode: bridge or mode is NULL");
         return -1;
     }
 
@@ -542,6 +546,7 @@ int hypo_img_fep_get_state(
     hypo_img_fep_state_t* state
 ) {
     if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_img_fep_get_state: bridge or state is NULL");
         return -1;
     }
 
@@ -554,6 +559,7 @@ int hypo_img_fep_get_stats(
     hypo_img_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_img_fep_get_stats: bridge or stats is NULL");
         return -1;
     }
 

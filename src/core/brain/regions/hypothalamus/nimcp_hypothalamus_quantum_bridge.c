@@ -533,7 +533,10 @@ int hypothalamus_quantum_optimize_homeostasis(
     const regulatory_constraint_t* constraints,
     optimization_result_t* result) {
 
-    if (!bridge || !objective || !result) return -1;
+    if (!bridge || !objective || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothalamus_quantum_optimize_homeostasis: bridge, objective, or result is NULL");
+        return -1;
+    }
 
     if (bridge->config.mode == HYPOTHALAMUS_QUANTUM_MODE_DISABLED) {
         LOG_DEBUG(LOG_MODULE, "Quantum mode disabled");
@@ -590,7 +593,10 @@ int hypothalamus_quantum_apply_optimization(
     hypothalamus_quantum_bridge_t* bridge,
     const optimization_result_t* result) {
 
-    if (!bridge || !result || !bridge->hypothalamus) return -1;
+    if (!bridge || !result || !bridge->hypothalamus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothalamus_quantum_apply_optimization: bridge, result, or hypothalamus is NULL");
+        return -1;
+    }
 
     /* Apply optimized circadian shift */
     if (fabsf(result->optimal_circadian_shift) > 0.01f) {
@@ -623,7 +629,10 @@ int hypothalamus_quantum_get_qubo(
     const hypothalamus_quantum_bridge_t* bridge,
     homeostatic_qubo_t* qubo) {
 
-    if (!bridge || !qubo) return -1;
+    if (!bridge || !qubo) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothalamus_quantum_get_qubo: bridge or qubo is NULL");
+        return -1;
+    }
 
     /* Copy structure (but not pointers) */
     qubo->objective = bridge->qubo.objective;
@@ -653,7 +662,10 @@ int hypothalamus_quantum_evaluate_autonomic(
     const autonomic_evaluation_input_t* input,
     autonomic_evaluation_result_t* result) {
 
-    if (!bridge || !input || !result || !input->candidates) return -1;
+    if (!bridge || !input || !result || !input->candidates) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothalamus_quantum_evaluate_autonomic: bridge, input, result, or candidates is NULL");
+        return -1;
+    }
 
     if (input->num_candidates == 0) {
         LOG_WARNING(LOG_MODULE, "No candidates to evaluate");
@@ -756,7 +768,10 @@ int hypothalamus_quantum_optimize_circadian(
     const circadian_optimization_input_t* input,
     circadian_optimization_result_t* result) {
 
-    if (!bridge || !input || !result) return -1;
+    if (!bridge || !input || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothalamus_quantum_optimize_circadian: bridge, input, or result is NULL");
+        return -1;
+    }
 
     memset(result, 0, sizeof(*result));
 
@@ -831,6 +846,7 @@ int hypothalamus_quantum_predict_circadian(
     float* predicted_phases) {
 
     if (!bridge || !light_schedule || !predicted_phases || schedule_length == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypothalamus_quantum_predict_circadian: invalid parameters");
         return -1;
     }
 
@@ -886,6 +902,7 @@ int hypothalamus_quantum_optimize_hpa(
     float* optimal_feedback) {
 
     if (!bridge || !current_hpa || !optimal_sensitivity || !optimal_feedback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothalamus_quantum_optimize_hpa: required parameters are NULL");
         return -1;
     }
 
@@ -1019,7 +1036,10 @@ int hypothalamus_quantum_get_stats(
     const hypothalamus_quantum_bridge_t* bridge,
     hypothalamus_quantum_stats_t* stats) {
 
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothalamus_quantum_get_stats: bridge or stats is NULL");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
@@ -1062,7 +1082,10 @@ int hypothalamus_quantum_get_config(
     const hypothalamus_quantum_bridge_t* bridge,
     hypothalamus_quantum_config_t* config) {
 
-    if (!bridge || !config) return -1;
+    if (!bridge || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothalamus_quantum_get_config: bridge or config is NULL");
+        return -1;
+    }
     *config = bridge->config;
     return 0;
 }

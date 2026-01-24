@@ -176,7 +176,10 @@ int hypo_sleep_bridge_update_scn(
     hypo_sleep_bridge_t* bridge,
     const hypo_scn_output_t* scn)
 {
-    if (!bridge || !scn) return -1;
+    if (!bridge || !scn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_sleep_bridge_update_scn: bridge or scn is NULL");
+        return -1;
+    }
 
     bridge->scn_state = *scn;
 
@@ -230,7 +233,10 @@ int hypo_sleep_bridge_get_scn(
     const hypo_sleep_bridge_t* bridge,
     hypo_scn_output_t* scn)
 {
-    if (!bridge || !scn) return -1;
+    if (!bridge || !scn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_sleep_bridge_get_scn: bridge or scn is NULL");
+        return -1;
+    }
 
     *scn = bridge->scn_state;
     return 0;
@@ -249,7 +255,10 @@ int hypo_sleep_bridge_update_sleep_state(
     hypo_sleep_bridge_t* bridge,
     const hypo_sleep_feedback_t* feedback)
 {
-    if (!bridge || !feedback) return -1;
+    if (!bridge || !feedback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_sleep_bridge_update_sleep_state: bridge or feedback is NULL");
+        return -1;
+    }
 
     bridge->sleep_feedback = *feedback;
 
@@ -278,7 +287,10 @@ int hypo_sleep_bridge_update_sleep_state(
 }
 
 int hypo_sleep_bridge_apply_sleep_effects(hypo_sleep_bridge_t* bridge) {
-    if (!bridge || !bridge->drives) return -1;
+    if (!bridge || !bridge->drives) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_sleep_bridge_apply_sleep_effects: bridge or drives is NULL");
+        return -1;
+    }
 
     const hypo_sleep_feedback_t* feedback = &bridge->sleep_feedback;
     const hypo_sleep_config_t* cfg = &bridge->config;
@@ -331,7 +343,10 @@ int hypo_sleep_bridge_get_sleep_feedback(
     const hypo_sleep_bridge_t* bridge,
     hypo_sleep_feedback_t* feedback)
 {
-    if (!bridge || !feedback) return -1;
+    if (!bridge || !feedback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_sleep_bridge_get_sleep_feedback: bridge or feedback is NULL");
+        return -1;
+    }
 
     *feedback = bridge->sleep_feedback;
     return 0;
@@ -420,7 +435,10 @@ void hypo_sleep_bridge_unregister_bio(hypo_sleep_bridge_t* bridge) {
 }
 
 nimcp_error_t hypo_sleep_bridge_broadcast_scn(hypo_sleep_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_registered) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge || !bridge->bio_registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_sleep_bridge_broadcast_scn: bridge is NULL or not bio_registered");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     struct {
         bio_message_header_t header;

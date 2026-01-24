@@ -329,7 +329,10 @@ static void compute_modulations(hypo_training_bridge_t* bridge) {
  * ============================================================================ */
 
 int hypo_training_bridge_default_config(hypo_training_bridge_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_training_bridge_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -454,7 +457,10 @@ void hypo_training_bridge_destroy(hypo_training_bridge_t* bridge) {
 }
 
 int hypo_training_bridge_reset(hypo_training_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_training_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Reset homeostatic state */
     bridge->homeostatic.current_loss = bridge->homeostatic.loss_setpoint;
@@ -510,7 +516,10 @@ int hypo_training_bridge_connect_orchestrator(
     hypo_training_bridge_t* bridge,
     hypo_orchestrator_t orchestrator
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_training_bridge_connect_orchestrator: bridge is NULL");
+        return -1;
+    }
 
     bridge->orchestrator = orchestrator;
     bridge->orchestrator_connected = (orchestrator != NULL);
@@ -538,7 +547,10 @@ int hypo_training_bridge_connect_training_hub(
     hypo_training_bridge_t* bridge,
     training_integration_hub_t training_hub
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_training_bridge_connect_training_hub: bridge is NULL");
+        return -1;
+    }
 
     bridge->training_hub = training_hub;
     bridge->hub_connected = (training_hub != NULL);
@@ -558,7 +570,10 @@ int hypo_training_bridge_connect_training_hub(
 }
 
 int hypo_training_bridge_disconnect(hypo_training_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_training_bridge_disconnect: bridge is NULL");
+        return -1;
+    }
 
     /* Unregister from training hub */
     if (bridge->hub_connected && bridge->training_hub) {
@@ -583,7 +598,10 @@ int hypo_training_bridge_is_connected(
     bool* orchestrator_connected,
     bool* hub_connected
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_training_bridge_is_connected: bridge is NULL");
+        return -1;
+    }
 
     if (orchestrator_connected) {
         *orchestrator_connected = bridge->orchestrator_connected;
@@ -605,7 +623,10 @@ int hypo_training_bridge_process_loss(
     uint32_t batch,
     float loss
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_training_bridge_process_loss: bridge is NULL");
+        return -1;
+    }
 
     /* Update statistics */
     bridge->stats.training_events_received++;
@@ -674,7 +695,10 @@ int hypo_training_bridge_process_gradient(
     float gradient_norm,
     bool was_clipped
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_training_bridge_process_gradient: bridge is NULL");
+        return -1;
+    }
 
     bridge->stats.training_events_received++;
 
@@ -706,7 +730,10 @@ int hypo_training_bridge_process_epoch(
     uint32_t epoch,
     float avg_loss
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_training_bridge_process_epoch: bridge is NULL");
+        return -1;
+    }
 
     bridge->stats.training_events_received++;
 
@@ -741,7 +768,10 @@ int hypo_training_bridge_process_lr_change(
     float old_lr,
     float new_lr
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_training_bridge_process_lr_change: bridge is NULL");
+        return -1;
+    }
 
     bridge->stats.training_events_received++;
     bridge->stats.lr_modulations++;
@@ -770,7 +800,10 @@ int hypo_training_bridge_compute_modulation(
     hypo_training_bridge_t* bridge,
     hypo_training_modulation_t* modulation
 ) {
-    if (!bridge || !modulation) return -1;
+    if (!bridge || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_training_bridge_compute_modulation: bridge or modulation is NULL");
+        return -1;
+    }
 
     /* Ensure modulations are current */
     compute_modulations(bridge);
@@ -785,7 +818,10 @@ int hypo_training_bridge_get_lr_multiplier(
     const hypo_training_bridge_t* bridge,
     float* lr_multiplier
 ) {
-    if (!bridge || !lr_multiplier) return -1;
+    if (!bridge || !lr_multiplier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_training_bridge_get_lr_multiplier: bridge or lr_multiplier is NULL");
+        return -1;
+    }
 
     *lr_multiplier = bridge->modulation.lr_multiplier;
     return 0;
@@ -795,7 +831,10 @@ int hypo_training_bridge_get_difficulty_adjustment(
     const hypo_training_bridge_t* bridge,
     float* difficulty_adj
 ) {
-    if (!bridge || !difficulty_adj) return -1;
+    if (!bridge || !difficulty_adj) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_training_bridge_get_difficulty_adjustment: bridge or difficulty_adj is NULL");
+        return -1;
+    }
 
     *difficulty_adj = bridge->modulation.difficulty_adjustment;
     return 0;
@@ -805,7 +844,10 @@ int hypo_training_bridge_check_consolidation(
     const hypo_training_bridge_t* bridge,
     hypo_consolidation_type_t* consolidation_type
 ) {
-    if (!bridge || !consolidation_type) return -1;
+    if (!bridge || !consolidation_type) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_training_bridge_check_consolidation: bridge or consolidation_type is NULL");
+        return -1;
+    }
 
     *consolidation_type = bridge->modulation.recommended_consolidation;
     return 0;
@@ -819,7 +861,10 @@ int hypo_training_bridge_get_homeostatic_state(
     const hypo_training_bridge_t* bridge,
     hypo_training_homeostatic_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_training_bridge_get_homeostatic_state: bridge or state is NULL");
+        return -1;
+    }
 
     *state = bridge->homeostatic;
     return 0;
@@ -829,7 +874,10 @@ int hypo_training_bridge_get_training_state(
     const hypo_training_bridge_t* bridge,
     hypo_training_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_training_bridge_get_training_state: bridge or state is NULL");
+        return -1;
+    }
 
     *state = bridge->homeostatic.state;
     return 0;
@@ -839,7 +887,10 @@ int hypo_training_bridge_set_loss_setpoint(
     hypo_training_bridge_t* bridge,
     float new_setpoint
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_training_bridge_set_loss_setpoint: bridge is NULL");
+        return -1;
+    }
 
     if (new_setpoint < bridge->config.homeostatic_config.min_setpoint) {
         new_setpoint = bridge->config.homeostatic_config.min_setpoint;
@@ -862,7 +913,10 @@ int hypo_training_bridge_get_drive_state(
     const hypo_training_bridge_t* bridge,
     hypo_training_drive_state_t* drive_state
 ) {
-    if (!bridge || !drive_state) return -1;
+    if (!bridge || !drive_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_training_bridge_get_drive_state: bridge or drive_state is NULL");
+        return -1;
+    }
 
     *drive_state = bridge->drives;
     return 0;
@@ -873,7 +927,10 @@ int hypo_training_bridge_set_drive(
     uint32_t drive_type,
     float activation
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_training_bridge_set_drive: bridge is NULL");
+        return -1;
+    }
 
     activation = clamp_float(activation, 0.0f, 1.0f);
 
@@ -911,7 +968,10 @@ int hypo_training_bridge_set_drive(
 }
 
 int hypo_training_bridge_reset_fatigue(hypo_training_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_training_bridge_reset_fatigue: bridge is NULL");
+        return -1;
+    }
 
     bridge->drives.fatigue_level = 0.0f;
     bridge->drives.learning_readiness = 1.0f;
@@ -932,7 +992,10 @@ int hypo_training_bridge_get_stats(
     const hypo_training_bridge_t* bridge,
     hypo_training_bridge_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_training_bridge_get_stats: bridge or stats is NULL");
+        return -1;
+    }
 
     *stats = bridge->stats;
     stats->uptime_us = get_time_us() - bridge->creation_time;
@@ -941,7 +1004,10 @@ int hypo_training_bridge_get_stats(
 }
 
 int hypo_training_bridge_reset_stats(hypo_training_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_training_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return 0;

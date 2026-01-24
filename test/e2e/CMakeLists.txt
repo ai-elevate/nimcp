@@ -1298,6 +1298,25 @@ add_e2e_test(e2e_test_hypothalamus_alignment_pipeline
 )
 
 # ============================================================================
+# Hypothalamus Exception Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for Hypothalamus Exception Handling with Brain Immune System
+# WHY:  Verify the complete error handling pipeline works correctly under
+#       realistic conditions with all components integrated
+# HOW:  Test full pipeline error handling, multi-bridge error cascade, recovery
+#       mechanisms, stress testing, FEP integration errors, concurrent errors,
+#       and error statistics accuracy
+# ============================================================================
+add_e2e_test(e2e_test_hypothalamus_exception_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_hypothalamus_exception_pipeline.cpp
+)
+set_tests_properties(e2e_test_hypothalamus_exception_pipeline PROPERTIES
+    LABELS "e2e;hypothalamus;exception;immune"
+    TIMEOUT 180
+)
+
+# ============================================================================
 # Brain Init Hypothalamus Pipeline E2E Test
 # ============================================================================
 # WHAT: E2E tests for Brain Factory Hypothalamus Initialization Pipeline
@@ -2921,6 +2940,12 @@ endif()
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/fault_tolerance/CMakeLists.txt)
     message(STATUS "Adding Fault Tolerance E2E tests...")
     add_subdirectory(fault_tolerance)
+endif()
+
+# Include Cognitive E2E test subdirectory (world model + neuro-symbolic)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/cognitive/CMakeLists.txt)
+    message(STATUS "Adding Cognitive E2E tests (Mathesis genius mathematics)...")
+    add_subdirectory(cognitive)
 endif()
 
 message(STATUS "")

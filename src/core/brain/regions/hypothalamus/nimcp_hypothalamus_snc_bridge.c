@@ -407,7 +407,10 @@ uint32_t hypo_snc_bridge_process_bio(
 }
 
 nimcp_error_t hypo_snc_bridge_broadcast_dopamine(hypo_snc_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_ctx) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge || !bridge->bio_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_snc_bridge_broadcast_dopamine: bridge or bio_ctx is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     /* Build dopamine state message with header + payload */
     struct {
@@ -434,7 +437,10 @@ nimcp_error_t hypo_snc_bridge_broadcast_rpe(
     hypo_snc_bridge_t* bridge,
     const hypo_rpe_t* rpe) {
 
-    if (!bridge || !rpe || !bridge->bio_ctx) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge || !rpe || !bridge->bio_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_snc_bridge_broadcast_rpe: bridge, rpe, or bio_ctx is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     /* Build RPE message with header + payload */
     struct {

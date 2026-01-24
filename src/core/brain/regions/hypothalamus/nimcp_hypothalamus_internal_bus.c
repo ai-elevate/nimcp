@@ -134,7 +134,10 @@ static const char* EVENT_NAMES[HYPO_IEVT_COUNT] = {
  * ============================================================================ */
 
 int hypo_ibus_default_config(hypo_ibus_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_ibus_default_config: config is NULL");
+        return -1;
+    }
 
     config->max_subscribers = HYPO_IBUS_MAX_SUBSCRIBERS;
     config->max_queue_size = HYPO_IBUS_MAX_QUEUE;
@@ -202,7 +205,10 @@ void hypo_ibus_destroy(hypo_ibus_t bus) {
 }
 
 int hypo_ibus_reset(hypo_ibus_t bus) {
-    if (!bus) return -1;
+    if (!bus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_ibus_reset: bus is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bus->mutex);
 
@@ -235,9 +241,18 @@ int hypo_ibus_subscribe(
     hypo_ibus_callback_t callback,
     void* user_data
 ) {
-    if (!bus || !callback) return -1;
-    if (subscriber >= HYPO_IMOD_COUNT) return -1;
-    if (event_type >= HYPO_IEVT_COUNT) return -1;
+    if (!bus || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_ibus_subscribe: bus or callback is NULL");
+        return -1;
+    }
+    if (subscriber >= HYPO_IMOD_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_ibus_subscribe: invalid subscriber");
+        return -1;
+    }
+    if (event_type >= HYPO_IEVT_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_ibus_subscribe: invalid event_type");
+        return -1;
+    }
 
     nimcp_mutex_lock(bus->mutex);
 
@@ -278,9 +293,18 @@ int hypo_ibus_subscribe_to_module(
     hypo_ibus_callback_t callback,
     void* user_data
 ) {
-    if (!bus || !callback) return -1;
-    if (subscriber >= HYPO_IMOD_COUNT) return -1;
-    if (source_module >= HYPO_IMOD_COUNT) return -1;
+    if (!bus || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_ibus_subscribe_to_module: bus or callback is NULL");
+        return -1;
+    }
+    if (subscriber >= HYPO_IMOD_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_ibus_subscribe_to_module: invalid subscriber");
+        return -1;
+    }
+    if (source_module >= HYPO_IMOD_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_ibus_subscribe_to_module: invalid source_module");
+        return -1;
+    }
 
     nimcp_mutex_lock(bus->mutex);
 
@@ -314,7 +338,10 @@ int hypo_ibus_subscribe_to_module(
 }
 
 int hypo_ibus_unsubscribe(hypo_ibus_t bus, int subscription_id) {
-    if (!bus || subscription_id < 0) return -1;
+    if (!bus || subscription_id < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_ibus_unsubscribe: bus is NULL or invalid subscription_id");
+        return -1;
+    }
 
     nimcp_mutex_lock(bus->mutex);
 
@@ -338,7 +365,10 @@ int hypo_ibus_unsubscribe(hypo_ibus_t bus, int subscription_id) {
 }
 
 int hypo_ibus_unsubscribe_module(hypo_ibus_t bus, hypo_internal_module_t module) {
-    if (!bus || module >= HYPO_IMOD_COUNT) return -1;
+    if (!bus || module >= HYPO_IMOD_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_ibus_unsubscribe_module: bus is NULL or invalid module");
+        return -1;
+    }
 
     nimcp_mutex_lock(bus->mutex);
 
@@ -364,9 +394,18 @@ int hypo_ibus_unsubscribe_module(hypo_ibus_t bus, hypo_internal_module_t module)
  * ============================================================================ */
 
 int hypo_ibus_publish(hypo_ibus_t bus, const hypo_internal_event_t* event) {
-    if (!bus || !event) return -1;
-    if (event->type >= HYPO_IEVT_COUNT) return -1;
-    if (event->source >= HYPO_IMOD_COUNT) return -1;
+    if (!bus || !event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_ibus_publish: bus or event is NULL");
+        return -1;
+    }
+    if (event->type >= HYPO_IEVT_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_ibus_publish: invalid event type");
+        return -1;
+    }
+    if (event->source >= HYPO_IMOD_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_ibus_publish: invalid event source");
+        return -1;
+    }
 
     nimcp_mutex_lock(bus->mutex);
 
@@ -456,7 +495,10 @@ int hypo_ibus_publish_circadian_phase(
     float cortisol,
     float alertness
 ) {
-    if (!bus) return -1;
+    if (!bus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_ibus_publish_circadian_phase: bus is NULL");
+        return -1;
+    }
 
     hypo_internal_event_t event = {0};
     event.type = HYPO_IEVT_CIRCADIAN_PHASE_CHANGE;
@@ -480,12 +522,16 @@ int hypo_ibus_publish_stress(
     float cortisol,
     bool is_acute
 ) {
-    if (!bus) return -1;
+    if (!bus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_ibus_publish_stress: bus is NULL");
+        return -1;
+    }
     if (event_type != HYPO_IEVT_STRESS_ONSET &&
         event_type != HYPO_IEVT_STRESS_PEAK &&
         event_type != HYPO_IEVT_STRESS_RECOVERY &&
         event_type != HYPO_IEVT_CORTISOL_ELEVATED &&
         event_type != HYPO_IEVT_CORTISOL_NORMALIZED) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_ibus_publish_stress: invalid event_type");
         return -1;
     }
 
@@ -509,7 +555,10 @@ int hypo_ibus_publish_drive(
     float drive_level,
     float urgency
 ) {
-    if (!bus) return -1;
+    if (!bus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_ibus_publish_drive: bus is NULL");
+        return -1;
+    }
 
     hypo_internal_event_t event = {0};
     event.type = event_type;
@@ -530,7 +579,10 @@ int hypo_ibus_publish_autonomic(
     float sympathetic,
     float parasympathetic
 ) {
-    if (!bus) return -1;
+    if (!bus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_ibus_publish_autonomic: bus is NULL");
+        return -1;
+    }
 
     hypo_internal_event_t event = {0};
     event.type = event_type;
@@ -554,9 +606,18 @@ int hypo_ibus_register_modulation(
     hypo_internal_event_type_t source_event,
     const hypo_ibus_modulation_t* modulation
 ) {
-    if (!bus || !modulation) return -1;
-    if (source_event >= HYPO_IEVT_COUNT) return -1;
-    if (modulation->target >= HYPO_IMOD_COUNT) return -1;
+    if (!bus || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_ibus_register_modulation: bus or modulation is NULL");
+        return -1;
+    }
+    if (source_event >= HYPO_IEVT_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_ibus_register_modulation: invalid source_event");
+        return -1;
+    }
+    if (modulation->target >= HYPO_IMOD_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hypo_ibus_register_modulation: invalid modulation target");
+        return -1;
+    }
 
     nimcp_mutex_lock(bus->mutex);
 
@@ -597,7 +658,10 @@ float hypo_ibus_get_modulation(
 }
 
 int hypo_ibus_update_modulations(hypo_ibus_t bus, uint64_t delta_us) {
-    if (!bus) return -1;
+    if (!bus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_ibus_update_modulations: bus is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bus->mutex);
 
@@ -631,7 +695,10 @@ int hypo_ibus_update_modulations(hypo_ibus_t bus, uint64_t delta_us) {
 }
 
 int hypo_ibus_clear_modulations(hypo_ibus_t bus) {
-    if (!bus) return -1;
+    if (!bus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_ibus_clear_modulations: bus is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bus->mutex);
 
@@ -651,7 +718,10 @@ int hypo_ibus_clear_modulations(hypo_ibus_t bus) {
  * ============================================================================ */
 
 int hypo_ibus_get_stats(hypo_ibus_t bus, hypo_ibus_stats_t* stats) {
-    if (!bus || !stats) return -1;
+    if (!bus || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_ibus_get_stats: bus or stats is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bus->mutex);
     *stats = bus->stats;
@@ -671,7 +741,10 @@ int hypo_ibus_get_stats(hypo_ibus_t bus, hypo_ibus_stats_t* stats) {
 }
 
 int hypo_ibus_reset_stats(hypo_ibus_t bus) {
-    if (!bus) return -1;
+    if (!bus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_ibus_reset_stats: bus is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bus->mutex);
     uint32_t active_subs = bus->stats.active_subscribers;
@@ -789,7 +862,10 @@ void hypo_ibus_print_stats(const hypo_ibus_stats_t* stats) {
  * ============================================================================ */
 
 int hypo_ibus_register_default_modulations(hypo_ibus_t bus) {
-    if (!bus) return -1;
+    if (!bus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_ibus_register_default_modulations: bus is NULL");
+        return -1;
+    }
 
     int count = 0;
     hypo_ibus_modulation_t mod;

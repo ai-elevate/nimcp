@@ -336,6 +336,7 @@ int hypo_bio_async_fep_compute_fe(
     const hypo_drive_system_t* drives
 ) {
     if (!bridge || !drives) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_fep_compute_fe: bridge or drives is NULL");
         return -1;
     }
 
@@ -445,6 +446,7 @@ int hypo_bio_async_fep_get_effects(
     hypo_bio_async_fep_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_fep_get_effects: bridge or effects is NULL");
         return -1;
     }
 
@@ -462,6 +464,7 @@ int hypo_bio_async_fep_get_stats(
     hypo_bio_async_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_bio_async_fep_get_stats: bridge or stats is NULL");
         return -1;
     }
 

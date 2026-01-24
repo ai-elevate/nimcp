@@ -361,6 +361,7 @@ int hypo_epi_fep_compute_fe(
     float* free_energy
 ) {
     if (!bridge || !free_energy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_epi_fep_compute_fe: bridge or free_energy is NULL");
         return -1;
     }
 
@@ -421,6 +422,7 @@ int hypo_epi_fep_get_effects(
     fep_to_epi_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_epi_fep_get_effects: bridge or effects is NULL");
         return -1;
     }
 
@@ -440,6 +442,7 @@ int hypo_epi_fep_compute_bounds(
     float* upper_bound
 ) {
     if (!bridge || !belief_features || !lower_bound || !upper_bound) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_epi_fep_compute_bounds: required parameter is NULL");
         return -1;
     }
 
@@ -499,6 +502,7 @@ int hypo_epi_fep_compute_info_value(
     float* info_value
 ) {
     if (!bridge || !info_value) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_epi_fep_compute_info_value: bridge or info_value is NULL");
         return -1;
     }
 
@@ -520,6 +524,7 @@ int hypo_epi_fep_update_from_evidence(
     float evidence_weight
 ) {
     if (!bridge || !evidence_features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_epi_fep_update_from_evidence: bridge or evidence_features is NULL");
         return -1;
     }
 
@@ -626,6 +631,7 @@ int hypo_epi_fep_get_state(
     hypo_epi_fep_state_t* state
 ) {
     if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_epi_fep_get_state: bridge or state is NULL");
         return -1;
     }
 
@@ -638,6 +644,7 @@ int hypo_epi_fep_get_stats(
     hypo_epi_fep_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypo_epi_fep_get_stats: bridge or stats is NULL");
         return -1;
     }
 
