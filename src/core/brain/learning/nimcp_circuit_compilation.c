@@ -102,7 +102,8 @@ static circuit_entry_t* create_circuit(const char* rule_str) {
 
 circuit_id_t compile_rule_to_circuit(brain_t brain, const char* rule_str) {
     if (!brain || !rule_str) {
-        LOG_ERROR("circuit_compilation: Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "compile_rule_to_circuit: invalid parameters");
         return 0;
     }
 
