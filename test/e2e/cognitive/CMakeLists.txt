@@ -51,3 +51,8 @@ foreach(TEST_FILE ${WM_E2E_SOURCES})
 endforeach()
 
 message(STATUS "Added world model E2E tests")
+
+# ============================================================================
+# Include subdirectories
+# ============================================================================
+add_subdirectory(neuro_symbolic)

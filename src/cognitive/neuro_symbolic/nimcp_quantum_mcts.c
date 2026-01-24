@@ -217,6 +217,8 @@ NIMCP_API void quantum_mcts_destroy(quantum_mcts_t* qmcts)
 NIMCP_API nimcp_error_t quantum_mcts_reset(quantum_mcts_t* qmcts)
 {
     if (!qmcts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "quantum_mcts_reset: qmcts is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -259,6 +261,8 @@ NIMCP_API nimcp_error_t quantum_mcts_get_default_config(
     quantum_mcts_config_t* config)
 {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "quantum_mcts_get_default_config: config is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -312,6 +316,8 @@ NIMCP_API nimcp_error_t quantum_mcts_set_environment(
     void* user_data)
 {
     if (!qmcts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "quantum_mcts_set_environment: qmcts is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -332,6 +338,8 @@ NIMCP_API nimcp_error_t quantum_mcts_link_fep(
     fep_planning_system_t* fep_planner)
 {
     if (!qmcts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "quantum_mcts_link_fep: qmcts is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -347,6 +355,8 @@ NIMCP_API nimcp_error_t quantum_mcts_link_annealer(
     quantum_annealer_t* annealer)
 {
     if (!qmcts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "quantum_mcts_link_annealer: qmcts is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -368,6 +378,8 @@ NIMCP_API nimcp_error_t quantum_mcts_plan(
     qmcts_plan_t* plan)
 {
     if (!qmcts || !state || state_dim == 0 || !plan) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "quantum_mcts_plan: qmcts, state, or plan is NULL, or state_dim is 0");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -382,6 +394,8 @@ NIMCP_API nimcp_error_t quantum_mcts_plan(
     qmcts->root_id = create_node(qmcts, 0, state, state_dim, -1);
     if (qmcts->root_id == UINT32_MAX) {
         nimcp_mutex_unlock(qmcts->mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+            "quantum_mcts_plan: failed to create root node");
         return NIMCP_ERROR_MEMORY;
     }
 
@@ -475,6 +489,8 @@ NIMCP_API nimcp_error_t quantum_mcts_select_action(
     int* action)
 {
     if (!qmcts || !state || !action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "quantum_mcts_select_action: qmcts, state, or action is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -484,6 +500,8 @@ NIMCP_API nimcp_error_t quantum_mcts_select_action(
     /* Allocate minimal plan storage */
     plan.actions = (int*)nimcp_malloc(sizeof(int));
     if (!plan.actions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+            "quantum_mcts_select_action: failed to allocate plan.actions");
         return NIMCP_ERROR_MEMORY;
     }
     plan.num_actions = 1;
@@ -505,6 +523,8 @@ NIMCP_API nimcp_error_t quantum_mcts_simulate(
     uint32_t num_simulations)
 {
     if (!qmcts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "quantum_mcts_simulate: qmcts is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -701,6 +721,8 @@ NIMCP_API nimcp_error_t quantum_mcts_estimate_value(
     qmc_amplitude_result_t* result)
 {
     if (!qmcts || !state || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "quantum_mcts_estimate_value: qmcts, state, or result is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -712,6 +734,8 @@ NIMCP_API nimcp_error_t quantum_mcts_estimate_value(
 
     float* amplitudes = (float*)nimcp_calloc(num_states, sizeof(float));
     if (!amplitudes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+            "quantum_mcts_estimate_value: failed to allocate amplitudes");
         return NIMCP_ERROR_MEMORY;
     }
 
@@ -760,6 +784,8 @@ NIMCP_API nimcp_error_t quantum_mcts_estimate_value(
     nimcp_free(amplitudes);
 
     if (qmc_result != QMC_OK) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "quantum_mcts_estimate_value: qmc_estimate_amplitude failed");
         return NIMCP_ERROR_OPERATION_FAILED;
     }
 
@@ -943,6 +969,8 @@ NIMCP_API nimcp_error_t quantum_mcts_active_inference_action(
     int* action)
 {
     if (!qmcts || !belief_state || !action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "quantum_mcts_active_inference_action: qmcts, belief_state, or action is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -959,6 +987,8 @@ NIMCP_API nimcp_error_t quantum_mcts_plan_init(
     uint32_t max_actions)
 {
     if (!plan || max_actions == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "quantum_mcts_plan_init: plan is NULL or max_actions is 0");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -966,6 +996,8 @@ NIMCP_API nimcp_error_t quantum_mcts_plan_init(
 
     plan->actions = (int*)nimcp_calloc(max_actions, sizeof(int));
     if (!plan->actions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+            "quantum_mcts_plan_init: failed to allocate actions array");
         return NIMCP_ERROR_MEMORY;
     }
 
@@ -1005,6 +1037,8 @@ NIMCP_API nimcp_error_t quantum_mcts_modulate_atp(
     float atp_level)
 {
     if (!qmcts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "quantum_mcts_modulate_atp: qmcts is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1020,6 +1054,8 @@ NIMCP_API nimcp_error_t quantum_mcts_set_temperature(
     float temperature)
 {
     if (!qmcts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "quantum_mcts_set_temperature: qmcts is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1038,6 +1074,8 @@ NIMCP_API nimcp_error_t quantum_mcts_register_bio_async(
     quantum_mcts_t* qmcts)
 {
     if (!qmcts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "quantum_mcts_register_bio_async: qmcts is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1076,6 +1114,8 @@ NIMCP_API nimcp_error_t quantum_mcts_unregister_bio_async(
     quantum_mcts_t* qmcts)
 {
     if (!qmcts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "quantum_mcts_unregister_bio_async: qmcts is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1107,6 +1147,8 @@ NIMCP_API nimcp_error_t quantum_mcts_get_stats(
     quantum_mcts_stats_t* stats)
 {
     if (!qmcts || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "quantum_mcts_get_stats: qmcts or stats is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1190,6 +1232,8 @@ static nimcp_error_t expand_node(quantum_mcts_t* qmcts, uint32_t node_id)
 {
     int idx = find_node_index(qmcts, node_id);
     if (idx < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND,
+            "expand_node: node not found");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -1217,6 +1261,8 @@ static nimcp_error_t expand_node(quantum_mcts_t* qmcts, uint32_t node_id)
     /* Allocate children array */
     node->children = (uint32_t*)nimcp_calloc(num_actions, sizeof(uint32_t));
     if (!node->children) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+            "expand_node: failed to allocate children array");
         return NIMCP_ERROR_MEMORY;
     }
     node->children_capacity = num_actions;

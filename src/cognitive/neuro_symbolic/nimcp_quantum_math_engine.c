@@ -15,6 +15,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_immune.h"
 #include "async/nimcp_bio_router.h"
 #include <math.h>
 #include <string.h>
@@ -281,7 +282,11 @@ NIMCP_API void qme_math_destroy(qme_math_simulation_t* sim) {
 }
 
 NIMCP_API nimcp_error_t qme_math_reset(qme_math_simulation_t* sim) {
-    if (!sim) return NIMCP_ERROR_INVALID_PARAM;
+    if (!sim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "qme_math_reset: sim is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(sim->mutex);
 
@@ -304,7 +309,11 @@ NIMCP_API nimcp_error_t qme_math_reset(qme_math_simulation_t* sim) {
 NIMCP_API nimcp_error_t qme_math_get_default_config(
     qme_simulation_config_t* config) {
 
-    if (!config) return NIMCP_ERROR_INVALID_PARAM;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "qme_math_get_default_config: config is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     memset(config, 0, sizeof(qme_simulation_config_t));
 
@@ -341,6 +350,8 @@ NIMCP_API nimcp_error_t qme_integrate(
     void* user_data) {
 
     if (!sim || !f || !domain || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "qme_integrate: sim, f, domain, or result is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -430,6 +441,8 @@ NIMCP_API nimcp_error_t qme_integrate_importance(
     void* user_data) {
 
     if (!sim || !f || !proposal || !domain || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "qme_integrate_importance: sim, f, proposal, domain, or result is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -499,6 +512,8 @@ NIMCP_API nimcp_error_t qme_estimate_expectation(
     void* user_data) {
 
     if (!sim || !f || !distribution || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "qme_estimate_expectation: sim, f, distribution, or result is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -587,6 +602,8 @@ NIMCP_API nimcp_error_t qme_estimate_moments(
     void* user_data) {
 
     if (!sim || !f || !distribution || !result || max_moment == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "qme_estimate_moments: sim, f, distribution, or result is NULL, or max_moment is 0");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -596,7 +613,11 @@ NIMCP_API nimcp_error_t qme_estimate_moments(
 
     /* Allocate moment storage */
     result->moment_estimates = nimcp_calloc(max_moment, sizeof(float));
-    if (!result->moment_estimates) return NIMCP_ERROR_NO_MEMORY;
+    if (!result->moment_estimates) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "qme_estimate_moments: failed to allocate moment_estimates");
+        return NIMCP_ERROR_NO_MEMORY;
+    }
     result->num_moments = max_moment;
 
     result->moment_estimates[0] = result->mean;
@@ -625,6 +646,8 @@ NIMCP_API nimcp_error_t qme_partition_function(
     void* user_data) {
 
     if (!sim || !energy_func || !result || temperature <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "qme_partition_function: sim, energy_func, or result is NULL, or temperature is invalid");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -702,7 +725,11 @@ NIMCP_API nimcp_error_t qme_free_energy(
     float* free_energy,
     void* user_data) {
 
-    if (!free_energy) return NIMCP_ERROR_INVALID_PARAM;
+    if (!free_energy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "qme_free_energy: free_energy is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     qme_partition_result_t result;
     nimcp_error_t err = qme_partition_function(sim, energy_func, dim, temperature, &result, user_data);
@@ -727,10 +754,14 @@ NIMCP_API nimcp_error_t qme_path_integral(
     void* user_data) {
 
     if (!sim || !action || !initial || !final || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "qme_path_integral: sim, action, initial, final, or result is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (num_time_steps > QME_MAX_PATHS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "qme_path_integral: num_time_steps exceeds QME_MAX_PATHS");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -747,6 +778,8 @@ NIMCP_API nimcp_error_t qme_path_integral(
             nimcp_free(current_path);
             nimcp_free(proposed_path);
             nimcp_mutex_unlock(sim->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                "qme_path_integral: failed to allocate path buffers");
             return NIMCP_ERROR_NO_MEMORY;
         }
 
@@ -830,6 +863,8 @@ NIMCP_API nimcp_error_t qme_find_classical_path(
     void* user_data) {
 
     if (!sim || !action || !initial || !final || !path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "qme_find_classical_path: sim, action, initial, final, or path is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -848,7 +883,11 @@ NIMCP_API nimcp_error_t qme_find_classical_path(
     float epsilon = 0.001f;
 
     float* gradient = nimcp_calloc(path_size, sizeof(float));
-    if (!gradient) return NIMCP_ERROR_NO_MEMORY;
+    if (!gradient) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "qme_find_classical_path: failed to allocate gradient buffer");
+        return NIMCP_ERROR_NO_MEMORY;
+    }
 
     for (uint32_t iter = 0; iter < 1000; iter++) {
         float current_action = action(path, num_time_steps, dim, user_data);
@@ -1003,12 +1042,20 @@ NIMCP_API nimcp_error_t qme_path_integral_result_init(
     uint32_t path_length,
     uint32_t dim) {
 
-    if (!result) return NIMCP_ERROR_INVALID_PARAM;
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "qme_path_integral_result_init: result is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     memset(result, 0, sizeof(qme_path_integral_result_t));
 
     result->dominant_path = nimcp_calloc(path_length * dim, sizeof(float));
-    if (!result->dominant_path) return NIMCP_ERROR_NO_MEMORY;
+    if (!result->dominant_path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "qme_path_integral_result_init: failed to allocate dominant_path");
+        return NIMCP_ERROR_NO_MEMORY;
+    }
 
     result->path_length = path_length;
 
@@ -1027,13 +1074,21 @@ NIMCP_API nimcp_error_t qme_expectation_result_init(
     qme_expectation_result_t* result,
     uint32_t max_moments) {
 
-    if (!result) return NIMCP_ERROR_INVALID_PARAM;
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "qme_expectation_result_init: result is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     memset(result, 0, sizeof(qme_expectation_result_t));
 
     if (max_moments > 0) {
         result->moment_estimates = nimcp_calloc(max_moments, sizeof(float));
-        if (!result->moment_estimates) return NIMCP_ERROR_NO_MEMORY;
+        if (!result->moment_estimates) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                "qme_expectation_result_init: failed to allocate moment_estimates");
+            return NIMCP_ERROR_NO_MEMORY;
+        }
         result->num_moments = max_moments;
     }
 
@@ -1056,7 +1111,11 @@ NIMCP_API void qme_expectation_result_cleanup(
 NIMCP_API nimcp_error_t qme_math_register_bio_async(
     qme_math_simulation_t* sim) {
 
-    if (!sim) return NIMCP_ERROR_INVALID_PARAM;
+    if (!sim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "qme_math_register_bio_async: sim is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(sim->mutex);
 
@@ -1091,7 +1150,11 @@ NIMCP_API nimcp_error_t qme_math_register_bio_async(
 NIMCP_API nimcp_error_t qme_math_unregister_bio_async(
     qme_math_simulation_t* sim) {
 
-    if (!sim) return NIMCP_ERROR_INVALID_PARAM;
+    if (!sim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "qme_math_unregister_bio_async: sim is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(sim->mutex);
 
@@ -1114,7 +1177,11 @@ NIMCP_API nimcp_error_t qme_math_get_stats(
     const qme_math_simulation_t* sim,
     qme_stats_t* stats) {
 
-    if (!sim || !stats) return NIMCP_ERROR_INVALID_PARAM;
+    if (!sim || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "qme_math_get_stats: sim or stats is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     memcpy(stats, &sim->stats, sizeof(qme_stats_t));
     return NIMCP_SUCCESS;

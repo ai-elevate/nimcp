@@ -178,6 +178,8 @@ NIMCP_API nimcp_error_t energy_consistency_reset(
     energy_consistency_checker_t* checker)
 {
     if (!checker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "energy_consistency_reset: checker is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -206,6 +208,8 @@ NIMCP_API nimcp_error_t energy_consistency_get_default_config(
     energy_consistency_config_t* config)
 {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "energy_consistency_get_default_config: config is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -250,6 +254,8 @@ NIMCP_API nimcp_error_t energy_consistency_check(
     energy_consistency_result_t* result)
 {
     if (!checker || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "energy_consistency_check: checker or result is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -352,6 +358,8 @@ NIMCP_API nimcp_error_t energy_consistency_check_proof(
     energy_consistency_result_t* result)
 {
     if (!checker || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "energy_consistency_check_proof: checker or result is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -503,6 +511,8 @@ NIMCP_API nimcp_error_t energy_consistency_check_proposition(
     energy_consistency_result_t* result)
 {
     if (!checker || !proposition || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "energy_consistency_check_proposition: checker, proposition, or result is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -571,6 +581,8 @@ NIMCP_API nimcp_error_t energy_consistency_check_pair(
     energy_consistency_result_t* result)
 {
     if (!checker || !expr_a || !expr_b || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "energy_consistency_check_pair: checker, expr_a, expr_b, or result is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -710,6 +722,8 @@ NIMCP_API nimcp_error_t energy_consistency_compute_thermo_cost(
     float* landauer_cost)
 {
     if (!checker || !atp_cost || !landauer_cost) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "energy_consistency_compute_thermo_cost: checker, atp_cost, or landauer_cost is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -734,6 +748,8 @@ NIMCP_API nimcp_error_t energy_consistency_feed_to_fep(
     float energy)
 {
     if (!checker || !fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "energy_consistency_feed_to_fep: checker or fep is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -775,6 +791,8 @@ NIMCP_API nimcp_error_t energy_consistency_report_to_immune(
     const consistency_violation_t* violation)
 {
     if (!checker || !violation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "energy_consistency_report_to_immune: checker or violation is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -809,6 +827,8 @@ NIMCP_API nimcp_error_t energy_consistency_request_recovery(
     const energy_consistency_result_t* result)
 {
     if (!checker || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "energy_consistency_request_recovery: checker or result is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -841,6 +861,8 @@ NIMCP_API nimcp_error_t energy_consistency_result_init(
     uint32_t max_violations)
 {
     if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "energy_consistency_result_init: result is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -850,6 +872,8 @@ NIMCP_API nimcp_error_t energy_consistency_result_init(
         result->violations = (consistency_violation_t*)nimcp_calloc(
             max_violations, sizeof(consistency_violation_t));
         if (!result->violations) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+                "energy_consistency_result_init: failed to allocate violations array");
             return NIMCP_ERROR_MEMORY;
         }
         result->violation_capacity = max_violations;
@@ -879,10 +903,14 @@ NIMCP_API nimcp_error_t energy_consistency_result_add_violation(
     const consistency_violation_t* violation)
 {
     if (!result || !violation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "energy_consistency_result_add_violation: result or violation is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (result->num_violations >= result->violation_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW,
+            "energy_consistency_result_add_violation: violations array is full");
         return NIMCP_ERROR_BUFFER_OVERFLOW;
     }
 
@@ -902,6 +930,8 @@ NIMCP_API nimcp_error_t energy_consistency_modulate_inflammation(
     float inflammation)
 {
     if (!checker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "energy_consistency_modulate_inflammation: checker is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -917,6 +947,8 @@ NIMCP_API nimcp_error_t energy_consistency_modulate_fatigue(
     float fatigue)
 {
     if (!checker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "energy_consistency_modulate_fatigue: checker is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -932,6 +964,8 @@ NIMCP_API nimcp_error_t energy_consistency_modulate_atp(
     float atp_level)
 {
     if (!checker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "energy_consistency_modulate_atp: checker is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -950,6 +984,8 @@ NIMCP_API nimcp_error_t energy_consistency_register_bio_async(
     energy_consistency_checker_t* checker)
 {
     if (!checker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "energy_consistency_register_bio_async: checker is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -988,6 +1024,8 @@ NIMCP_API nimcp_error_t energy_consistency_unregister_bio_async(
     energy_consistency_checker_t* checker)
 {
     if (!checker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "energy_consistency_unregister_bio_async: checker is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1045,6 +1083,8 @@ NIMCP_API nimcp_error_t energy_consistency_get_stats(
     energy_consistency_stats_t* stats)
 {
     if (!checker || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "energy_consistency_get_stats: checker or stats is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 

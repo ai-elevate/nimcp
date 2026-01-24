@@ -243,6 +243,8 @@ NIMCP_API void nimcp_hypergraph_destroy(nimcp_hypergraph_t* hg)
 NIMCP_API nimcp_error_t nimcp_hypergraph_clear(nimcp_hypergraph_t* hg)
 {
     if (!hg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "nimcp_hypergraph_clear: hg is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -302,6 +304,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_get_default_config(
     hypergraph_config_t* config)
 {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "nimcp_hypergraph_get_default_config: config is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -424,6 +428,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_remove_vertex(
     uint32_t vertex_id)
 {
     if (!hg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "nimcp_hypergraph_remove_vertex: hg is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -436,6 +442,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_remove_vertex(
         if (hg->thread_safe) {
             nimcp_mutex_unlock(hg->mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND,
+            "nimcp_hypergraph_remove_vertex: vertex not found");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -515,6 +523,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_update_vertex_confidence(
     float confidence)
 {
     if (!hg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "nimcp_hypergraph_update_vertex_confidence: hg is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -527,6 +537,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_update_vertex_confidence(
         if (hg->thread_safe) {
             nimcp_mutex_unlock(hg->mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND,
+            "nimcp_hypergraph_update_vertex_confidence: vertex not found");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -709,6 +721,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_remove_edge(
     uint32_t edge_id)
 {
     if (!hg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "nimcp_hypergraph_remove_edge: hg is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -721,6 +735,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_remove_edge(
         if (hg->thread_safe) {
             nimcp_mutex_unlock(hg->mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND,
+            "nimcp_hypergraph_remove_edge: edge not found");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -844,6 +860,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_update_edge_weight(
     trit_t weight)
 {
     if (!hg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "nimcp_hypergraph_update_edge_weight: hg is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -856,6 +874,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_update_edge_weight(
         if (hg->thread_safe) {
             nimcp_mutex_unlock(hg->mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND,
+            "nimcp_hypergraph_update_edge_weight: edge not found");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -959,6 +979,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_extend_edge(
     uint32_t vertex_id)
 {
     if (!hg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "nimcp_hypergraph_extend_edge: hg is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -973,6 +995,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_extend_edge(
         if (hg->thread_safe) {
             nimcp_mutex_unlock(hg->mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND,
+            "nimcp_hypergraph_extend_edge: edge or vertex not found");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -993,6 +1017,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_extend_edge(
         if (hg->thread_safe) {
             nimcp_mutex_unlock(hg->mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW,
+            "nimcp_hypergraph_extend_edge: max edge vertices exceeded");
         return NIMCP_ERROR_BUFFER_OVERFLOW;
     }
 
@@ -1008,6 +1034,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_extend_edge(
             if (hg->thread_safe) {
                 nimcp_mutex_unlock(hg->mutex);
             }
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+                "nimcp_hypergraph_extend_edge: failed to grow vertices array");
             return NIMCP_ERROR_MEMORY;
         }
         edge->vertices = new_vertices;
@@ -1053,6 +1081,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_shrink_edge(
     uint32_t vertex_id)
 {
     if (!hg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "nimcp_hypergraph_shrink_edge: hg is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1065,6 +1095,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_shrink_edge(
         if (hg->thread_safe) {
             nimcp_mutex_unlock(hg->mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND,
+            "nimcp_hypergraph_shrink_edge: edge not found");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -1083,6 +1115,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_shrink_edge(
         if (hg->thread_safe) {
             nimcp_mutex_unlock(hg->mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND,
+            "nimcp_hypergraph_shrink_edge: vertex not in edge");
         return NIMCP_ERROR_NOT_FOUND;
     }
 
@@ -1564,6 +1598,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_to_tensor(
     uint32_t tensor_size)
 {
     if (!hg || !tensor || tensor_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "nimcp_hypergraph_to_tensor: hg, tensor is NULL or tensor_size is 0");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1573,6 +1609,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_to_tensor(
     /* For each pair of vertices, set 1 if they share an edge */
     uint32_t n = hg->vertex_count;
     if (tensor_size < n * n) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW,
+            "nimcp_hypergraph_to_tensor: tensor_size too small");
         return NIMCP_ERROR_BUFFER_OVERFLOW;
     }
 
@@ -1605,6 +1643,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_connected_components(
     uint32_t* num_components)
 {
     if (!hg || !vertex_components || !num_components) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "nimcp_hypergraph_connected_components: hg, vertex_components, or num_components is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1621,6 +1661,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_connected_components(
     uint32_t current_component = 0;
     uint32_t* stack = (uint32_t*)nimcp_malloc(hg->vertex_count * sizeof(uint32_t));
     if (!stack) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+            "nimcp_hypergraph_connected_components: failed to allocate stack");
         return NIMCP_ERROR_MEMORY;
     }
 
@@ -1695,6 +1737,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_register_bio_async(
     nimcp_hypergraph_t* hg)
 {
     if (!hg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "nimcp_hypergraph_register_bio_async: hg is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1741,6 +1785,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_unregister_bio_async(
     nimcp_hypergraph_t* hg)
 {
     if (!hg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "nimcp_hypergraph_unregister_bio_async: hg is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1778,6 +1824,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_get_stats(
     hypergraph_stats_t* stats)
 {
     if (!hg || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "nimcp_hypergraph_get_stats: hg or stats is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1814,6 +1862,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_query_result_init(
     uint32_t max_edges)
 {
     if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "nimcp_hypergraph_query_result_init: result is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1822,6 +1872,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_query_result_init(
     if (max_vertices > 0) {
         result->vertex_ids = (uint32_t*)nimcp_calloc(max_vertices, sizeof(uint32_t));
         if (!result->vertex_ids) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+                "nimcp_hypergraph_query_result_init: failed to allocate vertex_ids");
             return NIMCP_ERROR_MEMORY;
         }
     }
@@ -1830,6 +1882,8 @@ NIMCP_API nimcp_error_t nimcp_hypergraph_query_result_init(
         result->edge_ids = (uint32_t*)nimcp_calloc(max_edges, sizeof(uint32_t));
         if (!result->edge_ids) {
             if (result->vertex_ids) nimcp_free(result->vertex_ids);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_MEMORY,
+                "nimcp_hypergraph_query_result_init: failed to allocate edge_ids");
             return NIMCP_ERROR_MEMORY;
         }
     }

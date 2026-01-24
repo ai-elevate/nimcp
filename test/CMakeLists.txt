@@ -1975,10 +1975,8 @@ endif()
 # - regression/cognitive/world_model is included via regression/cognitive/CMakeLists.txt
 # Direct includes removed to avoid "binary directory already used" CMake error.
 
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/e2e/cognitive/CMakeLists.txt")
-    message(STATUS "Adding world model E2E tests...")
-    add_subdirectory(e2e/cognitive)
-endif()
+# NOTE: e2e/cognitive is already included via e2e/CMakeLists.txt
+# Direct include removed to avoid "binary directory already used" CMake error.
 
 # ============================================================================
 # Adversarial Tests (Security Robustness)

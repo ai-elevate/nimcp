@@ -15,6 +15,7 @@
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/exception/nimcp_exception_immune.h"
 #include "async/nimcp_bio_router.h"
 #include <math.h>
 #include <string.h>
@@ -349,7 +350,11 @@ NIMCP_API void evolutionary_proof_destroy(evolutionary_proof_search_t* eps) {
 NIMCP_API nimcp_error_t evolutionary_proof_reset(
     evolutionary_proof_search_t* eps) {
 
-    if (!eps) return NIMCP_ERROR_INVALID_PARAM;
+    if (!eps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "evolutionary_proof_reset: eps is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(eps->mutex);
 
@@ -370,7 +375,11 @@ NIMCP_API nimcp_error_t evolutionary_proof_reset(
 NIMCP_API nimcp_error_t evolutionary_proof_get_default_config(
     evoproof_config_t* config) {
 
-    if (!config) return NIMCP_ERROR_INVALID_PARAM;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "evolutionary_proof_get_default_config: config is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     memset(config, 0, sizeof(evoproof_config_t));
 
@@ -423,7 +432,11 @@ NIMCP_API nimcp_error_t evolutionary_proof_get_default_config(
 NIMCP_API nimcp_error_t evolutionary_proof_init_population(
     evolutionary_proof_search_t* eps) {
 
-    if (!eps) return NIMCP_ERROR_INVALID_PARAM;
+    if (!eps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "evolutionary_proof_init_population: eps is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     for (uint32_t i = 0; i < eps->population_count; i++) {
         init_strategy(eps, &eps->population[i], i);
@@ -531,7 +544,11 @@ NIMCP_API nimcp_error_t evolutionary_proof_select_parents(
     uint32_t* parent1,
     uint32_t* parent2) {
 
-    if (!eps || !parent1 || !parent2) return NIMCP_ERROR_INVALID_PARAM;
+    if (!eps || !parent1 || !parent2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "evolutionary_proof_select_parents: eps, parent1, or parent2 is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     switch (eps->config.selection) {
         case EVOPROOF_SELECT_TOURNAMENT: {
@@ -594,6 +611,8 @@ NIMCP_API nimcp_error_t evolutionary_proof_crossover(
     proof_strategy_t* child) {
 
     if (!eps || !parent1 || !parent2 || !child) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "evolutionary_proof_crossover: eps, parent1, parent2, or child is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -662,7 +681,11 @@ NIMCP_API nimcp_error_t evolutionary_proof_mutate(
     evolutionary_proof_search_t* eps,
     proof_strategy_t* strategy) {
 
-    if (!eps || !strategy) return NIMCP_ERROR_INVALID_PARAM;
+    if (!eps || !strategy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "evolutionary_proof_mutate: eps or strategy is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     for (uint32_t i = 0; i < PROOF_GENE_COUNT; i++) {
         if (eps_random_uniform(eps) < eps->config.mutation_rate) {
@@ -733,17 +756,18 @@ NIMCP_API proof_action_t evolutionary_proof_select_action(
     return best_action;
 }
 
-NIMCP_API float evolutionary_proof_update_q(
+/**
+ * @brief Internal unlocked version of Q-value update
+ *
+ * Must be called with eps->mutex already held.
+ */
+static float update_q_unlocked(
     evolutionary_proof_search_t* eps,
     const proof_state_t* state,
     proof_action_t action,
     float reward,
     const proof_state_t* next_state,
     bool done) {
-
-    if (!eps || !state) return 0.0f;
-
-    nimcp_mutex_lock(eps->mutex);
 
     uint64_t hash = compute_state_hash(state);
     proof_q_entry_t* entry = get_or_create_q_entry(eps, hash);
@@ -771,9 +795,24 @@ NIMCP_API float evolutionary_proof_update_q(
 
     eps->stats.q_updates++;
 
+    return entry->q_values[action];
+}
+
+NIMCP_API float evolutionary_proof_update_q(
+    evolutionary_proof_search_t* eps,
+    const proof_state_t* state,
+    proof_action_t action,
+    float reward,
+    const proof_state_t* next_state,
+    bool done) {
+
+    if (!eps || !state) return 0.0f;
+
+    nimcp_mutex_lock(eps->mutex);
+    float result = update_q_unlocked(eps, state, action, reward, next_state, done);
     nimcp_mutex_unlock(eps->mutex);
 
-    return entry->q_values[action];
+    return result;
 }
 
 NIMCP_API float evolutionary_proof_get_q_value(
@@ -790,13 +829,14 @@ NIMCP_API float evolutionary_proof_get_q_value(
     return entry->q_values[action];
 }
 
-NIMCP_API nimcp_error_t evolutionary_proof_store_experience(
+/**
+ * @brief Internal unlocked version of experience storage
+ *
+ * Must be called with eps->mutex already held.
+ */
+static void store_experience_unlocked(
     evolutionary_proof_search_t* eps,
     const proof_experience_t* exp) {
-
-    if (!eps || !exp) return NIMCP_ERROR_INVALID_PARAM;
-
-    nimcp_mutex_lock(eps->mutex);
 
     /* Store in circular buffer */
     uint32_t idx = eps->experience_head;
@@ -808,7 +848,20 @@ NIMCP_API nimcp_error_t evolutionary_proof_store_experience(
     }
 
     eps->stats.experiences_stored = eps->experience_count;
+}
 
+NIMCP_API nimcp_error_t evolutionary_proof_store_experience(
+    evolutionary_proof_search_t* eps,
+    const proof_experience_t* exp) {
+
+    if (!eps || !exp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "evolutionary_proof_store_experience: eps or exp is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    nimcp_mutex_lock(eps->mutex);
+    store_experience_unlocked(eps, exp);
     nimcp_mutex_unlock(eps->mutex);
 
     return NIMCP_SUCCESS;
@@ -817,7 +870,11 @@ NIMCP_API nimcp_error_t evolutionary_proof_store_experience(
 NIMCP_API nimcp_error_t evolutionary_proof_replay_learn(
     evolutionary_proof_search_t* eps) {
 
-    if (!eps) return NIMCP_ERROR_INVALID_PARAM;
+    if (!eps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "evolutionary_proof_replay_learn: eps is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     if (eps->experience_count < eps->config.replay_batch_size) {
         return NIMCP_SUCCESS; /* Not enough experiences yet */
@@ -825,17 +882,17 @@ NIMCP_API nimcp_error_t evolutionary_proof_replay_learn(
 
     nimcp_mutex_lock(eps->mutex);
 
-    /* Sample batch and update */
+    /* Sample batch and update using unlocked version to avoid deadlock */
     for (uint32_t i = 0; i < eps->config.replay_batch_size; i++) {
         uint32_t idx = eps_random_int(eps, eps->experience_count);
         proof_experience_t* exp = &eps->experience_buffer[idx];
 
-        evolutionary_proof_update_q(eps,
-                                     &exp->state,
-                                     exp->action,
-                                     exp->reward,
-                                     &exp->next_state,
-                                     exp->terminal);
+        update_q_unlocked(eps,
+                          &exp->state,
+                          exp->action,
+                          exp->reward,
+                          &exp->next_state,
+                          exp->terminal);
     }
 
     eps->stats.replay_batches++;
@@ -898,7 +955,7 @@ NIMCP_API bool evolutionary_proof_prove(
             reward = -0.1f;
         }
 
-        /* Store experience */
+        /* Store experience (use unlocked version since we hold mutex) */
         proof_experience_t exp = {
             .state = state,
             .action = action,
@@ -907,10 +964,10 @@ NIMCP_API bool evolutionary_proof_prove(
             .terminal = found,
             .timestamp_us = nimcp_time_monotonic_us()
         };
-        evolutionary_proof_store_experience(eps, &exp);
+        store_experience_unlocked(eps, &exp);
 
-        /* Update Q-values */
-        evolutionary_proof_update_q(eps, &state, action, reward, &next_state, found);
+        /* Update Q-values (use unlocked version since we hold mutex) */
+        update_q_unlocked(eps, &state, action, reward, &next_state, found);
 
         state = next_state;
         step++;
@@ -961,13 +1018,21 @@ NIMCP_API nimcp_error_t evolutionary_proof_trace_init(
     evoproof_trace_t* trace,
     uint32_t capacity) {
 
-    if (!trace) return NIMCP_ERROR_INVALID_PARAM;
+    if (!trace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "evolutionary_proof_trace_init: trace is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     memset(trace, 0, sizeof(evoproof_trace_t));
 
     if (capacity > 0) {
         trace->steps = nimcp_calloc(capacity, sizeof(evoproof_step_t));
-        if (!trace->steps) return NIMCP_ERROR_NO_MEMORY;
+        if (!trace->steps) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                "evolutionary_proof_trace_init: failed to allocate steps array");
+            return NIMCP_ERROR_NO_MEMORY;
+        }
         trace->capacity = capacity;
     }
 
@@ -1031,7 +1096,11 @@ NIMCP_API nimcp_error_t evolutionary_proof_import_knowledge(
     const void* buffer,
     uint32_t buffer_size) {
 
-    if (!eps || !buffer) return NIMCP_ERROR_INVALID_PARAM;
+    if (!eps || !buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "evolutionary_proof_import_knowledge: eps or buffer is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     const uint8_t* ptr = (const uint8_t*)buffer;
 
@@ -1075,7 +1144,11 @@ NIMCP_API nimcp_error_t evolutionary_proof_modulate_atp(
     evolutionary_proof_search_t* eps,
     float atp_level) {
 
-    if (!eps) return NIMCP_ERROR_INVALID_PARAM;
+    if (!eps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "evolutionary_proof_modulate_atp: eps is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(eps->mutex);
 
@@ -1094,7 +1167,11 @@ NIMCP_API nimcp_error_t evolutionary_proof_modulate_atp(
 NIMCP_API nimcp_error_t evolutionary_proof_register_bio_async(
     evolutionary_proof_search_t* eps) {
 
-    if (!eps) return NIMCP_ERROR_INVALID_PARAM;
+    if (!eps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "evolutionary_proof_register_bio_async: eps is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(eps->mutex);
 
@@ -1128,7 +1205,11 @@ NIMCP_API nimcp_error_t evolutionary_proof_register_bio_async(
 NIMCP_API nimcp_error_t evolutionary_proof_unregister_bio_async(
     evolutionary_proof_search_t* eps) {
 
-    if (!eps) return NIMCP_ERROR_INVALID_PARAM;
+    if (!eps) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "evolutionary_proof_unregister_bio_async: eps is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(eps->mutex);
 
@@ -1150,7 +1231,11 @@ NIMCP_API nimcp_error_t evolutionary_proof_get_stats(
     const evolutionary_proof_search_t* eps,
     evoproof_stats_t* stats) {
 
-    if (!eps || !stats) return NIMCP_ERROR_INVALID_PARAM;
+    if (!eps || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "evolutionary_proof_get_stats: eps or stats is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     memcpy(stats, &eps->stats, sizeof(evoproof_stats_t));
     stats->unique_states = eps->q_table_count;
