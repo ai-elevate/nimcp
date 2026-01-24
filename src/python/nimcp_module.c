@@ -65,8 +65,11 @@ PyMODINIT_FUNC PyInit_nimcp(void)
         return NULL;
 
     m = PyModule_Create(&nimcp_module);
-    if (m == NULL)
+    if (m == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "PyInit_nimcp: parameter is NULL");
         return NULL;
+    }
 
     // Create exception hierarchy with proper error handling
     NIMCPError = PyErr_NewException("nimcp.NIMCPError", NULL, NULL);

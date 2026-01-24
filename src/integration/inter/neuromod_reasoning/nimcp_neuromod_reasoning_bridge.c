@@ -146,7 +146,11 @@ void neuromod_reasoning_destroy(neuromod_reasoning_bridge_t* bridge) {
 
 int neuromod_reasoning_apply_da_confidence(neuromod_reasoning_bridge_t* bridge,
                                             float da_level, float* conf_out) {
-    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_reasoning_apply_da_confidence: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_confidence_modulation) {
         if (conf_out) *conf_out = CONFIDENCE_BASELINE;
         return 0;
@@ -168,7 +172,11 @@ int neuromod_reasoning_apply_da_confidence(neuromod_reasoning_bridge_t* bridge,
 
 int neuromod_reasoning_apply_da_curiosity(neuromod_reasoning_bridge_t* bridge,
                                            float da_level, float* curiosity_out) {
-    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_reasoning_apply_da_curiosity: invalid parameter");
+        return -1;
+    }
 
     da_level = clamp(da_level, 0.0f, 1.0f);
 
@@ -183,7 +191,11 @@ int neuromod_reasoning_apply_da_curiosity(neuromod_reasoning_bridge_t* bridge,
 
 int neuromod_reasoning_apply_ne_control(neuromod_reasoning_bridge_t* bridge,
                                          float ne_level, float* control_out) {
-    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_reasoning_apply_ne_control: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_control_modulation) {
         if (control_out) *control_out = CONTROL_BASELINE;
         return 0;
@@ -215,7 +227,11 @@ int neuromod_reasoning_apply_ne_control(neuromod_reasoning_bridge_t* bridge,
 
 int neuromod_reasoning_apply_ne_alertness(neuromod_reasoning_bridge_t* bridge,
                                            float ne_level, float* alert_out) {
-    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_reasoning_apply_ne_alertness: invalid parameter");
+        return -1;
+    }
 
     ne_level = clamp(ne_level, 0.0f, 1.0f);
 
@@ -230,7 +246,11 @@ int neuromod_reasoning_apply_ne_alertness(neuromod_reasoning_bridge_t* bridge,
 
 int neuromod_reasoning_apply_ht_deliberation(neuromod_reasoning_bridge_t* bridge,
                                               float ht_level, float* delib_out) {
-    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_reasoning_apply_ht_deliberation: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_deliberation_modulation) {
         if (delib_out) *delib_out = 0.5f;
         return 0;
@@ -252,7 +272,11 @@ int neuromod_reasoning_apply_ht_deliberation(neuromod_reasoning_bridge_t* bridge
 
 int neuromod_reasoning_apply_ht_patience(neuromod_reasoning_bridge_t* bridge,
                                           float ht_level, float* patience_out) {
-    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_reasoning_apply_ht_patience: invalid parameter");
+        return -1;
+    }
 
     ht_level = clamp(ht_level, 0.0f, 1.0f);
 
@@ -267,7 +291,11 @@ int neuromod_reasoning_apply_ht_patience(neuromod_reasoning_bridge_t* bridge,
 
 int neuromod_reasoning_apply_hab_error(neuromod_reasoning_bridge_t* bridge,
                                         float hab_level, float* error_sens_out) {
-    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_reasoning_apply_hab_error: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_error_monitoring) {
         if (error_sens_out) *error_sens_out = 0.5f;
         return 0;
@@ -297,7 +325,11 @@ int neuromod_reasoning_apply_hab_error(neuromod_reasoning_bridge_t* bridge,
 
 int neuromod_reasoning_report_success(neuromod_reasoning_bridge_t* bridge,
                                        float success, float* vta_trigger_out) {
-    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_reasoning_report_success: invalid parameter");
+        return -1;
+    }
 
     success = clamp(success, 0.0f, 1.0f);
     bridge->state.success_signal = success;
@@ -322,7 +354,11 @@ int neuromod_reasoning_report_success(neuromod_reasoning_bridge_t* bridge,
 
 int neuromod_reasoning_report_novelty(neuromod_reasoning_bridge_t* bridge,
                                        float novelty, float* lc_trigger_out) {
-    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_reasoning_report_novelty: invalid parameter");
+        return -1;
+    }
 
     novelty = clamp(novelty, 0.0f, 1.0f);
     bridge->state.novelty_signal = novelty;
@@ -342,7 +378,11 @@ int neuromod_reasoning_report_novelty(neuromod_reasoning_bridge_t* bridge,
 
 int neuromod_reasoning_report_depth_need(neuromod_reasoning_bridge_t* bridge,
                                           float depth, float* ht_demand_out) {
-    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_reasoning_report_depth_need: invalid parameter");
+        return -1;
+    }
 
     depth = clamp(depth, 0.0f, 1.0f);
     bridge->state.depth_demand = depth;
@@ -362,7 +402,11 @@ int neuromod_reasoning_report_depth_need(neuromod_reasoning_bridge_t* bridge,
 
 int neuromod_reasoning_report_error(neuromod_reasoning_bridge_t* bridge,
                                      float error_severity, float* hab_trigger_out) {
-    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_reasoning_report_error: invalid parameter");
+        return -1;
+    }
 
     error_severity = clamp(error_severity, 0.0f, 1.0f);
     bridge->state.error_signal = error_severity;
@@ -404,7 +448,11 @@ float neuromod_reasoning_get_confidence_calibration(neuromod_reasoning_bridge_t*
 }
 
 bool neuromod_reasoning_should_switch_mode(neuromod_reasoning_bridge_t* bridge) {
-    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) return false;
+    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_reasoning_should_switch_mode: invalid parameter");
+        return false;
+    }
 
     /* Switch mode if:
      * - High NE and currently in intuitive mode
@@ -506,7 +554,11 @@ int neuromod_reasoning_compute_modulation(neuromod_reasoning_bridge_t* bridge,
                                           float da_level, float ne_level,
                                           float ht_level, float hab_level,
                                           neuromod_reasoning_state_t* state_out) {
-    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_reasoning_compute_modulation: invalid parameter");
+        return -1;
+    }
 
     /* Apply all modulations */
     neuromod_reasoning_apply_da_confidence(bridge, da_level, NULL);
@@ -589,7 +641,11 @@ int neuromod_reasoning_compute_modulation(neuromod_reasoning_bridge_t* bridge,
  * ============================================================================ */
 
 int neuromod_reasoning_update(neuromod_reasoning_bridge_t* bridge, float delta_ms) {
-    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_reasoning_update: invalid parameter");
+        return -1;
+    }
 
     /* Decay feedback signals */
     float decay = expf(-delta_ms / 100.0f);
@@ -612,20 +668,32 @@ int neuromod_reasoning_update(neuromod_reasoning_bridge_t* bridge, float delta_m
 
 int neuromod_reasoning_get_state(const neuromod_reasoning_bridge_t* bridge,
                                   neuromod_reasoning_state_t* state_out) {
-    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC || !state_out) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC || !state_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_reasoning_get_state: invalid parameter");
+        return -1;
+    }
     *state_out = bridge->state;
     return 0;
 }
 
 int neuromod_reasoning_get_stats(const neuromod_reasoning_bridge_t* bridge,
                                   neuromod_reasoning_stats_t* stats_out) {
-    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC || !stats_out) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC || !stats_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_reasoning_get_stats: invalid parameter");
+        return -1;
+    }
     *stats_out = bridge->stats;
     return 0;
 }
 
 int neuromod_reasoning_reset_stats(neuromod_reasoning_bridge_t* bridge) {
-    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_reasoning_reset_stats: invalid parameter");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(neuromod_reasoning_stats_t));
     bridge->cumulative_confidence = 0.0f;
     bridge->cumulative_accuracy = 0.0f;
@@ -638,7 +706,11 @@ int neuromod_reasoning_reset_stats(neuromod_reasoning_bridge_t* bridge) {
  * ============================================================================ */
 
 bool neuromod_reasoning_is_connected(const neuromod_reasoning_bridge_t* bridge) {
-    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) return false;
+    if (!bridge || bridge->magic != NEUROMOD_REASONING_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_reasoning_is_connected: invalid parameter");
+        return false;
+    }
     return bridge->connected;
 }
 

@@ -298,7 +298,11 @@ static void nlp_broadcast_peer_health(const nlp_peer_t* peer, bool healthy) {
  * @return 0 on success, -1 on failure (caller must handle error)
  */
 static int nlp_generate_nonce(uint8_t* nonce, size_t len) {
-    if (!nonce || len == 0) return -1;
+    if (!nonce || len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "nlp_generate_nonce: invalid parameter");
+        return -1;
+    }
 
 #if defined(NIMCP_PLATFORM_LINUX)
     // Preferred: Use getrandom() system call (available since Linux 3.17)

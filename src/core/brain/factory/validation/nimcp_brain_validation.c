@@ -72,10 +72,16 @@ extern brain_decision_t* copy_decision(brain_decision_t* decision);
 
 bool nimcp_brain_factory_is_cached_input(brain_t brain, const float* features, uint32_t num_features)
 {
-    if (!brain->last_input || !brain->cached_decision)
+    if (!brain->last_input || !brain->cached_decision) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "nimcp_brain_factory_is_cached_input: invalid parameter");
         return false;
-    if (brain->input_size != num_features)
+    }
+    if (brain->input_size != num_features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "nimcp_brain_factory_is_cached_input: invalid parameter");
         return false;
+    }
 
     return memcmp(brain->last_input, features, num_features * sizeof(float)) == 0;
 }

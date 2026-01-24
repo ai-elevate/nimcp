@@ -134,7 +134,11 @@ void neuromod_gametheory_destroy(neuromod_gametheory_bridge_t* bridge) {
 
 int neuromod_gametheory_apply_ht_cooperation(neuromod_gametheory_bridge_t* bridge,
                                               float ht_level, float* coop_out) {
-    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_gametheory_apply_ht_cooperation: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_cooperation_modulation) {
         if (coop_out) *coop_out = COOPERATION_DEFAULT;
         return 0;
@@ -163,7 +167,11 @@ int neuromod_gametheory_apply_ht_cooperation(neuromod_gametheory_bridge_t* bridg
 
 int neuromod_gametheory_apply_da_competition(neuromod_gametheory_bridge_t* bridge,
                                               float da_level, float* comp_out) {
-    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_gametheory_apply_da_competition: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_competition_modulation) {
         if (comp_out) *comp_out = 0.5f;
         return 0;
@@ -185,7 +193,11 @@ int neuromod_gametheory_apply_da_competition(neuromod_gametheory_bridge_t* bridg
 
 int neuromod_gametheory_apply_da_risk(neuromod_gametheory_bridge_t* bridge,
                                        float da_level, float* risk_out) {
-    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_gametheory_apply_da_risk: invalid parameter");
+        return -1;
+    }
 
     da_level = clamp(da_level, 0.0f, 1.0f);
 
@@ -200,7 +212,11 @@ int neuromod_gametheory_apply_da_risk(neuromod_gametheory_bridge_t* bridge,
 
 int neuromod_gametheory_apply_ne_urgency(neuromod_gametheory_bridge_t* bridge,
                                           float ne_level, float* urgency_out) {
-    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_gametheory_apply_ne_urgency: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_urgency_modulation) {
         if (urgency_out) *urgency_out = 0.5f;
         return 0;
@@ -222,7 +238,11 @@ int neuromod_gametheory_apply_ne_urgency(neuromod_gametheory_bridge_t* bridge,
 
 int neuromod_gametheory_apply_hab_loss_aversion(neuromod_gametheory_bridge_t* bridge,
                                                  float hab_level, float* aversion_out) {
-    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_gametheory_apply_hab_loss_aversion: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_loss_aversion) {
         if (aversion_out) *aversion_out = 0.5f;
         return 0;
@@ -250,7 +270,11 @@ int neuromod_gametheory_apply_hab_loss_aversion(neuromod_gametheory_bridge_t* br
 
 int neuromod_gametheory_report_fair_treatment(neuromod_gametheory_bridge_t* bridge,
                                                float fairness, float* ht_trigger_out) {
-    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_gametheory_report_fair_treatment: invalid parameter");
+        return -1;
+    }
 
     fairness = clamp(fairness, 0.0f, 1.0f);
     bridge->state.fair_treatment_signal = fairness;
@@ -272,7 +296,11 @@ int neuromod_gametheory_report_fair_treatment(neuromod_gametheory_bridge_t* brid
 
 int neuromod_gametheory_report_game_won(neuromod_gametheory_bridge_t* bridge,
                                          float win_magnitude, float* vta_trigger_out) {
-    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_gametheory_report_game_won: invalid parameter");
+        return -1;
+    }
 
     win_magnitude = clamp(win_magnitude, 0.0f, 1.0f);
     bridge->state.winning_signal = win_magnitude;
@@ -292,7 +320,11 @@ int neuromod_gametheory_report_game_won(neuromod_gametheory_bridge_t* bridge,
 
 int neuromod_gametheory_report_game_lost(neuromod_gametheory_bridge_t* bridge,
                                           float loss_magnitude, float* hab_trigger_out) {
-    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_gametheory_report_game_lost: invalid parameter");
+        return -1;
+    }
 
     loss_magnitude = clamp(loss_magnitude, 0.0f, 1.0f);
     bridge->state.losing_signal = loss_magnitude;
@@ -312,7 +344,11 @@ int neuromod_gametheory_report_game_lost(neuromod_gametheory_bridge_t* bridge,
 
 int neuromod_gametheory_report_betrayal(neuromod_gametheory_bridge_t* bridge,
                                          float severity, float* hab_trigger_out) {
-    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_gametheory_report_betrayal: invalid parameter");
+        return -1;
+    }
 
     severity = clamp(severity, 0.0f, 1.0f);
     bridge->state.betrayal_signal = severity;
@@ -336,7 +372,11 @@ int neuromod_gametheory_report_betrayal(neuromod_gametheory_bridge_t* bridge,
 
 int neuromod_gametheory_report_time_pressure(neuromod_gametheory_bridge_t* bridge,
                                               float pressure, float* lc_trigger_out) {
-    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_gametheory_report_time_pressure: invalid parameter");
+        return -1;
+    }
 
     pressure = clamp(pressure, 0.0f, 1.0f);
 
@@ -401,7 +441,11 @@ bool neuromod_gametheory_should_cooperate(neuromod_gametheory_bridge_t* bridge,
 
 bool neuromod_gametheory_should_take_risk(neuromod_gametheory_bridge_t* bridge,
                                            float expected_value, float variance) {
-    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) return false;
+    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_gametheory_should_take_risk: invalid parameter");
+        return false;
+    }
 
     expected_value = clamp(expected_value, -1.0f, 1.0f);
     variance = clamp(variance, 0.0f, 1.0f);
@@ -483,7 +527,11 @@ int neuromod_gametheory_compute_modulation(neuromod_gametheory_bridge_t* bridge,
                                            float ht_level, float da_level,
                                            float ne_level, float hab_level,
                                            neuromod_gametheory_state_t* state_out) {
-    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_gametheory_compute_modulation: invalid parameter");
+        return -1;
+    }
 
     /* Apply all modulations */
     neuromod_gametheory_apply_ht_cooperation(bridge, ht_level, NULL);
@@ -533,7 +581,11 @@ int neuromod_gametheory_compute_modulation(neuromod_gametheory_bridge_t* bridge,
  * ============================================================================ */
 
 int neuromod_gametheory_update(neuromod_gametheory_bridge_t* bridge, float delta_ms) {
-    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_gametheory_update: invalid parameter");
+        return -1;
+    }
 
     /* Decay outcome signals */
     float decay = expf(-delta_ms / 150.0f);
@@ -556,20 +608,32 @@ int neuromod_gametheory_update(neuromod_gametheory_bridge_t* bridge, float delta
 
 int neuromod_gametheory_get_state(const neuromod_gametheory_bridge_t* bridge,
                                    neuromod_gametheory_state_t* state_out) {
-    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC || !state_out) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC || !state_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_gametheory_get_state: invalid parameter");
+        return -1;
+    }
     *state_out = bridge->state;
     return 0;
 }
 
 int neuromod_gametheory_get_stats(const neuromod_gametheory_bridge_t* bridge,
                                    neuromod_gametheory_stats_t* stats_out) {
-    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC || !stats_out) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC || !stats_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_gametheory_get_stats: invalid parameter");
+        return -1;
+    }
     *stats_out = bridge->stats;
     return 0;
 }
 
 int neuromod_gametheory_reset_stats(neuromod_gametheory_bridge_t* bridge) {
-    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_gametheory_reset_stats: invalid parameter");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(neuromod_gametheory_stats_t));
     return 0;
 }
@@ -579,7 +643,11 @@ int neuromod_gametheory_reset_stats(neuromod_gametheory_bridge_t* bridge) {
  * ============================================================================ */
 
 bool neuromod_gametheory_is_connected(const neuromod_gametheory_bridge_t* bridge) {
-    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) return false;
+    if (!bridge || bridge->magic != NEUROMOD_GAMETHEORY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_gametheory_is_connected: invalid parameter");
+        return false;
+    }
     return bridge->connected;
 }
 

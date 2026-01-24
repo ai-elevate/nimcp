@@ -746,6 +746,8 @@ bool shannon_distribution_normalize(shannon_distribution_t* distribution)
     }
 
     if (!distribution || !distribution->probabilities) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "shannon_distribution_normalize: distribution or probabilities is NULL");
         return false;
     }
 

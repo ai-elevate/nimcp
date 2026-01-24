@@ -447,6 +447,8 @@ snn_backprop_ctx_t* snn_backprop_create(
 
     // TODO: Full implementation
     NIMCP_LOGGING_INFO("SNN backprop trainer creation (stub)");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_IMPLEMENTED,
+        "snn_backprop_create: stub - full implementation pending");
 
     return NULL; // Stub return
 }
@@ -464,6 +466,8 @@ void snn_backprop_destroy(snn_backprop_ctx_t* ctx) {
 int snn_backprop_reset(snn_backprop_ctx_t* ctx) {
     // Guard: Null check
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_backprop_reset: ctx is NULL");
         return SNN_ERROR_NULL_POINTER;
     }
 
@@ -486,11 +490,15 @@ int snn_backprop_forward(
 ) {
     // Guard: Null checks
     if (!ctx || !inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_backprop_forward: ctx or inputs is NULL");
         return SNN_ERROR_NULL_POINTER;
     }
 
     // Guard: Validate batch size
     if (batch_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "snn_backprop_forward: batch_size is 0");
         return SNN_ERROR_INVALID_STATE;
     }
 
@@ -507,6 +515,8 @@ int snn_backprop_backward(
 ) {
     // Guard: Null checks
     if (!ctx || !targets) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_backprop_backward: ctx or targets is NULL");
         return SNN_ERROR_NULL_POINTER;
     }
 
@@ -522,6 +532,8 @@ int snn_backprop_step(
 ) {
     // Guard: Null check
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_backprop_step: ctx is NULL");
         return SNN_ERROR_NULL_POINTER;
     }
 
@@ -539,6 +551,8 @@ int snn_backprop_step(
 int snn_backprop_zero_grad(snn_backprop_ctx_t* ctx) {
     // Guard: Null check
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_backprop_zero_grad: ctx is NULL");
         return SNN_ERROR_NULL_POINTER;
     }
 
@@ -560,6 +574,8 @@ int snn_backprop_train_step(
 ) {
     // Guard: Null checks
     if (!ctx || !inputs || !targets) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "snn_backprop_train_step: ctx, inputs, or targets is NULL");
         return SNN_ERROR_NULL_POINTER;
     }
 

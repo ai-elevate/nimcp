@@ -137,7 +137,11 @@ void neuromod_plasticity_destroy(neuromod_plasticity_bridge_t* bridge) {
 
 int neuromod_plasticity_apply_da_gating(neuromod_plasticity_bridge_t* bridge,
                                          float da_level, float* ltp_gate_out) {
-    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_plasticity_apply_da_gating: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_da_gating) {
         bridge->state.ltp_gate_level = 1.0f;  /* Always open */
         if (ltp_gate_out) *ltp_gate_out = 1.0f;
@@ -180,7 +184,11 @@ int neuromod_plasticity_apply_da_gating(neuromod_plasticity_bridge_t* bridge,
 
 int neuromod_plasticity_apply_reward_pe(neuromod_plasticity_bridge_t* bridge,
                                          float reward, float expected, float* rpe_out) {
-    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_plasticity_apply_reward_pe: invalid parameter");
+        return -1;
+    }
 
     reward = clamp(reward, 0.0f, 1.0f);
     expected = clamp(expected, 0.0f, 1.0f);
@@ -210,7 +218,11 @@ int neuromod_plasticity_apply_reward_pe(neuromod_plasticity_bridge_t* bridge,
 
 int neuromod_plasticity_apply_ne_boost(neuromod_plasticity_bridge_t* bridge,
                                         float ne_level, float* boost_out) {
-    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_plasticity_apply_ne_boost: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_ne_boost) {
         bridge->state.memory_boost = 1.0f;
         if (boost_out) *boost_out = 1.0f;
@@ -244,7 +256,11 @@ int neuromod_plasticity_apply_ne_boost(neuromod_plasticity_bridge_t* bridge,
 
 int neuromod_plasticity_apply_ht_consolidation(neuromod_plasticity_bridge_t* bridge,
                                                 float ht_level, float* rate_out) {
-    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_plasticity_apply_ht_consolidation: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_consolidation) {
         bridge->state.consolidation_rate = 0.5f;
         if (rate_out) *rate_out = 0.5f;
@@ -271,7 +287,11 @@ int neuromod_plasticity_apply_ht_consolidation(neuromod_plasticity_bridge_t* bri
 
 int neuromod_plasticity_apply_hab_avoidance(neuromod_plasticity_bridge_t* bridge,
                                              float hab_level, float* avoidance_out) {
-    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_plasticity_apply_hab_avoidance: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_avoidance_learning) {
         bridge->state.avoidance_signal = 0.0f;
         if (avoidance_out) *avoidance_out = 0.0f;
@@ -303,7 +323,11 @@ int neuromod_plasticity_apply_hab_avoidance(neuromod_plasticity_bridge_t* bridge
  * ============================================================================ */
 
 int neuromod_plasticity_set_eligibility(neuromod_plasticity_bridge_t* bridge, float level) {
-    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_plasticity_set_eligibility: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_eligibility_traces) return 0;
 
     bridge->state.eligibility_level = clamp(level, 0.0f, 1.0f);
@@ -314,7 +338,11 @@ int neuromod_plasticity_set_eligibility(neuromod_plasticity_bridge_t* bridge, fl
 }
 
 int neuromod_plasticity_capture_eligibility(neuromod_plasticity_bridge_t* bridge, float da_signal) {
-    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_plasticity_capture_eligibility: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_eligibility_traces) return 0;
 
     da_signal = clamp(da_signal, 0.0f, 1.0f);
@@ -344,7 +372,11 @@ int neuromod_plasticity_capture_eligibility(neuromod_plasticity_bridge_t* bridge
 }
 
 int neuromod_plasticity_decay_eligibility(neuromod_plasticity_bridge_t* bridge, float delta_ms) {
-    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_plasticity_decay_eligibility: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_eligibility_traces) return 0;
 
     /* Decay eligibility trace */
@@ -368,7 +400,11 @@ int neuromod_plasticity_decay_eligibility(neuromod_plasticity_bridge_t* bridge, 
 
 int neuromod_plasticity_report_success(neuromod_plasticity_bridge_t* bridge,
                                         float success, float* vta_trigger_out) {
-    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_plasticity_report_success: invalid parameter");
+        return -1;
+    }
 
     success = clamp(success, 0.0f, 1.0f);
     bridge->state.learning_success = success;
@@ -388,7 +424,11 @@ int neuromod_plasticity_report_success(neuromod_plasticity_bridge_t* bridge,
 
 int neuromod_plasticity_report_novelty(neuromod_plasticity_bridge_t* bridge,
                                         float novelty, float* lc_trigger_out) {
-    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_plasticity_report_novelty: invalid parameter");
+        return -1;
+    }
 
     novelty = clamp(novelty, 0.0f, 1.0f);
     bridge->state.novelty_signal = novelty;
@@ -408,7 +448,11 @@ int neuromod_plasticity_report_novelty(neuromod_plasticity_bridge_t* bridge,
 
 int neuromod_plasticity_report_conflict(neuromod_plasticity_bridge_t* bridge,
                                          float conflict, float* ht_mod_out) {
-    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_plasticity_report_conflict: invalid parameter");
+        return -1;
+    }
 
     conflict = clamp(conflict, 0.0f, 1.0f);
     bridge->state.memory_conflict = conflict;
@@ -428,7 +472,11 @@ int neuromod_plasticity_report_conflict(neuromod_plasticity_bridge_t* bridge,
 
 int neuromod_plasticity_report_prediction_miss(neuromod_plasticity_bridge_t* bridge,
                                                 float miss, float* hab_trigger_out) {
-    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_plasticity_report_prediction_miss: invalid parameter");
+        return -1;
+    }
 
     miss = clamp(miss, 0.0f, 1.0f);
     bridge->state.prediction_miss = miss;
@@ -454,7 +502,11 @@ int neuromod_plasticity_compute_modulation(neuromod_plasticity_bridge_t* bridge,
                                            float da_level, float ne_level,
                                            float ht_level, float hab_level,
                                            neuromod_plasticity_state_t* state_out) {
-    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_plasticity_compute_modulation: invalid parameter");
+        return -1;
+    }
 
     /* Apply all modulations */
     neuromod_plasticity_apply_da_gating(bridge, da_level, NULL);
@@ -502,7 +554,11 @@ int neuromod_plasticity_compute_modulation(neuromod_plasticity_bridge_t* bridge,
  * ============================================================================ */
 
 int neuromod_plasticity_update(neuromod_plasticity_bridge_t* bridge, float delta_ms) {
-    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_plasticity_update: invalid parameter");
+        return -1;
+    }
 
     /* Decay eligibility trace */
     neuromod_plasticity_decay_eligibility(bridge, delta_ms);
@@ -528,20 +584,32 @@ int neuromod_plasticity_update(neuromod_plasticity_bridge_t* bridge, float delta
 
 int neuromod_plasticity_get_state(const neuromod_plasticity_bridge_t* bridge,
                                    neuromod_plasticity_state_t* state_out) {
-    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC || !state_out) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC || !state_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_plasticity_get_state: invalid parameter");
+        return -1;
+    }
     *state_out = bridge->state;
     return 0;
 }
 
 int neuromod_plasticity_get_stats(const neuromod_plasticity_bridge_t* bridge,
                                    neuromod_plasticity_stats_t* stats_out) {
-    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC || !stats_out) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC || !stats_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_plasticity_get_stats: invalid parameter");
+        return -1;
+    }
     *stats_out = bridge->stats;
     return 0;
 }
 
 int neuromod_plasticity_reset_stats(neuromod_plasticity_bridge_t* bridge) {
-    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_plasticity_reset_stats: invalid parameter");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(neuromod_plasticity_stats_t));
     return 0;
 }
@@ -551,7 +619,11 @@ int neuromod_plasticity_reset_stats(neuromod_plasticity_bridge_t* bridge) {
  * ============================================================================ */
 
 bool neuromod_plasticity_is_connected(const neuromod_plasticity_bridge_t* bridge) {
-    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) return false;
+    if (!bridge || bridge->magic != NEUROMOD_PLASTICITY_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_plasticity_is_connected: invalid parameter");
+        return false;
+    }
     return bridge->connected;
 }
 

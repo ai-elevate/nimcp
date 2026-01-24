@@ -223,7 +223,11 @@ const char* recovery_status_name(recovery_status_t status)
  */
 static recovery_status_t action_clear_nan(brain_t brain)
 {
-    if (!brain) return RECOVERY_FAILED;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "action_clear_nan: brain is NULL");
+        return RECOVERY_FAILED;
+    }
 
     LOG_INFO("Recovery: Clearing NaN/Inf from weights");
 
@@ -307,7 +311,11 @@ static recovery_status_t action_reset_fpu(brain_t brain)
  */
 static recovery_status_t action_flush_cache(brain_t brain)
 {
-    if (!brain) return RECOVERY_FAILED;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "action_flush_cache: brain is NULL");
+        return RECOVERY_FAILED;
+    }
 
     LOG_INFO("Recovery: Flushing temporary caches");
 
@@ -344,7 +352,11 @@ static recovery_status_t action_trigger_gc(brain_t brain)
  */
 static recovery_status_t action_reload_checkpoint(brain_t brain)
 {
-    if (!brain) return RECOVERY_FAILED;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "action_reload_checkpoint: brain is NULL");
+        return RECOVERY_FAILED;
+    }
 
     LOG_INFO("Recovery: Reloading from checkpoint");
 
@@ -369,7 +381,11 @@ static recovery_status_t action_reload_checkpoint(brain_t brain)
  */
 static recovery_status_t action_emergency_save(brain_t brain)
 {
-    if (!brain) return RECOVERY_FAILED;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "action_emergency_save: brain is NULL");
+        return RECOVERY_FAILED;
+    }
 
     LOG_INFO("Recovery: Performing emergency save");
 

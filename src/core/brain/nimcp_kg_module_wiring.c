@@ -10,6 +10,7 @@
 
 #include "core/brain/nimcp_kg_module_wiring.h"
 #include "core/brain/nimcp_kg_wiring_exception.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>

@@ -111,7 +111,11 @@ static int write_metric_header(
     const char* type,
     const char* help)
 {
-    if (buffer == NULL || offset == NULL) return -1;
+    if (buffer == NULL || offset == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "write_metric_header: invalid parameter");
+        return -1;
+    }
 
     int written = snprintf(buffer + *offset, buffer_size - *offset,
         "# HELP %s %s\n# TYPE %s %s\n",
@@ -136,7 +140,11 @@ static int write_counter(
     const char* labels,
     uint64_t value)
 {
-    if (buffer == NULL || offset == NULL) return -1;
+    if (buffer == NULL || offset == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "write_counter: invalid parameter");
+        return -1;
+    }
 
     int written;
     if (labels != NULL && labels[0] != '\0') {
@@ -166,7 +174,11 @@ static int write_gauge(
     const char* labels,
     double value)
 {
-    if (buffer == NULL || offset == NULL) return -1;
+    if (buffer == NULL || offset == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "write_gauge: invalid parameter");
+        return -1;
+    }
 
     int written;
     if (labels != NULL && labels[0] != '\0') {
@@ -195,7 +207,11 @@ static int write_histogram(
     const char* name,
     const histogram_data_t* hist)
 {
-    if (buffer == NULL || offset == NULL || hist == NULL) return -1;
+    if (buffer == NULL || offset == NULL || hist == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "write_histogram: invalid parameter");
+        return -1;
+    }
 
     int written;
 
@@ -253,7 +269,11 @@ static float calculate_success_rate(uint64_t successes, uint64_t total)
 
 int immune_metrics_default_config(immune_metrics_config_t* config)
 {
-    if (config == NULL) return -1;
+    if (config == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "immune_metrics_default_config: invalid parameter");
+        return -1;
+    }
 
     memset(config, 0, sizeof(immune_metrics_config_t));
 
@@ -334,7 +354,11 @@ int immune_metrics_record_crash(
     immune_metrics_t* metrics,
     crash_signal_type_t signal_type)
 {
-    if (metrics == NULL || !metrics->initialized) return -1;
+    if (metrics == NULL || !metrics->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "immune_metrics_record_crash: invalid parameter");
+        return -1;
+    }
     if (signal_type < 0 || signal_type >= CRASH_SIGNAL_COUNT) {
         signal_type = CRASH_SIGNAL_OTHER;
     }
@@ -357,7 +381,11 @@ int immune_metrics_record_fix(
     bool lnn_based,
     float confidence)
 {
-    if (metrics == NULL || !metrics->initialized) return -1;
+    if (metrics == NULL || !metrics->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "immune_metrics_record_fix: invalid parameter");
+        return -1;
+    }
 
     nimcp_mutex_lock(metrics->mutex);
 
@@ -397,7 +425,11 @@ int immune_metrics_record_latency(
     immune_metrics_t* metrics,
     uint64_t latency_us)
 {
-    if (metrics == NULL || !metrics->initialized) return -1;
+    if (metrics == NULL || !metrics->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "immune_metrics_record_latency: invalid parameter");
+        return -1;
+    }
     if (!metrics->config.enable_histogram) return 0;
 
     nimcp_mutex_lock(metrics->mutex);
@@ -411,7 +443,11 @@ int immune_metrics_record_pattern_use(
     immune_metrics_t* metrics,
     int pattern_type)
 {
-    if (metrics == NULL || !metrics->initialized) return -1;
+    if (metrics == NULL || !metrics->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "immune_metrics_record_pattern_use: invalid parameter");
+        return -1;
+    }
 
     nimcp_mutex_lock(metrics->mutex);
 
@@ -456,8 +492,16 @@ int immune_metrics_update_b_cells(
     immune_metrics_t* metrics,
     const bcell_metrics_t* bcell_metrics)
 {
-    if (metrics == NULL || !metrics->initialized) return -1;
-    if (bcell_metrics == NULL) return -1;
+    if (metrics == NULL || !metrics->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "immune_metrics_update_b_cells: invalid parameter");
+        return -1;
+    }
+    if (bcell_metrics == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "immune_metrics_update_b_cells: invalid parameter");
+        return -1;
+    }
 
     nimcp_mutex_lock(metrics->mutex);
     metrics->b_cells = *bcell_metrics;
@@ -470,8 +514,16 @@ int immune_metrics_update_antibodies(
     immune_metrics_t* metrics,
     const antibody_metrics_t* antibody_metrics)
 {
-    if (metrics == NULL || !metrics->initialized) return -1;
-    if (antibody_metrics == NULL) return -1;
+    if (metrics == NULL || !metrics->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "immune_metrics_update_antibodies: invalid parameter");
+        return -1;
+    }
+    if (antibody_metrics == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "immune_metrics_update_antibodies: invalid parameter");
+        return -1;
+    }
 
     nimcp_mutex_lock(metrics->mutex);
     metrics->antibodies = *antibody_metrics;
@@ -484,8 +536,16 @@ int immune_metrics_update_memory(
     immune_metrics_t* metrics,
     const memory_metrics_t* memory_metrics)
 {
-    if (metrics == NULL || !metrics->initialized) return -1;
-    if (memory_metrics == NULL) return -1;
+    if (metrics == NULL || !metrics->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "immune_metrics_update_memory: invalid parameter");
+        return -1;
+    }
+    if (memory_metrics == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "immune_metrics_update_memory: invalid parameter");
+        return -1;
+    }
 
     nimcp_mutex_lock(metrics->mutex);
 
@@ -506,8 +566,16 @@ int immune_metrics_export_prometheus(
     char* buffer,
     size_t buffer_size)
 {
-    if (metrics == NULL || buffer == NULL || buffer_size == 0) return -1;
-    if (!metrics->initialized) return -1;
+    if (metrics == NULL || buffer == NULL || buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "immune_metrics_export_prometheus: invalid parameter");
+        return -1;
+    }
+    if (!metrics->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "immune_metrics_export_prometheus: invalid parameter");
+        return -1;
+    }
 
     nimcp_mutex_lock(metrics->mutex);
 
@@ -810,8 +878,16 @@ int immune_metrics_export_json(
     char* buffer,
     size_t buffer_size)
 {
-    if (metrics == NULL || buffer == NULL || buffer_size == 0) return -1;
-    if (!metrics->initialized) return -1;
+    if (metrics == NULL || buffer == NULL || buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "immune_metrics_export_json: invalid parameter");
+        return -1;
+    }
+    if (!metrics->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "immune_metrics_export_json: invalid parameter");
+        return -1;
+    }
 
     nimcp_mutex_lock(metrics->mutex);
 
@@ -953,8 +1029,16 @@ int immune_metrics_get_snapshot(
     immune_metrics_t* metrics,
     immune_metrics_snapshot_t* snapshot)
 {
-    if (metrics == NULL || snapshot == NULL) return -1;
-    if (!metrics->initialized) return -1;
+    if (metrics == NULL || snapshot == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "immune_metrics_get_snapshot: invalid parameter");
+        return -1;
+    }
+    if (!metrics->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "immune_metrics_get_snapshot: invalid parameter");
+        return -1;
+    }
 
     nimcp_mutex_lock(metrics->mutex);
 
@@ -983,8 +1067,16 @@ int immune_metrics_get_snapshot(
 
 int immune_metrics_start_http_server(immune_metrics_t* metrics)
 {
-    if (metrics == NULL || !metrics->initialized) return -1;
-    if (!metrics->config.enable_http_server) return -1;
+    if (metrics == NULL || !metrics->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "immune_metrics_start_http_server: invalid parameter");
+        return -1;
+    }
+    if (!metrics->config.enable_http_server) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "immune_metrics_start_http_server: invalid parameter");
+        return -1;
+    }
 
     /* HTTP server implementation would require socket handling
      * This is a stub - full implementation would:
@@ -1002,7 +1094,11 @@ int immune_metrics_start_http_server(immune_metrics_t* metrics)
 
 int immune_metrics_stop_http_server(immune_metrics_t* metrics)
 {
-    if (metrics == NULL) return -1;
+    if (metrics == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "immune_metrics_stop_http_server: invalid parameter");
+        return -1;
+    }
     if (!metrics->http_running) return 0;
 
     /* Stop HTTP server thread and close socket */
@@ -1013,7 +1109,11 @@ int immune_metrics_stop_http_server(immune_metrics_t* metrics)
 
 bool immune_metrics_http_is_running(immune_metrics_t* metrics)
 {
-    if (metrics == NULL) return false;
+    if (metrics == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "immune_metrics_http_is_running: invalid parameter");
+        return false;
+    }
     return metrics->http_running;
 }
 
@@ -1026,7 +1126,11 @@ int immune_metrics_set_alert_callback(
     immune_alert_callback_t callback,
     void* user_data)
 {
-    if (metrics == NULL) return -1;
+    if (metrics == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "immune_metrics_set_alert_callback: invalid parameter");
+        return -1;
+    }
 
     nimcp_mutex_lock(metrics->mutex);
     metrics->alert_callback = callback;
@@ -1040,7 +1144,11 @@ int immune_metrics_configure_alerts(
     immune_metrics_t* metrics,
     const alert_config_t* config)
 {
-    if (metrics == NULL || config == NULL) return -1;
+    if (metrics == NULL || config == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "immune_metrics_configure_alerts: invalid parameter");
+        return -1;
+    }
 
     nimcp_mutex_lock(metrics->mutex);
     metrics->config.alert_config = *config;
@@ -1051,7 +1159,11 @@ int immune_metrics_configure_alerts(
 
 int immune_metrics_check_alerts(immune_metrics_t* metrics)
 {
-    if (metrics == NULL || !metrics->initialized) return -1;
+    if (metrics == NULL || !metrics->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "immune_metrics_check_alerts: invalid parameter");
+        return -1;
+    }
     if (!metrics->config.enable_alerting) return 0;
     if (metrics->alert_callback == NULL) return 0;
 
@@ -1160,7 +1272,11 @@ int immune_metrics_check_alerts(immune_metrics_t* metrics)
 
 int immune_metrics_reset(immune_metrics_t* metrics)
 {
-    if (metrics == NULL || !metrics->initialized) return -1;
+    if (metrics == NULL || !metrics->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "immune_metrics_reset: invalid parameter");
+        return -1;
+    }
 
     nimcp_mutex_lock(metrics->mutex);
 

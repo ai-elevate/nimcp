@@ -150,9 +150,17 @@ static const char* find_string(
     size_t haystack_len,
     const char* needle)
 {
-    if (haystack == NULL || needle == NULL) return NULL;
+    if (haystack == NULL || needle == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "find_string: parameter is NULL");
+        return NULL;
+    }
     size_t needle_len = strlen(needle);
-    if (needle_len == 0 || needle_len > haystack_len) return NULL;
+    if (needle_len == 0 || needle_len > haystack_len) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "find_string: parameter is NULL");
+        return NULL;
+    }
 
     for (size_t i = 0; i <= haystack_len - needle_len; i++) {
         if (memcmp(haystack + i, needle, needle_len) == 0) {
@@ -229,10 +237,18 @@ static int64_t extract_json_int(
     size_t json_len,
     const char* key)
 {
-    if (json == NULL || key == NULL) return -1;
+    if (json == NULL || key == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "extract_json_int: invalid parameter");
+        return -1;
+    }
 
     const char* pos = find_string(json, json_len, key);
-    if (pos == NULL) return -1;
+    if (pos == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "extract_json_int: invalid parameter");
+        return -1;
+    }
 
     pos += strlen(key);
 
@@ -264,7 +280,11 @@ static int64_t extract_json_int(
  */
 static bool validate_fix_code(const char* code, size_t code_len)
 {
-    if (code == NULL || code_len < MIN_FIX_LENGTH) return false;
+    if (code == NULL || code_len < MIN_FIX_LENGTH) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "validate_fix_code: invalid parameter");
+        return false;
+    }
 
     /* Check for balanced braces */
     int brace_count = 0;
@@ -592,7 +612,11 @@ static claude_heal_status_t make_api_request(
  */
 int claude_healer_default_config(claude_healer_config_t* config)
 {
-    if (config == NULL) return -1;
+    if (config == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "claude_healer_default_config: invalid parameter");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -713,7 +737,11 @@ int claude_healer_format_prompt(
     char* prompt_out,
     size_t prompt_size)
 {
-    if (request == NULL || prompt_out == NULL || prompt_size == 0) return -1;
+    if (request == NULL || prompt_out == NULL || prompt_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "claude_healer_format_prompt: invalid parameter");
+        return -1;
+    }
 
     int written = snprintf(prompt_out, prompt_size,
         "You are an expert C programmer analyzing a crash in the NIMCP neural "
@@ -1160,7 +1188,11 @@ bool claude_healer_validate_code(const char* code, size_t code_len)
  */
 bool claude_healer_check_rate_limit(claude_healer_t* healer)
 {
-    if (healer == NULL) return false;
+    if (healer == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "claude_healer_check_rate_limit: invalid parameter");
+        return false;
+    }
 
     uint64_t now = get_time_ms();
     uint64_t window_start = now - 60000; /* 1 minute window */
@@ -1225,7 +1257,11 @@ int claude_healer_get_stats(
     claude_healer_t* healer,
     claude_healer_stats_t* stats)
 {
-    if (healer == NULL || stats == NULL) return -1;
+    if (healer == NULL || stats == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "claude_healer_get_stats: invalid parameter");
+        return -1;
+    }
 
     nimcp_mutex_lock(healer->mutex);
     memcpy(stats, &healer->stats, sizeof(claude_healer_stats_t));
@@ -1239,7 +1275,11 @@ int claude_healer_get_stats(
  */
 int claude_healer_reset_stats(claude_healer_t* healer)
 {
-    if (healer == NULL) return -1;
+    if (healer == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "claude_healer_reset_stats: invalid parameter");
+        return -1;
+    }
 
     nimcp_mutex_lock(healer->mutex);
     memset(&healer->stats, 0, sizeof(claude_healer_stats_t));

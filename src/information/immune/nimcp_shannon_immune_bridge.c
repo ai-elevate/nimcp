@@ -166,6 +166,8 @@ void shannon_immune_destroy(shannon_immune_bridge_t* bridge) {
 int shannon_immune_apply_cytokine_effects(shannon_immune_bridge_t* bridge) {
     /* Guard clauses */
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "shannon_immune_apply_cytokine_effects: bridge or immune_system is NULL");
         return -1;
     }
 
@@ -221,6 +223,8 @@ int shannon_immune_apply_cytokine_effects(shannon_immune_bridge_t* bridge) {
 int shannon_immune_apply_inflammation_effects(shannon_immune_bridge_t* bridge) {
     /* Guard clauses */
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "shannon_immune_apply_inflammation_effects: bridge or immune_system is NULL");
         return -1;
     }
 
@@ -305,6 +309,8 @@ int shannon_immune_detect_pattern_threat(
 ) {
     /* Guard clauses */
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "shannon_immune_detect_pattern_threat: bridge or immune_system is NULL");
         return -1;
     }
 
@@ -340,6 +346,8 @@ int shannon_immune_detect_anomaly(
 ) {
     /* Guard clauses */
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "shannon_immune_detect_anomaly: bridge or immune_system is NULL");
         return -1;
     }
 
@@ -368,6 +376,8 @@ int shannon_immune_trigger_capacity_stress(
 ) {
     /* Guard clauses */
     if (!bridge || !bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "shannon_immune_trigger_capacity_stress: bridge or immune_system is NULL");
         return -1;
     }
 
@@ -458,6 +468,8 @@ int shannon_immune_get_cytokine_effects(
     shannon_cytokine_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "shannon_immune_get_cytokine_effects: bridge or effects is NULL");
         return -1;
     }
 
@@ -473,6 +485,8 @@ int shannon_immune_get_inflammation_state(
     shannon_inflammation_state_t* state
 ) {
     if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "shannon_immune_get_inflammation_state: bridge or state is NULL");
         return -1;
     }
 
@@ -520,6 +534,8 @@ int shannon_immune_connect_bio_async(shannon_immune_bridge_t* bridge) {
     /* Guard: null check */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("shannon_immune_connect_bio_async: NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "shannon_immune_connect_bio_async: bridge is NULL");
         return -1;
     }
 

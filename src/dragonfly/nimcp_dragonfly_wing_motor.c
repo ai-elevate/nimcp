@@ -208,7 +208,11 @@ void dragonfly_wing_motor_destroy(dragonfly_wing_motor_t motor) {
 }
 
 int dragonfly_wing_motor_reset(dragonfly_wing_motor_t motor) {
-    if (!motor) return -1;
+    if (!motor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "dragonfly_wing_motor_reset: motor is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(motor->mutex);
 
@@ -244,7 +248,11 @@ int dragonfly_wing_motor_set_mode(
     dragonfly_wing_motor_t motor,
     flight_mode_t mode
 ) {
-    if (!motor) return -1;
+    if (!motor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "dragonfly_wing_motor_set_mode: motor is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(motor->mutex);
 
@@ -340,7 +348,12 @@ int dragonfly_wing_motor_set_dynamics(
     dragonfly_wing_motor_t motor,
     const flight_dynamics_t* dynamics
 ) {
-    if (!motor || !dynamics) return -1;
+    if (!motor || !dynamics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "dragonfly_wing_motor_set_dynamics: motor=%p, dynamics=%p",
+            (void*)motor, (void*)dynamics);
+        return -1;
+    }
 
     nimcp_mutex_lock(motor->mutex);
     motor->desired_dynamics = *dynamics;
@@ -354,7 +367,12 @@ int dragonfly_wing_motor_step(
     float dt_s,
     wing_motor_output_t* output
 ) {
-    if (!motor || !output || dt_s <= 0.0f) return -1;
+    if (!motor || !output || dt_s <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "dragonfly_wing_motor_step: motor=%p, output=%p, dt_s=%f",
+            (void*)motor, (void*)output, dt_s);
+        return -1;
+    }
 
     nimcp_mutex_lock(motor->mutex);
 
@@ -467,7 +485,11 @@ int dragonfly_wing_motor_pursuit_pattern(
     float pitch_error,
     float speed_demand
 ) {
-    if (!motor) return -1;
+    if (!motor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "dragonfly_wing_motor_pursuit_pattern: motor is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(motor->mutex);
 
@@ -505,7 +527,11 @@ int dragonfly_wing_motor_hover_pattern(
     float pitch_error,
     float altitude_error
 ) {
-    if (!motor) return -1;
+    if (!motor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "dragonfly_wing_motor_hover_pattern: motor is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(motor->mutex);
 
@@ -556,7 +582,12 @@ int dragonfly_wing_motor_get_state(
     wing_id_t wing,
     wing_state_t* state
 ) {
-    if (!motor || !state || wing >= WING_COUNT) return -1;
+    if (!motor || !state || wing >= WING_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "dragonfly_wing_motor_get_state: motor=%p, state=%p, wing=%d",
+            (void*)motor, (void*)state, wing);
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)motor->mutex);
     *state = motor->wings[wing];
@@ -569,7 +600,12 @@ int dragonfly_wing_motor_get_all_states(
     const dragonfly_wing_motor_t motor,
     wing_state_t states[WING_COUNT]
 ) {
-    if (!motor || !states) return -1;
+    if (!motor || !states) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "dragonfly_wing_motor_get_all_states: motor=%p, states=%p",
+            (void*)motor, (void*)states);
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)motor->mutex);
     memcpy(states, motor->wings, sizeof(motor->wings));
@@ -596,7 +632,12 @@ int dragonfly_wing_motor_get_stats(
     const dragonfly_wing_motor_t motor,
     wing_motor_stats_t* stats
 ) {
-    if (!motor || !stats) return -1;
+    if (!motor || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "dragonfly_wing_motor_get_stats: motor=%p, stats=%p",
+            (void*)motor, (void*)stats);
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)motor->mutex);
     *stats = motor->stats;
@@ -606,7 +647,11 @@ int dragonfly_wing_motor_get_stats(
 }
 
 int dragonfly_wing_motor_reset_stats(dragonfly_wing_motor_t motor) {
-    if (!motor) return -1;
+    if (!motor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "dragonfly_wing_motor_reset_stats: motor is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(motor->mutex);
     memset(&motor->stats, 0, sizeof(motor->stats));
@@ -620,8 +665,17 @@ int dragonfly_wing_motor_set_config(
     dragonfly_wing_motor_t motor,
     const wing_motor_config_t* config
 ) {
-    if (!motor || !config) return -1;
-    if (!wing_motor_validate_config(config)) return -1;
+    if (!motor || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "dragonfly_wing_motor_set_config: motor=%p, config=%p",
+            (void*)motor, (void*)config);
+        return -1;
+    }
+    if (!wing_motor_validate_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "dragonfly_wing_motor_set_config: invalid configuration");
+        return -1;
+    }
 
     nimcp_mutex_lock(motor->mutex);
     motor->config = *config;

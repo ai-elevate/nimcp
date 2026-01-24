@@ -202,7 +202,11 @@ static fix_pattern_type_t map_bbb_threat_to_pattern(bbb_threat_type_t threat)
  */
 static int init_lnn_network(self_heal_engine_t* engine)
 {
-    if (engine == NULL) return -1;
+    if (engine == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "init_lnn_network: invalid parameter");
+        return -1;
+    }
     if (!engine->config.enable_lnn) return 0;
 
     /* Create NCP network: features -> hidden -> fix_type */
@@ -254,7 +258,11 @@ static int init_lnn_network(self_heal_engine_t* engine)
  */
 static int init_training_buffer(self_heal_engine_t* engine)
 {
-    if (engine == NULL) return -1;
+    if (engine == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "init_training_buffer: invalid parameter");
+        return -1;
+    }
     if (!engine->config.enable_learning) return 0;
 
     size_t capacity = engine->config.max_training_samples;
@@ -584,13 +592,25 @@ static int lnn_predict_fix_type(
     fix_pattern_type_t* fix_type_out,
     float* confidence_out)
 {
-    if (engine == NULL || !engine->lnn_initialized) return -1;
-    if (features == NULL || fix_type_out == NULL) return -1;
+    if (engine == NULL || !engine->lnn_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "lnn_predict_fix_type: invalid parameter");
+        return -1;
+    }
+    if (features == NULL || fix_type_out == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "lnn_predict_fix_type: invalid parameter");
+        return -1;
+    }
 
     /* Create input tensor from features */
     uint32_t dims[1] = {SELF_HEAL_FEATURE_DIM};
     nimcp_tensor_t* input = nimcp_tensor_create(dims, 1, NIMCP_DTYPE_F32);
-    if (input == NULL) return -1;
+    if (input == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "lnn_predict_fix_type: invalid parameter");
+        return -1;
+    }
 
     /* Copy features to input tensor */
     float* input_data = (float*)nimcp_tensor_data(input);
@@ -657,8 +677,16 @@ static int add_training_sample(
     fix_pattern_type_t correct_type,
     float success_score)
 {
-    if (engine == NULL || !engine->config.enable_learning) return -1;
-    if (features == NULL) return -1;
+    if (engine == NULL || !engine->config.enable_learning) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "add_training_sample: invalid parameter");
+        return -1;
+    }
+    if (features == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "add_training_sample: invalid parameter");
+        return -1;
+    }
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -692,7 +720,11 @@ static int add_training_sample(
 
 int self_heal_default_config(self_heal_config_t* config)
 {
-    if (config == NULL) return -1;
+    if (config == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "self_heal_default_config: invalid parameter");
+        return -1;
+    }
 
     memset(config, 0, sizeof(self_heal_config_t));
 
@@ -1268,7 +1300,11 @@ int self_heal_train_on_success(
     const brain_antigen_t* antigen,
     const heal_result_t* fix)
 {
-    if (engine == NULL || antigen == NULL || fix == NULL) return -1;
+    if (engine == NULL || antigen == NULL || fix == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "self_heal_train_on_success: invalid parameter");
+        return -1;
+    }
     if (!engine->config.enable_learning) return 0;
 
     /* Extract features */
@@ -1298,7 +1334,11 @@ int self_heal_train_on_failure(
     const brain_antigen_t* antigen,
     const heal_result_t* fix)
 {
-    if (engine == NULL || antigen == NULL || fix == NULL) return -1;
+    if (engine == NULL || antigen == NULL || fix == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "self_heal_train_on_failure: invalid parameter");
+        return -1;
+    }
     if (!engine->config.enable_learning) return 0;
 
     /* Extract features */
@@ -1331,14 +1371,26 @@ int self_heal_train_online(
     fix_pattern_type_t correct_type,
     float success_score)
 {
-    if (engine == NULL || features == NULL) return -1;
+    if (engine == NULL || features == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "self_heal_train_online: invalid parameter");
+        return -1;
+    }
     if (!engine->config.enable_learning || !engine->lnn_initialized) return 0;
-    if (engine->lnn_training == NULL) return -1;
+    if (engine->lnn_training == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "self_heal_train_online: invalid parameter");
+        return -1;
+    }
 
     /* Create input tensor from features */
     uint32_t input_dims[1] = {SELF_HEAL_FEATURE_DIM};
     nimcp_tensor_t* input = nimcp_tensor_create(input_dims, 1, NIMCP_DTYPE_F32);
-    if (input == NULL) return -1;
+    if (input == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "self_heal_train_online: invalid parameter");
+        return -1;
+    }
 
     /* Create target tensor (one-hot) */
     uint32_t target_dims[1] = {FIX_PATTERN_COUNT};
@@ -1397,7 +1449,11 @@ int self_heal_train_online(
  */
 int self_heal_decay_samples(self_heal_engine_t* engine)
 {
-    if (engine == NULL) return -1;
+    if (engine == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "self_heal_decay_samples: invalid parameter");
+        return -1;
+    }
     if (!engine->config.enable_learning) return 0;
 
     nimcp_mutex_lock(engine->mutex);
@@ -1412,9 +1468,17 @@ int self_heal_decay_samples(self_heal_engine_t* engine)
 
 int self_heal_train_batch(self_heal_engine_t* engine)
 {
-    if (engine == NULL) return -1;
+    if (engine == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "self_heal_train_batch: invalid parameter");
+        return -1;
+    }
     if (!engine->config.enable_learning || !engine->lnn_initialized) return 0;
-    if (engine->lnn_training == NULL) return -1;
+    if (engine->lnn_training == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "self_heal_train_batch: invalid parameter");
+        return -1;
+    }
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -1496,15 +1560,27 @@ int self_heal_train_batch(self_heal_engine_t* engine)
 
 int self_heal_save_model(self_heal_engine_t* engine, const char* path)
 {
-    if (engine == NULL || path == NULL) return -1;
-    if (!engine->lnn_initialized || engine->lnn_network == NULL) return -1;
+    if (engine == NULL || path == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "self_heal_save_model: invalid parameter");
+        return -1;
+    }
+    if (!engine->lnn_initialized || engine->lnn_network == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "self_heal_save_model: invalid parameter");
+        return -1;
+    }
 
     return lnn_save(engine->lnn_network, path);
 }
 
 int self_heal_load_model(self_heal_engine_t* engine, const char* path)
 {
-    if (engine == NULL || path == NULL) return -1;
+    if (engine == NULL || path == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "self_heal_load_model: invalid parameter");
+        return -1;
+    }
 
     /* Destroy existing network if any */
     if (engine->lnn_network != NULL) {
@@ -1544,7 +1620,11 @@ const fix_pattern_t* self_heal_get_pattern(
     self_heal_engine_t* engine,
     fix_pattern_type_t type)
 {
-    if (engine == NULL || engine->pattern_library == NULL) return NULL;
+    if (engine == NULL || engine->pattern_library == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "self_heal_get_pattern: parameter is NULL");
+        return NULL;
+    }
     return heal_pattern_get_by_type(engine->pattern_library, type);
 }
 
@@ -1552,8 +1632,16 @@ int self_heal_register_pattern(
     self_heal_engine_t* engine,
     const fix_pattern_t* pattern)
 {
-    if (engine == NULL || pattern == NULL) return -1;
-    if (engine->pattern_library == NULL) return -1;
+    if (engine == NULL || pattern == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "self_heal_register_pattern: invalid parameter");
+        return -1;
+    }
+    if (engine->pattern_library == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "self_heal_register_pattern: invalid parameter");
+        return -1;
+    }
 
     uint32_t id;
     return heal_pattern_register(engine->pattern_library, pattern, &id);
@@ -1563,7 +1651,11 @@ int self_heal_connect_immune(
     self_heal_engine_t* engine,
     brain_immune_system_t* immune_system)
 {
-    if (engine == NULL) return -1;
+    if (engine == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "self_heal_connect_immune: invalid parameter");
+        return -1;
+    }
 
     engine->immune_system = immune_system;
     engine->immune_connected = (immune_system != NULL);
@@ -1579,7 +1671,11 @@ int self_heal_handle_antigen(
     self_heal_engine_t* engine,
     const brain_antigen_t* antigen)
 {
-    if (engine == NULL || antigen == NULL) return -1;
+    if (engine == NULL || antigen == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "self_heal_handle_antigen: invalid parameter");
+        return -1;
+    }
 
     /* Try to generate a fix - source code would need to be provided */
     fix_pattern_type_t pattern_type = self_heal_analyze_crash(engine, antigen);
@@ -1594,7 +1690,11 @@ int self_heal_get_stats(
     self_heal_engine_t* engine,
     self_heal_stats_t* stats)
 {
-    if (engine == NULL || stats == NULL) return -1;
+    if (engine == NULL || stats == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "self_heal_get_stats: invalid parameter");
+        return -1;
+    }
 
     nimcp_mutex_lock(engine->mutex);
     *stats = engine->stats;
@@ -1621,7 +1721,11 @@ int self_heal_get_stats(
 
 int self_heal_reset_stats(self_heal_engine_t* engine)
 {
-    if (engine == NULL) return -1;
+    if (engine == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "self_heal_reset_stats: invalid parameter");
+        return -1;
+    }
 
     nimcp_mutex_lock(engine->mutex);
     memset(&engine->stats, 0, sizeof(self_heal_stats_t));
@@ -1662,7 +1766,11 @@ const char* self_heal_mode_to_string(self_heal_mode_t mode)
 pattern_library_t* heal_pattern_library_create(void)
 {
     pattern_library_t* lib = nimcp_calloc(1, sizeof(pattern_library_t));
-    if (lib == NULL) return NULL;
+    if (lib == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "heal_pattern_library_create: parameter is NULL");
+        return NULL;
+    }
 
     /* Allocate built-in patterns */
     lib->builtin_count = FIX_PATTERN_COUNT;
@@ -1726,8 +1834,16 @@ const fix_pattern_t* heal_pattern_get_by_type(
     pattern_library_t* library,
     fix_pattern_type_t type)
 {
-    if (library == NULL) return NULL;
-    if (type < 0 || type >= FIX_PATTERN_COUNT) return NULL;
+    if (library == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "heal_pattern_get_by_type: parameter is NULL");
+        return NULL;
+    }
+    if (type < 0 || type >= FIX_PATTERN_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "heal_pattern_get_by_type: parameter is NULL");
+        return NULL;
+    }
 
     return &library->builtin_patterns[type];
 }
@@ -1736,7 +1852,11 @@ const fix_pattern_t* heal_pattern_get_by_id(
     pattern_library_t* library,
     uint32_t id)
 {
-    if (library == NULL || id == 0) return NULL;
+    if (library == NULL || id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "heal_pattern_get_by_id: parameter is NULL");
+        return NULL;
+    }
 
     /* Check built-in patterns */
     for (size_t i = 0; i < library->builtin_count; i++) {
@@ -1763,7 +1883,11 @@ int heal_pattern_register(
     const fix_pattern_t* pattern,
     uint32_t* id_out)
 {
-    if (library == NULL || pattern == NULL) return -1;
+    if (library == NULL || pattern == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "heal_pattern_register: invalid parameter");
+        return -1;
+    }
 
     nimcp_mutex_lock(library->mutex);
 
@@ -1793,7 +1917,11 @@ int heal_pattern_register(
 
 int heal_pattern_unregister(pattern_library_t* library, uint32_t id)
 {
-    if (library == NULL) return -1;
+    if (library == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "heal_pattern_unregister: invalid parameter");
+        return -1;
+    }
 
     nimcp_mutex_lock(library->mutex);
 
@@ -1819,7 +1947,11 @@ int heal_pattern_match(
     size_t code_len,
     pattern_match_result_t* result)
 {
-    if (library == NULL || code == NULL || result == NULL) return -1;
+    if (library == NULL || code == NULL || result == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "heal_pattern_match: invalid parameter");
+        return -1;
+    }
     (void)code_len; /* May be used for future bounds checking */
 
     memset(result, 0, sizeof(pattern_match_result_t));
@@ -1967,7 +2099,11 @@ int heal_pattern_update_stats(
     uint32_t id,
     bool success)
 {
-    if (library == NULL) return -1;
+    if (library == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "heal_pattern_update_stats: invalid parameter");
+        return -1;
+    }
 
     nimcp_mutex_lock(library->mutex);
 
@@ -2050,7 +2186,11 @@ const fix_pattern_t* heal_pattern_get_best(
     pattern_library_t* library,
     fix_pattern_type_t type)
 {
-    if (library == NULL) return NULL;
+    if (library == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "heal_pattern_get_best: parameter is NULL");
+        return NULL;
+    }
 
     const fix_pattern_t* best = NULL;
     float best_confidence = -1.0f;
@@ -2130,7 +2270,11 @@ fix_pattern_type_t heal_pattern_type_from_string(const char* name)
 
 int heal_pattern_init_builtin(fix_pattern_t* pattern, fix_pattern_type_t type)
 {
-    if (pattern == NULL) return -1;
+    if (pattern == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "heal_pattern_init_builtin: invalid parameter");
+        return -1;
+    }
 
     memset(pattern, 0, sizeof(fix_pattern_t));
     pattern->type = type;

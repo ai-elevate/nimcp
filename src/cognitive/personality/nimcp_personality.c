@@ -461,8 +461,16 @@ bool personality_get_pronouns(
      */
 
     // Guard: NULL checks
-    if (!profile || !subject || !object || !possessive) return false;
-    if (subject_len < 8 || object_len < 8 || possessive_len < 8) return false;
+    if (!profile || !subject || !object || !possessive) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "personality_get_pronouns: invalid parameter");
+        return false;
+    }
+    if (subject_len < 8 || object_len < 8 || possessive_len < 8) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "personality_get_pronouns: invalid parameter");
+        return false;
+    }
 
     // Determine pronouns based on gender
     const char* subj = "they";
@@ -524,7 +532,11 @@ bool personality_generate_summary(
      */
 
     // Guard: NULL checks
-    if (!profile || !buffer || buffer_size == 0) return false;
+    if (!profile || !buffer || buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "personality_generate_summary: invalid parameter");
+        return false;
+    }
 
     // Trait descriptors
     const char* openness_desc = (profile->traits.openness > 0.7F) ? "Creative" :

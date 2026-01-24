@@ -62,7 +62,11 @@ struct hr_context {
  * @brief Find circuit breaker by name
  */
 static hr_circuit_breaker_t* hr_find_circuit(hr_context_t* ctx, const char* name) {
-    if (!ctx || !name) return NULL;
+    if (!ctx || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "hr_find_circuit: parameter is NULL");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < ctx->circuit_count; i++) {
         if (strcmp(ctx->circuits[i].config.name, name) == 0) {
@@ -168,7 +172,11 @@ void hr_destroy(hr_context_t* ctx) {
 }
 
 bool hr_start(hr_context_t* ctx) {
-    if (!ctx || !ctx->initialized) return false;
+    if (!ctx || !ctx->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hr_start: invalid parameter");
+        return false;
+    }
     if (ctx->running) return true;
 
     ctx->running = true;
@@ -177,7 +185,11 @@ bool hr_start(hr_context_t* ctx) {
 }
 
 bool hr_stop(hr_context_t* ctx) {
-    if (!ctx || !ctx->initialized) return false;
+    if (!ctx || !ctx->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hr_stop: invalid parameter");
+        return false;
+    }
     if (!ctx->running) return true;
 
     ctx->running = false;
@@ -190,8 +202,16 @@ bool hr_stop(hr_context_t* ctx) {
 //=============================================================================
 
 bool hr_add_child(hr_context_t* ctx, uint32_t child_id, hr_level_t level) {
-    if (!ctx || !ctx->initialized) return false;
-    if (ctx->self.child_count >= HR_MAX_CHILDREN) return false;
+    if (!ctx || !ctx->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hr_add_child: invalid parameter");
+        return false;
+    }
+    if (ctx->self.child_count >= HR_MAX_CHILDREN) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hr_add_child: invalid parameter");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
     ctx->self.children[ctx->self.child_count++] = child_id;
@@ -202,7 +222,11 @@ bool hr_add_child(hr_context_t* ctx, uint32_t child_id, hr_level_t level) {
 }
 
 bool hr_remove_child(hr_context_t* ctx, uint32_t child_id) {
-    if (!ctx || !ctx->initialized) return false;
+    if (!ctx || !ctx->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hr_remove_child: invalid parameter");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -222,7 +246,11 @@ bool hr_remove_child(hr_context_t* ctx, uint32_t child_id) {
 }
 
 bool hr_set_parent(hr_context_t* ctx, uint32_t parent_id) {
-    if (!ctx || !ctx->initialized) return false;
+    if (!ctx || !ctx->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hr_set_parent: invalid parameter");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
     ctx->self.parent_id = parent_id;
@@ -233,7 +261,11 @@ bool hr_set_parent(hr_context_t* ctx, uint32_t parent_id) {
 }
 
 bool hr_get_node_context(hr_context_t* ctx, uint32_t node_id, hr_node_context_t* node_ctx) {
-    if (!ctx || !node_ctx) return false;
+    if (!ctx || !node_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hr_get_node_context: invalid parameter");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -345,7 +377,11 @@ hr_result_t hr_submit_recovery(hr_context_t* ctx, const hr_recovery_request_t* r
 }
 
 bool hr_escalate(hr_context_t* ctx, uint32_t request_id, const char* reason) {
-    if (!ctx || !reason) return false;
+    if (!ctx || !reason) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hr_escalate: invalid parameter");
+        return false;
+    }
 
     LOG_INFO("HR", "Escalating request %u: %s", request_id, reason);
     bbb_audit_log(BBB_AUDIT_WARNING, "HR", "ESCALATE", "Request %u escalated: %s", request_id, reason);
@@ -354,7 +390,11 @@ bool hr_escalate(hr_context_t* ctx, uint32_t request_id, const char* reason) {
 }
 
 bool hr_register_handler(hr_context_t* ctx, hr_level_t level, hr_recovery_handler_t handler, void* user_data) {
-    if (!ctx || !handler || level >= HR_MAX_LEVELS) return false;
+    if (!ctx || !handler || level >= HR_MAX_LEVELS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hr_register_handler: invalid parameter");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
     ctx->handlers[level] = handler;
@@ -377,7 +417,11 @@ bool hr_register_completion_callback(
     hr_recovery_completion_callback_t callback,
     void* user_data
 ) {
-    if (!ctx || !callback) return false;
+    if (!ctx || !callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hr_register_completion_callback: invalid parameter");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
     ctx->completion_callback = callback;
@@ -393,8 +437,16 @@ bool hr_register_completion_callback(
 //=============================================================================
 
 bool hr_add_policy(hr_context_t* ctx, const hr_escalation_policy_t* policy) {
-    if (!ctx || !policy) return false;
-    if (ctx->policy_count >= HR_MAX_POLICIES) return false;
+    if (!ctx || !policy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hr_add_policy: invalid parameter");
+        return false;
+    }
+    if (ctx->policy_count >= HR_MAX_POLICIES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hr_add_policy: invalid parameter");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
     ctx->policies[ctx->policy_count++] = *policy;
@@ -405,7 +457,11 @@ bool hr_add_policy(hr_context_t* ctx, const hr_escalation_policy_t* policy) {
 }
 
 bool hr_remove_policy(hr_context_t* ctx, const char* policy_name) {
-    if (!ctx || !policy_name) return false;
+    if (!ctx || !policy_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hr_remove_policy: invalid parameter");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -425,7 +481,11 @@ bool hr_remove_policy(hr_context_t* ctx, const char* policy_name) {
 }
 
 bool hr_set_policy_enabled(hr_context_t* ctx, const char* policy_name, bool enabled) {
-    if (!ctx || !policy_name) return false;
+    if (!ctx || !policy_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hr_set_policy_enabled: invalid parameter");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -446,8 +506,16 @@ bool hr_set_policy_enabled(hr_context_t* ctx, const char* policy_name, bool enab
 //=============================================================================
 
 bool hr_add_circuit_breaker(hr_context_t* ctx, const hr_circuit_config_t* config) {
-    if (!ctx || !config) return false;
-    if (ctx->circuit_count >= HR_MAX_CIRCUITS) return false;
+    if (!ctx || !config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hr_add_circuit_breaker: invalid parameter");
+        return false;
+    }
+    if (ctx->circuit_count >= HR_MAX_CIRCUITS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hr_add_circuit_breaker: invalid parameter");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -465,7 +533,11 @@ bool hr_add_circuit_breaker(hr_context_t* ctx, const hr_circuit_config_t* config
 }
 
 bool hr_get_circuit_breaker(hr_context_t* ctx, const char* name, hr_circuit_breaker_t* breaker) {
-    if (!ctx || !name || !breaker) return false;
+    if (!ctx || !name || !breaker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hr_get_circuit_breaker: invalid parameter");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -542,7 +614,11 @@ bool hr_circuit_allow(hr_context_t* ctx, const char* name) {
 }
 
 bool hr_reset_circuit(hr_context_t* ctx, const char* name) {
-    if (!ctx || !name) return false;
+    if (!ctx || !name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hr_reset_circuit: invalid parameter");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
 
@@ -565,7 +641,11 @@ bool hr_reset_circuit(hr_context_t* ctx, const char* name) {
 //=============================================================================
 
 bool hr_detect_cascade(hr_context_t* ctx, uint32_t failed_node, hr_cascade_info_t* cascade_info) {
-    if (!ctx || !cascade_info) return false;
+    if (!ctx || !cascade_info) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hr_detect_cascade: invalid parameter");
+        return false;
+    }
 
     memset(cascade_info, 0, sizeof(hr_cascade_info_t));
 
@@ -592,7 +672,11 @@ bool hr_detect_cascade(hr_context_t* ctx, uint32_t failed_node, hr_cascade_info_
 }
 
 bool hr_prevent_cascade(hr_context_t* ctx, const hr_cascade_info_t* cascade_info) {
-    if (!ctx || !cascade_info) return false;
+    if (!ctx || !cascade_info) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hr_prevent_cascade: invalid parameter");
+        return false;
+    }
 
     LOG_INFO("HR", "Applying cascade prevention: %s",
                   hr_cascade_strategy_to_string(cascade_info->strategy));
@@ -617,7 +701,11 @@ uint32_t hr_get_cascade_prevention_count(hr_context_t* ctx) {
 //=============================================================================
 
 bool hr_get_stats(hr_context_t* ctx, hr_stats_t* stats) {
-    if (!ctx || !stats) return false;
+    if (!ctx || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "hr_get_stats: invalid parameter");
+        return false;
+    }
 
     nimcp_mutex_lock(&ctx->lock);
     *stats = ctx->stats;

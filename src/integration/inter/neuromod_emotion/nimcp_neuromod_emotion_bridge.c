@@ -130,7 +130,11 @@ void neuromod_emotion_destroy(neuromod_emotion_bridge_t* bridge) {
 
 int neuromod_emotion_apply_ne_arousal(neuromod_emotion_bridge_t* bridge,
                                        float ne_level, float* arousal_out) {
-    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_emotion_apply_ne_arousal: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_arousal_modulation) {
         if (arousal_out) *arousal_out = 0.5f;
         return 0;
@@ -164,7 +168,11 @@ int neuromod_emotion_apply_ne_arousal(neuromod_emotion_bridge_t* bridge,
 
 int neuromod_emotion_apply_da_valence(neuromod_emotion_bridge_t* bridge,
                                        float da_level, float* valence_out) {
-    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_emotion_apply_da_valence: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_valence_modulation) {
         if (valence_out) *valence_out = 0.0f;
         return 0;
@@ -196,7 +204,11 @@ int neuromod_emotion_apply_da_valence(neuromod_emotion_bridge_t* bridge,
 
 int neuromod_emotion_apply_ht_regulation(neuromod_emotion_bridge_t* bridge,
                                           float ht_level, float* regulation_out) {
-    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_emotion_apply_ht_regulation: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_regulation_modulation) {
         if (regulation_out) *regulation_out = 0.5f;
         return 0;
@@ -226,7 +238,11 @@ int neuromod_emotion_apply_ht_regulation(neuromod_emotion_bridge_t* bridge,
 
 int neuromod_emotion_apply_hab_aversion(neuromod_emotion_bridge_t* bridge,
                                          float hab_level, float* aversion_out) {
-    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_emotion_apply_hab_aversion: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_aversion_modulation) {
         if (aversion_out) *aversion_out = 0.0f;
         return 0;
@@ -261,7 +277,11 @@ int neuromod_emotion_apply_hab_aversion(neuromod_emotion_bridge_t* bridge,
 
 int neuromod_emotion_report_fear(neuromod_emotion_bridge_t* bridge,
                                   float fear_intensity, float* lc_trigger_out) {
-    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_emotion_report_fear: invalid parameter");
+        return -1;
+    }
 
     fear_intensity = clamp(fear_intensity, 0.0f, 1.0f);
     bridge->state.fear_signal = fear_intensity;
@@ -281,7 +301,11 @@ int neuromod_emotion_report_fear(neuromod_emotion_bridge_t* bridge,
 
 int neuromod_emotion_report_reward_anticipation(neuromod_emotion_bridge_t* bridge,
                                                  float anticipation, float* vta_trigger_out) {
-    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_emotion_report_reward_anticipation: invalid parameter");
+        return -1;
+    }
 
     anticipation = clamp(anticipation, 0.0f, 1.0f);
     bridge->state.reward_anticipation = anticipation;
@@ -301,7 +325,11 @@ int neuromod_emotion_report_reward_anticipation(neuromod_emotion_bridge_t* bridg
 
 int neuromod_emotion_report_conflict(neuromod_emotion_bridge_t* bridge,
                                       float conflict_level, float* ht_demand_out) {
-    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_emotion_report_conflict: invalid parameter");
+        return -1;
+    }
 
     conflict_level = clamp(conflict_level, 0.0f, 1.0f);
     bridge->state.conflict_signal = conflict_level;
@@ -321,7 +349,11 @@ int neuromod_emotion_report_conflict(neuromod_emotion_bridge_t* bridge,
 
 int neuromod_emotion_report_disappointment(neuromod_emotion_bridge_t* bridge,
                                             float disappointment, float* hab_trigger_out) {
-    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_emotion_report_disappointment: invalid parameter");
+        return -1;
+    }
 
     disappointment = clamp(disappointment, 0.0f, 1.0f);
     bridge->state.disappointment_signal = disappointment;
@@ -409,7 +441,11 @@ int neuromod_emotion_compute_modulation(neuromod_emotion_bridge_t* bridge,
                                         float ne_level, float da_level,
                                         float ht_level, float hab_level,
                                         neuromod_emotion_state_t* state_out) {
-    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_emotion_compute_modulation: invalid parameter");
+        return -1;
+    }
 
     /* Apply all modulations */
     neuromod_emotion_apply_ne_arousal(bridge, ne_level, NULL);
@@ -465,7 +501,11 @@ int neuromod_emotion_compute_modulation(neuromod_emotion_bridge_t* bridge,
  * ============================================================================ */
 
 int neuromod_emotion_update(neuromod_emotion_bridge_t* bridge, float delta_ms) {
-    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_emotion_update: invalid parameter");
+        return -1;
+    }
 
     /* Decay signals over time */
     float decay = expf(-delta_ms / 200.0f);  /* 200ms time constant for emotions */
@@ -492,20 +532,32 @@ int neuromod_emotion_update(neuromod_emotion_bridge_t* bridge, float delta_ms) {
 
 int neuromod_emotion_get_state(const neuromod_emotion_bridge_t* bridge,
                                 neuromod_emotion_state_t* state_out) {
-    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC || !state_out) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC || !state_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_emotion_get_state: invalid parameter");
+        return -1;
+    }
     *state_out = bridge->state;
     return 0;
 }
 
 int neuromod_emotion_get_stats(const neuromod_emotion_bridge_t* bridge,
                                 neuromod_emotion_stats_t* stats_out) {
-    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC || !stats_out) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC || !stats_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_emotion_get_stats: invalid parameter");
+        return -1;
+    }
     *stats_out = bridge->stats;
     return 0;
 }
 
 int neuromod_emotion_reset_stats(neuromod_emotion_bridge_t* bridge) {
-    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_emotion_reset_stats: invalid parameter");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(neuromod_emotion_stats_t));
     return 0;
 }
@@ -515,7 +567,11 @@ int neuromod_emotion_reset_stats(neuromod_emotion_bridge_t* bridge) {
  * ============================================================================ */
 
 bool neuromod_emotion_is_connected(const neuromod_emotion_bridge_t* bridge) {
-    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC) return false;
+    if (!bridge || bridge->magic != NEUROMOD_EMOTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_emotion_is_connected: invalid parameter");
+        return false;
+    }
     return bridge->connected;
 }
 

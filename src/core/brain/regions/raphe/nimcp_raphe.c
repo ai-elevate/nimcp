@@ -555,15 +555,27 @@ nimcp_raphe_error_t nimcp_raphe_add_projection(nimcp_raphe_system_t* raphe,
 }
 
 nimcp_raphe_projection_t* nimcp_raphe_get_projection(nimcp_raphe_system_t* raphe, uint32_t id) {
-    if (!raphe || !raphe->initialized) return NULL;
-    if (id >= raphe->num_projections) return NULL;
+    if (!raphe || !raphe->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "nimcp_raphe_get_projection: parameter is NULL");
+        return NULL;
+    }
+    if (id >= raphe->num_projections) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "nimcp_raphe_get_projection: parameter is NULL");
+        return NULL;
+    }
 
     return &raphe->projections[id];
 }
 
 nimcp_raphe_projection_t* nimcp_raphe_get_projection_by_target(nimcp_raphe_system_t* raphe,
                                                                nimcp_raphe_target_t target) {
-    if (!raphe || !raphe->initialized) return NULL;
+    if (!raphe || !raphe->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "nimcp_raphe_get_projection_by_target: parameter is NULL");
+        return NULL;
+    }
 
     for (uint32_t i = 0; i < raphe->num_projections; i++) {
         if (raphe->projections[i].target == target) {

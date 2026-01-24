@@ -456,7 +456,11 @@ int stdp_pink_noise_set_quantum_method(
     stdp_pink_noise_bridge_t* bridge,
     pink_quantum_method_t method
 ) {
-    if (!bridge || !bridge->pink_bridge) return -1;
+    if (!bridge || !bridge->pink_bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "stdp_pink_noise_set_quantum_method: invalid parameter");
+        return -1;
+    }
 
     bridge->config.quantum_method = method;
     return pink_quantum_set_method(bridge->pink_bridge, method);

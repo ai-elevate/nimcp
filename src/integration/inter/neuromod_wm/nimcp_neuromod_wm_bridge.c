@@ -121,7 +121,11 @@ void neuromod_wm_destroy(neuromod_wm_bridge_t* bridge) {
 
 int neuromod_wm_apply_da_gain(neuromod_wm_bridge_t* bridge,
                               float da_level, float* gain_out) {
-    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_wm_apply_da_gain: invalid parameter");
+        return -1;
+    }
 
     da_level = clamp(da_level, 0.0f, 1.0f);
     bridge->state.da_level = da_level;
@@ -156,7 +160,11 @@ int neuromod_wm_apply_da_gain(neuromod_wm_bridge_t* bridge,
 
 int neuromod_wm_apply_d1_stability(neuromod_wm_bridge_t* bridge,
                                     float d1_activation, float* stability_out) {
-    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_wm_apply_d1_stability: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_d1_d2_balance) {
         if (stability_out) *stability_out = 0.5f;
         return 0;
@@ -181,7 +189,11 @@ int neuromod_wm_apply_d1_stability(neuromod_wm_bridge_t* bridge,
 
 int neuromod_wm_apply_d2_flexibility(neuromod_wm_bridge_t* bridge,
                                       float d2_activation, float* flexibility_out) {
-    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_wm_apply_d2_flexibility: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_d1_d2_balance) {
         if (flexibility_out) *flexibility_out = 0.5f;
         return 0;
@@ -210,7 +222,11 @@ int neuromod_wm_apply_d2_flexibility(neuromod_wm_bridge_t* bridge,
 
 int neuromod_wm_apply_ne_flexibility(neuromod_wm_bridge_t* bridge,
                                       float ne_level, float* flexibility_out) {
-    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_wm_apply_ne_flexibility: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_flexibility_modulation) {
         if (flexibility_out) *flexibility_out = 0.5f;
         return 0;
@@ -237,7 +253,11 @@ int neuromod_wm_apply_ne_flexibility(neuromod_wm_bridge_t* bridge,
 
 int neuromod_wm_apply_ne_reset(neuromod_wm_bridge_t* bridge,
                                 float ne_burst, bool* reset_triggered) {
-    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_wm_apply_ne_reset: invalid parameter");
+        return -1;
+    }
 
     ne_burst = clamp(ne_burst, 0.0f, 1.0f);
 
@@ -258,7 +278,11 @@ int neuromod_wm_apply_ne_reset(neuromod_wm_bridge_t* bridge,
 
 int neuromod_wm_apply_ht_delay(neuromod_wm_bridge_t* bridge,
                                 float ht_level, float* delay_out) {
-    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_wm_apply_ht_delay: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_delay_tolerance) {
         if (delay_out) *delay_out = 0.5f;
         return 0;
@@ -282,7 +306,11 @@ int neuromod_wm_apply_ht_delay(neuromod_wm_bridge_t* bridge,
 
 int neuromod_wm_report_load(neuromod_wm_bridge_t* bridge,
                             float wm_load, float* da_demand_out) {
-    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_wm_report_load: invalid parameter");
+        return -1;
+    }
 
     wm_load = clamp(wm_load, 0.0f, 1.0f);
     bridge->state.wm_load = wm_load;
@@ -302,7 +330,11 @@ int neuromod_wm_report_load(neuromod_wm_bridge_t* bridge,
 
 int neuromod_wm_report_switch_need(neuromod_wm_bridge_t* bridge,
                                     float switch_urgency, float* lc_trigger_out) {
-    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_wm_report_switch_need: invalid parameter");
+        return -1;
+    }
 
     switch_urgency = clamp(switch_urgency, 0.0f, 1.0f);
     bridge->state.switch_demand = switch_urgency;
@@ -322,7 +354,11 @@ int neuromod_wm_report_switch_need(neuromod_wm_bridge_t* bridge,
 
 int neuromod_wm_report_overflow(neuromod_wm_bridge_t* bridge,
                                  float overflow_level, float* stress_out) {
-    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_wm_report_overflow: invalid parameter");
+        return -1;
+    }
 
     overflow_level = clamp(overflow_level, 0.0f, 1.0f);
     bridge->state.overflow_signal = overflow_level;
@@ -347,7 +383,11 @@ int neuromod_wm_report_overflow(neuromod_wm_bridge_t* bridge,
 int neuromod_wm_compute_modulation(neuromod_wm_bridge_t* bridge,
                                    float da_level, float ne_level, float ht_level,
                                    neuromod_wm_state_t* state_out) {
-    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_wm_compute_modulation: invalid parameter");
+        return -1;
+    }
 
     /* Apply all modulations */
     neuromod_wm_apply_da_gain(bridge, da_level, NULL);
@@ -403,7 +443,11 @@ int neuromod_wm_compute_modulation(neuromod_wm_bridge_t* bridge,
  * ============================================================================ */
 
 int neuromod_wm_update(neuromod_wm_bridge_t* bridge, float delta_ms) {
-    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_wm_update: invalid parameter");
+        return -1;
+    }
 
     /* Decay signals over time */
     float decay = expf(-delta_ms / 100.0f);  /* 100ms time constant */
@@ -425,20 +469,32 @@ int neuromod_wm_update(neuromod_wm_bridge_t* bridge, float delta_ms) {
 
 int neuromod_wm_get_state(const neuromod_wm_bridge_t* bridge,
                           neuromod_wm_state_t* state_out) {
-    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC || !state_out) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC || !state_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_wm_get_state: invalid parameter");
+        return -1;
+    }
     *state_out = bridge->state;
     return 0;
 }
 
 int neuromod_wm_get_stats(const neuromod_wm_bridge_t* bridge,
                           neuromod_wm_stats_t* stats_out) {
-    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC || !stats_out) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC || !stats_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_wm_get_stats: invalid parameter");
+        return -1;
+    }
     *stats_out = bridge->stats;
     return 0;
 }
 
 int neuromod_wm_reset_stats(neuromod_wm_bridge_t* bridge) {
-    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_wm_reset_stats: invalid parameter");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(neuromod_wm_stats_t));
     return 0;
 }
@@ -448,7 +504,11 @@ int neuromod_wm_reset_stats(neuromod_wm_bridge_t* bridge) {
  * ============================================================================ */
 
 bool neuromod_wm_is_connected(const neuromod_wm_bridge_t* bridge) {
-    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) return false;
+    if (!bridge || bridge->magic != NEUROMOD_WM_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_wm_is_connected: invalid parameter");
+        return false;
+    }
     return bridge->connected;
 }
 

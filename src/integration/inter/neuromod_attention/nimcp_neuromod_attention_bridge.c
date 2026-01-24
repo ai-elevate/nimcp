@@ -125,7 +125,11 @@ void neuromod_attention_destroy(neuromod_attention_bridge_t* bridge) {
 
 int neuromod_attention_apply_ne_gain(neuromod_attention_bridge_t* bridge,
                                       float ne_level, float* gain_out) {
-    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_attention_apply_ne_gain: invalid parameter");
+        return -1;
+    }
 
     ne_level = clamp(ne_level, 0.0f, 1.0f);
     bridge->state.ne_level = ne_level;
@@ -161,7 +165,11 @@ int neuromod_attention_apply_ne_gain(neuromod_attention_bridge_t* bridge,
 
 int neuromod_attention_apply_phasic_shift(neuromod_attention_bridge_t* bridge,
                                            float ne_burst, bool* shift_triggered) {
-    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_attention_apply_phasic_shift: invalid parameter");
+        return -1;
+    }
 
     ne_burst = clamp(ne_burst, 0.0f, 1.0f);
 
@@ -179,7 +187,11 @@ int neuromod_attention_apply_phasic_shift(neuromod_attention_bridge_t* bridge,
 
 int neuromod_attention_apply_da_salience(neuromod_attention_bridge_t* bridge,
                                           float da_level, float* salience_out) {
-    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_attention_apply_da_salience: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_salience_filtering) {
         if (salience_out) *salience_out = 0.0f;
         return 0;
@@ -199,7 +211,11 @@ int neuromod_attention_apply_da_salience(neuromod_attention_bridge_t* bridge,
 
 int neuromod_attention_apply_ht_patience(neuromod_attention_bridge_t* bridge,
                                           float ht_level, float* patience_out) {
-    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_attention_apply_ht_patience: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_patience_modulation) {
         if (patience_out) *patience_out = 0.5f;
         return 0;
@@ -219,7 +235,11 @@ int neuromod_attention_apply_ht_patience(neuromod_attention_bridge_t* bridge,
 
 int neuromod_attention_apply_hab_aversion(neuromod_attention_bridge_t* bridge,
                                            float hab_level, float* withdrawal_out) {
-    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_attention_apply_hab_aversion: invalid parameter");
+        return -1;
+    }
     if (!bridge->config.enable_aversion_withdrawal) {
         if (withdrawal_out) *withdrawal_out = 0.0f;
         return 0;
@@ -248,7 +268,11 @@ int neuromod_attention_apply_hab_aversion(neuromod_attention_bridge_t* bridge,
 
 int neuromod_attention_report_novelty(neuromod_attention_bridge_t* bridge,
                                        float novelty_score, float* lc_trigger_out) {
-    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_attention_report_novelty: invalid parameter");
+        return -1;
+    }
 
     novelty_score = clamp(novelty_score, 0.0f, 1.0f);
     bridge->state.novelty_signal = novelty_score;
@@ -268,7 +292,11 @@ int neuromod_attention_report_novelty(neuromod_attention_bridge_t* bridge,
 
 int neuromod_attention_report_reward_feature(neuromod_attention_bridge_t* bridge,
                                               float reward_value, float* vta_trigger_out) {
-    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_attention_report_reward_feature: invalid parameter");
+        return -1;
+    }
 
     reward_value = clamp(reward_value, 0.0f, 1.0f);
     bridge->state.reward_signal = reward_value;
@@ -288,7 +316,11 @@ int neuromod_attention_report_reward_feature(neuromod_attention_bridge_t* bridge
 
 int neuromod_attention_report_conflict(neuromod_attention_bridge_t* bridge,
                                         float conflict_level, float* arousal_demand_out) {
-    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_attention_report_conflict: invalid parameter");
+        return -1;
+    }
 
     conflict_level = clamp(conflict_level, 0.0f, 1.0f);
     bridge->state.conflict_signal = conflict_level;
@@ -314,7 +346,11 @@ int neuromod_attention_compute_modulation(neuromod_attention_bridge_t* bridge,
                                           float ne_level, float da_level,
                                           float ht_level, float hab_level,
                                           neuromod_attention_state_t* state_out) {
-    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_attention_compute_modulation: invalid parameter");
+        return -1;
+    }
 
     /* Apply all modulations */
     neuromod_attention_apply_ne_gain(bridge, ne_level, NULL);
@@ -354,7 +390,11 @@ int neuromod_attention_compute_modulation(neuromod_attention_bridge_t* bridge,
  * ============================================================================ */
 
 int neuromod_attention_update(neuromod_attention_bridge_t* bridge, float delta_ms) {
-    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_attention_update: invalid parameter");
+        return -1;
+    }
 
     /* Decay signals over time */
     float decay = expf(-delta_ms / 100.0f);  /* 100ms time constant */
@@ -368,20 +408,32 @@ int neuromod_attention_update(neuromod_attention_bridge_t* bridge, float delta_m
 
 int neuromod_attention_get_state(const neuromod_attention_bridge_t* bridge,
                                   neuromod_attention_state_t* state_out) {
-    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC || !state_out) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC || !state_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_attention_get_state: invalid parameter");
+        return -1;
+    }
     *state_out = bridge->state;
     return 0;
 }
 
 int neuromod_attention_get_stats(const neuromod_attention_bridge_t* bridge,
                                   neuromod_attention_stats_t* stats_out) {
-    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC || !stats_out) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC || !stats_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_attention_get_stats: invalid parameter");
+        return -1;
+    }
     *stats_out = bridge->stats;
     return 0;
 }
 
 int neuromod_attention_reset_stats(neuromod_attention_bridge_t* bridge) {
-    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC) return -1;
+    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_attention_reset_stats: invalid parameter");
+        return -1;
+    }
     memset(&bridge->stats, 0, sizeof(neuromod_attention_stats_t));
     return 0;
 }
@@ -391,7 +443,11 @@ int neuromod_attention_reset_stats(neuromod_attention_bridge_t* bridge) {
  * ============================================================================ */
 
 bool neuromod_attention_is_connected(const neuromod_attention_bridge_t* bridge) {
-    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC) return false;
+    if (!bridge || bridge->magic != NEUROMOD_ATTENTION_BRIDGE_MAGIC) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "neuromod_attention_is_connected: invalid parameter");
+        return false;
+    }
     return bridge->connected;
 }
 

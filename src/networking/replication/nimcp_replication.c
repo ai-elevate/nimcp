@@ -724,6 +724,8 @@ replication_cluster_t replication_create_cluster(const replication_config_t* con
         case REPLICATION_BACKEND_REDIS:
             // TODO: Implement Redis strategy
             set_replication_error("Redis backend not yet implemented");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_IMPLEMENTED,
+                "replication_create_cluster: Redis backend not yet implemented");
             nimcp_cond_destroy(&cluster->heartbeat_cond);
             nimcp_mutex_destroy(&cluster->heartbeat_lock);
             nimcp_mutex_destroy(&cluster->brains_lock);
@@ -734,6 +736,8 @@ replication_cluster_t replication_create_cluster(const replication_config_t* con
         case REPLICATION_BACKEND_POSTGRES:
             // TODO: Implement PostgreSQL strategy
             set_replication_error("PostgreSQL backend not yet implemented");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_IMPLEMENTED,
+                "replication_create_cluster: PostgreSQL backend not yet implemented");
             nimcp_cond_destroy(&cluster->heartbeat_cond);
             nimcp_mutex_destroy(&cluster->heartbeat_lock);
             nimcp_mutex_destroy(&cluster->brains_lock);
@@ -743,6 +747,8 @@ replication_cluster_t replication_create_cluster(const replication_config_t* con
 
         default:
             set_replication_error("Unknown backend type: %d", config->backend);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                "replication_create_cluster: unknown backend type %d", config->backend);
             nimcp_cond_destroy(&cluster->heartbeat_cond);
             nimcp_mutex_destroy(&cluster->heartbeat_lock);
             nimcp_mutex_destroy(&cluster->brains_lock);
