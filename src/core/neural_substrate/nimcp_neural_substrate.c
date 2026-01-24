@@ -249,6 +249,7 @@ neural_substrate_t* substrate_create(const substrate_config_t* config) {
         nimcp_calloc(1, sizeof(neural_substrate_t));
     if (!substrate) {
         NIMCP_LOGGING_ERROR("Substrate allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "substrate_create: substrate allocation failed");
         return NULL;
     }
 
@@ -280,6 +281,7 @@ neural_substrate_t* substrate_create(const substrate_config_t* config) {
     substrate->mutex = nimcp_platform_mutex_create();
     if (!substrate->mutex) {
         NIMCP_LOGGING_ERROR("Mutex allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "substrate_create: mutex allocation failed");
         substrate_destroy(substrate);
         return NULL;
     }
@@ -451,7 +453,11 @@ int substrate_update(neural_substrate_t* substrate, uint64_t delta_ms) {
 }
 
 int substrate_record_spikes(neural_substrate_t* substrate, uint32_t neuron_count) {
-    if (!substrate || !substrate->config.enable_metabolic_model) return -1;
+    if (!substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_record_spikes: substrate is NULL");
+        return -1;
+    }
+    if (!substrate->config.enable_metabolic_model) return -1;
 
     nimcp_platform_mutex_lock(substrate->mutex);
 
@@ -477,7 +483,11 @@ int substrate_record_spikes(neural_substrate_t* substrate, uint32_t neuron_count
 }
 
 int substrate_record_transmissions(neural_substrate_t* substrate, uint32_t transmission_count) {
-    if (!substrate || !substrate->config.enable_metabolic_model) return -1;
+    if (!substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_record_transmissions: substrate is NULL");
+        return -1;
+    }
+    if (!substrate->config.enable_metabolic_model) return -1;
 
     nimcp_platform_mutex_lock(substrate->mutex);
 
@@ -500,7 +510,10 @@ int substrate_record_transmissions(neural_substrate_t* substrate, uint32_t trans
  * ============================================================================ */
 
 int substrate_set_atp(neural_substrate_t* substrate, float atp_level) {
-    if (!substrate) return -1;
+    if (!substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_set_atp: substrate is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(substrate->mutex);
     substrate->metabolic.atp_level = clamp_f(atp_level, 0.0f, 1.0f);
@@ -512,7 +525,10 @@ int substrate_set_atp(neural_substrate_t* substrate, float atp_level) {
 }
 
 int substrate_set_oxygen(neural_substrate_t* substrate, float o2_sat) {
-    if (!substrate) return -1;
+    if (!substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_set_oxygen: substrate is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(substrate->mutex);
     substrate->metabolic.oxygen_saturation = clamp_f(o2_sat, 0.0f, 1.0f);
@@ -524,7 +540,10 @@ int substrate_set_oxygen(neural_substrate_t* substrate, float o2_sat) {
 }
 
 int substrate_set_glucose(neural_substrate_t* substrate, float glucose) {
-    if (!substrate) return -1;
+    if (!substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_set_glucose: substrate is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(substrate->mutex);
     substrate->metabolic.glucose_level = clamp_f(glucose, 0.0f, 1.0f);
@@ -536,7 +555,10 @@ int substrate_set_glucose(neural_substrate_t* substrate, float glucose) {
 }
 
 int substrate_set_temperature(neural_substrate_t* substrate, float temperature) {
-    if (!substrate) return -1;
+    if (!substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_set_temperature: substrate is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(substrate->mutex);
     substrate->physical.temperature = clamp_f(temperature, 20.0f, 45.0f);
@@ -548,7 +570,10 @@ int substrate_set_temperature(neural_substrate_t* substrate, float temperature) 
 }
 
 int substrate_set_membrane_integrity(neural_substrate_t* substrate, float integrity) {
-    if (!substrate) return -1;
+    if (!substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_set_membrane_integrity: substrate is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(substrate->mutex);
     substrate->physical.membrane_integrity = clamp_f(integrity, 0.0f, 1.0f);
@@ -560,7 +585,10 @@ int substrate_set_membrane_integrity(neural_substrate_t* substrate, float integr
 }
 
 int substrate_set_ion_balance(neural_substrate_t* substrate, float balance) {
-    if (!substrate) return -1;
+    if (!substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_set_ion_balance: substrate is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(substrate->mutex);
     substrate->physical.ion_balance = clamp_f(balance, 0.0f, 1.0f);
@@ -579,7 +607,14 @@ int substrate_get_metabolic_state(
     const neural_substrate_t* substrate,
     substrate_metabolic_state_t* state
 ) {
-    if (!substrate || !state) return -1;
+    if (!substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_get_metabolic_state: substrate is NULL");
+        return -1;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_get_metabolic_state: state is NULL");
+        return -1;
+    }
     *state = substrate->metabolic;
     return 0;
 }
@@ -588,7 +623,14 @@ int substrate_get_physical_state(
     const neural_substrate_t* substrate,
     substrate_physical_state_t* state
 ) {
-    if (!substrate || !state) return -1;
+    if (!substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_get_physical_state: substrate is NULL");
+        return -1;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_get_physical_state: state is NULL");
+        return -1;
+    }
     *state = substrate->physical;
     return 0;
 }
@@ -597,7 +639,14 @@ int substrate_get_modulation(
     const neural_substrate_t* substrate,
     substrate_modulation_t* mod
 ) {
-    if (!substrate || !mod) return -1;
+    if (!substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_get_modulation: substrate is NULL");
+        return -1;
+    }
+    if (!mod) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_get_modulation: mod is NULL");
+        return -1;
+    }
     *mod = substrate->modulation;
     return 0;
 }
@@ -627,7 +676,18 @@ int substrate_get_alerts(
     substrate_alert_type_t* alerts,
     uint32_t* count
 ) {
-    if (!substrate || !alerts || !count) return -1;
+    if (!substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_get_alerts: substrate is NULL");
+        return -1;
+    }
+    if (!alerts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_get_alerts: alerts is NULL");
+        return -1;
+    }
+    if (!count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_get_alerts: count is NULL");
+        return -1;
+    }
 
     *count = substrate->alert_count;
     for (uint32_t i = 0; i < substrate->alert_count && i < 8; i++) {
@@ -641,7 +701,14 @@ int substrate_get_stats(
     const neural_substrate_t* substrate,
     substrate_stats_t* stats
 ) {
-    if (!substrate || !stats) return -1;
+    if (!substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_get_stats: substrate is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_get_stats: stats is NULL");
+        return -1;
+    }
     *stats = substrate->stats;
     return 0;
 }
@@ -731,7 +798,10 @@ static float compute_imagination_capacity_modifier(const neural_substrate_t* sub
 }
 
 int neural_substrate_send_imagination_capacity(neural_substrate_t* substrate) {
-    if (!substrate) return -1;
+    if (!substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_substrate_send_imagination_capacity: substrate is NULL");
+        return -1;
+    }
 
     /* Check if bio-async is connected */
     if (!g_substrate_imag_ctx) {
@@ -768,6 +838,7 @@ int neural_substrate_send_imagination_capacity(neural_substrate_t* substrate) {
     nimcp_error_t err = bio_router_send(g_substrate_imag_ctx, &msg, sizeof(msg), 0);
     if (err != NIMCP_SUCCESS) {
         NIMCP_LOGGING_DEBUG("Failed to send imagination capacity update: %d", err);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "neural_substrate_send_imagination_capacity: bio_router_send failed");
         return -1;
     }
 
@@ -845,7 +916,10 @@ static int neural_substrate_wiring_handler_callback(
 }
 
 int neural_substrate_register_imagination_handler(neural_substrate_t* substrate) {
-    if (!substrate) return -1;
+    if (!substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neural_substrate_register_imagination_handler: substrate is NULL");
+        return -1;
+    }
 
     /* Check if already registered */
     if (g_substrate_imag_ctx) {
@@ -863,6 +937,7 @@ int neural_substrate_register_imagination_handler(neural_substrate_t* substrate)
     g_substrate_imag_ctx = bio_router_register_module(&info);
     if (!g_substrate_imag_ctx) {
         NIMCP_LOGGING_WARN("Bio-async router not available for imagination integration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "neural_substrate_register_imagination_handler: bio_router_register_module failed");
         return -1;
     }
 

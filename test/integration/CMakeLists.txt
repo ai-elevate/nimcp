@@ -63,3 +63,11 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/exception/CMakeLists.txt)
     add_subdirectory(exception)
 endif()
 
+# =============================================================================
+# Core Integration Tests (neural_substrate, substrate, axon, dendrite, etc.)
+# =============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/core/CMakeLists.txt)
+    message(STATUS "Adding Core Integration tests...")
+    add_subdirectory(core)
+endif()
+

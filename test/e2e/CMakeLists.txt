@@ -2948,6 +2948,12 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/cognitive/CMakeLists.txt)
     add_subdirectory(cognitive)
 endif()
 
+# Include Core E2E test subdirectory (neural substrate)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/core/CMakeLists.txt)
+    message(STATUS "Adding Core E2E tests (Neural Substrate layer)...")
+    add_subdirectory(core)
+endif()
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")

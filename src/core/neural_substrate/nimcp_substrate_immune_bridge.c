@@ -136,8 +136,7 @@ substrate_immune_bridge_t* substrate_immune_bridge_create(
         nimcp_calloc(1, sizeof(substrate_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Bridge allocation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "substrate_immune_bridge_create: bridge allocation failed");
         return NULL;
     }
 
@@ -154,9 +153,14 @@ substrate_immune_bridge_t* substrate_immune_bridge_create(
     bridge->immune_system = immune_system;
 
     /* Create mutex */
-    if (bridge_base_init(&bridge->base, 0, "substrate_immune") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "substrate_immune") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "substrate_immune_bridge_create: bridge_base_init failed");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Mutex allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "substrate_immune_bridge_create: mutex allocation failed");
         substrate_immune_bridge_destroy(bridge);
         return NULL;
     }
@@ -247,7 +251,11 @@ bool substrate_immune_is_bio_async_connected(const substrate_immune_bridge_t* br
  * ============================================================================ */
 
 int substrate_immune_apply_fever(substrate_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->config.enable_fever_response) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_immune_apply_fever: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_fever_response) return -1;
     if (!bridge->immune_system) return 0;  /* No immune = no fever */
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -300,7 +308,11 @@ int substrate_immune_apply_fever(substrate_immune_bridge_t* bridge) {
 }
 
 int substrate_immune_apply_metabolic_effects(substrate_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->config.enable_metabolic_effects) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_immune_apply_metabolic_effects: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_metabolic_effects) return -1;
     if (!bridge->immune_system) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -358,7 +370,11 @@ int substrate_immune_apply_metabolic_effects(substrate_immune_bridge_t* bridge) 
 }
 
 int substrate_immune_apply_damage(substrate_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->config.enable_damage_effects) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_immune_apply_damage: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_damage_effects) return -1;
     if (!bridge->immune_system) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -420,7 +436,11 @@ int substrate_immune_apply_il10_recovery(
     substrate_immune_bridge_t* bridge,
     float il10_concentration
 ) {
-    if (!bridge || !bridge->config.enable_il10_recovery) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_immune_apply_il10_recovery: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_il10_recovery) return -1;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -462,7 +482,11 @@ int substrate_immune_apply_il10_recovery(
  * ============================================================================ */
 
 bool substrate_immune_check_stress(substrate_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->config.enable_substrate_immune_trigger) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_immune_check_stress: bridge is NULL");
+        return false;
+    }
+    if (!bridge->config.enable_substrate_immune_trigger) return false;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -513,7 +537,14 @@ bool substrate_immune_check_stress(substrate_immune_bridge_t* bridge) {
 }
 
 int substrate_immune_trigger_response(substrate_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->immune_system) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_immune_trigger_response: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_immune_trigger_response: immune_system is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -521,6 +552,7 @@ int substrate_immune_trigger_response(substrate_immune_bridge_t* bridge) {
     uint8_t epitope[32];
     size_t epitope_len = create_damp_epitope(bridge->substrate, epitope, sizeof(epitope));
     if (epitope_len == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "substrate_immune_trigger_response: create_damp_epitope failed");
         nimcp_platform_mutex_unlock(bridge->base.mutex);
         return -1;
     }
@@ -626,7 +658,14 @@ int substrate_immune_get_cytokine_effects(
     const substrate_immune_bridge_t* bridge,
     cytokine_substrate_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_immune_get_cytokine_effects: bridge is NULL");
+        return -1;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_immune_get_cytokine_effects: effects is NULL");
+        return -1;
+    }
     *effects = bridge->cytokine_effects;
     return 0;
 }
@@ -635,7 +674,14 @@ int substrate_immune_get_trigger_state(
     const substrate_immune_bridge_t* bridge,
     substrate_immune_trigger_t* trigger
 ) {
-    if (!bridge || !trigger) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_immune_get_trigger_state: bridge is NULL");
+        return -1;
+    }
+    if (!trigger) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_immune_get_trigger_state: trigger is NULL");
+        return -1;
+    }
     *trigger = bridge->trigger_state;
     return 0;
 }
@@ -656,7 +702,14 @@ int substrate_immune_get_stats(
     const substrate_immune_bridge_t* bridge,
     substrate_immune_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_immune_get_stats: bridge is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_immune_get_stats: stats is NULL");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }

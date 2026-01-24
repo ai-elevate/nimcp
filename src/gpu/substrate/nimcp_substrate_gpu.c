@@ -129,8 +129,7 @@ substrate_gpu_context_t* substrate_gpu_create(
     substrate_gpu_context_t* ctx = nimcp_calloc(1, sizeof(substrate_gpu_context_t));
     if (!ctx) {
         LOG_ERROR("Failed to allocate substrate GPU context");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "substrate_gpu_create: context allocation failed");
         return NULL;
     }
 
@@ -240,7 +239,18 @@ void substrate_gpu_destroy(substrate_gpu_context_t* ctx)
 
 int substrate_gpu_init_axons(substrate_gpu_context_t* ctx, uint32_t n_axons)
 {
-    if (!ctx || !ctx->gpu_ctx || n_axons == 0) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_init_axons: ctx is NULL");
+        return -1;
+    }
+    if (!ctx->gpu_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_init_axons: gpu_ctx is NULL");
+        return -1;
+    }
+    if (n_axons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_init_axons: n_axons is 0");
+        return -1;
+    }
 
     ctx->axon.n_axons = n_axons;
     ctx->axon.signals = create_tensor_1d(ctx->gpu_ctx, n_axons);
@@ -253,6 +263,7 @@ int substrate_gpu_init_axons(substrate_gpu_context_t* ctx, uint32_t n_axons)
     if (!ctx->axon.signals || !ctx->axon.velocities || !ctx->axon.myelination ||
         !ctx->axon.lengths || !ctx->axon.delays || !ctx->axon.refractory) {
         LOG_ERROR("Failed to allocate axon tensors");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "substrate_gpu_init_axons: failed to allocate axon tensors");
         return -1;
     }
 
@@ -269,7 +280,22 @@ int substrate_gpu_init_dendrites(
     uint32_t n_segments,
     uint32_t n_spines)
 {
-    if (!ctx || !ctx->gpu_ctx || n_dendrites == 0 || n_segments == 0) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_init_dendrites: ctx is NULL");
+        return -1;
+    }
+    if (!ctx->gpu_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_init_dendrites: gpu_ctx is NULL");
+        return -1;
+    }
+    if (n_dendrites == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_init_dendrites: n_dendrites is 0");
+        return -1;
+    }
+    if (n_segments == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_init_dendrites: n_segments is 0");
+        return -1;
+    }
 
     ctx->dendrite.n_dendrites = n_dendrites;
     ctx->dendrite.n_segments = n_segments;
@@ -305,7 +331,18 @@ int substrate_gpu_init_dendrites(
 
 int substrate_gpu_init_myelin(substrate_gpu_context_t* ctx, uint32_t n_axons)
 {
-    if (!ctx || !ctx->gpu_ctx || n_axons == 0) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_init_myelin: ctx is NULL");
+        return -1;
+    }
+    if (!ctx->gpu_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_init_myelin: gpu_ctx is NULL");
+        return -1;
+    }
+    if (n_axons == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_init_myelin: n_axons is 0");
+        return -1;
+    }
 
     ctx->myelin.n_axons = n_axons;
     ctx->myelin.axon_diameter = create_tensor_1d(ctx->gpu_ctx, n_axons);
@@ -333,7 +370,22 @@ int substrate_gpu_init_neuromod(
     uint32_t n_types,
     uint32_t n_synapses)
 {
-    if (!ctx || !ctx->gpu_ctx || n_pools == 0 || n_types == 0) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_init_neuromod: ctx is NULL");
+        return -1;
+    }
+    if (!ctx->gpu_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_init_neuromod: gpu_ctx is NULL");
+        return -1;
+    }
+    if (n_pools == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_init_neuromod: n_pools is 0");
+        return -1;
+    }
+    if (n_types == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_init_neuromod: n_types is 0");
+        return -1;
+    }
 
     ctx->neuromod.n_pools = n_pools;
     ctx->neuromod.n_types = n_types;
@@ -369,7 +421,14 @@ int substrate_gpu_init_glial(
     uint32_t n_opcs,
     uint32_t n_neighbors)
 {
-    if (!ctx || !ctx->gpu_ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_init_glial: ctx is NULL");
+        return -1;
+    }
+    if (!ctx->gpu_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_init_glial: gpu_ctx is NULL");
+        return -1;
+    }
 
     ctx->glial.n_astrocytes = n_astrocytes;
     ctx->glial.n_microglia = n_microglia;
@@ -413,7 +472,18 @@ int substrate_gpu_init_glial(
 
 int substrate_gpu_init_metabolic(substrate_gpu_context_t* ctx, uint32_t n_regions)
 {
-    if (!ctx || !ctx->gpu_ctx || n_regions == 0) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_init_metabolic: ctx is NULL");
+        return -1;
+    }
+    if (!ctx->gpu_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_init_metabolic: gpu_ctx is NULL");
+        return -1;
+    }
+    if (n_regions == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "substrate_gpu_init_metabolic: n_regions is 0");
+        return -1;
+    }
 
     ctx->metabolic.n_regions = n_regions;
     ctx->metabolic.atp_levels = create_tensor_1d(ctx->gpu_ctx, n_regions);
@@ -442,7 +512,18 @@ int substrate_gpu_axon_propagate(
     const nimcp_gpu_tensor_t* input_signals,
     float dt)
 {
-    if (!ctx || !ctx->ops || !ctx->ops->axon_propagate) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_axon_propagate: ctx is NULL");
+        return -1;
+    }
+    if (!ctx->ops) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_axon_propagate: ops is NULL");
+        return -1;
+    }
+    if (!ctx->ops->axon_propagate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_axon_propagate: axon_propagate op is NULL");
+        return -1;
+    }
 
     const nimcp_gpu_tensor_t* signals = input_signals ? input_signals : ctx->axon.signals;
 
@@ -464,7 +545,18 @@ int substrate_gpu_axon_refractory(
     const nimcp_gpu_tensor_t* spikes,
     float dt)
 {
-    if (!ctx || !ctx->ops || !ctx->ops->axon_refractory) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_axon_refractory: ctx is NULL");
+        return -1;
+    }
+    if (!ctx->ops) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_axon_refractory: ops is NULL");
+        return -1;
+    }
+    if (!ctx->ops->axon_refractory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_axon_refractory: axon_refractory op is NULL");
+        return -1;
+    }
 
     const nimcp_gpu_tensor_t* spike_input = spikes ? spikes : ctx->axon.signals;
 
@@ -497,7 +589,18 @@ int substrate_gpu_dendrite_cable(
     const nimcp_gpu_tensor_t* inputs,
     float dt)
 {
-    if (!ctx || !ctx->ops || !ctx->ops->dendrite_cable_integrate) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_dendrite_cable: ctx is NULL");
+        return -1;
+    }
+    if (!ctx->ops) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_dendrite_cable: ops is NULL");
+        return -1;
+    }
+    if (!ctx->ops->dendrite_cable_integrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_dendrite_cable: dendrite_cable_integrate op is NULL");
+        return -1;
+    }
 
     nimcp_kernel_error_t err = ctx->ops->dendrite_cable_integrate(
         ctx->gpu_ctx,
@@ -513,7 +616,18 @@ int substrate_gpu_dendrite_cable(
 
 int substrate_gpu_dendrite_nmda(substrate_gpu_context_t* ctx)
 {
-    if (!ctx || !ctx->ops || !ctx->ops->dendrite_nmda) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_dendrite_nmda: ctx is NULL");
+        return -1;
+    }
+    if (!ctx->ops) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_dendrite_nmda: ops is NULL");
+        return -1;
+    }
+    if (!ctx->ops->dendrite_nmda) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_dendrite_nmda: dendrite_nmda op is NULL");
+        return -1;
+    }
 
     nimcp_kernel_error_t err = ctx->ops->dendrite_nmda(
         ctx->gpu_ctx,
@@ -528,7 +642,18 @@ int substrate_gpu_dendrite_nmda(substrate_gpu_context_t* ctx)
 
 int substrate_gpu_dendrite_calcium(substrate_gpu_context_t* ctx, float dt)
 {
-    if (!ctx || !ctx->ops || !ctx->ops->dendrite_calcium) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_dendrite_calcium: ctx is NULL");
+        return -1;
+    }
+    if (!ctx->ops) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_dendrite_calcium: ops is NULL");
+        return -1;
+    }
+    if (!ctx->ops->dendrite_calcium) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_dendrite_calcium: dendrite_calcium op is NULL");
+        return -1;
+    }
     if (!ctx->dendrite.calcium) return 0;  // No spines initialized
 
     nimcp_kernel_error_t err = ctx->ops->dendrite_calcium(
@@ -548,7 +673,18 @@ int substrate_gpu_dendrite_bap(
     const nimcp_gpu_tensor_t* soma_spikes,
     float dt)
 {
-    if (!ctx || !ctx->ops || !ctx->ops->dendrite_bap) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_dendrite_bap: ctx is NULL");
+        return -1;
+    }
+    if (!ctx->ops) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_dendrite_bap: ops is NULL");
+        return -1;
+    }
+    if (!ctx->ops->dendrite_bap) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_dendrite_bap: dendrite_bap op is NULL");
+        return -1;
+    }
 
     nimcp_kernel_error_t err = ctx->ops->dendrite_bap(
         ctx->gpu_ctx,
@@ -580,7 +716,18 @@ int substrate_gpu_dendrite_step(
 
 int substrate_gpu_myelin_g_ratio(substrate_gpu_context_t* ctx)
 {
-    if (!ctx || !ctx->ops || !ctx->ops->myelin_g_ratio) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_myelin_g_ratio: ctx is NULL");
+        return -1;
+    }
+    if (!ctx->ops) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_myelin_g_ratio: ops is NULL");
+        return -1;
+    }
+    if (!ctx->ops->myelin_g_ratio) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_myelin_g_ratio: myelin_g_ratio op is NULL");
+        return -1;
+    }
 
     nimcp_kernel_error_t err = ctx->ops->myelin_g_ratio(
         ctx->gpu_ctx,
@@ -594,7 +741,18 @@ int substrate_gpu_myelin_g_ratio(substrate_gpu_context_t* ctx)
 
 int substrate_gpu_myelin_velocity(substrate_gpu_context_t* ctx)
 {
-    if (!ctx || !ctx->ops || !ctx->ops->myelin_conduction_velocity) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_myelin_velocity: ctx is NULL");
+        return -1;
+    }
+    if (!ctx->ops) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_myelin_velocity: ops is NULL");
+        return -1;
+    }
+    if (!ctx->ops->myelin_conduction_velocity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_myelin_velocity: myelin_conduction_velocity op is NULL");
+        return -1;
+    }
 
     nimcp_kernel_error_t err = ctx->ops->myelin_conduction_velocity(
         ctx->gpu_ctx,
@@ -608,7 +766,18 @@ int substrate_gpu_myelin_velocity(substrate_gpu_context_t* ctx)
 
 int substrate_gpu_myelin_plasticity(substrate_gpu_context_t* ctx, float dt)
 {
-    if (!ctx || !ctx->ops || !ctx->ops->myelin_plasticity) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_myelin_plasticity: ctx is NULL");
+        return -1;
+    }
+    if (!ctx->ops) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_myelin_plasticity: ops is NULL");
+        return -1;
+    }
+    if (!ctx->ops->myelin_plasticity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_myelin_plasticity: myelin_plasticity op is NULL");
+        return -1;
+    }
 
     nimcp_kernel_error_t err = ctx->ops->myelin_plasticity(
         ctx->gpu_ctx,
@@ -636,7 +805,18 @@ int substrate_gpu_myelin_step(substrate_gpu_context_t* ctx, float dt)
 
 int substrate_gpu_neuromod_decay(substrate_gpu_context_t* ctx, float dt)
 {
-    if (!ctx || !ctx->ops || !ctx->ops->neuromod_decay) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_neuromod_decay: ctx is NULL");
+        return -1;
+    }
+    if (!ctx->ops) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_neuromod_decay: ops is NULL");
+        return -1;
+    }
+    if (!ctx->ops->neuromod_decay) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_neuromod_decay: neuromod_decay op is NULL");
+        return -1;
+    }
 
     nimcp_kernel_error_t err = ctx->ops->neuromod_decay(
         ctx->gpu_ctx,
@@ -654,7 +834,18 @@ int substrate_gpu_neuromod_release(
     const nimcp_gpu_tensor_t* amounts,
     uint32_t n_events)
 {
-    if (!ctx || !ctx->ops || !ctx->ops->neuromod_release) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_neuromod_release: ctx is NULL");
+        return -1;
+    }
+    if (!ctx->ops) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_neuromod_release: ops is NULL");
+        return -1;
+    }
+    if (!ctx->ops->neuromod_release) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_neuromod_release: neuromod_release op is NULL");
+        return -1;
+    }
     if (!sites || !types || !amounts || n_events == 0) return 0;
 
     nimcp_kernel_error_t err = ctx->ops->neuromod_release(
@@ -670,7 +861,18 @@ int substrate_gpu_neuromod_release(
 
 int substrate_gpu_neuromod_effect(substrate_gpu_context_t* ctx)
 {
-    if (!ctx || !ctx->ops || !ctx->ops->neuromod_effect) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_neuromod_effect: ctx is NULL");
+        return -1;
+    }
+    if (!ctx->ops) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_neuromod_effect: ops is NULL");
+        return -1;
+    }
+    if (!ctx->ops->neuromod_effect) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_neuromod_effect: neuromod_effect op is NULL");
+        return -1;
+    }
     if (!ctx->neuromod.modulation) return 0;  // No synapses
 
     nimcp_kernel_error_t err = ctx->ops->neuromod_effect(
@@ -687,7 +889,18 @@ int substrate_gpu_neuromod_phasic_tonic(
     const nimcp_gpu_tensor_t* phasic_input,
     float dt)
 {
-    if (!ctx || !ctx->ops || !ctx->ops->neuromod_phasic_tonic) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_neuromod_phasic_tonic: ctx is NULL");
+        return -1;
+    }
+    if (!ctx->ops) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_neuromod_phasic_tonic: ops is NULL");
+        return -1;
+    }
+    if (!ctx->ops->neuromod_phasic_tonic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_neuromod_phasic_tonic: neuromod_phasic_tonic op is NULL");
+        return -1;
+    }
 
     nimcp_kernel_error_t err = ctx->ops->neuromod_phasic_tonic(
         ctx->gpu_ctx,
@@ -715,7 +928,18 @@ int substrate_gpu_neuromod_step(substrate_gpu_context_t* ctx, float dt)
 
 int substrate_gpu_astrocyte_calcium(substrate_gpu_context_t* ctx, float dt)
 {
-    if (!ctx || !ctx->ops || !ctx->ops->astrocyte_calcium_wave) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_astrocyte_calcium: ctx is NULL");
+        return -1;
+    }
+    if (!ctx->ops) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_astrocyte_calcium: ops is NULL");
+        return -1;
+    }
+    if (!ctx->ops->astrocyte_calcium_wave) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_astrocyte_calcium: astrocyte_calcium_wave op is NULL");
+        return -1;
+    }
     if (!ctx->glial.astro_calcium) return 0;  // No astrocytes
 
     nimcp_kernel_error_t err = ctx->ops->astrocyte_calcium_wave(
@@ -732,7 +956,18 @@ int substrate_gpu_astrocyte_calcium(substrate_gpu_context_t* ctx, float dt)
 
 int substrate_gpu_astrocyte_release(substrate_gpu_context_t* ctx)
 {
-    if (!ctx || !ctx->ops || !ctx->ops->astrocyte_release) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_astrocyte_release: ctx is NULL");
+        return -1;
+    }
+    if (!ctx->ops) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_astrocyte_release: ops is NULL");
+        return -1;
+    }
+    if (!ctx->ops->astrocyte_release) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_astrocyte_release: astrocyte_release op is NULL");
+        return -1;
+    }
     if (!ctx->glial.astro_calcium) return 0;
 
     nimcp_kernel_error_t err = ctx->ops->astrocyte_release(
@@ -747,7 +982,18 @@ int substrate_gpu_astrocyte_release(substrate_gpu_context_t* ctx)
 
 int substrate_gpu_microglia_activation(substrate_gpu_context_t* ctx, float dt)
 {
-    if (!ctx || !ctx->ops || !ctx->ops->microglia_activation) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_microglia_activation: ctx is NULL");
+        return -1;
+    }
+    if (!ctx->ops) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_microglia_activation: ops is NULL");
+        return -1;
+    }
+    if (!ctx->ops->microglia_activation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_microglia_activation: microglia_activation op is NULL");
+        return -1;
+    }
     if (!ctx->glial.micro_damage) return 0;  // No microglia
 
     nimcp_kernel_error_t err = ctx->ops->microglia_activation(
@@ -764,7 +1010,18 @@ int substrate_gpu_microglia_activation(substrate_gpu_context_t* ctx, float dt)
 
 int substrate_gpu_opc_differentiation(substrate_gpu_context_t* ctx, float dt)
 {
-    if (!ctx || !ctx->ops || !ctx->ops->oligodendrocyte_differentiation) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_opc_differentiation: ctx is NULL");
+        return -1;
+    }
+    if (!ctx->ops) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_opc_differentiation: ops is NULL");
+        return -1;
+    }
+    if (!ctx->ops->oligodendrocyte_differentiation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_opc_differentiation: oligodendrocyte_differentiation op is NULL");
+        return -1;
+    }
     if (!ctx->glial.opc_activity) return 0;  // No OPCs
 
     nimcp_kernel_error_t err = ctx->ops->oligodendrocyte_differentiation(
@@ -793,7 +1050,18 @@ int substrate_gpu_glial_step(substrate_gpu_context_t* ctx, float dt)
 
 int substrate_gpu_metabolic_effects(substrate_gpu_context_t* ctx)
 {
-    if (!ctx || !ctx->ops || !ctx->ops->metabolic_effects) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_metabolic_effects: ctx is NULL");
+        return -1;
+    }
+    if (!ctx->ops) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_metabolic_effects: ops is NULL");
+        return -1;
+    }
+    if (!ctx->ops->metabolic_effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_metabolic_effects: metabolic_effects op is NULL");
+        return -1;
+    }
     if (!ctx->metabolic.atp_levels) return 0;
 
     nimcp_kernel_error_t err = ctx->ops->metabolic_effects(
@@ -812,7 +1080,18 @@ int substrate_gpu_metabolic_update(
     const nimcp_gpu_tensor_t* neural_activity,
     float dt)
 {
-    if (!ctx || !ctx->ops || !ctx->ops->metabolic_update) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_metabolic_update: ctx is NULL");
+        return -1;
+    }
+    if (!ctx->ops) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_metabolic_update: ops is NULL");
+        return -1;
+    }
+    if (!ctx->ops->metabolic_update) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate_gpu_metabolic_update: metabolic_update op is NULL");
+        return -1;
+    }
     if (!ctx->metabolic.atp_levels) return 0;
 
     nimcp_kernel_error_t err = ctx->ops->metabolic_update(

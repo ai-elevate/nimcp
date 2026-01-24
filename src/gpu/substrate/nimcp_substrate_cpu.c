@@ -53,6 +53,7 @@ nimcp_kernel_error_t cpu_axon_propagate(
 
     if (!input_signals || !velocities || !myelination ||
         !lengths || !output_signals || !delays) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cpu_axon_propagate: one or more tensor parameters is NULL");
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
 
@@ -84,6 +85,7 @@ nimcp_kernel_error_t cpu_axon_refractory(
     (void)ctx;
 
     if (!refractory_state || !spikes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cpu_axon_refractory: one or more tensor parameters is NULL");
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
 
@@ -117,10 +119,14 @@ nimcp_kernel_error_t cpu_dendrite_cable_integrate(
     (void)ctx;
 
     if (!inputs || !cable_Rm || !cable_Cm || !cable_Ra || !voltages) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cpu_dendrite_cable_integrate: one or more tensor parameters is NULL");
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
 
-    if (voltages->ndim < 2) return NIMCP_KERNEL_ERROR_INVALID_SIZE;
+    if (voltages->ndim < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cpu_dendrite_cable_integrate: voltages tensor must have ndim >= 2");
+        return NIMCP_KERNEL_ERROR_INVALID_SIZE;
+    }
 
     uint32_t n_dend = voltages->dims[0];
     uint32_t n_seg = voltages->dims[1];
@@ -164,10 +170,14 @@ nimcp_kernel_error_t cpu_dendrite_nmda(
     (void)ctx;
 
     if (!voltages || !mg_block || !nmda_current || !nmda_spikes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cpu_dendrite_nmda: one or more tensor parameters is NULL");
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
 
-    if (voltages->ndim < 2) return NIMCP_KERNEL_ERROR_INVALID_SIZE;
+    if (voltages->ndim < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cpu_dendrite_nmda: voltages tensor must have ndim >= 2");
+        return NIMCP_KERNEL_ERROR_INVALID_SIZE;
+    }
 
     uint32_t n_dend = voltages->dims[0];
     uint32_t n_seg = voltages->dims[1];
@@ -208,6 +218,7 @@ nimcp_kernel_error_t cpu_dendrite_calcium(
     (void)ctx;
 
     if (!nmda_current || !vgcc_current || !calcium || !calcium_decay) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cpu_dendrite_calcium: one or more tensor parameters is NULL");
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
 
@@ -238,10 +249,14 @@ nimcp_kernel_error_t cpu_dendrite_bap(
     (void)ctx; (void)bap_velocity;
 
     if (!soma_spike || !attenuation || !bap_signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cpu_dendrite_bap: one or more tensor parameters is NULL");
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
 
-    if (bap_signal->ndim < 2) return NIMCP_KERNEL_ERROR_INVALID_SIZE;
+    if (bap_signal->ndim < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cpu_dendrite_bap: bap_signal tensor must have ndim >= 2");
+        return NIMCP_KERNEL_ERROR_INVALID_SIZE;
+    }
 
     uint32_t n_dend = bap_signal->dims[0];
     uint32_t n_seg = bap_signal->dims[1];
@@ -275,6 +290,7 @@ nimcp_kernel_error_t cpu_myelin_g_ratio(
     (void)ctx;
 
     if (!axon_diameter || !fiber_diameter || !g_ratio || !is_optimal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cpu_myelin_g_ratio: one or more tensor parameters is NULL");
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
 
@@ -302,6 +318,7 @@ nimcp_kernel_error_t cpu_myelin_conduction_velocity(
     (void)ctx;
 
     if (!g_ratio || !internode_length || !temperature || !velocity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cpu_myelin_conduction_velocity: one or more tensor parameters is NULL");
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
 
@@ -337,6 +354,7 @@ nimcp_kernel_error_t cpu_myelin_plasticity(
 
     if (!activity || !oligodendrocyte_signal ||
         !myelin_thickness || !sheath_length) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cpu_myelin_plasticity: one or more tensor parameters is NULL");
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
 
@@ -371,10 +389,14 @@ nimcp_kernel_error_t cpu_neuromod_decay(
     (void)ctx;
 
     if (!concentrations || !decay_rates) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cpu_neuromod_decay: one or more tensor parameters is NULL");
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
 
-    if (concentrations->ndim < 2) return NIMCP_KERNEL_ERROR_INVALID_SIZE;
+    if (concentrations->ndim < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cpu_neuromod_decay: concentrations tensor must have ndim >= 2");
+        return NIMCP_KERNEL_ERROR_INVALID_SIZE;
+    }
 
     uint32_t n_pools = concentrations->dims[0];
     uint32_t n_types = concentrations->dims[1];
@@ -404,6 +426,7 @@ nimcp_kernel_error_t cpu_neuromod_release(
 
     if (!release_sites || !release_types ||
         !release_amounts || !concentrations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cpu_neuromod_release: one or more tensor parameters is NULL");
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
 
@@ -430,6 +453,7 @@ nimcp_kernel_error_t cpu_neuromod_effect(
     (void)ctx;
 
     if (!concentrations || !receptor_density || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cpu_neuromod_effect: one or more tensor parameters is NULL");
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
 
@@ -471,10 +495,14 @@ nimcp_kernel_error_t cpu_neuromod_phasic_tonic(
     (void)ctx;
 
     if (!phasic_input || !tonic_level || !total_level) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cpu_neuromod_phasic_tonic: one or more tensor parameters is NULL");
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
 
-    if (phasic_input->ndim < 2) return NIMCP_KERNEL_ERROR_INVALID_SIZE;
+    if (phasic_input->ndim < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "cpu_neuromod_phasic_tonic: phasic_input tensor must have ndim >= 2");
+        return NIMCP_KERNEL_ERROR_INVALID_SIZE;
+    }
 
     uint32_t n_pools = phasic_input->dims[0];
     uint32_t n_types = phasic_input->dims[1];
@@ -511,6 +539,7 @@ nimcp_kernel_error_t cpu_astrocyte_calcium_wave(
     (void)ctx;
 
     if (!ip3_levels || !gap_junctions || !calcium || !wave_front) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cpu_astrocyte_calcium_wave: one or more tensor parameters is NULL");
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
 
@@ -524,6 +553,10 @@ nimcp_kernel_error_t cpu_astrocyte_calcium_wave(
 
     // Need temp buffer for updates
     float* Ca_new = (float*)malloc(n_astro * sizeof(float));
+    if (!Ca_new) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "cpu_astrocyte_calcium_wave: failed to allocate temporary buffer");
+        return NIMCP_KERNEL_ERROR_NULL_PTR;
+    }
 
     for (uint32_t i = 0; i < n_astro; i++) {
         float release = ip3[i] * (1.0f - Ca[i]) * 0.1f;
@@ -559,6 +592,7 @@ nimcp_kernel_error_t cpu_astrocyte_release(
     (void)ctx;
 
     if (!calcium || !threshold || !glutamate_release || !atp_release) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cpu_astrocyte_release: one or more tensor parameters is NULL");
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
 
@@ -595,6 +629,7 @@ nimcp_kernel_error_t cpu_microglia_activation(
 
     if (!damage_signals || !anti_inflam ||
         !activation_state || !phagocytic_activity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cpu_microglia_activation: one or more tensor parameters is NULL");
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
 
@@ -635,6 +670,7 @@ nimcp_kernel_error_t cpu_oligodendrocyte_differentiation(
 
     if (!activity_signal || !growth_factors ||
         !differentiation_state || !myelin_production) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cpu_oligodendrocyte_differentiation: one or more tensor parameters is NULL");
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
 
@@ -670,6 +706,7 @@ nimcp_kernel_error_t cpu_metabolic_effects(
 
     if (!atp_levels || !oxygen_levels || !glucose_levels ||
         !capacity || !fatigue) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cpu_metabolic_effects: one or more tensor parameters is NULL");
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
 
@@ -700,6 +737,7 @@ nimcp_kernel_error_t cpu_metabolic_update(
     (void)ctx;
 
     if (!neural_activity || !atp_levels || !lactate_levels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cpu_metabolic_update: one or more tensor parameters is NULL");
         return NIMCP_KERNEL_ERROR_NULL_PTR;
     }
 

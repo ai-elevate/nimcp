@@ -1385,6 +1385,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/substrate")
     add_subdirectory(regression/core/substrate)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/neural_substrate")
+    message(STATUS "Adding neural substrate layer regression tests...")
+    add_subdirectory(regression/core/neural_substrate)
+endif()
+
 # Neuron Types Regression Tests
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/neuron_types")
     message(STATUS "Adding neuron types performance regression tests...")
