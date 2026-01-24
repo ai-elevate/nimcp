@@ -24,6 +24,7 @@
 #include "utils/fault_tolerance/nimcp_hierarchical_recovery.h"
 #include "utils/logging/nimcp_logging.h"
 #include "api/nimcp_api_exception.h"
+#include "utils/exception/nimcp_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 #include <stdlib.h>
@@ -2961,30 +2962,23 @@ int brain_immune_present_exception(
 ) {
     if (!system || !exception) return -1;
 
-    /* Access exception fields through known struct layout
-     * nimcp_exception_t layout (from header):
-     * - type (4 bytes, offset 0)
-     * - category (4 bytes, offset 4)
-     * - code (4 bytes, offset 8)
-     * - severity (4 bytes, offset 12)
-     * - message (256 bytes, offset 16)
-     * - file ptr (8 bytes, offset 272)
-     * - line (4 bytes, offset 280)
-     * - function ptr (8 bytes, offset 284)
-     * - timestamp (8 bytes, offset 292)
-     * - stack_trace (varies)
-     * - epitope (64 bytes at offset ~300+stack_trace)
-     */
+    /* Use direct field access now that we include nimcp_exception.h */
+    uint32_t severity = (uint32_t)exception->severity;
 
-    /* For safety, we'll use offsets based on structure padding */
-    const uint32_t* severity_ptr = (const uint32_t*)((const uint8_t*)exception + 12);
-    uint32_t severity = *severity_ptr;
+    /* Get epitope directly from exception struct */
+    const uint8_t* epitope = exception->epitope;
+    size_t epitope_len = exception->epitope_len;
 
-    /* Epitope offset depends on stack_trace size - use a safe approximation */
-    /* Stack trace: nimcp_stack_frame_t frames[32] + size_t depth = ~32*24 + 8 = 776 bytes */
-    /* So epitope is at approximately offset 300 + 776 = 1076 */
-    const uint8_t* epitope = (const uint8_t*)exception + 1076;
-    size_t epitope_len = 64;
+    /* If epitope not computed, use minimal epitope from error code */
+    uint8_t fallback_epitope[NIMCP_EXCEPTION_EPITOPE_SIZE];
+    if (epitope_len == 0) {
+        memset(fallback_epitope, 0, sizeof(fallback_epitope));
+        memcpy(fallback_epitope, &exception->code, sizeof(exception->code));
+        memcpy(fallback_epitope + 4, &exception->category, sizeof(exception->category));
+        memcpy(fallback_epitope + 8, &exception->severity, sizeof(exception->severity));
+        epitope = fallback_epitope;
+        epitope_len = 12;
+    }
 
     /* Validate and clamp severity to 1-10 range */
     uint32_t immune_severity = severity;
