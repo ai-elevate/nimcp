@@ -136,3 +136,8 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regions")
     add_subdirectory(regions)
 endif()
+
+# Add hemispheric subdirectory (hemispheric brain, corpus callosum, lateralization)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/hemispheric")
+    add_subdirectory(hemispheric)
+endif()

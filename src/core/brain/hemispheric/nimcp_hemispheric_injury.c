@@ -317,6 +317,8 @@ hemispheric_injury_system_t* hemispheric_injury_create(
     system->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!system->mutex) {
         NIMCP_LOGGING_ERROR("hemispheric_injury_create: mutex allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "hemispheric_injury_create: failed to allocate mutex");
         nimcp_free(system);
         return NULL;
     }

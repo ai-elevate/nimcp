@@ -76,3 +76,8 @@ gtest_discover_tests(integration_kg_hierarchy_graph_algorithms_test)
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regions")
     add_subdirectory(regions)
 endif()
+
+# Add hemispheric subdirectory (bilateral brain, corpus callosum)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/hemispheric")
+    add_subdirectory(hemispheric)
+endif()

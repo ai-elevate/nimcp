@@ -222,6 +222,8 @@ hemispheric_glial_bridge_t* hemispheric_glial_create(
     bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("hemispheric_glial_create: mutex allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "hemispheric_glial_create: failed to allocate mutex");
         nimcp_free(bridge);
         return NULL;
     }

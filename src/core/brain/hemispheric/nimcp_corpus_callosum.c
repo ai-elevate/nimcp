@@ -329,12 +329,16 @@ corpus_callosum_t* callosum_create(const callosum_config_t* config) {
 
     if (!callosum_validate_config(&cfg)) {
         NIMCP_LOGGING_ERROR("Invalid callosum configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "callosum_create: invalid configuration");
         return NULL;
     }
 
     corpus_callosum_t* cc = nimcp_calloc(1, sizeof(corpus_callosum_t));
     if (!cc) {
         NIMCP_LOGGING_ERROR("Failed to allocate corpus callosum");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "callosum_create: failed to allocate corpus callosum");
         return NULL;
     }
 
@@ -377,10 +381,14 @@ corpus_callosum_t* callosum_create(const callosum_config_t* config) {
 
     // Initialize message queues
     if (queue_init(&cc->left_to_right, cfg.queue_capacity) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "callosum_create: failed to initialize left_to_right queue");
         nimcp_free(cc);
         return NULL;
     }
     if (queue_init(&cc->right_to_left, cfg.queue_capacity) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "callosum_create: failed to initialize right_to_left queue");
         queue_destroy(&cc->left_to_right);
         nimcp_free(cc);
         return NULL;
@@ -394,6 +402,8 @@ corpus_callosum_t* callosum_create(const callosum_config_t* config) {
     // Mutex
     cc->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!cc->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "callosum_create: failed to allocate mutex");
         queue_destroy(&cc->left_to_right);
         queue_destroy(&cc->right_to_left);
         nimcp_free(cc);
@@ -478,6 +488,8 @@ int callosum_send(
     size_t size
 ) {
     if (!cc || channel >= CALLOSUM_CHANNEL_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "callosum_send: cc is NULL or invalid channel");
         return -1;
     }
 
@@ -717,6 +729,8 @@ int callosum_set_channel_bandwidth(
     uint32_t msgs_per_second
 ) {
     if (!cc || channel >= CALLOSUM_CHANNEL_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "callosum_set_channel_bandwidth: cc is NULL or invalid channel");
         return -1;
     }
 
@@ -741,6 +755,8 @@ float callosum_get_bandwidth_utilization(const corpus_callosum_t* cc) {
 
 int callosum_set_latency(corpus_callosum_t* cc, float min_ms, float max_ms) {
     if (!cc || min_ms > max_ms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "callosum_set_latency: cc is NULL or invalid latency range");
         return -1;
     }
 
@@ -761,6 +777,8 @@ int callosum_set_channel_latency(
     float max_ms
 ) {
     if (!cc || channel >= CALLOSUM_CHANNEL_COUNT || min_ms > max_ms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "callosum_set_channel_latency: cc is NULL, invalid channel, or invalid range");
         return -1;
     }
 
@@ -848,6 +866,8 @@ bool callosum_is_connected(const corpus_callosum_t* cc) {
 
 int callosum_set_connection_strength(corpus_callosum_t* cc, float strength) {
     if (!cc || strength < 0.0f || strength > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "callosum_set_connection_strength: cc is NULL or strength out of range");
         return -1;
     }
 
@@ -888,6 +908,8 @@ int callosum_set_channel_enabled(
     bool enable
 ) {
     if (!cc || channel >= CALLOSUM_CHANNEL_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "callosum_set_channel_enabled: cc is NULL or invalid channel");
         return -1;
     }
 
@@ -914,6 +936,8 @@ bool callosum_is_channel_enabled(
 
 int callosum_get_stats(const corpus_callosum_t* cc, callosum_stats_t* stats) {
     if (!cc || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "callosum_get_stats: cc or stats is NULL");
         return -1;
     }
 
@@ -978,6 +1002,8 @@ int callosum_connect_bio_async(corpus_callosum_t* cc) {
 
 int callosum_disconnect_bio_async(corpus_callosum_t* cc) {
     if (!cc || !cc->bio_async_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "callosum_disconnect_bio_async: cc is NULL or not connected");
         return -1;
     }
 

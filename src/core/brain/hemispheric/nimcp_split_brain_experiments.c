@@ -125,6 +125,8 @@ split_brain_session_t* split_brain_session_create(
 ) {
     if (!brain) {
         NIMCP_LOGGING_ERROR("Cannot create session with NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "split_brain_session_create: brain is NULL");
         return NULL;
     }
 
@@ -137,12 +139,16 @@ split_brain_session_t* split_brain_session_create(
 
     if (!split_brain_validate_config(config)) {
         NIMCP_LOGGING_ERROR("Invalid session configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "split_brain_session_create: invalid configuration");
         return NULL;
     }
 
     split_brain_session_t* session = nimcp_malloc(sizeof(split_brain_session_t));
     if (!session) {
         NIMCP_LOGGING_ERROR("Failed to allocate session");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "split_brain_session_create: failed to allocate session");
         return NULL;
     }
     memset(session, 0, sizeof(split_brain_session_t));
@@ -156,6 +162,8 @@ split_brain_session_t* split_brain_session_create(
     session->trials = nimcp_malloc(sizeof(split_brain_trial_t) * session->trial_capacity);
     if (!session->trials) {
         NIMCP_LOGGING_ERROR("Failed to allocate trials");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "split_brain_session_create: failed to allocate trials");
         nimcp_free(session);
         return NULL;
     }
@@ -172,9 +180,15 @@ split_brain_session_t* split_brain_session_create(
 
     // Create mutex
     session->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
-    if (session->mutex) {
-        nimcp_mutex_init(session->mutex, NULL);
+    if (!session->mutex) {
+        NIMCP_LOGGING_ERROR("Failed to allocate mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "split_brain_session_create: failed to allocate mutex");
+        nimcp_free(session->trials);
+        nimcp_free(session);
+        return NULL;
     }
+    nimcp_mutex_init(session->mutex, NULL);
 
     session->is_running = false;
     session->is_paused = false;
@@ -389,6 +403,8 @@ split_brain_trial_t* split_brain_trial_create(
 
     if (session->current_trial >= session->trial_capacity) {
         NIMCP_LOGGING_ERROR("Trial capacity exceeded");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "split_brain_trial_create: trial capacity exceeded");
         return NULL;
     }
 

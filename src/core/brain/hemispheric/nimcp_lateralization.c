@@ -281,10 +281,14 @@ int lateralization_shift_dominance(
     }
 
     if (!profile->enable_plasticity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "lateralization_shift_dominance: plasticity is disabled");
         return -1;  // Plasticity disabled
     }
 
     if (domain >= COGNITIVE_DOMAIN_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "lateralization_shift_dominance: invalid domain");
         return -1;  // Invalid domain
     }
 
@@ -319,10 +323,14 @@ int lateralization_apply_usage_plasticity(
     hemisphere_id_t hemisphere
 ) {
     if (!profile || !profile->enable_plasticity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "lateralization_apply_usage_plasticity: profile is NULL or plasticity disabled");
         return -1;
     }
 
     if (domain >= COGNITIVE_DOMAIN_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "lateralization_apply_usage_plasticity: invalid domain");
         return -1;
     }
 

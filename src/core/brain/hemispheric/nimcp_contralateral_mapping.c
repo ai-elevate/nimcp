@@ -179,6 +179,8 @@ contralateral_system_t* contralateral_create(
         system->config.total_motor_neurons * sizeof(float)
     );
     if (!system->motor_neuron_activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "contralateral_create: failed to allocate motor_neuron_activations");
         nimcp_free(system);
         return NULL;
     }
@@ -189,6 +191,8 @@ contralateral_system_t* contralateral_create(
         system->config.total_sensory_neurons * sizeof(float)
     );
     if (!system->sensory_neuron_activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "contralateral_create: failed to allocate sensory_neuron_activations");
         nimcp_free(system->motor_neuron_activations);
         nimcp_free(system);
         return NULL;
@@ -229,6 +233,8 @@ int contralateral_process_motor(
     uint32_t max_commands
 ) {
     if (!system || !system->initialized || !hemisphere_output || !body_commands) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "contralateral_process_motor: NULL or uninitialized parameter");
         return -1;
     }
 
@@ -306,6 +312,8 @@ int contralateral_process_sensory(
     uint32_t max_activations
 ) {
     if (!system || !system->initialized || !body_inputs || !hemisphere_input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "contralateral_process_sensory: NULL or uninitialized parameter");
         return -1;
     }
 
