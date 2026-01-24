@@ -204,6 +204,7 @@ static nimcp_result_t conn_hash_table_insert(
     connection_node_t* node = nimcp_malloc(sizeof(connection_node_t));
     if (!node) {
         LOG_ERROR("Failed to allocate hash node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate hash node");
         return NIMCP_NO_MEMORY;
     }
 
@@ -371,6 +372,7 @@ columnar_connectivity_t* columnar_connectivity_create(uint32_t max_connections) 
     conn->connections = nimcp_malloc(sizeof(columnar_connection_t) * max_connections);
     if (!conn->connections) {
         LOG_ERROR("Failed to allocate connection pool");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate connection pool");
         nimcp_free(conn);
         return NULL;
     }
@@ -383,6 +385,7 @@ columnar_connectivity_t* columnar_connectivity_create(uint32_t max_connections) 
     conn->by_target = conn_hash_table_create();
     if (!conn->by_source || !conn->by_target) {
         LOG_ERROR("Failed to create hash tables");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to create hash tables");
         conn_hash_table_destroy(conn->by_source);
         conn_hash_table_destroy(conn->by_target);
         nimcp_free(conn->connections);
@@ -429,7 +432,14 @@ nimcp_result_t connectivity_add_rule(
     const connectivity_rule_t* rule)
 {
     // Guard: validate parameters
-    if (!conn || !rule) return NIMCP_INVALID_PARAM;
+    if (!conn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conn is NULL");
+        return NIMCP_INVALID_PARAM;
+    }
+    if (!rule) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rule is NULL");
+        return NIMCP_INVALID_PARAM;
+    }
 
     nimcp_platform_mutex_lock(&conn->lock);
 
@@ -453,7 +463,10 @@ nimcp_result_t connectivity_add_rule(
 
 nimcp_result_t connectivity_apply_canonical_rules(columnar_connectivity_t* conn) {
     // Guard: validate parameters
-    if (!conn) return NIMCP_INVALID_PARAM;
+    if (!conn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conn is NULL");
+        return NIMCP_INVALID_PARAM;
+    }
 
     LOG_INFO("Applying canonical microcircuit rules (Douglas & Martin 1991)");
 
@@ -557,7 +570,14 @@ uint32_t connectivity_generate_intracolumnar(
     const laminar_structure_t* layers)
 {
     // Guard: validate parameters
-    if (!conn || !layers) return 0;
+    if (!conn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conn is NULL");
+        return 0;
+    }
+    if (!layers) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layers is NULL");
+        return 0;
+    }
 
     nimcp_platform_mutex_lock(&conn->lock);
 
@@ -622,8 +642,22 @@ uint32_t connectivity_generate_intercolumnar(
     uint32_t dims)
 {
     // Guard: validate parameters
-    if (!conn || !column_ids || num_columns == 0) return 0;
-    if (dims != 2 && dims != 3) return 0;
+    if (!conn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conn is NULL");
+        return 0;
+    }
+    if (!column_ids) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "column_ids is NULL");
+        return 0;
+    }
+    if (num_columns == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "num_columns must be > 0");
+        return 0;
+    }
+    if (dims != 2 && dims != 3) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dims must be 2 or 3");
+        return 0;
+    }
 
     nimcp_platform_mutex_lock(&conn->lock);
 
@@ -634,6 +668,7 @@ uint32_t connectivity_generate_intercolumnar(
     if (!positions) {
         local_positions = nimcp_malloc(sizeof(float) * num_columns * dims);
         if (!local_positions) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate local_positions");
             nimcp_platform_mutex_unlock(&conn->lock);
             return 0;
         }
@@ -734,8 +769,22 @@ uint32_t connectivity_generate_long_range(
     uint32_t num_targets)
 {
     // Guard: validate parameters
-    if (!conn || !source_columns || !target_columns) return 0;
-    if (num_sources == 0 || num_targets == 0) return 0;
+    if (!conn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conn is NULL");
+        return 0;
+    }
+    if (!source_columns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source_columns is NULL");
+        return 0;
+    }
+    if (!target_columns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "target_columns is NULL");
+        return 0;
+    }
+    if (num_sources == 0 || num_targets == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "num_sources and num_targets must be > 0");
+        return 0;
+    }
 
     nimcp_platform_mutex_lock(&conn->lock);
 
@@ -813,7 +862,14 @@ uint32_t connectivity_get_connections_from(
     uint32_t max_connections)
 {
     // Guard: validate parameters
-    if (!conn || !out_connections) return 0;
+    if (!conn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conn is NULL");
+        return 0;
+    }
+    if (!out_connections) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "out_connections is NULL");
+        return 0;
+    }
 
     nimcp_platform_mutex_lock(&conn->lock);
 
@@ -836,7 +892,14 @@ uint32_t connectivity_get_connections_to(
     uint32_t max_connections)
 {
     // Guard: validate parameters
-    if (!conn || !out_connections) return 0;
+    if (!conn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conn is NULL");
+        return 0;
+    }
+    if (!out_connections) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "out_connections is NULL");
+        return 0;
+    }
 
     nimcp_platform_mutex_lock(&conn->lock);
 
@@ -863,7 +926,18 @@ void connectivity_propagate(
     uint32_t num_columns)
 {
     // Guard: validate parameters
-    if (!conn || !source_activations || !target_inputs) return;
+    if (!conn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conn is NULL");
+        return;
+    }
+    if (!source_activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source_activations is NULL");
+        return;
+    }
+    if (!target_inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "target_inputs is NULL");
+        return;
+    }
 
     // Process pending bio-async messages
     if (bio_async_enabled && bio_ctx) {
@@ -896,7 +970,20 @@ void connectivity_propagate_with_delay(
     float dt_ms)
 {
     // Guard: validate parameters
-    if (!conn || !source_activations || !target_inputs || dt_ms <= 0.0F) {
+    if (!conn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conn is NULL");
+        return;
+    }
+    if (!source_activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source_activations is NULL");
+        return;
+    }
+    if (!target_inputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "target_inputs is NULL");
+        return;
+    }
+    if (dt_ms <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dt_ms must be > 0");
         return;
     }
 
@@ -933,8 +1020,22 @@ void connectivity_apply_hebbian(
     float learning_rate)
 {
     // Guard: validate parameters
-    if (!conn || !pre_activations || !post_activations) return;
-    if (learning_rate <= 0.0F || learning_rate > 1.0F) return;
+    if (!conn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conn is NULL");
+        return;
+    }
+    if (!pre_activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pre_activations is NULL");
+        return;
+    }
+    if (!post_activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "post_activations is NULL");
+        return;
+    }
+    if (learning_rate <= 0.0F || learning_rate > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "learning_rate must be in (0, 1]");
+        return;
+    }
 
     // For each connection: Δw = η × pre × post
     for (uint32_t i = 0; i < conn->num_connections; i++) {
@@ -962,7 +1063,18 @@ void connectivity_apply_stdp(
     uint32_t num_columns)
 {
     // Guard: validate parameters
-    if (!conn || !pre_spike_times || !post_spike_times) return;
+    if (!conn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conn is NULL");
+        return;
+    }
+    if (!pre_spike_times) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pre_spike_times is NULL");
+        return;
+    }
+    if (!post_spike_times) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "post_spike_times is NULL");
+        return;
+    }
 
     // For each connection: apply STDP window
     for (uint32_t i = 0; i < conn->num_connections; i++) {
@@ -1012,7 +1124,10 @@ void connectivity_apply_stdp(
 
 float connectivity_compute_clustering(columnar_connectivity_t* conn) {
     // Guard: validate parameters
-    if (!conn) return -1.0F;
+    if (!conn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conn is NULL");
+        return -1.0F;
+    }
 
     nimcp_platform_mutex_lock(&conn->lock);
 
@@ -1025,6 +1140,7 @@ float connectivity_compute_clustering(columnar_connectivity_t* conn) {
     // Extract unique column IDs
     uint32_t* columns = nimcp_malloc(sizeof(uint32_t) * conn->num_connections * 2);
     if (!columns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate columns array for clustering");
         nimcp_platform_mutex_unlock(&conn->lock);
         return -1.0F;
     }
@@ -1096,7 +1212,10 @@ float connectivity_compute_clustering(columnar_connectivity_t* conn) {
 
 float connectivity_compute_path_length(columnar_connectivity_t* conn) {
     // Guard: validate parameters
-    if (!conn) return -1.0F;
+    if (!conn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conn is NULL");
+        return -1.0F;
+    }
 
     nimcp_platform_mutex_lock(&conn->lock);
 
@@ -1113,6 +1232,7 @@ float connectivity_compute_path_length(columnar_connectivity_t* conn) {
     // Extract unique column IDs
     uint32_t* columns = nimcp_malloc(sizeof(uint32_t) * conn->num_connections * 2);
     if (!columns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate columns array for path length");
         nimcp_platform_mutex_unlock(&conn->lock);
         return -1.0F;
     }
@@ -1169,7 +1289,10 @@ float connectivity_compute_path_length(columnar_connectivity_t* conn) {
 
 bool connectivity_is_small_world(columnar_connectivity_t* conn) {
     // Guard: validate parameters
-    if (!conn) return false;
+    if (!conn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conn is NULL");
+        return false;
+    }
 
     float C = connectivity_compute_clustering(conn);
     float L = connectivity_compute_path_length(conn);
@@ -1193,7 +1316,14 @@ nimcp_result_t connectivity_get_stats(
     connectivity_stats_t* stats)
 {
     // Guard: validate parameters
-    if (!conn || !stats) return NIMCP_INVALID_PARAM;
+    if (!conn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conn is NULL");
+        return NIMCP_INVALID_PARAM;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats is NULL");
+        return NIMCP_INVALID_PARAM;
+    }
 
     nimcp_platform_mutex_lock(&conn->lock);
 

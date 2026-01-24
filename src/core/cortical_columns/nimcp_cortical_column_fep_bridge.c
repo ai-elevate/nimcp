@@ -41,7 +41,14 @@ cortical_column_fep_bridge_t* cortical_column_fep_create(
     hypercolumn_t* hypercolumn,
     fep_system_t* fep_system)
 {
-    if (!hypercolumn || !fep_system) return NULL;
+    if (!hypercolumn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypercolumn is NULL");
+        return NULL;
+    }
+    if (!fep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep_system is NULL");
+        return NULL;
+    }
 
     cortical_column_fep_bridge_t* bridge = (cortical_column_fep_bridge_t*)
         nimcp_malloc(sizeof(cortical_column_fep_bridge_t));
@@ -84,6 +91,7 @@ cortical_column_fep_bridge_t* cortical_column_fep_create(
 
         if (!bridge->state.minicolumn_states || !bridge->state.belief_distribution ||
             !bridge->state.prior_distribution || !bridge->state.prediction_errors) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate minicolumn states");
             cortical_column_fep_destroy(bridge);
             return NULL;
         }
@@ -144,6 +152,7 @@ int cortical_column_fep_update(cortical_column_fep_bridge_t* bridge) {
     /* Get hypercolumn distribution */
     float* activations = (float*)nimcp_malloc(sizeof(float) * bridge->state.num_minicolumns);
     if (!activations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate activations array");
         nimcp_platform_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_NO_MEMORY;
     }
@@ -206,7 +215,14 @@ uint32_t cortical_column_fep_compute_prediction(
     float* prediction,
     uint32_t prediction_dim)
 {
-    if (!bridge || !prediction) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return 0;
+    }
+    if (!prediction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prediction is NULL");
+        return 0;
+    }
 
     /* Compute weighted prediction based on beliefs */
     uint32_t winner = hypercolumn_get_winner(bridge->hypercolumn);
@@ -345,7 +361,10 @@ int cortical_column_fep_set_precision(
 uint32_t cortical_column_fep_select_hypothesis(
     cortical_column_fep_bridge_t* bridge)
 {
-    if (!bridge) return UINT32_MAX;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return UINT32_MAX;
+    }
 
     /* Find minicolumn with highest belief */
     uint32_t winner = 0;
@@ -404,7 +423,10 @@ int cortical_column_fep_compute_free_energy(
 float cortical_column_fep_compute_surprise(
     const cortical_column_fep_bridge_t* bridge)
 {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return 0.0f;
+    }
 
     float fe;
     cortical_column_fep_compute_free_energy(bridge, &fe);
@@ -420,7 +442,14 @@ uint32_t cortical_column_fep_get_beliefs(
     float* beliefs,
     uint32_t size)
 {
-    if (!bridge || !beliefs) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return 0;
+    }
+    if (!beliefs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "beliefs is NULL");
+        return 0;
+    }
 
     uint32_t count = (size < bridge->state.num_minicolumns) ? size : bridge->state.num_minicolumns;
     memcpy(beliefs, bridge->state.belief_distribution, sizeof(float) * count);
@@ -462,7 +491,10 @@ int cortical_column_fep_get_stats(
  * ============================================================================ */
 
 int cortical_column_fep_connect_bio_async(cortical_column_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     /* Note: BIO_MODULE_FEP_CORTICAL_COLUMN would need to be defined */
@@ -474,7 +506,10 @@ int cortical_column_fep_connect_bio_async(cortical_column_fep_bridge_t* bridge) 
 }
 
 int cortical_column_fep_disconnect_bio_async(cortical_column_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
     bridge->base.bio_async_enabled = false;
     return 0;
 }

@@ -23,3 +23,8 @@ endif()
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/geometry/CMakeLists.txt)
     add_subdirectory(geometry)
 endif()
+
+# Include Cortical Columns E2E tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/cortical_columns/CMakeLists.txt)
+    add_subdirectory(cortical_columns)
+endif()

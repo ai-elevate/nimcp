@@ -14,6 +14,126 @@ add_executable(regression_cortical_columns_performance
 )
 
 # ============================================================================
+# Cortical Column Regression Tests
+# ============================================================================
+
+add_executable(regression_cortical_column
+    test_cortical_column_regression.cpp
+)
+
+target_compile_features(regression_cortical_column
+    PRIVATE
+        cxx_std_17
+)
+
+target_include_directories(regression_cortical_column
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/test
+)
+
+target_link_libraries(regression_cortical_column
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+        m
+)
+
+add_test(NAME regression_cortical_column
+         COMMAND regression_cortical_column
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(regression_cortical_column
+    PROPERTIES
+        TIMEOUT 300
+        LABELS "regression;core;cortical_columns"
+        ENVIRONMENT "NIMCP_LOG_LEVEL=WARNING"
+)
+
+# ============================================================================
+# Cortical Hierarchy Regression Tests
+# ============================================================================
+
+add_executable(regression_cortical_hierarchy
+    test_cortical_hierarchy_regression.cpp
+)
+
+target_compile_features(regression_cortical_hierarchy
+    PRIVATE
+        cxx_std_17
+)
+
+target_include_directories(regression_cortical_hierarchy
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/test
+)
+
+target_link_libraries(regression_cortical_hierarchy
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+        m
+)
+
+add_test(NAME regression_cortical_hierarchy
+         COMMAND regression_cortical_hierarchy
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(regression_cortical_hierarchy
+    PROPERTIES
+        TIMEOUT 300
+        LABELS "regression;core;cortical_columns;hierarchy"
+        ENVIRONMENT "NIMCP_LOG_LEVEL=WARNING"
+)
+
+# ============================================================================
+# Cortical Features Regression Tests
+# ============================================================================
+
+add_executable(regression_cortical_features
+    test_cortical_features_regression.cpp
+)
+
+target_compile_features(regression_cortical_features
+    PRIVATE
+        cxx_std_17
+)
+
+target_include_directories(regression_cortical_features
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+        ${CMAKE_SOURCE_DIR}/test
+)
+
+target_link_libraries(regression_cortical_features
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+        m
+)
+
+add_test(NAME regression_cortical_features
+         COMMAND regression_cortical_features
+         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR})
+
+set_tests_properties(regression_cortical_features
+    PROPERTIES
+        TIMEOUT 180
+        LABELS "regression;core;cortical_columns;features"
+        ENVIRONMENT "NIMCP_LOG_LEVEL=WARNING"
+)
+
+# ============================================================================
 # Compiler Features
 # ============================================================================
 
@@ -278,6 +398,9 @@ add_subdirectory(substrate)
 
 message(STATUS "Cortical Columns Regression Tests:")
 message(STATUS "  - Main test: regression_cortical_columns_performance")
+message(STATUS "  - Column regression: regression_cortical_column (25 tests)")
+message(STATUS "  - Hierarchy regression: regression_cortical_hierarchy (20 tests)")
+message(STATUS "  - Features regression: regression_cortical_features (20 tests)")
 message(STATUS "  - Categories: performance, memory, numerical, scaling, correctness, thread_safety")
-message(STATUS "  - Timeout: 600s (10 minutes)")
+message(STATUS "  - Timeouts: 180-300 seconds")
 message(STATUS "  - Optimization: -O2 -march=native")

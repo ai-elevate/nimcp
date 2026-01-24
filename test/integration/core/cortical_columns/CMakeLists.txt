@@ -202,13 +202,210 @@ add_custom_target(doc_cortical_columns_integration
 add_subdirectory(substrate)
 
 #=============================================================================
+# Additional Cortical Column Integration Tests
+#=============================================================================
+
+# Combined test executable for new cortical column tests
+add_executable(integration_cortical_columns_core
+    test_cortical_column_integration.cpp
+    test_cortical_hierarchy_integration.cpp
+    test_columnar_connectivity_integration.cpp
+    test_cortical_features_integration.cpp
+)
+
+target_include_directories(integration_cortical_columns_core
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/test
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+target_link_libraries(integration_cortical_columns_core
+    PRIVATE
+        nimcp
+        GTest::GTest
+        GTest::Main
+        Threads::Threads
+        m
+)
+
+target_compile_features(integration_cortical_columns_core PRIVATE cxx_std_17)
+
+target_compile_options(integration_cortical_columns_core
+    PRIVATE
+        -Wall
+        -Wextra
+        $<$<CONFIG:Debug>:-O0 -g3>
+        $<$<CONFIG:Release>:-O3 -DNDEBUG>
+)
+
+add_test(
+    NAME integration_cortical_columns_core
+    COMMAND integration_cortical_columns_core
+)
+
+set_tests_properties(integration_cortical_columns_core
+    PROPERTIES
+        LABELS "integration;core;cortical_columns"
+        TIMEOUT 180
+)
+
+#=============================================================================
+# Individual Test Executables (for focused testing)
+#=============================================================================
+
+# Cortical column basic tests
+add_executable(integration_cortical_column_basic
+    test_cortical_column_integration.cpp
+)
+
+target_include_directories(integration_cortical_column_basic PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/test
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_link_libraries(integration_cortical_column_basic PRIVATE
+    nimcp
+    GTest::GTest
+    GTest::Main
+    Threads::Threads
+    m
+)
+
+target_compile_features(integration_cortical_column_basic PRIVATE cxx_std_17)
+
+add_test(
+    NAME integration_cortical_column_basic
+    COMMAND integration_cortical_column_basic
+)
+
+set_tests_properties(integration_cortical_column_basic PROPERTIES
+    LABELS "integration;core;cortical_columns;basic"
+    TIMEOUT 120
+)
+
+# Cortical hierarchy tests
+add_executable(integration_cortical_hierarchy
+    test_cortical_hierarchy_integration.cpp
+)
+
+target_include_directories(integration_cortical_hierarchy PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/test
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_link_libraries(integration_cortical_hierarchy PRIVATE
+    nimcp
+    GTest::GTest
+    GTest::Main
+    Threads::Threads
+    m
+)
+
+target_compile_features(integration_cortical_hierarchy PRIVATE cxx_std_17)
+
+add_test(
+    NAME integration_cortical_hierarchy
+    COMMAND integration_cortical_hierarchy
+)
+
+set_tests_properties(integration_cortical_hierarchy PROPERTIES
+    LABELS "integration;core;cortical_columns;hierarchy"
+    TIMEOUT 120
+)
+
+# Columnar connectivity tests
+add_executable(integration_columnar_connectivity
+    test_columnar_connectivity_integration.cpp
+)
+
+target_include_directories(integration_columnar_connectivity PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/test
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_link_libraries(integration_columnar_connectivity PRIVATE
+    nimcp
+    GTest::GTest
+    GTest::Main
+    Threads::Threads
+    m
+)
+
+target_compile_features(integration_columnar_connectivity PRIVATE cxx_std_17)
+
+add_test(
+    NAME integration_columnar_connectivity
+    COMMAND integration_columnar_connectivity
+)
+
+set_tests_properties(integration_columnar_connectivity PROPERTIES
+    LABELS "integration;core;cortical_columns;connectivity"
+    TIMEOUT 120
+)
+
+# Cortical features (orientation columns) tests
+add_executable(integration_cortical_features
+    test_cortical_features_integration.cpp
+)
+
+target_include_directories(integration_cortical_features PRIVATE
+    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/test
+    ${CMAKE_SOURCE_DIR}/src
+)
+
+target_link_libraries(integration_cortical_features PRIVATE
+    nimcp
+    GTest::GTest
+    GTest::Main
+    Threads::Threads
+    m
+)
+
+target_compile_features(integration_cortical_features PRIVATE cxx_std_17)
+
+add_test(
+    NAME integration_cortical_features
+    COMMAND integration_cortical_features
+)
+
+set_tests_properties(integration_cortical_features PROPERTIES
+    LABELS "integration;core;cortical_columns;features"
+    TIMEOUT 120
+)
+
+#=============================================================================
+# Custom Target for Running All Cortical Column Tests
+#=============================================================================
+
+add_custom_target(run_cortical_columns_integration_tests
+    COMMAND ${CMAKE_CTEST_COMMAND} -L "cortical_columns" --output-on-failure
+    DEPENDS integration_cortical_columns_brain
+            integration_cortical_columns_core
+            integration_cortical_column_basic
+            integration_cortical_hierarchy
+            integration_columnar_connectivity
+            integration_cortical_features
+    COMMENT "Running all cortical columns integration tests"
+)
+
+#=============================================================================
 # Build Summary
 #=============================================================================
 
 message(STATUS "Configured cortical columns integration tests:")
 message(STATUS "  - Test executable: integration_cortical_columns_brain")
+message(STATUS "  - Test executable: integration_cortical_columns_core (combined)")
+message(STATUS "  - Test executable: integration_cortical_column_basic (~40 tests)")
+message(STATUS "  - Test executable: integration_cortical_hierarchy (~30 tests)")
+message(STATUS "  - Test executable: integration_columnar_connectivity (~25 tests)")
+message(STATUS "  - Test executable: integration_cortical_features (~30 tests)")
 message(STATUS "  - Test categories: 6 (BrainIntegration, Visual, Audio, CrossModule, Learning, EndToEnd)")
-message(STATUS "  - Test count: ~20 comprehensive integration tests")
+message(STATUS "  - Test count: ~145+ comprehensive integration tests")
 message(STATUS "  - Includes: Topographic maps, Orientation columns, Feature hypercolumns")
 message(STATUS "  - Plasticity: STDP, Hebbian learning across columns")
 message(STATUS "  - Performance: Large-scale processing benchmarks")

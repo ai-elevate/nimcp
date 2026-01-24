@@ -237,6 +237,7 @@ static bool generate_calcium_spike_if_threshold_crossed(
 int cortical_dendritic_default_config(dendritic_config_t* config) {
     // Guard clause: validate input
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
         NIMCP_LOGGING_ERROR("cortical_dendritic_default_config: config is NULL");
         return -1;
     }
@@ -292,6 +293,7 @@ cortical_dendritic_t* cortical_dendritic_create(
         num_cells, sizeof(pyramidal_cell_state_t)
     );
     if (!dend->cells) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate cells array");
         NIMCP_LOGGING_ERROR("cortical_dendritic_create: failed to allocate cells");
         nimcp_free(dend);
         return NULL;
@@ -368,10 +370,12 @@ int cortical_dendritic_set_basal_input(
 ) {
     // Guard clauses
     if (!dend) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dend is NULL");
         NIMCP_LOGGING_ERROR("cortical_dendritic_set_basal_input: dend is NULL");
         return -1;
     }
     if (cell_idx >= dend->num_cells) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "invalid cell_idx");
         NIMCP_LOGGING_ERROR("cortical_dendritic_set_basal_input: invalid cell_idx %u", cell_idx);
         return -1;
     }
@@ -398,10 +402,12 @@ int cortical_dendritic_set_apical_input(
 ) {
     // Guard clauses
     if (!dend) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dend is NULL");
         NIMCP_LOGGING_ERROR("cortical_dendritic_set_apical_input: dend is NULL");
         return -1;
     }
     if (cell_idx >= dend->num_cells) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "invalid cell_idx");
         NIMCP_LOGGING_ERROR("cortical_dendritic_set_apical_input: invalid cell_idx %u", cell_idx);
         return -1;
     }
@@ -428,10 +434,12 @@ int cortical_dendritic_set_oblique_input(
 ) {
     // Guard clauses
     if (!dend) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dend is NULL");
         NIMCP_LOGGING_ERROR("cortical_dendritic_set_oblique_input: dend is NULL");
         return -1;
     }
     if (cell_idx >= dend->num_cells) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "invalid cell_idx");
         NIMCP_LOGGING_ERROR("cortical_dendritic_set_oblique_input: invalid cell_idx %u", cell_idx);
         return -1;
     }
@@ -453,10 +461,12 @@ int cortical_dendritic_set_oblique_input(
 int cortical_dendritic_update(cortical_dendritic_t* dend, float dt) {
     // Guard clauses
     if (!dend) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dend is NULL");
         NIMCP_LOGGING_ERROR("cortical_dendritic_update: dend is NULL");
         return -1;
     }
     if (dt <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dt must be > 0");
         NIMCP_LOGGING_ERROR("cortical_dendritic_update: dt must be > 0");
         return -1;
     }
@@ -571,14 +581,17 @@ int cortical_dendritic_get_output_mode(
 ) {
     // Guard clauses
     if (!dend) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dend is NULL");
         NIMCP_LOGGING_ERROR("cortical_dendritic_get_output_mode: dend is NULL");
         return -1;
     }
     if (cell_idx >= dend->num_cells) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "invalid cell_idx");
         NIMCP_LOGGING_ERROR("cortical_dendritic_get_output_mode: invalid cell_idx");
         return -1;
     }
     if (!mode) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mode is NULL");
         NIMCP_LOGGING_ERROR("cortical_dendritic_get_output_mode: mode is NULL");
         return -1;
     }
@@ -600,14 +613,17 @@ int cortical_dendritic_get_soma_voltage(
 ) {
     // Guard clauses
     if (!dend) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dend is NULL");
         NIMCP_LOGGING_ERROR("cortical_dendritic_get_soma_voltage: dend is NULL");
         return -1;
     }
     if (cell_idx >= dend->num_cells) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "invalid cell_idx");
         NIMCP_LOGGING_ERROR("cortical_dendritic_get_soma_voltage: invalid cell_idx");
         return -1;
     }
     if (!voltage) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "voltage is NULL");
         NIMCP_LOGGING_ERROR("cortical_dendritic_get_soma_voltage: voltage is NULL");
         return -1;
     }
@@ -629,14 +645,17 @@ int cortical_dendritic_is_calcium_spike_active(
 ) {
     // Guard clauses
     if (!dend) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dend is NULL");
         NIMCP_LOGGING_ERROR("cortical_dendritic_is_calcium_spike_active: dend is NULL");
         return -1;
     }
     if (cell_idx >= dend->num_cells) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "invalid cell_idx");
         NIMCP_LOGGING_ERROR("cortical_dendritic_is_calcium_spike_active: invalid cell_idx");
         return -1;
     }
     if (!active) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "active is NULL");
         NIMCP_LOGGING_ERROR("cortical_dendritic_is_calcium_spike_active: active is NULL");
         return -1;
     }
@@ -661,10 +680,12 @@ int cortical_dendritic_get_stats(
 ) {
     // Guard clauses
     if (!dend) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dend is NULL");
         NIMCP_LOGGING_ERROR("cortical_dendritic_get_stats: dend is NULL");
         return -1;
     }
     if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats is NULL");
         NIMCP_LOGGING_ERROR("cortical_dendritic_get_stats: stats is NULL");
         return -1;
     }
@@ -682,6 +703,7 @@ int cortical_dendritic_get_stats(
 int cortical_dendritic_reset_stats(cortical_dendritic_t* dend) {
     // Guard clause
     if (!dend) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dend is NULL");
         NIMCP_LOGGING_ERROR("cortical_dendritic_reset_stats: dend is NULL");
         return -1;
     }
@@ -702,6 +724,7 @@ int cortical_dendritic_reset_stats(cortical_dendritic_t* dend) {
 int cortical_dendritic_connect_bio_async(cortical_dendritic_t* dend) {
     // Guard clause
     if (!dend) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dend is NULL");
         NIMCP_LOGGING_ERROR("cortical_dendritic_connect_bio_async: dend is NULL");
         return -1;
     }

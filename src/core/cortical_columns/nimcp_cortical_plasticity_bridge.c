@@ -70,6 +70,7 @@ static float get_effective_learning_rate(
 int cortical_plasticity_default_config(cortical_plasticity_config_t* config) {
     /* Guard clause */
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
         NIMCP_LOGGING_ERROR("Config is NULL");
         return -1;
     }
@@ -119,6 +120,7 @@ cortical_plasticity_bridge_t* cortical_plasticity_bridge_create(
     cortical_plasticity_bridge_t* bridge = (cortical_plasticity_bridge_t*)
         nimcp_malloc(sizeof(cortical_plasticity_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate cortical plasticity bridge");
         NIMCP_LOGGING_ERROR("Failed to allocate cortical plasticity bridge");
         return NULL;
     }
@@ -140,6 +142,7 @@ cortical_plasticity_bridge_t* cortical_plasticity_bridge_create(
     bridge->columns = (hypercolumn_t**)
         nimcp_malloc(sizeof(hypercolumn_t*) * bridge->column_capacity);
     if (!bridge->columns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate columns array");
         NIMCP_LOGGING_ERROR("Failed to allocate columns array");
         nimcp_free(bridge);
         return NULL;
@@ -149,6 +152,7 @@ cortical_plasticity_bridge_t* cortical_plasticity_bridge_create(
     bridge->column_states = (cortical_column_plasticity_state_t*)
         nimcp_malloc(sizeof(cortical_column_plasticity_state_t) * bridge->column_capacity);
     if (!bridge->column_states) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate column states array");
         NIMCP_LOGGING_ERROR("Failed to allocate column states array");
         nimcp_free(bridge->columns);
         nimcp_free(bridge);
@@ -160,8 +164,13 @@ cortical_plasticity_bridge_t* cortical_plasticity_bridge_create(
            sizeof(cortical_column_plasticity_state_t) * bridge->column_capacity);
 
     /* Create mutex */
-    if (bridge_base_init(&bridge->base, 0, "cortical_plasticity") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "cortical_plasticity") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to initialize bridge base");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to create mutex");
         NIMCP_LOGGING_ERROR("Failed to create mutex");
         nimcp_free(bridge->column_states);
         nimcp_free(bridge->columns);
@@ -227,7 +236,13 @@ int cortical_plasticity_connect_coordinator(
     plasticity_coordinator_t* coordinator
 ) {
     /* Guard clauses */
-    if (!bridge || !coordinator) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_LOGGING_ERROR("Invalid parameters");
+        return -1;
+    }
+    if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
         NIMCP_LOGGING_ERROR("Invalid parameters");
         return -1;
     }
@@ -272,7 +287,10 @@ int cortical_plasticity_disconnect_coordinator(
     cortical_plasticity_bridge_t* bridge
 ) {
     /* Guard clause */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -304,7 +322,13 @@ int cortical_plasticity_add_column(
     uint32_t* column_id_out
 ) {
     /* Guard clauses */
-    if (!bridge || !column) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        NIMCP_LOGGING_ERROR("Invalid parameters");
+        return -1;
+    }
+    if (!column) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "column is NULL");
         NIMCP_LOGGING_ERROR("Invalid parameters");
         return -1;
     }
@@ -313,6 +337,7 @@ int cortical_plasticity_add_column(
 
     /* Check capacity */
     if (bridge->num_columns >= bridge->column_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Column capacity exceeded");
         nimcp_platform_mutex_unlock(bridge->base.mutex);
         NIMCP_LOGGING_ERROR("Column capacity exceeded");
         return -1;
@@ -351,8 +376,14 @@ int cortical_plasticity_remove_column(
     uint32_t column_id
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
-    if (column_id >= bridge->num_columns) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (column_id >= bridge->num_columns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "column_id out of range");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -388,7 +419,10 @@ int cortical_plasticity_apply_stdp(
     uint32_t synapse_id
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_stdp) return 0;
 
     cortical_column_plasticity_state_t* state = find_column_state(bridge, column_id);
@@ -436,7 +470,10 @@ int cortical_plasticity_update_bcm_threshold(
     float dt
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_bcm) return 0;
 
     cortical_column_plasticity_state_t* state = find_column_state(bridge, column_id);
@@ -473,8 +510,14 @@ float cortical_plasticity_get_bcm_threshold(
     uint32_t column_id
 ) {
     /* Guard clauses */
-    if (!bridge) return -1.0f;
-    if (column_id >= bridge->num_columns) return -1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1.0f;
+    }
+    if (column_id >= bridge->num_columns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "column_id out of range");
+        return -1.0f;
+    }
 
     return bridge->column_states[column_id].bcm_threshold;
 }
@@ -490,7 +533,10 @@ int cortical_plasticity_apply_homeostatic_scaling(
     float dt
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_homeostatic) return 0;
 
     cortical_column_plasticity_state_t* state = find_column_state(bridge, column_id);
@@ -532,8 +578,14 @@ float cortical_plasticity_get_homeostatic_scale(
     uint32_t column_id
 ) {
     /* Guard clauses */
-    if (!bridge) return -1.0f;
-    if (column_id >= bridge->num_columns) return -1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1.0f;
+    }
+    if (column_id >= bridge->num_columns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "column_id out of range");
+        return -1.0f;
+    }
 
     return bridge->column_states[column_id].homeostatic_scale;
 }
@@ -547,7 +599,10 @@ int cortical_plasticity_set_critical_period(
     bool in_critical_period
 ) {
     /* Guard clause */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -577,7 +632,10 @@ int cortical_plasticity_update_eligibility(
     float dt
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_eligibility) return 0;
 
     cortical_column_plasticity_state_t* state = find_column_state(bridge, column_id);
@@ -608,7 +666,10 @@ int cortical_plasticity_apply_reward(
     float reward
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_eligibility) return 0;
 
     cortical_column_plasticity_state_t* state = find_column_state(bridge, column_id);
@@ -640,7 +701,10 @@ int cortical_plasticity_get_stats(
     uint64_t* eligibility_updates_out
 ) {
     /* Guard clause */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
 
     if (stdp_updates_out) *stdp_updates_out = bridge->total_stdp_updates;
     if (bcm_updates_out) *bcm_updates_out = bridge->total_bcm_updates;
@@ -656,8 +720,18 @@ int cortical_plasticity_get_column_state(
     cortical_column_plasticity_state_t* state_out
 ) {
     /* Guard clauses */
-    if (!bridge || !state_out) return -1;
-    if (column_id >= bridge->num_columns) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
+    if (!state_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state_out is NULL");
+        return -1;
+    }
+    if (column_id >= bridge->num_columns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "column_id out of range");
+        return -1;
+    }
 
     *state_out = bridge->column_states[column_id];
     return 0;
@@ -671,7 +745,10 @@ int cortical_plasticity_connect_bio_async(
     cortical_plasticity_bridge_t* bridge
 ) {
     /* Guard clause */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     /* Register with bio-async router */
@@ -697,7 +774,10 @@ int cortical_plasticity_disconnect_bio_async(
     cortical_plasticity_bridge_t* bridge
 ) {
     /* Guard clause */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return -1;
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {
