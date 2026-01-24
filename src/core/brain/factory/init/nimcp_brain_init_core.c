@@ -129,7 +129,8 @@ adaptive_network_t nimcp_brain_factory_create_brain_network(uint32_t num_inputs,
 bool nimcp_brain_factory_init_output_labels(brain_t brain, uint32_t num_outputs)
 {
     if (!brain) {
-        set_error("NULL brain pointer in init_output_labels");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "nimcp_brain_factory_init_output_labels: brain is NULL");
         return false;
     }
     if (num_outputs == 0) {
@@ -154,7 +155,8 @@ bool nimcp_brain_factory_init_output_labels(brain_t brain, uint32_t num_outputs)
 bool nimcp_brain_factory_init_event_bus(brain_t brain)
 {
     if (!brain) {
-        set_error("brain_factory_init_event_bus: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "nimcp_brain_factory_init_event_bus: brain is NULL");
         return false;
     }
 

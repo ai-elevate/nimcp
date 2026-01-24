@@ -37,3 +37,39 @@ gtest_discover_tests(regression_parietal_fep_orchestrator_bridge
         LABELS "regression;cognitive;parietal;fep;orchestrator;bridge"
         TIMEOUT 600
 )
+
+# ============================================================================
+# Genius Bridges Exception Handling Regression Tests
+# ============================================================================
+# WHAT: Verify exception handling behavior remains consistent across versions
+# WHY:  Prevent regressions in error codes, messages, and handler behavior
+# HOW:  Check exact error codes, message patterns, and function context
+
+add_executable(regression_genius_bridges_exception
+    test_genius_bridges_exception_regression.cpp
+)
+
+target_link_libraries(regression_genius_bridges_exception
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(regression_genius_bridges_exception
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_genius_bridges_exception PRIVATE cxx_std_17)
+target_compile_definitions(regression_genius_bridges_exception PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(regression_genius_bridges_exception
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;cognitive;parietal;genius;exception-handling"
+        TIMEOUT 300
+)

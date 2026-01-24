@@ -98,3 +98,36 @@ gtest_discover_tests(integration_parietal_training
         LABELS "integration;cognitive;parietal;training"
         TIMEOUT 180
 )
+
+# ----------------------------------------------------------------------------
+# Genius Bridges Exception Handling Integration Test
+# Tests cross-bridge exception handling and propagation
+# ----------------------------------------------------------------------------
+add_executable(integration_genius_bridges_exception
+    test_genius_bridges_exception_integration.cpp
+)
+
+target_link_libraries(integration_genius_bridges_exception
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(integration_genius_bridges_exception
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(integration_genius_bridges_exception PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_genius_bridges_exception
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;cognitive;parietal;genius;exception-handling"
+        TIMEOUT 180
+)

@@ -197,6 +197,8 @@ genius_training_bridge_t* genius_training_create(const genius_training_config_t*
 
     /* Initialize bridge base */
     if (bridge_base_init(&bridge->base, 0, "genius_training") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "bridge_base_init failed for genius_training");
         nimcp_free(bridge);
         return NULL;
     }
@@ -205,6 +207,8 @@ genius_training_bridge_t* genius_training_create(const genius_training_config_t*
     bridge->task_capacity = GENIUS_TRAINING_MAX_TASKS;
     bridge->tasks = nimcp_calloc(bridge->task_capacity, sizeof(genius_training_task_t));
     if (!bridge->tasks) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "task array allocation failed for genius_training_bridge");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
@@ -416,7 +420,21 @@ float genius_training_train_batch(genius_training_bridge_t* bridge,
                                   const void* inputs,
                                   const void* targets,
                                   uint32_t batch_size) {
-    if (!bridge || !inputs || !targets || batch_size == 0) return -1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "genius_training_train_batch: bridge is NULL");
+        return -1.0f;
+    }
+    if (!inputs || !targets) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "genius_training_train_batch: inputs or targets is NULL");
+        return -1.0f;
+    }
+    if (batch_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_training_train_batch: batch_size is 0");
+        return -1.0f;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = GENIUS_TRAINING_STATE_TRAINING;
@@ -637,7 +655,17 @@ int genius_training_set_curriculum_stage(genius_training_bridge_t* bridge,
 
 int genius_training_set_domain(genius_training_bridge_t* bridge,
                                genius_train_domain_t domain) {
-    if (!bridge || domain >= GENIUS_TRAIN_DOMAIN_COUNT) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "genius_training_set_domain: bridge is NULL");
+        return -1;
+    }
+    if (domain >= GENIUS_TRAIN_DOMAIN_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_training_set_domain: invalid domain %d (max: %d)",
+            (int)domain, GENIUS_TRAIN_DOMAIN_COUNT - 1);
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->curriculum.current_domain = domain;
@@ -659,7 +687,16 @@ float genius_training_get_learning_rate(genius_training_bridge_t* bridge) {
 }
 
 int genius_training_set_learning_rate(genius_training_bridge_t* bridge, float lr) {
-    if (!bridge || lr <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "genius_training_set_learning_rate: bridge is NULL");
+        return -1;
+    }
+    if (lr <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_training_set_learning_rate: learning rate must be positive, got %f", lr);
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->current_learning_rate = lr;

@@ -796,3 +796,70 @@ gtest_discover_tests(unit_genius_training_bridge
         LABELS "unit;cognitive;parietal;genius;training-bridge"
         TIMEOUT 90
 )
+
+#=============================================================================
+# Mathematical Genius Bridges Exception Handling Tests
+#=============================================================================
+
+add_executable(unit_genius_bridges_exception_handling
+    test_genius_bridges_exception_handling.cpp
+)
+
+target_link_libraries(unit_genius_bridges_exception_handling
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_genius_bridges_exception_handling
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_genius_bridges_exception_handling PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_genius_bridges_exception_handling
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;parietal;genius;exception-handling"
+        TIMEOUT 90
+)
+
+#=============================================================================
+# Mathematical Genius Module Tests
+#=============================================================================
+
+add_executable(unit_mathematical_genius
+    test_mathematical_genius.cpp
+)
+
+target_link_libraries(unit_mathematical_genius
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_mathematical_genius
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_mathematical_genius PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_mathematical_genius
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;parietal;mathematical-genius"
+        TIMEOUT 120
+)

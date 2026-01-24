@@ -288,6 +288,8 @@ static bool connect_speech_cortex(brain_t brain) {
 
 bool nimcp_brain_factory_init_language_subsystem(brain_t brain) {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "nimcp_brain_factory_init_language_subsystem: brain is NULL");
         return false;
     }
 

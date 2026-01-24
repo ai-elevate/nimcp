@@ -172,12 +172,17 @@ genius_snn_bridge_t* genius_snn_create(const genius_snn_config_t* config) {
     /* Validate config */
     if (bridge->config.num_dimensions == 0 ||
         bridge->config.num_dimensions > GENIUS_SNN_MAX_DIMENSIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "invalid num_dimensions: %u (max: %u)",
+            bridge->config.num_dimensions, GENIUS_SNN_MAX_DIMENSIONS);
         nimcp_free(bridge);
         return NULL;
     }
 
     /* Initialize bridge base */
     if (bridge_base_init(&bridge->base, 0, "genius_snn") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "bridge_base_init failed for genius_snn");
         nimcp_free(bridge);
         return NULL;
     }
@@ -193,6 +198,8 @@ genius_snn_bridge_t* genius_snn_create(const genius_snn_config_t* config) {
 
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->mode_buffer || !bridge->prev_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "buffer allocation failed for genius_snn_bridge");
         genius_snn_destroy(bridge);
         return NULL;
     }
@@ -287,7 +294,16 @@ int genius_snn_link_snn(genius_snn_bridge_t* bridge, struct snn_network* snn) {
 //=============================================================================
 
 int genius_snn_encode_state(genius_snn_bridge_t* bridge, const float* dimensions, uint32_t num_dims) {
-    if (!bridge || !dimensions) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "genius_snn_encode_state: bridge is NULL");
+        return -1;
+    }
+    if (!dimensions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "genius_snn_encode_state: dimensions is NULL");
+        return -1;
+    }
     if (num_dims > bridge->config.num_dimensions) {
         num_dims = bridge->config.num_dimensions;
     }

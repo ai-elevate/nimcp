@@ -141,3 +141,71 @@ gtest_discover_tests(unit_test_genius_orchestrator
         LABELS "unit;cognitive;neuro_symbolic;genius_orchestrator"
         TIMEOUT 120
 )
+
+# ============================================================================
+# Evolutionary Proof Search Tests
+# ============================================================================
+
+add_executable(unit_test_evolutionary_proof
+    test_evolutionary_proof.cpp
+)
+
+target_link_libraries(unit_test_evolutionary_proof
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_test_evolutionary_proof
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_test_evolutionary_proof PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_test_evolutionary_proof
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;neuro_symbolic;evolutionary_proof"
+        TIMEOUT 120
+)
+
+# ============================================================================
+# Quantum Math Engine Tests
+# ============================================================================
+
+add_executable(unit_test_quantum_math_engine
+    test_quantum_math_engine.cpp
+)
+
+target_link_libraries(unit_test_quantum_math_engine
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_test_quantum_math_engine
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_test_quantum_math_engine PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_test_quantum_math_engine
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;neuro_symbolic;quantum_math_engine"
+        TIMEOUT 120
+)

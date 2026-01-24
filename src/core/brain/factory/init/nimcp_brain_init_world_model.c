@@ -262,7 +262,8 @@ void nimcp_brain_factory_destroy_world_model_subsystem(struct brain_struct* brai
 
 bool nimcp_brain_factory_wire_world_model_active_inference(struct brain_struct* brain) {
     if (!brain) {
-        LOG_ERROR(LOG_MODULE, "NULL brain pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "nimcp_brain_factory_wire_world_model_active_inference: brain is NULL");
         return false;
     }
 
@@ -298,7 +299,8 @@ bool nimcp_brain_factory_wire_world_model_active_inference(struct brain_struct* 
 
 bool nimcp_brain_factory_wire_world_model_imagination(struct brain_struct* brain) {
     if (!brain) {
-        LOG_ERROR(LOG_MODULE, "NULL brain pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "nimcp_brain_factory_wire_world_model_imagination: brain is NULL");
         return false;
     }
 
@@ -332,7 +334,8 @@ bool nimcp_brain_factory_wire_world_model_imagination(struct brain_struct* brain
 
 bool nimcp_brain_factory_wire_world_model_bridges(struct brain_struct* brain) {
     if (!brain) {
-        LOG_ERROR(LOG_MODULE, "NULL brain pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "nimcp_brain_factory_wire_world_model_bridges: brain is NULL");
         return false;
     }
 

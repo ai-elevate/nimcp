@@ -106,15 +106,18 @@ network_config_t nimcp_brain_factory_build_base_network_config(uint32_t num_inpu
 
     // Validation: Check for zero parameters
     if (num_inputs == 0) {
-        set_error("Invalid network configuration: num_inputs cannot be zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "nimcp_brain_factory_build_base_network_config: num_inputs cannot be zero");
         return config;  // Return with layer_sizes = NULL to signal error
     }
     if (num_outputs == 0) {
-        set_error("Invalid network configuration: num_outputs cannot be zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "nimcp_brain_factory_build_base_network_config: num_outputs cannot be zero");
         return config;  // Return with layer_sizes = NULL to signal error
     }
     if (num_neurons == 0) {
-        set_error("Invalid network configuration: num_neurons cannot be zero");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "nimcp_brain_factory_build_base_network_config: num_neurons cannot be zero");
         return config;  // Return with layer_sizes = NULL to signal error
     }
 
@@ -128,7 +131,8 @@ network_config_t nimcp_brain_factory_build_base_network_config(uint32_t num_inpu
 
     config.layer_sizes = nimcp_calloc(3, sizeof(uint32_t));
     if (!config.layer_sizes) {
-        set_error("Failed to allocate layer_sizes array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "nimcp_brain_factory_build_base_network_config: failed to allocate layer_sizes");
         return config;
     }
 
@@ -175,7 +179,8 @@ void nimcp_brain_factory_init_brain_config(brain_config_t* config, const char* t
 {
     // Guard: NULL check
     if (!config || !strategy) {
-        fprintf(stderr, "[ERROR] nimcp_brain_factory_init_brain_config: NULL config or strategy pointer\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "nimcp_brain_factory_init_brain_config: config or strategy is NULL");
         return;
     }
 

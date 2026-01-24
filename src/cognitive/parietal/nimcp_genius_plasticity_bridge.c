@@ -166,6 +166,8 @@ genius_plasticity_bridge_t* genius_plasticity_create(const genius_plasticity_con
 
     /* Initialize bridge base */
     if (bridge_base_init(&bridge->base, 0, "genius_plasticity") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED,
+            "bridge_base_init failed for genius_plasticity");
         nimcp_free(bridge);
         return NULL;
     }
@@ -174,6 +176,8 @@ genius_plasticity_bridge_t* genius_plasticity_create(const genius_plasticity_con
     bridge->synapse_capacity = bridge->config.max_synapses;
     bridge->synapses = nimcp_calloc(bridge->synapse_capacity, sizeof(genius_plasticity_synapse_t));
     if (!bridge->synapses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "synapse array allocation failed for genius_plasticity_bridge");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
@@ -369,7 +373,11 @@ int genius_plasticity_learn(genius_plasticity_bridge_t* bridge,
                             float magnitude,
                             uint32_t synapse_id,
                             float context) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "genius_plasticity_learn: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = GENIUS_PLASTICITY_STATE_LEARNING;
@@ -377,6 +385,8 @@ int genius_plasticity_learn(genius_plasticity_bridge_t* bridge,
     genius_plasticity_synapse_t* syn = find_synapse(bridge, synapse_id);
     if (!syn) {
         nimcp_mutex_unlock(bridge->base.mutex);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND,
+            "genius_plasticity_learn: synapse %u not found", synapse_id);
         return -1;
     }
 
@@ -723,7 +733,17 @@ int genius_plasticity_get_learning_state(genius_plasticity_bridge_t* bridge,
 }
 
 float genius_plasticity_get_mode_skill(genius_plasticity_bridge_t* bridge, genius_mode_t mode) {
-    if (!bridge || mode >= GENIUS_MODE_COUNT) return -1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "genius_plasticity_get_mode_skill: bridge is NULL");
+        return -1.0f;
+    }
+    if (mode >= GENIUS_MODE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_plasticity_get_mode_skill: invalid mode %d (max: %d)",
+            (int)mode, GENIUS_MODE_COUNT - 1);
+        return -1.0f;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     float skill = bridge->mode_skills[mode];

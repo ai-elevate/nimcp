@@ -184,8 +184,8 @@ bool nimcp_brain_is_brainstem_enabled(const struct brain_struct* brain) {
 
 bool nimcp_brain_connect_brainstem_thalamus(struct brain_struct* brain) {
     if (!brain || !brain->brainstem) {
-        LOG_ERROR("[%s] Invalid brain or brainstem not initialized",
-                  BRAINSTEM_INIT_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "nimcp_brain_connect_brainstem_thalamus: brain or brainstem is NULL");
         return false;
     }
 
@@ -202,8 +202,8 @@ bool nimcp_brain_connect_brainstem_thalamus(struct brain_struct* brain) {
 
 bool nimcp_brain_connect_brainstem_cerebellum(struct brain_struct* brain) {
     if (!brain || !brain->brainstem) {
-        LOG_ERROR("[%s] Invalid brain or brainstem not initialized",
-                  BRAINSTEM_INIT_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "nimcp_brain_connect_brainstem_cerebellum: brain or brainstem is NULL");
         return false;
     }
 
