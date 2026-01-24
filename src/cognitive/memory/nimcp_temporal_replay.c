@@ -913,6 +913,8 @@ replay_batch_t* replay_batch_create(uint32_t batch_size,
 
     replay_batch_t* batch = nimcp_calloc(1, sizeof(replay_batch_t));
     if (!batch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "batch is NULL");
+
         return NULL;
     }
 
@@ -956,6 +958,8 @@ replay_sweep_result_t* replay_sweep_result_create(uint32_t max_length,
 
     replay_sweep_result_t* result = nimcp_calloc(1, sizeof(replay_sweep_result_t));
     if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
         return NULL;
     }
 

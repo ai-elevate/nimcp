@@ -54,7 +54,13 @@ myelin_immune_bridge_t* myelin_immune_create(
     brain_immune_system_t* immune_system)
 {
     myelin_immune_bridge_t* bridge = nimcp_malloc(sizeof(myelin_immune_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     memset(bridge, 0, sizeof(*bridge));
 
     if (config) bridge->config = *config;

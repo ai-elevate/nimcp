@@ -1358,7 +1358,16 @@ nimcp_error_t omni_wm_security_immune_bridge_set_inflammation(
 const immune_to_wm_modulation_t* omni_wm_security_immune_bridge_get_modulation(
     const omni_wm_security_immune_bridge_t* bridge) {
 
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return NULL;
+
+
+    }
     return &bridge->current_modulation;
 }
 
@@ -1428,14 +1437,32 @@ nimcp_error_t omni_wm_security_immune_bridge_trigger_immune(
 const omni_wm_to_security_effects_t* omni_wm_security_immune_bridge_get_wm_effects(
     const omni_wm_security_immune_bridge_t* bridge) {
 
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return NULL;
+
+
+    }
     return &bridge->wm_to_security;
 }
 
 const security_immune_to_wm_effects_t* omni_wm_security_immune_bridge_get_security_effects(
     const omni_wm_security_immune_bridge_t* bridge) {
 
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return NULL;
+
+
+    }
     return &bridge->security_to_wm;
 }
 

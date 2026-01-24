@@ -213,6 +213,8 @@ qat_ctx_t* qat_create(const qat_config_t* config) {
 
     qat_ctx_t* ctx = nimcp_calloc(1, sizeof(qat_ctx_t));
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 
@@ -492,6 +494,8 @@ int qat_get_params(
 
 int qat_calibrate(qat_ctx_t* ctx) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -526,6 +530,8 @@ int qat_calibrate(qat_ctx_t* ctx) {
 
 int qat_freeze_observers(qat_ctx_t* ctx) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -915,6 +921,8 @@ const char* qat_scheme_name(qat_scheme_t scheme) {
 
 int qat_validate_config(const qat_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -1092,6 +1100,8 @@ static float clamp(float x, float min_val, float max_val) {
 
 int qat_ternary_default_config(qat_ternary_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -1110,6 +1120,8 @@ int qat_ternary_default_config(qat_ternary_config_t* config) {
 
 qat_ctx_t* qat_ternary_create(const qat_ternary_config_t* ternary_config) {
     if (!ternary_config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ternary_config is NULL");
+
         return NULL;
     }
 

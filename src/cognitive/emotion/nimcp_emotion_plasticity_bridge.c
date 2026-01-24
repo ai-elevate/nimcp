@@ -243,7 +243,13 @@ emotion_plasticity_bridge_t* emotion_plasticity_create(
     const emotion_plasticity_config_t* config)
 {
     emotion_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(emotion_plasticity_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

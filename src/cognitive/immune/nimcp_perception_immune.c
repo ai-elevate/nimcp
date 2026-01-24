@@ -595,7 +595,13 @@ const perception_anomaly_t* perception_immune_get_anomaly(
     const perception_immune_context_t* ctx,
     uint32_t anomaly_id
 ) {
-    if (!ctx) return NULL;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t i = 0; i < ctx->anomaly_count; i++) {
         if (ctx->anomalies[i].id == anomaly_id) {

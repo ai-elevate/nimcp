@@ -136,7 +136,13 @@ rcog_snn_config_t rcog_snn_config_default(void) {
 
 rcog_snn_bridge_t* rcog_snn_create(const rcog_snn_config_t* config) {
     rcog_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(rcog_snn_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

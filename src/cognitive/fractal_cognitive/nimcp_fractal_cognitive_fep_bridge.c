@@ -49,7 +49,13 @@ fractal_cognitive_fep_bridge_t* fractal_cognitive_fep_bridge_create(
     const fractal_cognitive_fep_config_t* config
 ) {
     fractal_cognitive_fep_bridge_t* bridge = nimcp_malloc(sizeof(fractal_cognitive_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     memset(bridge, 0, sizeof(fractal_cognitive_fep_bridge_t));
     if (config) {

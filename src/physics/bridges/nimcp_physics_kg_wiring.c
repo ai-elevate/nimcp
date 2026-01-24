@@ -471,7 +471,13 @@ brain_kg_node_id_t physics_kg_find_subsystem(
 }
 
 brain_kg_node_list_t* physics_kg_get_ion_channels(brain_kg_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
     return brain_kg_get_nodes_by_type(kg, (brain_kg_node_type_t)PHYSICS_KG_NODE_ION_CHANNEL);
 }
 

@@ -132,11 +132,15 @@ gt_hemi_bargaining_ctx_t gt_hemi_create(
     const gt_hemi_config_t* config
 ) {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return NULL;
     }
 
     gt_hemi_bargaining_ctx_t ctx = nimcp_calloc(1, sizeof(struct gt_hemi_bargaining_ctx_struct));
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 

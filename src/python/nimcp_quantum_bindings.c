@@ -99,6 +99,8 @@ static PyObject* Brain_get_quantum_walk_config(BrainObject* self, PyObject* Py_U
     // Create dictionary
     PyObject* dict = PyDict_New();
     if (!dict) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dict is NULL");
+
         return NULL;
     }
 

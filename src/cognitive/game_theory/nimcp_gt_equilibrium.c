@@ -141,6 +141,8 @@ nimcp_equilibrium_t nimcp_equilibrium_create(const nimcp_equilibrium_config_t* c
 
     nimcp_equilibrium_t ctx = nimcp_calloc(1, sizeof(struct nimcp_equilibrium_struct));
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 
@@ -221,6 +223,8 @@ nimcp_game_matrix_t* nimcp_game_matrix_create(
 
     nimcp_game_matrix_t* matrix = nimcp_calloc(1, sizeof(nimcp_game_matrix_t));
     if (!matrix) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "matrix is NULL");
+
         return NULL;
     }
 

@@ -173,7 +173,13 @@ static collective_memory_t* create_collective_memory(uint64_t memory_id,
                                                        uint64_t origin_agent_id,
                                                        float origin_time) {
     collective_memory_t* memory = calloc(1, sizeof(collective_memory_t));
-    if (!memory) return NULL;
+    if (!memory) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory is NULL");
+
+        return NULL;
+
+    }
 
     memory->memory_id = memory_id;
     memory->type = type;
@@ -330,7 +336,13 @@ NIMCP_EXPORT collective_memory_system_t* collective_memory_create(
     const collective_memory_config_t* config) {
 
     collective_memory_system_t* system = calloc(1, sizeof(collective_memory_system_t));
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     // Set configuration
     if (config) {
@@ -1258,7 +1270,16 @@ NIMCP_EXPORT collective_memory_t* collective_memory_get(
     collective_memory_system_t* system,
     uint64_t memory_id) {
 
-    if (!system) return NULL;
+    if (!system) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+
+        return NULL;
+
+
+    }
 
     int mem_idx = find_memory_index(system, memory_id);
     if (mem_idx < 0) return NULL;

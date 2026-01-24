@@ -843,6 +843,8 @@ int gs_connect_gradient_manager(
     nimcp_gradient_manager_ctx_t* grad_manager
 ) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -854,6 +856,8 @@ int gs_connect_gradient_manager(
 
 int gs_connect_snn_backprop(gs_ctx_t* ctx, void* snn_backprop) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -865,6 +869,8 @@ int gs_connect_snn_backprop(gs_ctx_t* ctx, void* snn_backprop) {
 
 int gs_connect_brain_factory(gs_ctx_t* ctx, void* brain_factory) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -1061,6 +1067,8 @@ const char* gs_clip_strategy_name(gs_clip_strategy_t strategy) {
 
 int gs_validate_config(const gs_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 

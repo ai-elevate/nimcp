@@ -309,6 +309,8 @@ NIMCP_EXPORT pr_cerebellum_bridge_t pr_cerebellum_bridge_create(
     /* Allocate bridge */
     pr_cerebellum_bridge_t bridge = (pr_cerebellum_bridge_t)calloc(1, sizeof(*bridge));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

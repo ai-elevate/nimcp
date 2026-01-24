@@ -146,7 +146,13 @@ static rcog_variable_t* create_variable(
     rcog_data_type_t dtype)
 {
     rcog_variable_t* var = nimcp_calloc(1, sizeof(rcog_variable_t));
-    if (!var) return NULL;
+    if (!var) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "var is NULL");
+
+        return NULL;
+
+    }
 
     strncpy(var->name, name, RCOG_MAX_VARIABLE_NAME_LEN - 1);
     var->name[RCOG_MAX_VARIABLE_NAME_LEN - 1] = '\0';
@@ -352,7 +358,13 @@ rcog_context_store_t* rcog_context_store_create(
     const rcog_context_store_config_t* config)
 {
     rcog_context_store_t* store = nimcp_calloc(1, sizeof(rcog_context_store_t));
-    if (!store) return NULL;
+    if (!store) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "store is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         store->config = *config;

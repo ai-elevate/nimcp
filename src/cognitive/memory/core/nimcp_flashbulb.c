@@ -149,6 +149,8 @@ flashbulb_system_t* flashbulb_create(
 ) {
     // Validate node manager (required)
     if (!node_manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node_manager is NULL");
+
         return NULL;
     }
 
@@ -161,6 +163,8 @@ flashbulb_system_t* flashbulb_create(
     // Allocate system
     flashbulb_system_t* system = (flashbulb_system_t*)calloc(1, sizeof(flashbulb_system_t));
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
 
@@ -549,11 +553,15 @@ flashbulb_memory_t* flashbulb_retrieve(
     flashbulb_retrieval_result_t* result
 ) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
 
     flashbulb_memory_t* fb = find_flashbulb_by_id(system, flashbulb_id);
     if (!fb) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fb is NULL");
+
         return NULL;
     }
 

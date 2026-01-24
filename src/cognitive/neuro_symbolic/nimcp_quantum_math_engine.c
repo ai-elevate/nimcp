@@ -899,7 +899,13 @@ NIMCP_API qme_domain_t* qme_domain_create_box(
     if (!lower || !upper || dim == 0) return NULL;
 
     qme_domain_t* domain = nimcp_calloc(1, sizeof(qme_domain_t));
-    if (!domain) return NULL;
+    if (!domain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "domain is NULL");
+
+        return NULL;
+
+    }
 
     domain->type = QME_DOMAIN_BOX;
     domain->dim = dim;
@@ -928,7 +934,13 @@ NIMCP_API qme_domain_t* qme_domain_create_ball(
     if (!center || dim == 0 || dim > 16 || radius <= 0.0f) return NULL;
 
     qme_domain_t* domain = nimcp_calloc(1, sizeof(qme_domain_t));
-    if (!domain) return NULL;
+    if (!domain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "domain is NULL");
+
+        return NULL;
+
+    }
 
     domain->type = QME_DOMAIN_BALL;
     domain->dim = dim;

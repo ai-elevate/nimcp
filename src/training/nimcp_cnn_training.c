@@ -79,9 +79,21 @@ static inline void nimcp_tensor_fill(nimcp_tensor_t* t, float value) {
  * @brief Create a zeros tensor with the same shape as another tensor
  */
 static inline nimcp_tensor_t* nimcp_tensor_zeros_like(const nimcp_tensor_t* t) {
-    if (!t) return NULL;
+    if (!t) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "t is NULL");
+
+        return NULL;
+
+    }
     const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(t);
-    if (!shape) return NULL;
+    if (!shape) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shape is NULL");
+
+        return NULL;
+
+    }
     return nimcp_tensor_zeros(shape->dims, shape->rank, NIMCP_DTYPE_F32);
 }
 
@@ -1026,7 +1038,13 @@ static nimcp_tensor_t* cnn_forward_conv(const cnn_layer_t* layer, const nimcp_te
     /* Create output tensor */
     uint32_t out_dims[4] = {batch, cfg->out_channels, out_h, out_w};
     nimcp_tensor_t* output = nimcp_tensor_create(out_dims, 4, NIMCP_DTYPE_F32);
-    if (!output) return NULL;
+    if (!output) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "output is NULL");
+
+        return NULL;
+
+    }
 
     const float* in_data = nimcp_tensor_data_const(input);
     const float* weight_data = nimcp_tensor_data_const(layer->weights);
@@ -1121,7 +1139,13 @@ static nimcp_tensor_t* cnn_forward_pool(const cnn_layer_t* layer, const nimcp_te
     /* Create output tensor */
     uint32_t out_dims[4] = {batch, channels, out_h, out_w};
     nimcp_tensor_t* output = nimcp_tensor_create(out_dims, 4, NIMCP_DTYPE_F32);
-    if (!output) return NULL;
+    if (!output) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "output is NULL");
+
+        return NULL;
+
+    }
 
     const float* in_data = nimcp_tensor_data_const(input);
     float* out_data = nimcp_tensor_data(output);
@@ -1185,7 +1209,13 @@ static nimcp_tensor_t* cnn_forward_batch_norm(cnn_layer_t* layer, const nimcp_te
 
     /* Clone input for output */
     nimcp_tensor_t* output = nimcp_tensor_clone(input);
-    if (!output) return NULL;
+    if (!output) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "output is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_tensor_shape_t shape;
     nimcp_tensor_get_shape(input, &shape);
@@ -1260,7 +1290,13 @@ static nimcp_tensor_t* cnn_forward_dropout(const cnn_layer_t* layer, const nimcp
 
     /* Clone input */
     nimcp_tensor_t* output = nimcp_tensor_clone(input);
-    if (!output) return NULL;
+    if (!output) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "output is NULL");
+
+        return NULL;
+
+    }
 
     if (!training || cfg->dropout_rate == 0.0f) {
         return output;  /* No dropout during inference */
@@ -1298,7 +1334,13 @@ static nimcp_tensor_t* cnn_forward_dense(const cnn_layer_t* layer, const nimcp_t
     /* Create output: (batch, out_features) */
     uint32_t out_dims[2] = {batch, cfg->out_features};
     nimcp_tensor_t* output = nimcp_tensor_create(out_dims, 2, NIMCP_DTYPE_F32);
-    if (!output) return NULL;
+    if (!output) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "output is NULL");
+
+        return NULL;
+
+    }
 
     const float* in_data = nimcp_tensor_data_const(input);
     const float* weight_data = nimcp_tensor_data_const(layer->weights);
@@ -1334,7 +1376,13 @@ static nimcp_tensor_t* cnn_forward_flatten(const nimcp_tensor_t* input) {
 
     uint32_t out_dims[2] = {batch, flat_size};
     nimcp_tensor_t* output = nimcp_tensor_create(out_dims, 2, NIMCP_DTYPE_F32);
-    if (!output) return NULL;
+    if (!output) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "output is NULL");
+
+        return NULL;
+
+    }
 
     /* Copy data (just reshape, no actual data movement needed in contiguous case) */
     memcpy(nimcp_tensor_data(output), nimcp_tensor_data_const(input),
@@ -3232,7 +3280,13 @@ size_t cnn_count_parameters(const cnn_trainer_t* trainer) {
 }
 
 cnn_layer_t* cnn_get_layer(const cnn_trainer_t* trainer, uint32_t layer_idx) {
-    if (!trainer) return NULL;
+    if (!trainer) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trainer is NULL");
+
+        return NULL;
+
+    }
 
     cnn_layer_t* layer = trainer->layers_head;
     uint32_t idx = 0;

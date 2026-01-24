@@ -387,6 +387,8 @@ spike_queue_t* spike_queue_create(uint32_t capacity, bool gpu_enabled)
 
     spike_queue_t* queue = (spike_queue_t*)nimcp_calloc(1, sizeof(spike_queue_t));
     if (!queue) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "queue is NULL");
+
         return NULL;
     }
 

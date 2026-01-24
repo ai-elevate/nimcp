@@ -970,6 +970,9 @@ int meta_evaluate_task(
     meta_inner_loop(ctx, task, forward_fn, model, &adapted);
 
     if (!adapted) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapted is NULL");
+
+
         return -1;
     }
 
@@ -1058,6 +1061,8 @@ const char* meta_algorithm_name(meta_algorithm_t alg) {
 
 int meta_validate_config(const meta_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -1326,6 +1331,8 @@ int meta_compute_second_order_gradient(
     /* Step 1: Compute Hessian-vector product HVP = H_support * query_grad */
     float* hvp = nimcp_calloc(param_count, sizeof(float));
     if (!hvp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hvp is NULL");
+
         return -1;
     }
 

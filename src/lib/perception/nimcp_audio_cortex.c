@@ -2411,6 +2411,8 @@ uint32_t audio_cortex_get_feature_dim(const audio_cortex_t* cortex)
 int audio_cortex_set_training_mode(audio_cortex_t* cortex, bool enable)
 {
     if (!cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortex is NULL");
+
         return -1;
     }
 

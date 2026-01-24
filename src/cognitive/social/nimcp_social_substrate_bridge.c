@@ -44,10 +44,22 @@ social_substrate_config_t social_substrate_default_config(void) {
 }
 
 social_substrate_bridge_t* social_substrate_bridge_create(void* social, neural_substrate_t* substrate, const social_substrate_config_t* config) {
-    if (!substrate) return NULL;
+    if (!substrate) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
+
+        return NULL;
+
+    }
 
     social_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(social_substrate_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     bridge->social = social;
     bridge->substrate = substrate;

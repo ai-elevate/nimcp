@@ -807,6 +807,8 @@ int immune_plasticity_get_stats(immune_plasticity_stats_t* stats) {
      * HOW:  Memcpy internal stats
      */
     if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats is NULL");
+
         return -1;
     }
 

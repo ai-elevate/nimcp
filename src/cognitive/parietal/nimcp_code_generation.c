@@ -149,6 +149,8 @@ code_gen_config_t code_gen_default_config(void) {
 code_gen_engine_t* code_gen_create(const code_gen_config_t* config) {
     code_gen_engine_t* engine = nimcp_calloc(1, sizeof(code_gen_engine_t));
     if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
         return NULL;
     }
 
@@ -795,6 +797,8 @@ int code_gen_update_status(
     fix_status_t new_status
 ) {
     if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
         return -1;
     }
 
@@ -832,6 +836,8 @@ const generated_fix_t* code_gen_get_fix(
     uint64_t fix_id
 ) {
     if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
         return NULL;
     }
 
@@ -959,6 +965,8 @@ static int generate_fix_for_strategy(
     generated_fix_t* fix
 ) {
     if (!fix) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fix is NULL");
+
         return -1;
     }
 

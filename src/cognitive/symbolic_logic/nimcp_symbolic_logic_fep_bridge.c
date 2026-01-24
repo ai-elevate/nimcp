@@ -30,7 +30,13 @@ int symbolic_logic_fep_bridge_default_config(symbolic_logic_fep_config_t* config
 
 symbolic_logic_fep_bridge_t* symbolic_logic_fep_bridge_create(const symbolic_logic_fep_config_t* config) {
     symbolic_logic_fep_bridge_t* bridge = nimcp_malloc(sizeof(symbolic_logic_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     memset(bridge, 0, sizeof(symbolic_logic_fep_bridge_t));
     if (config) bridge->config = *config;
     else symbolic_logic_fep_bridge_default_config(&bridge->config);

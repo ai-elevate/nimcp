@@ -641,7 +641,13 @@ semantic_query_result_t* semantic_memory_find_similar(
     float threshold)
 {
     // Guard clauses
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
     if (!features || feature_dim == 0) return NULL;
     if (system->concept_count == 0) return NULL;
 
@@ -649,7 +655,16 @@ semantic_query_result_t* semantic_memory_find_similar(
     semantic_query_result_t* result =
         (semantic_query_result_t*)nimcp_calloc(1, sizeof(semantic_query_result_t));
 
-    if (!result) return NULL;
+    if (!result) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+
+        return NULL;
+
+
+    }
 
     // Allocate arrays for all concepts
     uint64_t* temp_ids = (uint64_t*)nimcp_malloc(
@@ -932,7 +947,13 @@ semantic_query_result_t* semantic_memory_activate(
 
     // Find concept
     semantic_concept_t* concept = find_concept_by_id(system, concept_id);
-    if (!concept) return NULL;
+    if (!concept) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "concept is NULL");
+
+        return NULL;
+
+    }
 
     // Clear previous activations
     for (uint32_t i = 0; i < system->concept_count; i++) {
@@ -956,7 +977,13 @@ semantic_query_result_t* semantic_memory_activate(
     // Allocate result
     semantic_query_result_t* result =
         (semantic_query_result_t*)nimcp_calloc(1, sizeof(semantic_query_result_t));
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     if (activated_count == 0) {
         result->count = 0;
@@ -1000,7 +1027,13 @@ semantic_query_result_t* semantic_memory_query(
     uint32_t feature_dim)
 {
     // Guard clauses
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
     if (!features || feature_dim == 0) return NULL;
 
     // Process pending bio-async messages

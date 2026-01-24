@@ -362,7 +362,13 @@ pr_mental_health_bridge_t pr_mental_health_bridge_create(
 
     // Allocate bridge
     pr_mental_health_bridge_t bridge = calloc(1, sizeof(struct pr_mental_health_bridge_struct));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     // Initialize bridge base infrastructure (includes mutex)
     if (bridge_base_init(&bridge->base, 0, "pr_mental_health") != 0) { nimcp_free(bridge); return NULL; }

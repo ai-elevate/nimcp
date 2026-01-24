@@ -205,6 +205,8 @@ int code_immune_auto_repair_default_config(
     code_immune_auto_repair_config_t* config
 ) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -237,6 +239,8 @@ code_immune_self_repair_bridge_t* code_immune_self_repair_bridge_create(
     code_immune_self_repair_bridge_t* bridge = nimcp_calloc(
         1, sizeof(code_immune_self_repair_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -340,6 +344,8 @@ int code_immune_self_repair_connect_health_agent(
     nimcp_health_agent_t* health_agent
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -364,6 +370,8 @@ int code_immune_antigen_to_diagnostic(
 
     diagnostic_result_t* diag = nimcp_calloc(1, sizeof(diagnostic_result_t));
     if (!diag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "diag is NULL");
+
         return -1;
     }
 
@@ -836,6 +844,8 @@ int code_immune_self_repair_broadcast_trigger(
     uint64_t repair_id
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -888,6 +898,8 @@ int code_immune_self_repair_broadcast_outcome(
     bool success
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

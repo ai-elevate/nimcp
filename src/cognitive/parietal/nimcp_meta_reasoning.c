@@ -55,7 +55,13 @@ meta_engine_t* meta_engine_create(void) {
 meta_engine_t* meta_engine_create_custom(const meta_config_t* config) {
     if (!config) { set_error("NULL config"); return NULL; }
     meta_engine_t* e = nimcp_calloc(1, sizeof(meta_engine_t));
-    if (!e) return NULL;
+    if (!e) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "e is NULL");
+
+        return NULL;
+
+    }
     e->config = *config;
     e->next_strategy_id = 1;
 
@@ -76,7 +82,13 @@ meta_strategy_t* meta_select_strategy(meta_engine_t* engine, const meta_problem_
     if (!engine || !problem) return NULL;
 
     meta_strategy_t* s = nimcp_calloc(1, sizeof(meta_strategy_t));
-    if (!s) return NULL;
+    if (!s) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "s is NULL");
+
+        return NULL;
+
+    }
 
     s->id = engine->next_strategy_id++;
 

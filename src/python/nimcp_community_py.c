@@ -70,6 +70,8 @@ static PyObject* CommunityStructure_get_community_ids(CommunityStructureObject* 
 
     PyObject* list = PyList_New(self->structure->num_neurons);
     if (!list) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "list is NULL");
+
         return NULL;
     }
 
@@ -92,6 +94,8 @@ static PyObject* CommunityStructure_get_community_sizes(CommunityStructureObject
 
     PyObject* list = PyList_New(self->structure->num_communities);
     if (!list) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "list is NULL");
+
         return NULL;
     }
 
@@ -157,6 +161,8 @@ static PyObject* HubStructure_get_hub_indices(HubStructureObject* self, void* cl
 
     PyObject* list = PyList_New(self->structure->num_hubs);
     if (!list) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "list is NULL");
+
         return NULL;
     }
 
@@ -179,6 +185,8 @@ static PyObject* HubStructure_get_degree_centrality(HubStructureObject* self, vo
 
     PyObject* list = PyList_New(self->structure->num_hubs);
     if (!list) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "list is NULL");
+
         return NULL;
     }
 
@@ -334,6 +342,8 @@ static PyObject* py_brain_get_modularity(PyObject* self, PyObject* args) {
     // Detect communities first
     PyObject* communities_obj = py_brain_detect_communities(self, args);
     if (!communities_obj) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "communities_obj is NULL");
+
         return NULL;
     }
 
@@ -355,6 +365,8 @@ static PyObject* py_brain_get_num_communities(PyObject* self, PyObject* args) {
     // Detect communities first
     PyObject* communities_obj = py_brain_detect_communities(self, args);
     if (!communities_obj) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "communities_obj is NULL");
+
         return NULL;
     }
 
@@ -380,6 +392,9 @@ static PyObject* py_brain_get_neuron_community(PyObject* self, PyObject* args) {
     Py_DECREF(args_tuple);
 
     if (!communities_obj) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "communities_obj is NULL");
+
+
         return NULL;
     }
 

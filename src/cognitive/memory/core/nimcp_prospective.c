@@ -90,7 +90,13 @@ struct prospective_memory_internal {
  * @brief Find intention by ID
  */
 static prospective_intention_t* find_intention(prospective_memory_t pm, uint64_t id) {
-    if (!pm) return NULL;
+    if (!pm) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pm is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t i = 0; i < pm->num_intentions; i++) {
         if (pm->intentions[i].intention_id == id) {
@@ -104,7 +110,13 @@ static prospective_intention_t* find_intention(prospective_memory_t pm, uint64_t
  * @brief Find free slot in intentions array
  */
 static prospective_intention_t* find_free_slot(prospective_memory_t pm) {
-    if (!pm) return NULL;
+    if (!pm) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pm is NULL");
+
+        return NULL;
+
+    }
 
     // Look for empty slot (id = PROSP_INVALID_ID)
     for (size_t i = 0; i < pm->num_intentions; i++) {
@@ -158,7 +170,13 @@ static void free_intention(prospective_intention_t* intent) {
  * @brief Copy action description
  */
 static char* copy_action(const char* action) {
-    if (!action) return NULL;
+    if (!action) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "action is NULL");
+
+        return NULL;
+
+    }
 
     size_t len = strlen(action);
     if (len > PROSP_MAX_ACTION_DESCRIPTION - 1) {
@@ -166,7 +184,13 @@ static char* copy_action(const char* action) {
     }
 
     char* copy = (char*)malloc(len + 1);
-    if (!copy) return NULL;
+    if (!copy) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "copy is NULL");
+
+        return NULL;
+
+    }
 
     strncpy(copy, action, len);
     copy[len] = '\0';
@@ -1817,10 +1841,22 @@ NIMCP_EXPORT pr_memory_node_t* prospective_get_memory_node(
     prospective_memory_t pm,
     uint64_t intention_id
 ) {
-    if (!pm) return NULL;
+    if (!pm) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pm is NULL");
+
+        return NULL;
+
+    }
 
     prospective_intention_t* intent = find_intention(pm, intention_id);
-    if (!intent) return NULL;
+    if (!intent) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intent is NULL");
+
+        return NULL;
+
+    }
 
     return intent->memory_node;
 }

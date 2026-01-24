@@ -360,6 +360,8 @@ int gw_immune_set_manual_inflammation(
 {
     // Guard: NULL check
     if (!context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "context is NULL");
+
         return -1;
     }
 
@@ -663,6 +665,8 @@ int gw_immune_get_stats(
 {
     // Guard: NULL checks
     if (!context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "context is NULL");
+
         return -1;
     }
 

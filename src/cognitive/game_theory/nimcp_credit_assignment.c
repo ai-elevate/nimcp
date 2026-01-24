@@ -103,6 +103,8 @@ nimcp_credit_system_t nimcp_credit_create(const nimcp_credit_config_t* config) {
 
     nimcp_credit_system_t system = nimcp_calloc(1, sizeof(struct nimcp_credit_system_struct));
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
 

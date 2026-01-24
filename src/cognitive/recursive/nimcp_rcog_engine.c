@@ -189,6 +189,8 @@ rcog_engine_config_t rcog_engine_default_config(void) {
 rcog_engine_t* rcog_engine_create(const rcog_engine_config_t* config) {
     rcog_engine_t* engine = nimcp_calloc(1, sizeof(rcog_engine_t));
     if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
         return NULL;
     }
 
@@ -522,6 +524,8 @@ rcog_engine_state_t rcog_engine_get_state(const rcog_engine_t* engine) {
 
 struct rcog_context_store* rcog_engine_get_context_store(rcog_engine_t* engine) {
     if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
         return NULL;
     }
     return engine->context_store;
@@ -529,6 +533,8 @@ struct rcog_context_store* rcog_engine_get_context_store(rcog_engine_t* engine) 
 
 struct rcog_orchestrator* rcog_engine_get_orchestrator(rcog_engine_t* engine) {
     if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
         return NULL;
     }
     return engine->orchestrator;
@@ -536,6 +542,8 @@ struct rcog_orchestrator* rcog_engine_get_orchestrator(rcog_engine_t* engine) {
 
 struct rcog_delegation_pool* rcog_engine_get_delegation_pool(rcog_engine_t* engine) {
     if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
         return NULL;
     }
     return engine->delegation_pool;
@@ -543,6 +551,8 @@ struct rcog_delegation_pool* rcog_engine_get_delegation_pool(rcog_engine_t* engi
 
 struct rcog_tool_router* rcog_engine_get_tool_router(rcog_engine_t* engine) {
     if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
         return NULL;
     }
     return engine->tool_router;
@@ -550,6 +560,8 @@ struct rcog_tool_router* rcog_engine_get_tool_router(rcog_engine_t* engine) {
 
 struct rcog_answer_refiner* rcog_engine_get_answer_refiner(rcog_engine_t* engine) {
     if (!engine) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
         return NULL;
     }
     return engine->answer_refiner;

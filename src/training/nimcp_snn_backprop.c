@@ -377,6 +377,8 @@ nimcp_tensor_t* snn_surrogate_gradient_tensor(
     // Create output tensor with same shape
     const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(membrane_v);
     if (!shape) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shape is NULL");
+
         return NULL;
     }
 
@@ -387,6 +389,9 @@ nimcp_tensor_t* snn_surrogate_gradient_tensor(
     );
 
     if (!grad) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "grad is NULL");
+
+
         return NULL;
     }
 

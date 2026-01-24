@@ -156,11 +156,15 @@ gt_wm_auction_ctx_t gt_wm_create(
     const gt_wm_config_t* config
 ) {
     if (!wm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm is NULL");
+
         return NULL;
     }
 
     gt_wm_auction_ctx_t ctx = nimcp_calloc(1, sizeof(struct gt_wm_auction_ctx_struct));
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 

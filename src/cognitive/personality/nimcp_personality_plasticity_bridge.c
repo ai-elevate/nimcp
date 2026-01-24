@@ -132,7 +132,13 @@ personality_plasticity_bridge_t* personality_plasticity_create(
     const personality_plasticity_config_t* config
 ) {
     personality_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(personality_plasticity_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

@@ -1697,14 +1697,32 @@ nimcp_error_t omni_wm_parietal_bridge_estimate_quantity(
 const omni_wm_to_parietal_effects_t* omni_wm_parietal_bridge_get_wm_effects(
     const omni_wm_parietal_bridge_t* bridge) {
 
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return NULL;
+
+
+    }
     return &bridge->wm_to_parietal;
 }
 
 const parietal_to_omni_wm_effects_t* omni_wm_parietal_bridge_get_parietal_effects(
     const omni_wm_parietal_bridge_t* bridge) {
 
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return NULL;
+
+
+    }
     return &bridge->parietal_to_wm;
 }
 
@@ -1998,7 +2016,13 @@ wm_parietal_trajectory_t* omni_wm_parietal_trajectory_create(uint32_t max_length
     if (max_length == 0) return NULL;
 
     wm_parietal_trajectory_t* traj = nimcp_calloc(1, sizeof(wm_parietal_trajectory_t));
-    if (!traj) return NULL;
+    if (!traj) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "traj is NULL");
+
+        return NULL;
+
+    }
 
     traj->states = nimcp_calloc(max_length, sizeof(wm_parietal_spatial_state_t));
     if (!traj->states) {

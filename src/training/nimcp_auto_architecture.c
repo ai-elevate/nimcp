@@ -638,7 +638,13 @@ auto_arch_result_t* auto_arch_search(
     const nimcp_tensor_t* val_labels)
 {
     /* Guard clauses */
-    if (!ctx) return NULL;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return NULL;
+
+    }
     if (!train_data || !train_labels) return NULL;
 
     /* Update status */
@@ -729,7 +735,13 @@ auto_arch_result_t* auto_arch_search(
 
     /* Create result */
     auto_arch_result_t* result = (auto_arch_result_t*)nimcp_malloc(sizeof(auto_arch_result_t));
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     result->best_arch = auto_arch_clone(ctx->best_arch);
     result->best_fitness = ctx->best_fitness;
@@ -814,12 +826,24 @@ int auto_arch_evaluate(
 
 auto_arch_architecture_t* auto_arch_random_architecture(auto_arch_context_t* ctx)
 {
-    if (!ctx) return NULL;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return NULL;
+
+    }
 
     /* Allocate architecture structure */
     auto_arch_architecture_t* arch = (auto_arch_architecture_t*)nimcp_calloc(
         1, sizeof(auto_arch_architecture_t));
-    if (!arch) return NULL;
+    if (!arch) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arch is NULL");
+
+        return NULL;
+
+    }
 
     /* Set identity */
     arch->arch_id = ctx->next_arch_id++;
@@ -972,7 +996,13 @@ auto_arch_architecture_t* auto_arch_crossover(
     /* Allocate child architecture */
     auto_arch_architecture_t* child = (auto_arch_architecture_t*)nimcp_calloc(
         1, sizeof(auto_arch_architecture_t));
-    if (!child) return NULL;
+    if (!child) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "child is NULL");
+
+        return NULL;
+
+    }
 
     /* Set identity */
     child->arch_id = ctx->next_arch_id++;
@@ -1090,12 +1120,24 @@ auto_arch_architecture_t* auto_arch_crossover(
 
 auto_arch_architecture_t* auto_arch_clone(const auto_arch_architecture_t* arch)
 {
-    if (!arch) return NULL;
+    if (!arch) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arch is NULL");
+
+        return NULL;
+
+    }
 
     /* Allocate new architecture */
     auto_arch_architecture_t* clone = (auto_arch_architecture_t*)nimcp_calloc(
         1, sizeof(auto_arch_architecture_t));
-    if (!clone) return NULL;
+    if (!clone) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+
+        return NULL;
+
+    }
 
     /* Copy basic fields */
     *clone = *arch;
@@ -1152,28 +1194,52 @@ int auto_arch_validate_architecture(
 
 snn_config_t* auto_arch_export_snn(const auto_arch_architecture_t* arch)
 {
-    if (!arch) return NULL;
+    if (!arch) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arch is NULL");
+
+        return NULL;
+
+    }
     /* TODO: Implement SNN export */
     return NULL;
 }
 
 lnn_config_t* auto_arch_export_lnn(const auto_arch_architecture_t* arch)
 {
-    if (!arch) return NULL;
+    if (!arch) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arch is NULL");
+
+        return NULL;
+
+    }
     /* TODO: Implement LNN export */
     return NULL;
 }
 
 auto_arch_architecture_t* auto_arch_import_snn(const snn_config_t* snn_config)
 {
-    if (!snn_config) return NULL;
+    if (!snn_config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_config is NULL");
+
+        return NULL;
+
+    }
     /* TODO: Implement SNN import */
     return NULL;
 }
 
 auto_arch_architecture_t* auto_arch_import_lnn(const lnn_config_t* lnn_config)
 {
-    if (!lnn_config) return NULL;
+    if (!lnn_config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lnn_config is NULL");
+
+        return NULL;
+
+    }
     /* TODO: Implement LNN import */
     return NULL;
 }
@@ -1270,10 +1336,22 @@ static int read_json_number(FILE* fp, double* value) {
 
 auto_arch_architecture_t* auto_arch_load_json(const char* filepath)
 {
-    if (!filepath) return NULL;
+    if (!filepath) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "filepath is NULL");
+
+        return NULL;
+
+    }
 
     FILE* fp = fopen(filepath, "r");
-    if (!fp) return NULL;
+    if (!fp) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fp is NULL");
+
+        return NULL;
+
+    }
 
     auto_arch_architecture_t* arch = (auto_arch_architecture_t*)nimcp_calloc(
         1, sizeof(auto_arch_architecture_t));
@@ -1411,7 +1489,13 @@ auto_arch_status_t auto_arch_get_status(const auto_arch_context_t* ctx)
 
 auto_arch_architecture_t* auto_arch_get_best(const auto_arch_context_t* ctx)
 {
-    if (!ctx) return NULL;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return NULL;
+
+    }
     return auto_arch_clone(ctx->best_arch);
 }
 
@@ -1531,10 +1615,22 @@ int auto_arch_result_save(const auto_arch_result_t* result, const char* filepath
 
 auto_arch_result_t* auto_arch_result_load(const char* filepath)
 {
-    if (!filepath) return NULL;
+    if (!filepath) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "filepath is NULL");
+
+        return NULL;
+
+    }
 
     FILE* fp = fopen(filepath, "r");
-    if (!fp) return NULL;
+    if (!fp) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fp is NULL");
+
+        return NULL;
+
+    }
 
     auto_arch_result_t* result = (auto_arch_result_t*)nimcp_calloc(
         1, sizeof(auto_arch_result_t));
@@ -2062,7 +2158,13 @@ static auto_arch_architecture_t* rl_nas_step(auto_arch_context_t* ctx,
 
     /* Sample architecture from controller (simplified - use softmax over decisions) */
     auto_arch_architecture_t* arch = auto_arch_random_architecture(ctx);
-    if (!arch) return NULL;
+    if (!arch) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arch is NULL");
+
+        return NULL;
+
+    }
 
     float* weights = (float*)nimcp_tensor_data(controller->weights);
 
@@ -2131,7 +2233,13 @@ static auto_arch_architecture_t* darts_step(auto_arch_context_t* ctx,
 
     /* Discretize current architecture from alpha parameters */
     auto_arch_architecture_t* arch = auto_arch_random_architecture(ctx);
-    if (!arch) return NULL;
+    if (!arch) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arch is NULL");
+
+        return NULL;
+
+    }
 
     /* Set number of layers based on DARTS context */
     arch->n_layers = (darts->n_layers < arch->n_layers) ? darts->n_layers : arch->n_layers;

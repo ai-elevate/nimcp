@@ -410,7 +410,13 @@ extrapolation_t* intuition_extrapolate(intuition_system_t* system,
     if (!system || !known || count == 0 || !target_range) return NULL;
 
     extrapolation_t* ext = nimcp_calloc(1, sizeof(extrapolation_t));
-    if (!ext) return NULL;
+    if (!ext) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ext is NULL");
+
+        return NULL;
+
+    }
 
     ext->id = system->next_extrapolation_id++;
 
@@ -523,7 +529,13 @@ extrapolation_t* intuition_extrapolate_incremental(intuition_system_t* system,
     uint32_t total_count = previous->num_known + new_count;
     intuition_data_point_t** combined = nimcp_calloc(total_count,
                                                      sizeof(intuition_data_point_t*));
-    if (!combined) return NULL;
+    if (!combined) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combined is NULL");
+
+        return NULL;
+
+    }
 
     memcpy(combined, previous->known_data,
            previous->num_known * sizeof(intuition_data_point_t*));
@@ -624,7 +636,13 @@ novel_prediction_t** intuition_predict_novel(intuition_system_t* system,
     /* Generate a few novel predictions within domain bounds */
     uint32_t max_pred = 5;
     novel_prediction_t** preds = nimcp_calloc(max_pred, sizeof(novel_prediction_t*));
-    if (!preds) return NULL;
+    if (!preds) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "preds is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < max_pred && i < INTUITION_MAX_PREDICTIONS; i++) {
         novel_prediction_t* p = nimcp_calloc(1, sizeof(novel_prediction_t));
@@ -683,7 +701,13 @@ synthesis_t* intuition_synthesize_knowledge(intuition_system_t* system,
     if (!system || !fragments || count == 0) return NULL;
 
     synthesis_t* synth = nimcp_calloc(1, sizeof(synthesis_t));
-    if (!synth) return NULL;
+    if (!synth) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synth is NULL");
+
+        return NULL;
+
+    }
 
     synth->id = system->next_synthesis_id++;
 
@@ -822,7 +846,13 @@ intuition_gap_t** intuition_identify_knowledge_gaps(intuition_system_t* system,
     /* Create a few gaps based on domain dimensions */
     uint32_t max_gaps = (domain->dim < INTUITION_MAX_GAPS) ? domain->dim : INTUITION_MAX_GAPS;
     intuition_gap_t** gaps = nimcp_calloc(max_gaps, sizeof(intuition_gap_t*));
-    if (!gaps) return NULL;
+    if (!gaps) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gaps is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < max_gaps / 2; i++) {
         intuition_gap_t* gap = nimcp_calloc(1, sizeof(intuition_gap_t));
@@ -851,7 +881,13 @@ intuition_question_t** intuition_generate_questions(intuition_system_t* system,
 
     uint32_t max_q = (num_gaps < INTUITION_MAX_QUESTIONS) ? num_gaps : INTUITION_MAX_QUESTIONS;
     intuition_question_t** questions = nimcp_calloc(max_q, sizeof(intuition_question_t*));
-    if (!questions) return NULL;
+    if (!questions) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "questions is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < max_q; i++) {
         if (!gaps[i]) continue;
@@ -921,7 +957,13 @@ void intuition_question_free(intuition_question_t* question) {
 intuition_data_point_t* intuition_data_point_create(const float* values, uint32_t dim,
                                                     float timestamp, float confidence) {
     intuition_data_point_t* point = nimcp_calloc(1, sizeof(intuition_data_point_t));
-    if (!point) return NULL;
+    if (!point) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "point is NULL");
+
+        return NULL;
+
+    }
 
     if (values && dim > 0) {
         point->values = nimcp_calloc(dim, sizeof(float));
@@ -947,7 +989,13 @@ knowledge_fragment_t* knowledge_fragment_create(const char* description,
                                                 const float* content, uint32_t dim,
                                                 float confidence) {
     knowledge_fragment_t* frag = nimcp_calloc(1, sizeof(knowledge_fragment_t));
-    if (!frag) return NULL;
+    if (!frag) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "frag is NULL");
+
+        return NULL;
+
+    }
 
     if (description) {
         strncpy(frag->description, description, sizeof(frag->description) - 1);

@@ -1894,7 +1894,13 @@ int global_workspace_query_broadcast_targets(kg_reader_t* kg) {
  * @return Capability description string or NULL
  */
 const char* global_workspace_get_capabilities(kg_reader_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
     return kg_reader_get_module_capabilities(kg, "Global_Workspace");
 }
 
@@ -1905,7 +1911,13 @@ const char* global_workspace_get_capabilities(kg_reader_t* kg) {
  * @return Relation list showing integrations (caller must free)
  */
 kg_relation_list_t* global_workspace_get_integrations(kg_reader_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
     return kg_reader_get_module_integrations(kg, "Global_Workspace");
 }
 

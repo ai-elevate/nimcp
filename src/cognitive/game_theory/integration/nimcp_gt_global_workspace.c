@@ -157,11 +157,15 @@ gt_gw_auction_ctx_t gt_gw_create(
     const gt_gw_config_t* config
 ) {
     if (!workspace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "workspace is NULL");
+
         return NULL;
     }
 
     gt_gw_auction_ctx_t ctx = nimcp_calloc(1, sizeof(struct gt_gw_auction_ctx_struct));
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 

@@ -148,7 +148,13 @@ shadow_emotion_system_t* shadow_system_create(uint32_t max_others_tracked) {
      */
     
     shadow_emotion_system_t* system = (shadow_emotion_system_t*)nimcp_calloc(1, sizeof(shadow_emotion_system_t));
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     // Allocate other-detection array
     system->max_others_tracked = max_others_tracked;

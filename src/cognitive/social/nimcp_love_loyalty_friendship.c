@@ -50,7 +50,13 @@ social_bond_system_t* social_bond_system_create(void) {
     // HOW:  Zero-initialize all state, set up default parameters
 
     social_bond_system_t* system = (social_bond_system_t*)nimcp_calloc(1, sizeof(social_bond_system_t));
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     // Initialize all relationships as inactive
     for (int i = 0; i < SOCIAL_MAX_RELATIONSHIPS; i++) {

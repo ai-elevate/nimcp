@@ -135,7 +135,13 @@ personality_snn_config_t personality_snn_config_default(void) {
 
 personality_snn_bridge_t* personality_snn_create(const personality_snn_config_t* config) {
     personality_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(personality_snn_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

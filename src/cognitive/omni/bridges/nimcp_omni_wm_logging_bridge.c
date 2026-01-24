@@ -1290,13 +1290,25 @@ nimcp_error_t omni_wm_logging_bridge_logf(
 
 const omni_wm_to_logging_effects_t* omni_wm_logging_bridge_get_wm_effects(
     const omni_wm_logging_bridge_t* bridge) {
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     return &bridge->wm_to_logging;
 }
 
 const logging_to_omni_wm_effects_t* omni_wm_logging_bridge_get_logging_effects(
     const omni_wm_logging_bridge_t* bridge) {
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     return &bridge->logging_to_wm;
 }
 
@@ -1328,13 +1340,25 @@ nimcp_error_t omni_wm_logging_bridge_reset_stats(
 
 const wm_training_metrics_t* omni_wm_logging_bridge_get_training_metrics(
     const omni_wm_logging_bridge_t* bridge) {
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     return &bridge->training_metrics;
 }
 
 const wm_calibration_metrics_t* omni_wm_logging_bridge_get_calibration(
     const omni_wm_logging_bridge_t* bridge) {
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     return &bridge->calibration;
 }
 

@@ -569,7 +569,13 @@ vicarious_agent_state_t* vicarious_reward_get_agent(
     vicarious_reward_system_t* system,
     uint32_t agent_id
 ) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_mutex_lock(system->mutex);
     vicarious_agent_state_t* agent = find_or_create_agent(system, agent_id);
@@ -645,7 +651,13 @@ const action_outcome_assoc_t* vicarious_reward_get_association(
     const vicarious_reward_system_t* system,
     uint32_t action_id
 ) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < system->association_count; i++) {
         if (system->associations[i].action_id == action_id) {

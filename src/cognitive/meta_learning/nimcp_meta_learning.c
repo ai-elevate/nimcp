@@ -1098,6 +1098,8 @@ static float compute_loss(brain_t brain, const float** inputs,
 static brain_t clone_brain_parameters(brain_t source)
 {
     if (!source) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source is NULL");
+
         return NULL;
     }
 

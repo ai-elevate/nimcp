@@ -31,7 +31,13 @@ free_energy_thalamic_config_t free_energy_thalamic_default_config(void) {
 
 free_energy_thalamic_bridge_t* free_energy_thalamic_bridge_create(void* free_energy, thalamic_router_t* router, const free_energy_thalamic_config_t* config) {
     free_energy_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(free_energy_thalamic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     if (bridge_base_init(&bridge->base, 0, "free_energy_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);

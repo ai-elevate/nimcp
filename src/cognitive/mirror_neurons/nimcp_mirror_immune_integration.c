@@ -101,7 +101,13 @@ mirror_immune_integration_t* mirror_immune_create(
     if (!mirror_system || !immune_system) return NULL;
 
     mirror_immune_integration_t* integration = nimcp_calloc(1, sizeof(*integration));
-    if (!integration) return NULL;
+    if (!integration) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "integration is NULL");
+
+        return NULL;
+
+    }
 
     /* Copy or use default config */
     if (config) {

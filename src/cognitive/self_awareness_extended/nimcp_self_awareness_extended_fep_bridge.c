@@ -33,7 +33,13 @@ int self_awareness_extended_fep_bridge_default_config(self_awareness_extended_fe
 
 self_awareness_extended_fep_bridge_t* self_awareness_extended_fep_bridge_create(const self_awareness_extended_fep_config_t* config) {
     self_awareness_extended_fep_bridge_t* bridge = nimcp_malloc(sizeof(self_awareness_extended_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     memset(bridge, 0, sizeof(self_awareness_extended_fep_bridge_t));
     if (config) bridge->config = *config;
     else self_awareness_extended_fep_bridge_default_config(&bridge->config);

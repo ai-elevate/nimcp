@@ -135,7 +135,13 @@ empathy_snn_config_t empathy_snn_config_default(void) {
 
 empathy_snn_bridge_t* empathy_snn_create(const empathy_snn_config_t* config) {
     empathy_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(empathy_snn_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

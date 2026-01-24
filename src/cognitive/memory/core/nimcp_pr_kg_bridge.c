@@ -1476,6 +1476,8 @@ int pr_kg_find_similar_memories(
     /* Get reference signature from KG node */
     prime_signature_t* ref_sig = pr_kg_signature_from_node(bridge, kg_node_id);
     if (!ref_sig) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ref_sig is NULL");
+
         return -1;
     }
 

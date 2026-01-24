@@ -1005,6 +1005,8 @@ z_ladder_t z_ladder_create(const z_ladder_config_t* config) {
     // Allocate ladder structure
     z_ladder_t ladder = (z_ladder_t)calloc(1, sizeof(struct z_ladder_struct));
     if (!ladder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ladder is NULL");
+
         return NULL;
     }
 
@@ -1176,6 +1178,8 @@ z_ladder_error_t z_ladder_remove(z_ladder_t ladder, uint64_t node_id) {
 
 pr_memory_node_t* z_ladder_find(z_ladder_t ladder, uint64_t node_id) {
     if (!ladder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ladder is NULL");
+
         return NULL;
     }
 

@@ -484,11 +484,23 @@ NIMCP_EXPORT void pr_spike_pattern_destroy(pr_spike_pattern_t* pattern) {
 }
 
 NIMCP_EXPORT pr_spike_pattern_t* pr_spike_pattern_copy(const pr_spike_pattern_t* pattern) {
-    if (!pattern) return NULL;
+    if (!pattern) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern is NULL");
+
+        return NULL;
+
+    }
 
     pr_spike_pattern_t* copy = pr_spike_pattern_create_with_capacity(
         pattern->num_neurons, pattern->duration_ms, pattern->capacity);
-    if (!copy) return NULL;
+    if (!copy) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "copy is NULL");
+
+        return NULL;
+
+    }
 
     memcpy(copy->spike_times, pattern->spike_times, pattern->num_spikes * sizeof(float));
     memcpy(copy->neuron_ids, pattern->neuron_ids, pattern->num_spikes * sizeof(uint32_t));
@@ -569,7 +581,13 @@ NIMCP_EXPORT pr_spike_pattern_t* pr_spike_pattern_merge(
     /* Create merged pattern */
     pr_spike_pattern_t* merged = pr_spike_pattern_create_with_capacity(
         max_neurons, max_duration, total_spikes);
-    if (!merged) return NULL;
+    if (!merged) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "merged is NULL");
+
+        return NULL;
+
+    }
 
     /* Copy all spikes */
     for (size_t i = 0; i < count; i++) {
@@ -616,7 +634,13 @@ NIMCP_EXPORT pr_spike_pattern_t* pr_spike_pattern_extract_neurons(
     uint32_t neuron_start,
     uint32_t neuron_end)
 {
-    if (!pattern) return NULL;
+    if (!pattern) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern is NULL");
+
+        return NULL;
+
+    }
 
     /* Count spikes in range */
     size_t count = 0;
@@ -629,7 +653,13 @@ NIMCP_EXPORT pr_spike_pattern_t* pr_spike_pattern_extract_neurons(
 
     pr_spike_pattern_t* extracted = pr_spike_pattern_create_with_capacity(
         neuron_end - neuron_start, pattern->duration_ms, count > 0 ? count : 1);
-    if (!extracted) return NULL;
+    if (!extracted) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extracted is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t i = 0; i < pattern->num_spikes; i++) {
         if (pattern->neuron_ids[i] >= neuron_start &&
@@ -648,7 +678,13 @@ NIMCP_EXPORT pr_spike_pattern_t* pr_spike_pattern_extract_time(
     float time_start,
     float time_end)
 {
-    if (!pattern) return NULL;
+    if (!pattern) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pattern is NULL");
+
+        return NULL;
+
+    }
 
     /* Count spikes in range */
     size_t count = 0;
@@ -661,7 +697,13 @@ NIMCP_EXPORT pr_spike_pattern_t* pr_spike_pattern_extract_time(
 
     pr_spike_pattern_t* extracted = pr_spike_pattern_create_with_capacity(
         pattern->num_neurons, time_end - time_start, count > 0 ? count : 1);
-    if (!extracted) return NULL;
+    if (!extracted) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extracted is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t i = 0; i < pattern->num_spikes; i++) {
         if (pattern->spike_times[i] >= time_start &&
@@ -2149,7 +2191,13 @@ NIMCP_EXPORT pr_snn_component_patterns_t* pr_snn_component_patterns_create(
 {
     pr_snn_component_patterns_t* patterns =
         (pr_snn_component_patterns_t*)calloc(1, sizeof(pr_snn_component_patterns_t));
-    if (!patterns) return NULL;
+    if (!patterns) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "patterns is NULL");
+
+        return NULL;
+
+    }
 
     patterns->w_pattern = pr_spike_pattern_create(num_neurons, duration_ms);
     patterns->x_pattern = pr_spike_pattern_create(num_neurons, duration_ms);

@@ -210,6 +210,8 @@ static int64_t read_sysfs_int(const char* dir, const char* file) {
 
     FILE* fp = fopen(path, "r");
     if (!fp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fp is NULL");
+
         return -1;
     }
 

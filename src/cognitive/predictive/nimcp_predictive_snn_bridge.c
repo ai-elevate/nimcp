@@ -135,7 +135,13 @@ predictive_snn_config_t predictive_snn_config_default(void) {
 
 predictive_snn_bridge_t* predictive_snn_create(const predictive_snn_config_t* config) {
     predictive_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(predictive_snn_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

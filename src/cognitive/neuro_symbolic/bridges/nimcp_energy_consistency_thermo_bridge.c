@@ -12,7 +12,13 @@
 
 NIMCP_API energy_thermo_bridge_t* energy_thermo_bridge_create(void) {
     energy_thermo_bridge_t* bridge = nimcp_calloc(1, sizeof(energy_thermo_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     bridge_base_init(&bridge->base, BIO_MODULE_ENERGY_THERMO_BRIDGE,
                      "energy_thermo_bridge");

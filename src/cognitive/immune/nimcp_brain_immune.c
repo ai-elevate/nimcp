@@ -148,7 +148,13 @@ static uint64_t get_timestamp_ms(void) {
  * @brief Find antigen by ID
  */
 static brain_antigen_t* find_antigen_by_id(brain_immune_system_t* system, uint32_t id) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
     for (size_t i = 0; i < system->antigen_count; i++) {
         if (system->antigens[i].id == id) {
             return &system->antigens[i];
@@ -161,7 +167,13 @@ static brain_antigen_t* find_antigen_by_id(brain_immune_system_t* system, uint32
  * @brief Find B cell by ID
  */
 static brain_b_cell_t* find_b_cell_by_id(brain_immune_system_t* system, uint32_t id) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
     for (size_t i = 0; i < system->b_cell_count; i++) {
         if (system->b_cells[i].id == id) {
             return &system->b_cells[i];
@@ -174,7 +186,13 @@ static brain_b_cell_t* find_b_cell_by_id(brain_immune_system_t* system, uint32_t
  * @brief Find T cell by ID
  */
 static brain_t_cell_t* find_t_cell_by_id(brain_immune_system_t* system, uint32_t id) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
     for (size_t i = 0; i < system->t_cell_count; i++) {
         if (system->t_cells[i].id == id) {
             return &system->t_cells[i];
@@ -187,7 +205,13 @@ static brain_t_cell_t* find_t_cell_by_id(brain_immune_system_t* system, uint32_t
  * @brief Find antibody by ID
  */
 static brain_antibody_t* find_antibody_by_id(brain_immune_system_t* system, uint32_t id) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
     for (size_t i = 0; i < system->antibody_count; i++) {
         if (system->antibodies[i].id == id) {
             return &system->antibodies[i];
@@ -200,7 +224,13 @@ static brain_antibody_t* find_antibody_by_id(brain_immune_system_t* system, uint
  * @brief Find inflammation site by ID
  */
 static brain_inflammation_site_t* find_inflammation_by_id(brain_immune_system_t* system, uint32_t id) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
     for (size_t i = 0; i < system->inflammation_count; i++) {
         if (system->inflammation_sites[i].id == id) {
             return &system->inflammation_sites[i];
@@ -407,7 +437,13 @@ int brain_immune_default_config(brain_immune_config_t* config) {
  */
 brain_immune_system_t* brain_immune_create(const brain_immune_config_t* config) {
     brain_immune_system_t* system = nimcp_calloc(1, sizeof(brain_immune_system_t));
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {
@@ -2348,7 +2384,13 @@ bool brain_immune_is_neutralized(brain_immune_system_t* system, uint32_t antigen
  * @brief Get antigen by ID
  */
 const brain_antigen_t* brain_immune_get_antigen(brain_immune_system_t* system, uint32_t antigen_id) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
     return find_antigen_by_id(system, antigen_id);
 }
 

@@ -425,6 +425,8 @@ NIMCP_EXPORT sr_error_t sr_system_clear(sr_system_t system) {
 
 NIMCP_EXPORT const sr_config_t* sr_system_get_config(sr_system_t system) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
     return &system->config;
@@ -543,6 +545,8 @@ NIMCP_EXPORT sr_error_t sr_system_remove_item(sr_system_t system, uint64_t item_
 
 NIMCP_EXPORT sr_spaced_item_t* sr_system_get_item(sr_system_t system, uint64_t item_id) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
     return hash_lookup(system, item_id);
@@ -1996,6 +2000,8 @@ NIMCP_EXPORT sr_system_t sr_system_deserialize(
     // Create system
     sr_system_t system = sr_system_create(&config);
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
 

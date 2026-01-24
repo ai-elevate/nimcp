@@ -45,9 +45,21 @@ intuition_substrate_bridge_t* intuition_substrate_bridge_create(
     neural_substrate_t* substrate,
     const intuition_substrate_config_t* config
 ) {
-    if (!substrate) return NULL;
+    if (!substrate) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
+
+        return NULL;
+
+    }
     intuition_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(intuition_substrate_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     bridge->intuition = intuition;
     bridge->substrate = substrate;
     bridge->config = config ? *config : intuition_substrate_default_config();

@@ -50,7 +50,13 @@ self_model_fep_bridge_t* self_model_fep_bridge_create(
 ) {
     self_model_fep_bridge_t* bridge =
         (self_model_fep_bridge_t*)nimcp_malloc(sizeof(self_model_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     memset(bridge, 0, sizeof(self_model_fep_bridge_t));
 

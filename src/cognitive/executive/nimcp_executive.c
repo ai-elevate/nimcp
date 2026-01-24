@@ -535,7 +535,13 @@ static inline uint64_t exec_get_time_ms(void)
  */
 static task_descriptor_t* find_task_by_id(executive_controller_t* exec, uint32_t task_id)
 {
-    if (!exec) return NULL;
+    if (!exec) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "exec is NULL");
+
+        return NULL;
+
+    }
 
     // Check active task first
     if (exec->active_task && exec->active_task->task_id == task_id) {
@@ -1209,7 +1215,13 @@ bool executive_switch_task(executive_controller_t* exec, uint32_t task_id, uint6
 
 const task_descriptor_t* executive_get_active_task(executive_controller_t* exec)
 {
-    if (!exec) return NULL;
+    if (!exec) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "exec is NULL");
+
+        return NULL;
+
+    }
     return exec->active_task;
 }
 
@@ -2680,7 +2692,13 @@ static void* plan_apply_action(const void* state, uint32_t action, void* user_da
     if (action >= s->num_actions) return NULL;
 
     mcts_plan_state_t* new_state = nimcp_calloc(1, sizeof(mcts_plan_state_t));
-    if (!new_state) return NULL;
+    if (!new_state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_state is NULL");
+
+        return NULL;
+
+    }
 
     ctx->nodes_created++;
 
@@ -2742,7 +2760,13 @@ static void* plan_clone_state(const void* state, void* user_data) {
     const mcts_plan_state_t* s = (const mcts_plan_state_t*)state;
 
     mcts_plan_state_t* clone = nimcp_calloc(1, sizeof(mcts_plan_state_t));
-    if (!clone) return NULL;
+    if (!clone) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+
+        return NULL;
+
+    }
 
     memcpy(clone, s, sizeof(mcts_plan_state_t));
     ctx->nodes_created++;

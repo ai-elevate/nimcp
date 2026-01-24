@@ -624,7 +624,13 @@ const habituation_record_t* habituation_get_record(
     const habituation_system_t* system,
     uint32_t pattern_id
 ) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < system->pattern_count; i++) {
         if (system->patterns[i].stimulus.stimulus_id == pattern_id) {

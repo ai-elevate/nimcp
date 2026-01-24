@@ -631,6 +631,8 @@ NIMCP_EXPORT gpu_neural_network_t gpu_neural_network_create(
     // Allocate network structure
     gpu_neural_network_t network = nimcp_calloc(1, sizeof(struct gpu_neural_network_struct));
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+
         return NULL;
     }
 

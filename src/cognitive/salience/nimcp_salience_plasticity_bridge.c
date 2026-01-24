@@ -146,10 +146,22 @@ salience_plasticity_config_t salience_plasticity_config_default(void) {
 salience_plasticity_bridge_t* salience_plasticity_create(
     const salience_plasticity_config_t* config
 ) {
-    if (!config) return NULL;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return NULL;
+
+    }
 
     salience_plasticity_bridge_t* bridge = calloc(1, sizeof(salience_plasticity_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     bridge->config = *config;
     bridge->state = SALIENCE_PLASTICITY_STATE_IDLE;

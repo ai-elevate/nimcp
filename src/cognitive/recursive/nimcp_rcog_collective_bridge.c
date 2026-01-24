@@ -108,6 +108,8 @@ rcog_collective_bridge_t* rcog_collective_bridge_create(
 ) {
     rcog_collective_bridge_t* bridge = nimcp_calloc(1, sizeof(rcog_collective_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

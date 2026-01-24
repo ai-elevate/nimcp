@@ -80,6 +80,8 @@ language_insula_bridge_t* language_insula_bridge_create(
 
     language_insula_bridge_t* bridge = nimcp_calloc(1, sizeof(language_insula_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -111,6 +113,8 @@ void language_insula_bridge_destroy(language_insula_bridge_t* bridge) {
 
 int language_insula_bridge_update(language_insula_bridge_t* bridge, uint64_t timestamp_ms) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

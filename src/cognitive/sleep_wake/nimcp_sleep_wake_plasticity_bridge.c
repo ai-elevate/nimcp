@@ -132,7 +132,13 @@ sleep_wake_plasticity_bridge_t* sleep_wake_plasticity_create(
     const sleep_wake_plasticity_config_t* config
 ) {
     sleep_wake_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(sleep_wake_plasticity_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

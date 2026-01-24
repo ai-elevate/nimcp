@@ -209,7 +209,13 @@ void mirror_substrate_pool_destroy(mirror_substrate_pool_t* pool)
 
 mirror_substrate_backing_t* mirror_substrate_pool_alloc(mirror_substrate_pool_t* pool)
 {
-    if (!pool) return NULL;
+    if (!pool) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_spinlock_lock(&pool->lock);
 
@@ -419,7 +425,13 @@ mirror_substrate_backing_t* mirror_substrate_cow_copy(
     mirror_substrate_backing_t* backing,
     mirror_substrate_pool_t* pool)
 {
-    if (!backing) return NULL;
+    if (!backing) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "backing is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_spinlock_lock(&backing->lock);
 

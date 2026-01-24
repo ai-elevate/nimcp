@@ -1327,14 +1327,32 @@ nimcp_error_t omni_wm_thalamic_bridge_update_from_gated_input(
 const thalamus_to_omni_wm_effects_t* omni_wm_thalamic_bridge_get_thalamic_effects(
     const omni_wm_thalamic_bridge_t* bridge) {
 
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return NULL;
+
+
+    }
     return &bridge->thal_to_wm;
 }
 
 const omni_wm_to_thalamus_effects_t* omni_wm_thalamic_bridge_get_wm_effects(
     const omni_wm_thalamic_bridge_t* bridge) {
 
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return NULL;
+
+
+    }
     return &bridge->wm_to_thal;
 }
 

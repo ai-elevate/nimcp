@@ -215,6 +215,8 @@ static cortical_memory_node_t* cortical_node_create(
     // WHAT: Allocate node structure
     cortical_memory_node_t* node = nimcp_calloc(1, sizeof(cortical_memory_node_t));
     if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
         return NULL;
     }
 

@@ -135,7 +135,13 @@ social_snn_config_t social_snn_config_default(void) {
 
 social_snn_bridge_t* social_snn_create(const social_snn_config_t* config) {
     social_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(social_snn_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

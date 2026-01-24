@@ -119,6 +119,8 @@ rcog_brain_kg_bridge_t* rcog_brain_kg_bridge_create(
 ) {
     rcog_brain_kg_bridge_t* bridge = nimcp_calloc(1, sizeof(rcog_brain_kg_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

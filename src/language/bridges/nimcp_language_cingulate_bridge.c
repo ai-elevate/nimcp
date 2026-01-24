@@ -354,6 +354,8 @@ language_cingulate_bridge_t* language_cingulate_bridge_create(
 {
     language_cingulate_bridge_t* bridge = nimcp_calloc(1, sizeof(language_cingulate_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -419,6 +421,8 @@ void language_cingulate_bridge_destroy(language_cingulate_bridge_t* bridge)
 int language_cingulate_bridge_reset(language_cingulate_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -453,6 +457,8 @@ int language_cingulate_connect_broca(
     broca_adapter_t* broca)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -470,6 +476,8 @@ int language_cingulate_connect_wernicke(
     wernicke_adapter_t* wernicke)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -487,6 +495,8 @@ int language_cingulate_connect_bio_async(
     bio_router_t router)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -839,6 +849,8 @@ int language_cingulate_start_monitoring(
     uint32_t utterance_id)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -860,6 +872,8 @@ int language_cingulate_start_monitoring(
 int language_cingulate_stop_monitoring(language_cingulate_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -958,6 +972,8 @@ int language_cingulate_set_error_callback(
     void* user_data)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -972,6 +988,8 @@ int language_cingulate_set_conflict_callback(
     void* user_data)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -986,6 +1004,8 @@ int language_cingulate_set_correction_callback(
     void* user_data)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -1000,6 +1020,8 @@ int language_cingulate_set_control_callback(
     void* user_data)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

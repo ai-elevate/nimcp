@@ -132,7 +132,13 @@ static agent_entry_t* find_agent_entry(
     transactive_memory_t tm,
     uint64_t agent_id
 ) {
-    if (!tm) return NULL;
+    if (!tm) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tm is NULL");
+
+        return NULL;
+
+    }
 
     size_t index = hash_agent_id(agent_id, tm->agent_table_size);
     agent_entry_t* entry = tm->agent_table[index];
@@ -235,7 +241,13 @@ static float calculate_agent_score(
  * @brief Find a free delegation slot
  */
 static delegation_state_t* find_free_delegation(transactive_memory_t tm) {
-    if (!tm) return NULL;
+    if (!tm) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tm is NULL");
+
+        return NULL;
+
+    }
 
     // Find inactive slot
     for (size_t i = 0; i < tm->delegation_capacity; i++) {
@@ -259,6 +271,8 @@ static delegation_state_t* find_free_delegation(transactive_memory_t tm) {
         new_capacity * sizeof(delegation_state_t)
     );
     if (!new_delegations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_delegations is NULL");
+
         return NULL;
     }
 
@@ -281,7 +295,13 @@ static delegation_state_t* find_delegation(
     transactive_memory_t tm,
     uint64_t delegation_id
 ) {
-    if (!tm) return NULL;
+    if (!tm) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tm is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t i = 0; i < tm->delegation_capacity; i++) {
         if (tm->delegations[i].delegation_id == delegation_id &&

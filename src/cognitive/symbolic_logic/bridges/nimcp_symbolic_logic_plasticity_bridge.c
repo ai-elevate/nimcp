@@ -452,6 +452,8 @@ static void update_stats(
 
 int safety_plasticity_bridge_default_config(safety_plasticity_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 

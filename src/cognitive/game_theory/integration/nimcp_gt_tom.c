@@ -164,6 +164,8 @@ nimcp_gt_tom_config_t nimcp_gt_tom_default_config(void) {
 nimcp_gt_tom_t nimcp_gt_tom_create(const nimcp_gt_tom_config_t* config) {
     nimcp_gt_tom_t ctx = nimcp_calloc(1, sizeof(struct nimcp_gt_tom_struct));
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 

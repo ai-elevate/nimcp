@@ -213,7 +213,13 @@ static code_crash_type_t signal_to_crash_type(int signal) {
  * @brief Find antigen by ID
  */
 static code_antigen_t* find_antigen_by_id(code_immune_system_t* system, uint64_t id) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
     for (size_t i = 0; i < system->antigen_count; i++) {
         if (system->antigens[i].id == id) {
             return &system->antigens[i];
@@ -226,7 +232,13 @@ static code_antigen_t* find_antigen_by_id(code_immune_system_t* system, uint64_t
  * @brief Find B cell by ID
  */
 static code_b_cell_t* find_b_cell_by_id(code_immune_system_t* system, uint64_t id) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
     for (size_t i = 0; i < system->b_cell_count; i++) {
         if (system->b_cells[i].id == id) {
             return &system->b_cells[i];
@@ -239,7 +251,13 @@ static code_b_cell_t* find_b_cell_by_id(code_immune_system_t* system, uint64_t i
  * @brief Find antibody by ID
  */
 static code_antibody_t* find_antibody_by_id(code_immune_system_t* system, uint64_t id) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
     for (size_t i = 0; i < system->antibody_count; i++) {
         if (system->antibodies[i].id == id) {
             return &system->antibodies[i];
@@ -395,7 +413,13 @@ code_immune_system_t* code_immune_create_with_config(
     const code_immune_config_t* config
 ) {
     code_immune_system_t* system = nimcp_calloc(1, sizeof(code_immune_system_t));
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {
@@ -1502,7 +1526,13 @@ const code_antigen_t* code_immune_get_antigen(
     code_immune_system_t* system,
     uint64_t antigen_id
 ) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_mutex_lock(system->mutex);
     code_antigen_t* antigen = find_antigen_by_id(system, antigen_id);
@@ -1518,7 +1548,13 @@ const code_b_cell_t* code_immune_get_b_cell(
     code_immune_system_t* system,
     uint64_t b_cell_id
 ) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_mutex_lock(system->mutex);
     code_b_cell_t* b_cell = find_b_cell_by_id(system, b_cell_id);
@@ -1534,7 +1570,13 @@ const code_antibody_t* code_immune_get_antibody(
     code_immune_system_t* system,
     uint64_t antibody_id
 ) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_mutex_lock(system->mutex);
     code_antibody_t* antibody = find_antibody_by_id(system, antibody_id);

@@ -1118,14 +1118,32 @@ bool omni_wm_substrate_bridge_check_alert(
 const substrate_to_wm_effects_t* omni_wm_substrate_bridge_get_substrate_effects(
     const omni_wm_substrate_bridge_t* bridge) {
 
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return NULL;
+
+
+    }
     return &bridge->substrate_effects;
 }
 
 const wm_to_substrate_effects_t* omni_wm_substrate_bridge_get_wm_effects(
     const omni_wm_substrate_bridge_t* bridge) {
 
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return NULL;
+
+
+    }
     return &bridge->wm_effects;
 }
 

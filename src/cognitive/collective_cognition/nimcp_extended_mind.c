@@ -245,7 +245,13 @@ static void update_state(extended_mind_t* em) {
 
 extended_mind_t* extended_mind_create(const extended_mind_config_t* config) {
     extended_mind_t* em = nimcp_malloc(sizeof(extended_mind_t));
-    if (!em) return NULL;
+    if (!em) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "em is NULL");
+
+        return NULL;
+
+    }
 
     memset(em, 0, sizeof(extended_mind_t));
 

@@ -327,6 +327,8 @@ NIMCP_EXPORT pr_hypo_bridge_t pr_hypo_bridge_create(const pr_hypo_config_t* conf
     /* Allocate bridge */
     pr_hypo_bridge_t bridge = (pr_hypo_bridge_t)calloc(1, sizeof(*bridge));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

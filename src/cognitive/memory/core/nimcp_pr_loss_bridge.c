@@ -122,6 +122,8 @@ static int ensure_cache_capacity(pr_loss_bridge_t bridge, size_t needed) {
     size_t new_capacity = needed * 2;
     float* new_cache = nimcp_realloc(bridge->loss_cache, new_capacity * sizeof(float));
     if (!new_cache) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_cache is NULL");
+
         return -1;
     }
 
@@ -235,7 +237,13 @@ bool pr_loss_config_validate(const pr_loss_config_t* config) {
 
 pr_loss_bridge_t pr_loss_bridge_create(const pr_loss_config_t* config) {
     pr_loss_bridge_t bridge = nimcp_calloc(1, sizeof(struct pr_loss_bridge_struct));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

@@ -88,12 +88,24 @@ working_memory_sleep_bridge_t working_memory_sleep_bridge_create(
     const working_memory_sleep_config_t* config,
     sleep_system_t sleep)
 {
-    if (!sleep) return NULL;
+    if (!sleep) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep is NULL");
+
+        return NULL;
+
+    }
 
     struct working_memory_sleep_bridge_struct* bridge =
         (struct working_memory_sleep_bridge_struct*)nimcp_malloc(
             sizeof(struct working_memory_sleep_bridge_struct));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     memset(bridge, 0, sizeof(struct working_memory_sleep_bridge_struct));
 

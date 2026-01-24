@@ -32,9 +32,21 @@ autobio_substrate_config_t autobio_substrate_default_config(void) {
 }
 
 autobio_substrate_bridge_t* autobio_substrate_bridge_create(void* autobio, neural_substrate_t* substrate, const autobio_substrate_config_t* config) {
-    if (!substrate) return NULL;
+    if (!substrate) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
+
+        return NULL;
+
+    }
     autobio_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(autobio_substrate_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     bridge->autobio = autobio;
     bridge->substrate = substrate;
     bridge->config = config ? *config : autobio_substrate_default_config();

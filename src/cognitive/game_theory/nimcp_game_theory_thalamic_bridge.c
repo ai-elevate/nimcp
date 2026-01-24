@@ -31,7 +31,13 @@ game_theory_thalamic_config_t game_theory_thalamic_default_config(void) {
 
 game_theory_thalamic_bridge_t* game_theory_thalamic_bridge_create(void* game_theory, thalamic_router_t* router, const game_theory_thalamic_config_t* config) {
     game_theory_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(game_theory_thalamic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     bridge->game_theory = game_theory;
     bridge->router = router;
     bridge->config = config ? *config : game_theory_thalamic_default_config();

@@ -227,6 +227,8 @@ NIMCP_EXPORT pr_sleep_bridge_t pr_sleep_bridge_create(const pr_sleep_config_t* c
     // Allocate bridge structure
     pr_sleep_bridge_t bridge = (pr_sleep_bridge_t)calloc(1, sizeof(struct pr_sleep_bridge_struct));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -928,6 +930,8 @@ NIMCP_EXPORT int pr_sleep_bridge_replay_sequence(
         // Random order - use simple Fisher-Yates shuffle
         uint64_t* shuffled = (uint64_t*)malloc(count * sizeof(uint64_t));
         if (!shuffled) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "shuffled is NULL");
+
             return -1;
         }
         memcpy(shuffled, node_ids, count * sizeof(uint64_t));

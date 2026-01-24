@@ -119,6 +119,8 @@ meta_health_reflector_t* meta_health_create(
 ) {
     meta_health_reflector_t* reflector = calloc(1, sizeof(meta_health_reflector_t));
     if (!reflector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reflector is NULL");
+
         return NULL;
     }
 
@@ -190,6 +192,8 @@ void meta_health_destroy(meta_health_reflector_t* reflector) {
 
 int meta_health_start(meta_health_reflector_t* reflector) {
     if (!reflector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reflector is NULL");
+
         return -1;
     }
 
@@ -201,6 +205,8 @@ int meta_health_start(meta_health_reflector_t* reflector) {
 
 int meta_health_stop(meta_health_reflector_t* reflector) {
     if (!reflector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reflector is NULL");
+
         return -1;
     }
 
@@ -246,6 +252,8 @@ int meta_health_record_outcome(
     float post_recovery_health
 ) {
     if (!reflector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reflector is NULL");
+
         return -1;
     }
 
@@ -793,6 +801,8 @@ int meta_health_register_pattern(
 
 int meta_health_revert_learnings(meta_health_reflector_t* reflector) {
     if (!reflector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reflector is NULL");
+
         return -1;
     }
 

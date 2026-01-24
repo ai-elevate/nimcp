@@ -35,10 +35,22 @@ static void free_comp_node(cs_comp_node_t* node) {
 }
 
 static cs_comp_node_t* copy_comp_node(const cs_comp_node_t* src) {
-    if (!src) return NULL;
+    if (!src) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "src is NULL");
+
+        return NULL;
+
+    }
 
     cs_comp_node_t* dst = alloc_comp_node();
-    if (!dst) return NULL;
+    if (!dst) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dst is NULL");
+
+        return NULL;
+
+    }
 
     dst->primitive_id = src->primitive_id;
     dst->num_bindings = src->num_bindings;
@@ -405,7 +417,13 @@ cs_config_t cs_default_config(void) {
 
 nimcp_compositional_t* cs_create(const cs_config_t* config) {
     nimcp_compositional_t* cs = calloc(1, sizeof(nimcp_compositional_t));
-    if (!cs) return NULL;
+    if (!cs) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cs is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

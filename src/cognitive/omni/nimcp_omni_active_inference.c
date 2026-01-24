@@ -196,7 +196,13 @@ omni_active_inference_t* omni_ai_create(
     uint32_t obs_dim)
 {
     omni_active_inference_t* ai = nimcp_calloc(1, sizeof(omni_active_inference_t));
-    if (!ai) return NULL;
+    if (!ai) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ai is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {
@@ -1059,7 +1065,13 @@ int omni_ai_sample_policy(const float* probs, uint32_t n) {
 
 omni_ai_action_result_t* omni_ai_action_result_create(uint32_t action_dim) {
     omni_ai_action_result_t* result = nimcp_calloc(1, sizeof(omni_ai_action_result_t));
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     if (action_dim > 0) {
         result->action = nimcp_calloc(action_dim, sizeof(float));

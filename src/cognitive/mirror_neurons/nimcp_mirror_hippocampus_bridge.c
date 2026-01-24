@@ -194,6 +194,8 @@ static void action_to_observation(const action_t* action,
 
 int mirror_hippocampus_bridge_default_config(mirror_hippocampus_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -869,6 +871,8 @@ int mirror_hippocampus_stop_replay(
     mirror_hippocampus_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -937,6 +941,8 @@ int mirror_hippocampus_bridge_update(
     uint64_t delta_ms
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -1060,6 +1066,8 @@ int mirror_hippocampus_bridge_reset_stats(
     mirror_hippocampus_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

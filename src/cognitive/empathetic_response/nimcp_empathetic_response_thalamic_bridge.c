@@ -31,7 +31,13 @@ empathetic_response_thalamic_config_t empathetic_response_thalamic_default_confi
 
 empathetic_response_thalamic_bridge_t* empathetic_response_thalamic_bridge_create(void* empathetic_response, thalamic_router_t* router, const empathetic_response_thalamic_config_t* config) {
     empathetic_response_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(empathetic_response_thalamic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Initialize mutex for thread safety */
     if (bridge_base_init(&bridge->base, 0, "empathetic_response_thalamic") != 0) { nimcp_free(bridge); return NULL; }

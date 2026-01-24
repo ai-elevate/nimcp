@@ -1038,7 +1038,13 @@ int vaccine_update_efficacy(vaccine_system_t* system, uint32_t vaccine_id,
  */
 const vaccine_entry_t* vaccine_get_entry(vaccine_system_t* system,
                                         uint32_t vaccine_id) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_mutex_lock(system->mutex);
     vaccine_entry_t* vaccine = find_vaccine_by_id(system, vaccine_id);

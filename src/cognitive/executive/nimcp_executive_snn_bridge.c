@@ -135,7 +135,13 @@ executive_snn_config_t executive_snn_config_default(void) {
 
 executive_snn_bridge_t* executive_snn_create(const executive_snn_config_t* config) {
     executive_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(executive_snn_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

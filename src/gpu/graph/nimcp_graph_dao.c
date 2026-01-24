@@ -62,12 +62,16 @@ nimcp_gpu_graph_dao_t* nimcp_graph_dao_create_gpu(
     size_t cache_size)
 {
     if (!gpu_context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_context is NULL");
+
         return NULL;
     }
 
     nimcp_gpu_graph_dao_t* dao = (nimcp_gpu_graph_dao_t*)calloc(
         1, sizeof(nimcp_gpu_graph_dao_t));
     if (!dao) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dao is NULL");
+
         return NULL;
     }
 
@@ -743,6 +747,8 @@ static nimcp_graph_lru_cache_t* lru_cache_create(size_t capacity)
     nimcp_graph_lru_cache_t* cache = (nimcp_graph_lru_cache_t*)calloc(
         1, sizeof(nimcp_graph_lru_cache_t));
     if (!cache) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cache is NULL");
+
         return NULL;
     }
 
@@ -790,6 +796,8 @@ static int hash_id(int id)
 static nimcp_graph_cache_entry_t* lru_cache_get(nimcp_graph_lru_cache_t* cache, int id)
 {
     if (!cache) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cache is NULL");
+
         return NULL;
     }
 

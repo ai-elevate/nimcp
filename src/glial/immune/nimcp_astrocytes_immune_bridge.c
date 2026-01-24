@@ -63,7 +63,13 @@ astro_immune_bridge_t* astro_cell_create(
     brain_immune_system_t* immune_system)
 {
     astro_immune_bridge_t* bridge = nimcp_malloc(sizeof(astro_immune_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     memset(bridge, 0, sizeof(*bridge));
 
     if (config) bridge->config = *config;

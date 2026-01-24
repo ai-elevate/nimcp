@@ -27,11 +27,15 @@
 static pred_level_t* create_level(const pred_level_config_t* config,
                                    uint32_t level_index) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
     pred_level_t* level = nimcp_calloc(1, sizeof(pred_level_t));
     if (!level) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "level is NULL");
+
         return NULL;
     }
 
@@ -878,6 +882,8 @@ pred_hier_result_t* pred_hier_result_create(uint32_t num_levels,
 
     pred_hier_result_t* result = nimcp_calloc(1, sizeof(pred_hier_result_t));
     if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
         return NULL;
     }
 

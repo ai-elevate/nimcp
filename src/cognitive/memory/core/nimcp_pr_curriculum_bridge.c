@@ -488,7 +488,13 @@ pr_curriculum_bridge_t pr_curriculum_bridge_create(
     const pr_curriculum_config_t* config)
 {
     pr_curriculum_bridge_t bridge = nimcp_calloc(1, sizeof(struct pr_curriculum_bridge_struct));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

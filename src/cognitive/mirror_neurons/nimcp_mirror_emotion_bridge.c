@@ -671,7 +671,13 @@ mirror_emotion_agent_state_t* mirror_emotion_get_agent(
     mirror_emotion_bridge_t* bridge,
     uint32_t agent_id
 ) {
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     mirror_emotion_agent_state_t* agent = get_or_create_agent(bridge, agent_id);

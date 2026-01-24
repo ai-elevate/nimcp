@@ -324,6 +324,8 @@ language_motor_bridge_t* language_motor_bridge_create(
 {
     language_motor_bridge_t* bridge = nimcp_calloc(1, sizeof(language_motor_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -389,6 +391,8 @@ void language_motor_bridge_destroy(language_motor_bridge_t* bridge)
 int language_motor_bridge_reset(language_motor_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -420,6 +424,8 @@ int language_motor_connect_broca(
     broca_adapter_t* broca)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -437,6 +443,8 @@ int language_motor_connect_bio_async(
     bio_router_t router)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -581,6 +589,8 @@ int language_motor_request_speech_production(
 int language_motor_pause_production(language_motor_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -594,6 +604,8 @@ int language_motor_pause_production(language_motor_bridge_t* bridge)
 int language_motor_resume_production(language_motor_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -607,6 +619,8 @@ int language_motor_resume_production(language_motor_bridge_t* bridge)
 int language_motor_stop_production(language_motor_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -842,6 +856,8 @@ int language_motor_apply_timing_correction(
     float correction_ms)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -868,6 +884,8 @@ int language_motor_set_command_callback(
     void* user_data)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -882,6 +900,8 @@ int language_motor_set_feedback_callback(
     void* user_data)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -896,6 +916,8 @@ int language_motor_set_status_callback(
     void* user_data)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

@@ -151,7 +151,13 @@ static nimcp_tensor_t* extract_sample(
         sample_shape->rank,
         NIMCP_DTYPE_F32
     );
-    if (!sample) return NULL;
+    if (!sample) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sample is NULL");
+
+        return NULL;
+
+    }
 
     /* Calculate offset into dataset */
     size_t sample_size = nimcp_tensor_numel(sample);
@@ -190,7 +196,13 @@ static nimcp_tensor_t* create_batch_tensor(
         sample_shape->rank + 1,
         NIMCP_DTYPE_F32
     );
-    if (!batch) return NULL;
+    if (!batch) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "batch is NULL");
+
+        return NULL;
+
+    }
 
     /* Calculate sample size */
     size_t sample_numel = 1;

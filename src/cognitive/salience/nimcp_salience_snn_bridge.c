@@ -155,10 +155,22 @@ salience_snn_config_t salience_snn_config_default(void) {
 }
 
 salience_snn_bridge_t* salience_snn_create(const salience_snn_config_t* config) {
-    if (!config) return NULL;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return NULL;
+
+    }
 
     salience_snn_bridge_t* bridge = calloc(1, sizeof(salience_snn_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     bridge->config = *config;
     bridge->state = SALIENCE_SNN_STATE_IDLE;

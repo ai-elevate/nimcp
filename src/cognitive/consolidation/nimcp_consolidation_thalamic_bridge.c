@@ -31,7 +31,13 @@ consolidation_thalamic_config_t consolidation_thalamic_default_config(void) {
 
 consolidation_thalamic_bridge_t* consolidation_thalamic_bridge_create(void* consolidation, thalamic_router_t* router, const consolidation_thalamic_config_t* config) {
     consolidation_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(consolidation_thalamic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Initialize mutex for thread safety */
     if (bridge_base_init(&bridge->base, 0, "consolidation_thalamic") != 0) { nimcp_free(bridge); return NULL; }

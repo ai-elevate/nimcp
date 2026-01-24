@@ -1104,7 +1104,13 @@ static float* compute_degree_centrality(NimcpGraph* graph, uint32_t* num_nodes)
     *num_nodes = n;
 
     float* values = calloc(n, sizeof(float));
-    if (!values) return NULL;
+    if (!values) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "values is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < n; i++) {
         values[i] = (float)nimcp_graph_degree(graph, i) / (float)(n - 1);
@@ -1121,7 +1127,13 @@ static float* compute_betweenness_centrality(NimcpGraph* graph, uint32_t* num_no
     *num_nodes = n;
 
     float* values = calloc(n, sizeof(float));
-    if (!values) return NULL;
+    if (!values) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "values is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t s = 0; s < n; s++) {
         for (uint32_t v = 0; v < n; v++) {
@@ -1198,7 +1210,13 @@ static uint32_t* louvain_communities(NimcpGraph* graph, uint32_t* num_communitie
     uint32_t n = nimcp_graph_vertex_count(graph);
 
     uint32_t* assignments = calloc(n, sizeof(uint32_t));
-    if (!assignments) return NULL;
+    if (!assignments) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "assignments is NULL");
+
+        return NULL;
+
+    }
 
     uint32_t num_comm = (uint32_t)sqrtf((float)n);
     if (num_comm < 2) num_comm = 2;

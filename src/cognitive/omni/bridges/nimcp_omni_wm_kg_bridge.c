@@ -1389,14 +1389,32 @@ nimcp_error_t omni_wm_kg_bridge_update_module_health(
 const omni_wm_to_kg_effects_t* omni_wm_kg_bridge_get_wm_effects(
     const omni_wm_kg_bridge_t* bridge) {
 
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return NULL;
+
+
+    }
     return &bridge->wm_to_kg;
 }
 
 const kg_to_omni_wm_effects_t* omni_wm_kg_bridge_get_kg_effects(
     const omni_wm_kg_bridge_t* bridge) {
 
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return NULL;
+
+
+    }
     return &bridge->kg_to_wm;
 }
 

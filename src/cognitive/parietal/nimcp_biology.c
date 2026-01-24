@@ -700,7 +700,13 @@ void biology_destroy_phylo_tree(phylo_tree_t* tree) {
 }
 
 static phylo_node_t* find_node_by_name(phylo_node_t* node, const char* name) {
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
     if (node->is_leaf && strcmp(node->name, name) == 0) {
         return node;
     }

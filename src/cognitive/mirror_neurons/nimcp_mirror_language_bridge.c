@@ -191,6 +191,8 @@ static binding_entry_t* add_binding_entry(
     /* Create new entry */
     binding_entry_t* entry = nimcp_malloc(sizeof(binding_entry_t));
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+
         return NULL;
     }
 
@@ -530,11 +532,15 @@ mirror_language_bridge_t* mirror_language_bridge_create(
     const mirror_language_config_t* config)
 {
     if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror is NULL");
+
         return NULL;
     }
 
     mirror_language_bridge_t* bridge = nimcp_malloc(sizeof(mirror_language_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -589,6 +595,8 @@ void mirror_language_bridge_destroy(mirror_language_bridge_t* bridge)
 int mirror_language_bridge_reset(mirror_language_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -621,6 +629,8 @@ int mirror_language_connect_broca(
     broca_adapter_t* broca)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -636,6 +646,8 @@ int mirror_language_connect_wernicke(
     wernicke_adapter_t* wernicke)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -651,6 +663,8 @@ int mirror_language_connect_bio_async(
     bio_router_t router)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -773,6 +787,8 @@ int mirror_language_request_simulation(
     float activation)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -880,6 +896,8 @@ int mirror_language_notify_production(
     float motor_activation)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -961,6 +979,8 @@ int mirror_language_prime_from_word(
     float activation)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -1076,6 +1096,8 @@ int mirror_language_create_binding(
     float initial_strength)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -1100,6 +1122,8 @@ int mirror_language_create_binding(
 
     binding_entry_t* entry = add_binding_entry(bridge, &binding);
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+
         return -1;
     }
 
@@ -1162,6 +1186,8 @@ int mirror_language_get_binding(
 
     binding_entry_t* entry = find_binding(bridge, action_id, word_id);
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+
         return -1;
     }
 
@@ -1175,6 +1201,8 @@ int mirror_language_remove_binding(
     uint32_t word_id)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -1251,6 +1279,8 @@ int mirror_language_set_phoneme_callback(
     void* user_data)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -1265,6 +1295,8 @@ int mirror_language_set_binding_callback(
     void* user_data)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -1279,6 +1311,8 @@ int mirror_language_set_simulation_callback(
     void* user_data)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -1293,6 +1327,8 @@ int mirror_language_set_semantic_callback(
     void* user_data)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

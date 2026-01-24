@@ -179,7 +179,13 @@ expr_node_t* equation_create_constant(equation_engine_t* eq, float value) {
     (void)eq;
 
     expr_node_t* node = alloc_node();
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
 
     node->type = EXPR_CONSTANT;
     node->data.constant = value;
@@ -194,7 +200,13 @@ expr_node_t* equation_create_variable(equation_engine_t* eq, const char* name) {
     if (!name || strlen(name) == 0) return NULL;
 
     expr_node_t* node = alloc_node();
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
 
     node->type = EXPR_VARIABLE;
     strncpy(node->data.variable, name, EQUATION_MAX_VAR_NAME - 1);
@@ -220,7 +232,13 @@ expr_node_t* equation_create_binary(
     }
 
     expr_node_t* node = alloc_node();
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
 
     node->type = type;
     node->left = left;
@@ -237,10 +255,25 @@ expr_node_t* equation_create_unary(
 ) {
     (void)eq;
 
-    if (!operand) return NULL;
+    if (!operand) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "operand is NULL");
+
+
+        return NULL;
+
+
+    }
 
     expr_node_t* node = alloc_node();
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
 
     node->type = type;
     node->left = operand;
@@ -259,10 +292,22 @@ void equation_free_expr(expr_node_t* node) {
 }
 
 expr_node_t* equation_copy_expr(equation_engine_t* eq, const expr_node_t* node) {
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
 
     expr_node_t* copy = alloc_node();
-    if (!copy) return NULL;
+    if (!copy) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "copy is NULL");
+
+        return NULL;
+
+    }
 
     copy->type = node->type;
     copy->depth = node->depth;
@@ -674,7 +719,13 @@ expr_node_t* equation_substitute(
     }
 
     expr_node_t* copy = alloc_node();
-    if (!copy) return NULL;
+    if (!copy) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "copy is NULL");
+
+        return NULL;
+
+    }
 
     copy->type = node->type;
     copy->depth = node->depth;
@@ -705,7 +756,13 @@ static expr_node_t* differentiate_unlocked(
     const expr_node_t* node,
     const char* var_name
 ) {
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
 
     expr_node_t* result = NULL;
 

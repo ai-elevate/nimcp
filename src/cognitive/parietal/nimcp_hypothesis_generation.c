@@ -90,7 +90,13 @@ hypothesis_engine_t* hypothesis_engine_create(void) {
 hypothesis_engine_t* hypothesis_engine_create_custom(const hypogen_config_t* config) {
     if (!config) { set_error("NULL config"); return NULL; }
     hypothesis_engine_t* e = nimcp_calloc(1, sizeof(hypothesis_engine_t));
-    if (!e) return NULL;
+    if (!e) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "e is NULL");
+
+        return NULL;
+
+    }
     e->config = *config;
     e->next_theory_id = 1;
     e->next_prediction_id = 1;
@@ -108,7 +114,13 @@ hypogen_theory_t** hypothesis_generate_explanations(hypothesis_engine_t* engine,
 
     uint32_t max = engine->config.max_hypotheses;
     hypogen_theory_t** theories = nimcp_calloc(max, sizeof(hypogen_theory_t*));
-    if (!theories) return NULL;
+    if (!theories) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "theories is NULL");
+
+        return NULL;
+
+    }
 
     *num_theories = 0;
     for (uint32_t i = 0; i < max && i < num_obs; i++) {
@@ -138,7 +150,13 @@ hypogen_theory_t* hypothesis_abductive_inference(hypothesis_engine_t* engine,
     if (!engine->config.enable_abduction) return NULL;
 
     hypogen_theory_t* t = nimcp_calloc(1, sizeof(hypogen_theory_t));
-    if (!t) return NULL;
+    if (!t) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "t is NULL");
+
+        return NULL;
+
+    }
 
     t->id = engine->next_theory_id++;
     snprintf(t->statement, sizeof(t->statement),
@@ -180,7 +198,13 @@ hypogen_prediction_t** hypothesis_derive_predictions(hypothesis_engine_t* engine
 
     uint32_t n = 3;  /* Generate 3 predictions */
     hypogen_prediction_t** preds = nimcp_calloc(n, sizeof(hypogen_prediction_t*));
-    if (!preds) return NULL;
+    if (!preds) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "preds is NULL");
+
+        return NULL;
+
+    }
 
     *num_predictions = 0;
     for (uint32_t i = 0; i < n; i++) {
@@ -325,7 +349,13 @@ static void* hypogen_mcts_apply_action(const void* state, uint32_t action, void*
     hypogen_mcts_user_data_t* ud = (hypogen_mcts_user_data_t*)user_data;
 
     hypogen_mcts_state_t* new_state = nimcp_malloc(sizeof(hypogen_mcts_state_t));
-    if (!new_state) return NULL;
+    if (!new_state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_state is NULL");
+
+        return NULL;
+
+    }
 
     *new_state = *s;
     new_state->depth = s->depth + 1;
@@ -379,9 +409,21 @@ static void hypogen_mcts_free_state(void* state, void* user_data) {
 
 static void* hypogen_mcts_clone_state(const void* state, void* user_data) {
     (void)user_data;
-    if (!state) return NULL;
+    if (!state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
+        return NULL;
+
+    }
     hypogen_mcts_state_t* clone = nimcp_malloc(sizeof(hypogen_mcts_state_t));
-    if (!clone) return NULL;
+    if (!clone) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+
+        return NULL;
+
+    }
     *clone = *(const hypogen_mcts_state_t*)state;
     return clone;
 }
@@ -582,7 +624,13 @@ void hypothesis_add_exploration_noise_mc(
  * @return Pointer to RNG seed
  */
 uint32_t* hypothesis_get_mc_seed(hypothesis_engine_t* engine) {
-    if (!engine) return NULL;
+    if (!engine) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
+        return NULL;
+
+    }
     return &engine->rand_seed;
 }
 

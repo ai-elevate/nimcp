@@ -928,6 +928,8 @@ nimcp_allocation_t* nimcp_allocation_create(uint32_t num_players, uint32_t num_i
 
     nimcp_allocation_t* alloc = nimcp_calloc(1, sizeof(nimcp_allocation_t));
     if (!alloc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "alloc is NULL");
+
         return NULL;
     }
 

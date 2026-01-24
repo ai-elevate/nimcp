@@ -159,6 +159,8 @@ static inline uint8_t saturating_sub(uint8_t a, uint8_t b) {
 prime_signature_t* prime_sig_create(void) {
     prime_signature_t* sig = (prime_signature_t*)malloc(sizeof(prime_signature_t));
     if (!sig) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sig is NULL");
+
         return NULL;
     }
 
@@ -193,6 +195,8 @@ prime_signature_t* prime_sig_from_content_config(
     // Create empty signature
     prime_signature_t* sig = prime_sig_create();
     if (!sig) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sig is NULL");
+
         return NULL;
     }
 
@@ -245,6 +249,8 @@ prime_signature_t* prime_sig_from_text(const char* text) {
     // Create empty signature
     prime_signature_t* sig = prime_sig_create();
     if (!sig) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sig is NULL");
+
         return NULL;
     }
 
@@ -292,6 +298,8 @@ prime_signature_t* prime_sig_from_floats(const float* floats, size_t count) {
     // Create empty signature
     prime_signature_t* sig = prime_sig_create();
     if (!sig) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sig is NULL");
+
         return NULL;
     }
 
@@ -334,11 +342,15 @@ prime_signature_t* prime_sig_from_floats(const float* floats, size_t count) {
 
 prime_signature_t* prime_sig_copy(const prime_signature_t* sig) {
     if (!sig) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sig is NULL");
+
         return NULL;
     }
 
     prime_signature_t* copy = (prime_signature_t*)malloc(sizeof(prime_signature_t));
     if (!copy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "copy is NULL");
+
         return NULL;
     }
 
@@ -520,6 +532,8 @@ prime_signature_t* prime_sig_compose(const prime_signature_t* s1,
 
     prime_signature_t* result = prime_sig_create();
     if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
         return NULL;
     }
 
@@ -545,6 +559,8 @@ prime_signature_t* prime_sig_intersect(const prime_signature_t* s1,
 
     prime_signature_t* result = prime_sig_create();
     if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
         return NULL;
     }
 
@@ -570,6 +586,8 @@ prime_signature_t* prime_sig_difference(const prime_signature_t* s1,
 
     prime_signature_t* result = prime_sig_create();
     if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
         return NULL;
     }
 
@@ -594,6 +612,8 @@ prime_signature_t* prime_sig_subtract(const prime_signature_t* s1,
 
     prime_signature_t* result = prime_sig_create();
     if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
         return NULL;
     }
 

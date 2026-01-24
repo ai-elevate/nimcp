@@ -187,7 +187,16 @@ static memory_engram_t* find_free_slot(engram_system_t* system) {
     // WHY:  Reuse memory efficiently
     // HOW:  Linear search, expand if needed
 
-    if (!system) return NULL;
+    if (!system) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+
+        return NULL;
+
+
+    }
 
     // Try to find inactive slot
     for (uint32_t i = 0; i < system->capacity; i++) {
@@ -945,7 +954,16 @@ memory_engram_t* engram_get_by_id(
     // WHY:  Access for inspection/modification
     // HOW:  Linear search
 
-    if (!system) return NULL;
+    if (!system) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+
+        return NULL;
+
+
+    }
     if (engram_id == 0) return NULL;
 
     for (uint32_t i = 0; i < system->capacity; i++) {

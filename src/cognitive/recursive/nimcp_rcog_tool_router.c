@@ -243,7 +243,13 @@ rcog_tool_router_t* rcog_tool_router_create(
     const rcog_tool_router_config_t* config
 ) {
     rcog_tool_router_t* router = nimcp_calloc(1, sizeof(rcog_tool_router_t));
-    if (!router) return NULL;
+    if (!router) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply config */
     if (config) {

@@ -97,11 +97,23 @@ self_model_sleep_bridge_t self_model_sleep_bridge_create(
     const self_model_sleep_config_t* config,
     sleep_system_t sleep)
 {
-    if (!sleep) return NULL;
+    if (!sleep) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep is NULL");
+
+        return NULL;
+
+    }
 
     struct self_model_sleep_bridge_struct* bridge =
         (struct self_model_sleep_bridge_struct*)nimcp_malloc(sizeof(struct self_model_sleep_bridge_struct));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     memset(bridge, 0, sizeof(struct self_model_sleep_bridge_struct));
 

@@ -1097,6 +1097,8 @@ pr_pred_error_t pr_predictive_bridge_select_action(
 
 int pr_predictive_bridge_generate_actions(pr_predictive_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

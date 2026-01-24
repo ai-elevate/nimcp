@@ -278,7 +278,13 @@ imagination_workspace_t* imagination_workspace_create(
     /* Allocate workspace */
     imagination_workspace_t* workspace = (imagination_workspace_t*)calloc(
         1, sizeof(imagination_workspace_t));
-    if (!workspace) return NULL;
+    if (!workspace) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "workspace is NULL");
+
+        return NULL;
+
+    }
 
     workspace->config = cfg;
 
@@ -521,14 +527,32 @@ nimcp_tensor_t* imagination_workspace_get_audio(
 nimcp_tensor_t* imagination_workspace_get_temp_latent(
     imagination_workspace_t* workspace) {
 
-    if (!workspace) return NULL;
+    if (!workspace) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "workspace is NULL");
+
+
+        return NULL;
+
+
+    }
     return workspace->temp_latent;
 }
 
 nimcp_tensor_t* imagination_workspace_get_temp_visual(
     imagination_workspace_t* workspace) {
 
-    if (!workspace) return NULL;
+    if (!workspace) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "workspace is NULL");
+
+
+        return NULL;
+
+
+    }
     return workspace->temp_visual;
 }
 

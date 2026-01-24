@@ -52,7 +52,13 @@ static mcts_node_t* alloc_node(fep_planning_system_t* sys) {
     if (!sys || sys->num_nodes >= sys->max_nodes) return NULL;
 
     mcts_node_t* node = (mcts_node_t*)nimcp_calloc(1, sizeof(mcts_node_t));
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
 
     node->node_id = sys->num_nodes;
     node->state_type = MCTS_NODE_UNVISITED;

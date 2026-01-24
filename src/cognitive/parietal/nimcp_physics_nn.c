@@ -211,7 +211,13 @@ static void xavier_init(float* weights, uint32_t fan_in, uint32_t fan_out) {
 static nn_layer_t* layer_create(uint32_t input_size, uint32_t output_size,
                                  physics_nn_optimizer_t optimizer) {
     nn_layer_t* layer = (nn_layer_t*)calloc(1, sizeof(nn_layer_t));
-    if (!layer) return NULL;
+    if (!layer) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer is NULL");
+
+        return NULL;
+
+    }
 
     layer->input_size = input_size;
     layer->output_size = output_size;

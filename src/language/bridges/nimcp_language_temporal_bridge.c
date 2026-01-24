@@ -917,7 +917,13 @@ int language_temporal_process_bio_messages(
 void* language_temporal_get_bio_context(
     language_temporal_bridge_t* bridge
 ) {
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     /* TODO: Return actual bio context when integrated */
     return NULL;
 }

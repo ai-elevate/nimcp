@@ -377,7 +377,13 @@ pr_training_plasticity_t pr_training_plasticity_create(
     const pr_training_plasticity_config_t* config)
 {
     pr_training_plasticity_t tp = nimcp_calloc(1, sizeof(struct pr_training_plasticity_struct));
-    if (!tp) return NULL;
+    if (!tp) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tp is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

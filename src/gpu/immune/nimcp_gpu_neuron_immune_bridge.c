@@ -55,6 +55,8 @@ static float get_inflammation_gpu_factor(brain_inflammation_level_t level) {
 
 int gpu_neuron_immune_default_config(gpu_neuron_immune_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 

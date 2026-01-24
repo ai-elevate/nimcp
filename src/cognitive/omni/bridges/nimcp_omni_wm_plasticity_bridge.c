@@ -1389,14 +1389,26 @@ nimcp_error_t omni_wm_plasticity_bridge_get_plasticity_state(
 const plasticity_to_omni_wm_effects_t* omni_wm_plasticity_bridge_get_plasticity_effects(
     const omni_wm_plasticity_bridge_t* bridge)
 {
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     return &bridge->plasticity_to_wm;
 }
 
 const omni_wm_to_plasticity_effects_t* omni_wm_plasticity_bridge_get_wm_effects(
     const omni_wm_plasticity_bridge_t* bridge)
 {
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     return &bridge->wm_to_plasticity;
 }
 

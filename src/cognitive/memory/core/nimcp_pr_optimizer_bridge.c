@@ -1000,6 +1000,8 @@ const pr_optimizer_state_t* pr_optimizer_get_state(
     pr_optimizer_bridge_t bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -1215,6 +1217,8 @@ const pr_optimizer_config_t* pr_optimizer_get_config(
     pr_optimizer_bridge_t bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

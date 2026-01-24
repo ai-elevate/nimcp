@@ -80,7 +80,13 @@ static uint64_t get_time_ms(void) {
 
 /* Find context by ID */
 static fep_context_t* find_context(fep_context_system_t* sys, uint32_t id) {
-    if (!sys) return NULL;
+    if (!sys) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < sys->num_contexts; i++) {
         if (sys->contexts[i].context_id == id) {

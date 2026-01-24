@@ -41,7 +41,13 @@ static uint64_t get_current_time_ms(void) {
  * HOW:  Linear search through sites array
  */
 static mucosal_site_t* find_site(mucosal_system_t* system, uint32_t site_id) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t i = 0; i < system->site_count; i++) {
         if (system->sites[i].id == site_id) {
@@ -57,7 +63,13 @@ static mucosal_site_t* find_site(mucosal_system_t* system, uint32_t site_id) {
  * HOW:  Linear search through sIgA array
  */
 static mucosal_siga_t* find_siga(mucosal_system_t* system, uint32_t siga_id) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t i = 0; i < system->siga_count; i++) {
         if (system->siga_antibodies[i].id == siga_id) {
@@ -73,7 +85,13 @@ static mucosal_siga_t* find_siga(mucosal_system_t* system, uint32_t siga_id) {
  * HOW:  Linear search through tolerances array
  */
 static mucosal_tolerance_t* find_tolerance(mucosal_system_t* system, uint32_t tolerance_id) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t i = 0; i < system->tolerance_count; i++) {
         if (system->tolerances[i].id == tolerance_id) {
@@ -136,11 +154,23 @@ mucosal_system_t* mucosal_create(
     brain_immune_system_t* immune_system
 ) {
     /* Guard clause */
-    if (!immune_system) return NULL;
+    if (!immune_system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_system is NULL");
+
+        return NULL;
+
+    }
 
     /* Allocate system */
     mucosal_system_t* system = (mucosal_system_t*)nimcp_malloc(sizeof(mucosal_system_t));
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     memset(system, 0, sizeof(mucosal_system_t));
 
@@ -745,7 +775,13 @@ const mucosal_site_t* mucosal_get_site(
     uint32_t site_id
 ) {
     /* Guard clause */
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     return find_site(system, site_id);
 }

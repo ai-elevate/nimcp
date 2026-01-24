@@ -158,7 +158,13 @@ static json_value_t* json_parse_null(json_ctx_t* ctx) {
 
 static json_value_t* json_parse_bool(json_ctx_t* ctx) {
     json_value_t* val = json_alloc_value(JSON_BOOL);
-    if (!val) return NULL;
+    if (!val) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "val is NULL");
+
+        return NULL;
+
+    }
 
     if (strncmp(ctx->json + ctx->pos, "true", 4) == 0) {
         ctx->pos += 4;
@@ -185,7 +191,13 @@ static json_value_t* json_parse_number(json_ctx_t* ctx) {
     }
 
     json_value_t* val = json_alloc_value(JSON_NUMBER);
-    if (!val) return NULL;
+    if (!val) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "val is NULL");
+
+        return NULL;
+
+    }
 
     val->num_val = num;
     size_t len = (size_t)(end - (ctx->json + ctx->pos));
@@ -220,7 +232,13 @@ static json_value_t* json_parse_string(json_ctx_t* ctx) {
 
     size_t str_len = ctx->pos - start;
     json_value_t* val = json_alloc_value(JSON_STRING);
-    if (!val) return NULL;
+    if (!val) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "val is NULL");
+
+        return NULL;
+
+    }
 
     val->str_val = (char*)nimcp_malloc(str_len + 1);
     if (!val->str_val) {
@@ -258,7 +276,13 @@ static json_value_t* json_parse_array(json_ctx_t* ctx) {
     if (!json_expect(ctx, '[')) return NULL;
 
     json_value_t* val = json_alloc_value(JSON_ARRAY);
-    if (!val) return NULL;
+    if (!val) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "val is NULL");
+
+        return NULL;
+
+    }
 
     val->array.items = NULL;
     val->array.count = 0;
@@ -314,7 +338,13 @@ static json_value_t* json_parse_object(json_ctx_t* ctx) {
     if (!json_expect(ctx, '{')) return NULL;
 
     json_value_t* val = json_alloc_value(JSON_OBJECT);
-    if (!val) return NULL;
+    if (!val) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "val is NULL");
+
+        return NULL;
+
+    }
 
     val->object = NULL;
 
@@ -432,7 +462,13 @@ static void json_free_value(json_value_t* val) {
 }
 
 static json_value_t* json_parse(const char* json, size_t len, char* error, size_t error_size) {
-    if (!json) return NULL;
+    if (!json) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "json is NULL");
+
+        return NULL;
+
+    }
     if (len == 0) len = strlen(json);
 
     json_ctx_t ctx = {

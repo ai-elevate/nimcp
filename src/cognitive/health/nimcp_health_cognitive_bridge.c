@@ -136,6 +136,8 @@ health_cognitive_bridge_t* health_cognitive_bridge_create(
 ) {
     health_cognitive_bridge_t* bridge = calloc(1, sizeof(health_cognitive_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -219,6 +221,8 @@ void health_cognitive_bridge_destroy(health_cognitive_bridge_t* bridge) {
 
 int health_cognitive_bridge_start(health_cognitive_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -242,6 +246,8 @@ int health_cognitive_bridge_start(health_cognitive_bridge_t* bridge) {
 
 int health_cognitive_bridge_stop(health_cognitive_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -813,6 +819,8 @@ int nimcp_health_agent_connect_cognitive(
     const cognitive_bridge_config_t* config
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 
@@ -825,6 +833,9 @@ int nimcp_health_agent_connect_cognitive(
     );
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
         return -1;
     }
 
@@ -844,6 +855,8 @@ int nimcp_health_agent_connect_cognitive(
 
 int nimcp_health_agent_disconnect_cognitive(nimcp_health_agent_t* agent) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 

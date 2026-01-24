@@ -1587,14 +1587,32 @@ nimcp_error_t omni_wm_cognitive_bridge_trigger_adaptation(
 const omni_wm_to_cognitive_effects_t* omni_wm_cognitive_bridge_get_wm_effects(
     const omni_wm_cognitive_bridge_t* bridge) {
 
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return NULL;
+
+
+    }
     return &bridge->wm_to_cognitive;
 }
 
 const cognitive_to_omni_wm_effects_t* omni_wm_cognitive_bridge_get_cognitive_effects(
     const omni_wm_cognitive_bridge_t* bridge) {
 
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return NULL;
+
+
+    }
     return &bridge->cognitive_to_wm;
 }
 
@@ -1628,7 +1646,16 @@ const wm_cognitive_goal_t* omni_wm_cognitive_bridge_get_goal(
     const omni_wm_cognitive_bridge_t* bridge,
     uint32_t goal_id) {
 
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return NULL;
+
+
+    }
 
     int idx = find_goal_by_id(bridge, goal_id);
     if (idx < 0) return NULL;

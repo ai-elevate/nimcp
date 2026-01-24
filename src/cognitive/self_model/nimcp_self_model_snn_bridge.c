@@ -135,7 +135,13 @@ self_model_snn_config_t self_model_snn_config_default(void) {
 
 self_model_snn_bridge_t* self_model_snn_create(const self_model_snn_config_t* config) {
     self_model_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(self_model_snn_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

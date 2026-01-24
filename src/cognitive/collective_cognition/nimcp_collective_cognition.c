@@ -452,7 +452,13 @@ collective_cognition_t* collective_cognition_create(
     const collective_cognition_config_t* config
 ) {
     collective_cognition_t* cc = nimcp_malloc(sizeof(collective_cognition_t));
-    if (!cc) return NULL;
+    if (!cc) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cc is NULL");
+
+        return NULL;
+
+    }
 
     memset(cc, 0, sizeof(collective_cognition_t));
 

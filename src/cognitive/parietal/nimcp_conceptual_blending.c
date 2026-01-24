@@ -64,7 +64,13 @@ blending_engine_t* blending_engine_create(void) {
 blending_engine_t* blending_engine_create_custom(const blend_config_t* config) {
     if (!config) { set_error("NULL config"); return NULL; }
     blending_engine_t* e = nimcp_calloc(1, sizeof(blending_engine_t));
-    if (!e) return NULL;
+    if (!e) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "e is NULL");
+
+        return NULL;
+
+    }
     e->config = *config;
     e->next_blend_id = 1;
     e->next_space_id = 1;
@@ -77,7 +83,13 @@ void blending_engine_destroy(blending_engine_t* engine) {
 
 blend_mental_space_t* blending_create_space(const char* name) {
     blend_mental_space_t* s = nimcp_calloc(1, sizeof(blend_mental_space_t));
-    if (!s) return NULL;
+    if (!s) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "s is NULL");
+
+        return NULL;
+
+    }
 
     if (name) strncpy(s->name, name, sizeof(s->name) - 1);
     s->elements = nimcp_calloc(BLEND_MAX_ELEMENTS, sizeof(blend_element_t));
@@ -121,7 +133,13 @@ conceptual_blend_t* blending_create_blend(blending_engine_t* engine,
     if (!engine || !concept1 || !concept2) return NULL;
 
     conceptual_blend_t* b = nimcp_calloc(1, sizeof(conceptual_blend_t));
-    if (!b) return NULL;
+    if (!b) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "b is NULL");
+
+        return NULL;
+
+    }
 
     b->id = engine->next_blend_id++;
     b->input1 = (blend_mental_space_t*)concept1;

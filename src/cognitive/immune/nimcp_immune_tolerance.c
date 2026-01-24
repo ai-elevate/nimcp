@@ -398,6 +398,8 @@ int tolerance_remove_self_pattern(
     uint32_t pattern_id
 ) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return -1;
     }
 
@@ -445,6 +447,8 @@ int tolerance_remove_self_pattern(
  */
 int tolerance_clear_self_patterns(tolerance_system_t* system) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return -1;
     }
 
@@ -624,6 +628,8 @@ int tolerance_induce_anergy(
     float affinity
 ) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return -1;
     }
 
@@ -690,6 +696,8 @@ int tolerance_reverse_anergy(
     bool is_b_cell
 ) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return -1;
     }
 
@@ -743,6 +751,8 @@ int tolerance_set_phase(
     tolerance_phase_t phase
 ) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return -1;
     }
 
@@ -888,6 +898,8 @@ const self_pattern_t* tolerance_get_pattern(
     uint32_t pattern_id
 ) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
 
@@ -932,6 +944,8 @@ static self_pattern_t* find_pattern_by_id(
     uint32_t id
 ) {
     if (!sys) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
         return NULL;
     }
 
@@ -953,6 +967,8 @@ static anergic_cell_record_t* find_anergic_cell(
     bool is_b_cell
 ) {
     if (!sys) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
         return NULL;
     }
 
@@ -977,6 +993,8 @@ static int add_anergic_cell(
     float affinity
 ) {
     if (!sys) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
         return -1;
     }
 

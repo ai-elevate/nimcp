@@ -32,7 +32,13 @@ gw_thalamic_config_t gw_thalamic_default_config(void) {
 
 gw_thalamic_bridge_t* gw_thalamic_bridge_create(void* gw, thalamic_router_t* router, const gw_thalamic_config_t* config) {
     gw_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(gw_thalamic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     bridge->gw = gw;
     bridge->router = router;
     bridge->config = config ? *config : gw_thalamic_default_config();

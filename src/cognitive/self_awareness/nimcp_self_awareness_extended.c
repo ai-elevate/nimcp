@@ -559,6 +559,8 @@ self_awareness_system_t self_awareness_create(const char* name,
     struct self_awareness_system* system =
         nimcp_calloc(1, sizeof(struct self_awareness_system));
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
 

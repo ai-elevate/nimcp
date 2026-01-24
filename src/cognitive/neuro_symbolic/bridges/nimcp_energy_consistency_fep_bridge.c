@@ -28,10 +28,25 @@ NIMCP_API energy_fep_bridge_t* energy_fep_bridge_create(void) {
 NIMCP_API energy_fep_bridge_t* energy_fep_bridge_create_with_config(
     const energy_fep_bridge_config_t* config) {
 
-    if (!config) return NULL;
+    if (!config) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+
+        return NULL;
+
+
+    }
 
     energy_fep_bridge_t* bridge = nimcp_calloc(1, sizeof(energy_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Initialize base - order is (base, module_id, module_name) */
     if (bridge_base_init(&bridge->base, BIO_MODULE_ENERGY_CONSISTENCY_FEP_BRIDGE,

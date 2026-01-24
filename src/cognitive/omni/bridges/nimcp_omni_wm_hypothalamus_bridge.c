@@ -1396,14 +1396,32 @@ nimcp_error_t omni_wm_hypothalamus_bridge_update_reward_prediction(
 const hypothalamus_to_omni_wm_effects_t* omni_wm_hypothalamus_bridge_get_hypo_effects(
     const omni_wm_hypothalamus_bridge_t* bridge) {
 
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return NULL;
+
+
+    }
     return &bridge->hypo_to_wm;
 }
 
 const omni_wm_to_hypothalamus_effects_t* omni_wm_hypothalamus_bridge_get_wm_effects(
     const omni_wm_hypothalamus_bridge_t* bridge) {
 
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return NULL;
+
+
+    }
     return &bridge->wm_to_hypo;
 }
 

@@ -203,6 +203,8 @@ training_bio_async_bridge_t* training_bio_bridge_create(
 ) {
     training_bio_async_bridge_t* bridge = nimcp_calloc(1, sizeof(training_bio_async_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

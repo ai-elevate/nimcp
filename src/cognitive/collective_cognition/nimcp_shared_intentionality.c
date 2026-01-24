@@ -286,7 +286,13 @@ shared_intentionality_t* shared_intentionality_create(
     const shared_intentionality_config_t* config
 ) {
     shared_intentionality_t* si = nimcp_malloc(sizeof(shared_intentionality_t));
-    if (!si) return NULL;
+    if (!si) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "si is NULL");
+
+        return NULL;
+
+    }
 
     memset(si, 0, sizeof(shared_intentionality_t));
 

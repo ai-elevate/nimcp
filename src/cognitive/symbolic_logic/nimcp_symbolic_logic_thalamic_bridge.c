@@ -35,7 +35,13 @@ symbolic_logic_thalamic_bridge_t* symbolic_logic_thalamic_bridge_create(
     const symbolic_logic_thalamic_config_t* config
 ) {
     symbolic_logic_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(symbolic_logic_thalamic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     bridge->symbolic_logic = symbolic_logic;
     bridge->router = router;

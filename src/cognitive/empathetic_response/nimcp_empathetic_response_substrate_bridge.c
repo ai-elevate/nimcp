@@ -45,10 +45,22 @@ empathetic_response_substrate_config_t empathetic_response_substrate_default_con
 }
 
 empathetic_response_substrate_bridge_t* empathetic_response_substrate_bridge_create(void* empathetic_response, neural_substrate_t* substrate, const empathetic_response_substrate_config_t* config) {
-    if (!substrate) return NULL;
+    if (!substrate) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
+
+        return NULL;
+
+    }
 
     empathetic_response_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(empathetic_response_substrate_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     bridge->empathetic_response = empathetic_response;
     bridge->substrate = substrate;

@@ -105,7 +105,13 @@ fep_transition_learner_t* fep_transition_learner_create(
 
     fep_transition_learner_t* learner =
         (fep_transition_learner_t*)nimcp_calloc(1, sizeof(fep_transition_learner_t));
-    if (!learner) return NULL;
+    if (!learner) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "learner is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     fep_learning_config_t default_cfg;
@@ -209,7 +215,13 @@ fep_likelihood_learner_t* fep_likelihood_learner_create(
 
     fep_likelihood_learner_t* learner =
         (fep_likelihood_learner_t*)nimcp_calloc(1, sizeof(fep_likelihood_learner_t));
-    if (!learner) return NULL;
+    if (!learner) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "learner is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     fep_learning_config_t default_cfg;

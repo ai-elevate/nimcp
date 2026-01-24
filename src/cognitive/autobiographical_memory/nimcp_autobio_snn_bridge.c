@@ -136,7 +136,13 @@ autobio_snn_config_t autobio_snn_config_default(void) {
 
 autobio_snn_bridge_t* autobio_snn_create(const autobio_snn_config_t* config) {
     autobio_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(autobio_snn_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

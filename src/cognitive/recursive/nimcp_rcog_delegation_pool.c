@@ -221,7 +221,13 @@ static rcog_task_node_t* create_task_node(rcog_subtask_t* subtask,
                                           const rcog_submit_options_t* options,
                                           float tier_boost) {
     rcog_task_node_t* node = nimcp_calloc(1, sizeof(rcog_task_node_t));
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
 
     node->subtask = subtask;
     node->submit_time_ms = nimcp_platform_time_monotonic_ms();
@@ -278,7 +284,13 @@ static void enqueue_task(rcog_worker_queue_t* queue, rcog_task_node_t* node) {
 }
 
 static rcog_task_node_t* dequeue_task(rcog_worker_queue_t* queue) {
-    if (!queue) return NULL;
+    if (!queue) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "queue is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_mutex_lock(queue->mutex);
 
@@ -297,7 +309,13 @@ static rcog_task_node_t* dequeue_task(rcog_worker_queue_t* queue) {
 }
 
 static rcog_task_node_t* steal_task(rcog_worker_queue_t* queue) {
-    if (!queue) return NULL;
+    if (!queue) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "queue is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_mutex_lock(queue->mutex);
 
@@ -368,7 +386,13 @@ rcog_delegation_pool_t* rcog_delegation_pool_create(
     const rcog_delegation_pool_config_t* config
 ) {
     rcog_delegation_pool_t* pool = nimcp_calloc(1, sizeof(rcog_delegation_pool_t));
-    if (!pool) return NULL;
+    if (!pool) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply config */
     if (config) {

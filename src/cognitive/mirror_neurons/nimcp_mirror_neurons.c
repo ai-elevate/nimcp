@@ -1792,6 +1792,8 @@ mirror_neurons_t mirror_neurons_load(FILE* file)
 {
     // Guard: Validate parameter
     if (!file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "file is NULL");
+
         return NULL;
     }
 
@@ -1812,6 +1814,8 @@ mirror_neurons_t mirror_neurons_load(FILE* file)
     // HOW:  Use nimcp_calloc for zero-initialization
     mirror_neurons_t mirror = (mirror_neurons_t)nimcp_calloc(1, sizeof(struct mirror_neurons_system));
     if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror is NULL");
+
         return NULL;
     }
 

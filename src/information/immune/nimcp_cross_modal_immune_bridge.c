@@ -80,6 +80,8 @@ static float compute_binding_window_ms(brain_inflammation_level_t level) {
 
 int cross_modal_immune_default_config(cross_modal_immune_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -422,6 +424,8 @@ int cross_modal_immune_update(
 ) {
     /* Guard clauses */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -452,6 +456,8 @@ int cross_modal_immune_update(
 int cross_modal_immune_apply_modulation(cross_modal_immune_bridge_t* bridge) {
     /* Guard clauses */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -576,6 +582,8 @@ int cross_modal_immune_disconnect_bio_async(cross_modal_immune_bridge_t* bridge)
 
     /* Guard: null check */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

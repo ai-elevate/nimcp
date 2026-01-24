@@ -1015,7 +1015,13 @@ se_metric_series_t* software_eng_create_series(const char* metric_name, uint32_t
     if (!metric_name || initial_capacity == 0) return NULL;
 
     se_metric_series_t* series = calloc(1, sizeof(se_metric_series_t));
-    if (!series) return NULL;
+    if (!series) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "series is NULL");
+
+        return NULL;
+
+    }
 
     series->points = calloc(initial_capacity, sizeof(se_metric_point_t));
     if (!series->points) {

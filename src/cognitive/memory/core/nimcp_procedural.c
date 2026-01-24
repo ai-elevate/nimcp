@@ -112,7 +112,13 @@ static float clamp_float(float value, float min_val, float max_val) {
  * @brief Find skill by ID
  */
 static procedural_skill_t* find_skill(procedural_memory_t pm, uint64_t id) {
-    if (!pm) return NULL;
+    if (!pm) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pm is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t i = 0; i < pm->num_skills; i++) {
         if (pm->skills[i].skill_id == id) {
@@ -126,7 +132,13 @@ static procedural_skill_t* find_skill(procedural_memory_t pm, uint64_t id) {
  * @brief Find habit by ID
  */
 static procedural_habit_t* find_habit(procedural_memory_t pm, uint64_t id) {
-    if (!pm) return NULL;
+    if (!pm) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pm is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t i = 0; i < pm->num_habits; i++) {
         if (pm->habits[i].habit_id == id) {
@@ -140,7 +152,13 @@ static procedural_habit_t* find_habit(procedural_memory_t pm, uint64_t id) {
  * @brief Find free slot in skills array
  */
 static procedural_skill_t* find_free_skill_slot(procedural_memory_t pm) {
-    if (!pm) return NULL;
+    if (!pm) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pm is NULL");
+
+        return NULL;
+
+    }
 
     // Look for empty slot
     for (size_t i = 0; i < pm->num_skills; i++) {
@@ -161,7 +179,13 @@ static procedural_skill_t* find_free_skill_slot(procedural_memory_t pm) {
  * @brief Find free slot in habits array
  */
 static procedural_habit_t* find_free_habit_slot(procedural_memory_t pm) {
-    if (!pm) return NULL;
+    if (!pm) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pm is NULL");
+
+        return NULL;
+
+    }
 
     // Look for empty slot
     for (size_t i = 0; i < pm->num_habits; i++) {
@@ -268,7 +292,13 @@ static void free_habit(procedural_habit_t* habit) {
  * @brief Copy string with length limit
  */
 static char* copy_string(const char* src, size_t max_len) {
-    if (!src) return NULL;
+    if (!src) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "src is NULL");
+
+        return NULL;
+
+    }
 
     size_t len = strlen(src);
     if (len > max_len - 1) {
@@ -276,7 +306,13 @@ static char* copy_string(const char* src, size_t max_len) {
     }
 
     char* copy = (char*)malloc(len + 1);
-    if (!copy) return NULL;
+    if (!copy) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "copy is NULL");
+
+        return NULL;
+
+    }
 
     strncpy(copy, src, len);
     copy[len] = '\0';
@@ -2569,10 +2605,22 @@ NIMCP_EXPORT pr_memory_node_t* procedural_get_skill_node(
     procedural_memory_t pm,
     uint64_t skill_id
 ) {
-    if (!pm) return NULL;
+    if (!pm) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pm is NULL");
+
+        return NULL;
+
+    }
 
     procedural_skill_t* skill = find_skill(pm, skill_id);
-    if (!skill) return NULL;
+    if (!skill) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "skill is NULL");
+
+        return NULL;
+
+    }
 
     return skill->memory_node;
 }
@@ -2581,10 +2629,22 @@ NIMCP_EXPORT pr_memory_node_t* procedural_get_habit_node(
     procedural_memory_t pm,
     uint64_t habit_id
 ) {
-    if (!pm) return NULL;
+    if (!pm) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pm is NULL");
+
+        return NULL;
+
+    }
 
     procedural_habit_t* habit = find_habit(pm, habit_id);
-    if (!habit) return NULL;
+    if (!habit) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "habit is NULL");
+
+        return NULL;
+
+    }
 
     return habit->memory_node;
 }

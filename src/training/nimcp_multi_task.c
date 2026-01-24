@@ -344,6 +344,8 @@ int mtl_register_task(mtl_ctx_t* ctx, const mtl_task_def_t* task) {
 
 int mtl_set_task_active(mtl_ctx_t* ctx, uint32_t task_id, bool active) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -1176,6 +1178,8 @@ int mtl_connect_gradient_manager(
     nimcp_gradient_manager_ctx_t* grad_manager
 ) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -1187,6 +1191,8 @@ int mtl_connect_gradient_manager(
 
 int mtl_connect_brain_factory(mtl_ctx_t* ctx, void* brain_factory) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -1198,6 +1204,8 @@ int mtl_connect_brain_factory(mtl_ctx_t* ctx, void* brain_factory) {
 
 int mtl_connect_thalamic_router(mtl_ctx_t* ctx, void* router) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -1273,6 +1281,8 @@ const char* mtl_gradient_method_name(mtl_gradient_method_t method) {
 
 int mtl_validate_config(const mtl_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 

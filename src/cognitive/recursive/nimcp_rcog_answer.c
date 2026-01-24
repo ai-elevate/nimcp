@@ -177,7 +177,13 @@ static rcog_error_t add_history_entry(
 static rcog_answer_history_t* create_history(size_t initial_capacity)
 {
     rcog_answer_history_t* history = nimcp_calloc(1, sizeof(rcog_answer_history_t));
-    if (!history) return NULL;
+    if (!history) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "history is NULL");
+
+        return NULL;
+
+    }
 
     if (initial_capacity > 0) {
         history->entries = nimcp_calloc(initial_capacity, sizeof(rcog_answer_history_entry_t));
@@ -287,7 +293,13 @@ rcog_answer_refiner_t* rcog_answer_refiner_create(
     const rcog_answer_config_t* config)
 {
     rcog_answer_refiner_t* refiner = nimcp_calloc(1, sizeof(rcog_answer_refiner_t));
-    if (!refiner) return NULL;
+    if (!refiner) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "refiner is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         refiner->config = *config;
@@ -393,10 +405,22 @@ rcog_answer_state_t* rcog_answer_state_create(
     rcog_answer_refiner_t* refiner,
     const rcog_goal_t* goal)
 {
-    if (!refiner) return NULL;
+    if (!refiner) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "refiner is NULL");
+
+        return NULL;
+
+    }
 
     rcog_answer_state_t* state = nimcp_calloc(1, sizeof(rcog_answer_state_t));
-    if (!state) return NULL;
+    if (!state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
+        return NULL;
+
+    }
 
     rcog_error_t err = rcog_answer_init(refiner, goal, state);
     if (err != RCOG_OK) {

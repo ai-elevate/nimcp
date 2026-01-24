@@ -1908,6 +1908,8 @@ NIMCP_EXPORT source_memory_t source_memory_deserialize(
     // Create source memory with config
     source_memory_t sm = source_memory_create(entanglement, node_manager, &config);
     if (!sm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sm is NULL");
+
         return NULL;
     }
 

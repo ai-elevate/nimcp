@@ -178,7 +178,13 @@ remorse_regret_system_t* remorse_regret_system_create(void) {
     // HOW:  Allocate memory, zero-initialize, set defaults
 
     remorse_regret_system_t* system = (remorse_regret_system_t*)nimcp_calloc(1, sizeof(remorse_regret_system_t));
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     // Set personality defaults (neutral values)
     system->conscientiousness = 0.5F;

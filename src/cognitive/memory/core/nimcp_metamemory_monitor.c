@@ -198,6 +198,8 @@ metamem_monitor_t metamem_monitor_create(
     // Allocate monitor structure
     metamem_monitor_t monitor = (metamem_monitor_t)calloc(1, sizeof(struct metamem_monitor_struct));
     if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitor is NULL");
+
         return NULL;
     }
 
@@ -1323,7 +1325,13 @@ static void update_domain_stats(metamem_monitor_t monitor, knowledge_domain_t* d
 
 static knowledge_domain_t* find_or_create_domain(metamem_monitor_t monitor,
                                                    const prime_signature_t* sig) {
-    if (!sig) return NULL;
+    if (!sig) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sig is NULL");
+
+        return NULL;
+
+    }
 
     // Find best matching existing domain
     float best_similarity = 0.0f;

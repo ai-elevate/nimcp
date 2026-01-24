@@ -148,6 +148,8 @@ language_cerebellum_bridge_t* language_cerebellum_bridge_create(
 
     language_cerebellum_bridge_t* bridge = nimcp_calloc(1, sizeof(language_cerebellum_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -182,6 +184,8 @@ void language_cerebellum_bridge_destroy(language_cerebellum_bridge_t* bridge) {
 
 int language_cerebellum_bridge_update(language_cerebellum_bridge_t* bridge, uint64_t timestamp_ms) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -214,6 +218,8 @@ int language_cerebellum_set_speech_rate(
     float syllables_per_second)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -279,6 +285,8 @@ int language_cerebellum_adjust_timing(
     float adjustment_ms)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -325,6 +333,8 @@ int language_cerebellum_start_rhythm(
 
 int language_cerebellum_stop_rhythm(language_cerebellum_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

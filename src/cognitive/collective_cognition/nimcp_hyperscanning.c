@@ -676,7 +676,13 @@ static void update_global_state(hyperscanning_t* hs) {
 
 hyperscanning_t* hyperscanning_create(const hyperscanning_config_t* config) {
     hyperscanning_t* hs = nimcp_malloc(sizeof(hyperscanning_t));
-    if (!hs) return NULL;
+    if (!hs) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hs is NULL");
+
+        return NULL;
+
+    }
 
     memset(hs, 0, sizeof(hyperscanning_t));
 

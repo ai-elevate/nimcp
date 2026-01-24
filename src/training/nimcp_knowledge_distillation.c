@@ -931,6 +931,8 @@ const char* kd_loss_type_name(kd_loss_type_t type) {
 
 int kd_validate_config(const kd_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 

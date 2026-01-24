@@ -33,7 +33,13 @@ brain_immune_thalamic_config_t brain_immune_thalamic_default_config(void) {
 
 brain_immune_thalamic_bridge_t* brain_immune_thalamic_bridge_create(void* brain_immune, thalamic_router_t* router, const brain_immune_thalamic_config_t* config) {
     brain_immune_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(brain_immune_thalamic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     bridge->brain_immune = brain_immune;
     bridge->router = router;
     bridge->config = config ? *config : brain_immune_thalamic_default_config();

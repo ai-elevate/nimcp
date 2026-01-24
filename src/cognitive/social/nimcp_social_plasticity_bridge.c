@@ -132,7 +132,13 @@ social_plasticity_bridge_t* social_plasticity_create(
     const social_plasticity_config_t* config
 ) {
     social_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(social_plasticity_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

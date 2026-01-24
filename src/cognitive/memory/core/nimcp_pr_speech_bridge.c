@@ -190,6 +190,8 @@ pr_speech_bridge_t* pr_speech_bridge_create(const pr_speech_bridge_config_t* con
     // Allocate bridge structure
     pr_speech_bridge_t* bridge = (pr_speech_bridge_t*)calloc(1, sizeof(pr_speech_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -868,6 +870,9 @@ pr_memory_node_t* pr_speech_bridge_encode_word_memory(
     );
 
     if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+
         return NULL;
     }
 
@@ -900,6 +905,8 @@ pr_memory_node_t* pr_speech_bridge_encode_word_memory(
 
 pr_memory_node_t* pr_speech_bridge_flush_word_buffer(pr_speech_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

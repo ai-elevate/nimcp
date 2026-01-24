@@ -449,7 +449,13 @@ static PyObject* Brain_probe(BrainObject* self, PyObject* Py_UNUSED(ignored))
     }
 
     PyObject* dict = PyDict_New();
-    if (!dict) return NULL;
+    if (!dict) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dict is NULL");
+
+        return NULL;
+
+    }
 
     // Helper macro to add item to dict with error checking
     // PyDict_SetItemString steals no reference, but we create temporary objects
@@ -1608,7 +1614,13 @@ static PyObject* Brain_process(BrainObject* self, PyObject* args)
 
     // Return a dict with the results
     PyObject* result = PyDict_New();
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     PyDict_SetItemString(result, "label", PyUnicode_FromString(label));
     PyDict_SetItemString(result, "confidence", PyFloat_FromDouble((double)confidence));
@@ -3576,7 +3588,13 @@ static PyObject* GlialIntegration_get_stats(GlialIntegrationObject* self, PyObje
     }
 
     PyObject* dict = PyDict_New();
-    if (!dict) return NULL;
+    if (!dict) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dict is NULL");
+
+        return NULL;
+
+    }
 
     // Helper macro to add item to dict with error checking
     #define ADD_DICT_ITEM(key, value_expr) do { \

@@ -114,7 +114,13 @@ predictive_immune_system_t* predictive_immune_create(
     /* Allocate system */
     predictive_immune_system_t* sys = (predictive_immune_system_t*)
         nimcp_malloc(sizeof(predictive_immune_system_t));
-    if (!sys) return NULL;
+    if (!sys) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
+        return NULL;
+
+    }
 
     memset(sys, 0, sizeof(predictive_immune_system_t));
 

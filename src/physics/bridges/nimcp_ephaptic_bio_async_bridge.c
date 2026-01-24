@@ -179,6 +179,8 @@ static int route_to_subscribers(
 
 int ephaptic_bio_async_default_config(ephaptic_bio_async_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 

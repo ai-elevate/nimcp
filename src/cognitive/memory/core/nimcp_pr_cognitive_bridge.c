@@ -261,7 +261,13 @@ pr_cognitive_bridge_t pr_cognitive_bridge_create(
     const pr_cognitive_config_t* config,
     z_ladder_t z_ladder
 ) {
-    if (!z_ladder) return NULL;
+    if (!z_ladder) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "z_ladder is NULL");
+
+        return NULL;
+
+    }
 
     // Use default config if not provided
     pr_cognitive_config_t cfg;
@@ -274,7 +280,13 @@ pr_cognitive_bridge_t pr_cognitive_bridge_create(
 
     // Allocate bridge
     pr_cognitive_bridge_t bridge = calloc(1, sizeof(struct pr_cognitive_bridge_struct));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     // Initialize base bridge infrastructure
     if (bridge_base_init(&bridge->base, 0, "pr_cognitive") != 0) {

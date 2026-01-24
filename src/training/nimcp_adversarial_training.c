@@ -1020,6 +1020,8 @@ int adv_connect_gradient_manager(
     nimcp_gradient_manager_ctx_t* grad_manager
 ) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -1031,6 +1033,8 @@ int adv_connect_gradient_manager(
 
 int adv_connect_brain_immune(adv_ctx_t* ctx, void* brain_immune) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -1042,6 +1046,8 @@ int adv_connect_brain_immune(adv_ctx_t* ctx, void* brain_immune) {
 
 int adv_connect_predictive_immune(adv_ctx_t* ctx, void* predictive_immune) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -1119,6 +1125,8 @@ const char* adv_norm_name(adv_norm_t norm) {
 
 int adv_validate_config(const adv_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 

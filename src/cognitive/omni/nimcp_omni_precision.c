@@ -138,7 +138,13 @@ int omni_precision_default_config(omni_precision_config_t* config) {
 
 omni_precision_ctx_t* omni_precision_create(const omni_precision_config_t* config) {
     omni_precision_ctx_t* ctx = nimcp_calloc(1, sizeof(omni_precision_ctx_t));
-    if (!ctx) return NULL;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

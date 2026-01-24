@@ -1030,6 +1030,8 @@ const char* hpo_param_type_name(hpo_param_type_t type) {
 
 int hpo_validate_config(const hpo_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 

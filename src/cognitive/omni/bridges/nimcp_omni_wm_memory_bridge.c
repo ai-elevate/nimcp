@@ -1135,14 +1135,32 @@ nimcp_error_t omni_wm_memory_bridge_consolidation_sync(
 const omni_wm_to_memory_effects_t* omni_wm_memory_bridge_get_wm_effects(
     const omni_wm_memory_bridge_t* bridge) {
 
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return NULL;
+
+
+    }
     return &bridge->wm_to_memory;
 }
 
 const memory_to_omni_wm_effects_t* omni_wm_memory_bridge_get_memory_effects(
     const omni_wm_memory_bridge_t* bridge) {
 
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return NULL;
+
+
+    }
     return &bridge->memory_to_wm;
 }
 

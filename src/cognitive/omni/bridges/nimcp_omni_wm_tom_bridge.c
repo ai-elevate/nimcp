@@ -1661,14 +1661,32 @@ nimcp_error_t omni_wm_tom_bridge_set_competitive_context(
 const omni_wm_to_tom_effects_t* omni_wm_tom_bridge_get_wm_effects(
     const omni_wm_tom_bridge_t* bridge) {
 
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return NULL;
+
+
+    }
     return &bridge->wm_to_tom;
 }
 
 const tom_to_omni_wm_effects_t* omni_wm_tom_bridge_get_tom_effects(
     const omni_wm_tom_bridge_t* bridge) {
 
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return NULL;
+
+
+    }
     return &bridge->tom_to_wm;
 }
 

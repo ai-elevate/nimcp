@@ -37,7 +37,13 @@ memory_thalamic_bridge_t* memory_thalamic_bridge_create(
     const memory_thalamic_config_t* config
 ) {
     memory_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(memory_thalamic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     if (bridge_base_init(&bridge->base, 0, "memory_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);

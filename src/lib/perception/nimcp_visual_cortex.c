@@ -2627,6 +2627,8 @@ uint32_t visual_cortex_get_feature_dim(const visual_cortex_t* cortex)
 int visual_cortex_set_training_mode(visual_cortex_t* cortex, bool enable)
 {
     if (!cortex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cortex is NULL");
+
         return -1;
     }
 

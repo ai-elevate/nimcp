@@ -132,7 +132,13 @@ empathy_plasticity_bridge_t* empathy_plasticity_create(
     const empathy_plasticity_config_t* config
 ) {
     empathy_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(empathy_plasticity_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

@@ -33,9 +33,21 @@ self_model_substrate_config_t self_model_substrate_default_config(void) {
 }
 
 self_model_substrate_bridge_t* self_model_substrate_bridge_create(void* self_model, neural_substrate_t* substrate, const self_model_substrate_config_t* config) {
-    if (!substrate) return NULL;
+    if (!substrate) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
+
+        return NULL;
+
+    }
     self_model_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(self_model_substrate_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     bridge->self_model = self_model;
     bridge->substrate = substrate;
     bridge->config = config ? *config : self_model_substrate_default_config();

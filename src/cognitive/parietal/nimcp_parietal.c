@@ -186,7 +186,13 @@ static physics_nn_t* physics_nn_create(uint32_t state_dim, uint32_t hidden_size,
                                         float learning_rate, bool use_hamiltonian,
                                         bool use_lagrangian) {
     physics_nn_t* nn = calloc(1, sizeof(physics_nn_t));
-    if (!nn) return NULL;
+    if (!nn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nn is NULL");
+
+        return NULL;
+
+    }
 
     nn->state_dim = state_dim;
     nn->learning_rate = learning_rate;
@@ -603,7 +609,13 @@ int parietal_attach_to_brain(parietal_lobe_t* parietal, brain_module_t* brain,
 }
 
 brain_region_t* parietal_get_brain_region(parietal_lobe_t* parietal) {
-    if (!parietal) return NULL;
+    if (!parietal) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal is NULL");
+
+        return NULL;
+
+    }
     return parietal->brain_region;
 }
 

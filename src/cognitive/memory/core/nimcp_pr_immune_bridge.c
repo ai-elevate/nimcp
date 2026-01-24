@@ -370,7 +370,13 @@ pr_immune_bridge_t pr_immune_bridge_create(
 
     /* Allocate bridge structure */
     pr_immune_bridge_t bridge = nimcp_malloc(sizeof(struct pr_immune_bridge_struct));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     memset(bridge, 0, sizeof(struct pr_immune_bridge_struct));
     bridge->config = actual_config;

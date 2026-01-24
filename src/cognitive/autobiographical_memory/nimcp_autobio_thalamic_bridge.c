@@ -31,7 +31,13 @@ autobio_thalamic_config_t autobio_thalamic_default_config(void) {
 
 autobio_thalamic_bridge_t* autobio_thalamic_bridge_create(void* autobio, thalamic_router_t* router, const autobio_thalamic_config_t* config) {
     autobio_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(autobio_thalamic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     bridge->autobio = autobio;
     bridge->router = router;
     bridge->config = config ? *config : autobio_thalamic_default_config();

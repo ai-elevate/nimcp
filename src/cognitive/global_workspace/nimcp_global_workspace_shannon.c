@@ -148,7 +148,13 @@ static uint32_t g_num_mappings = 0;
  * COMPLEXITY: O(N) where N = num_mappings (typically 1)
  */
 static shannon_workspace_state_t* get_shannon_state(const global_workspace_t* workspace) {
-    if (!workspace) return NULL;
+    if (!workspace) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "workspace is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < g_num_mappings; i++) {
         if (g_shannon_mappings[i].workspace == workspace) {
@@ -186,7 +192,13 @@ static subscriber_shannon_state_t* find_subscriber(
     shannon_workspace_state_t* state,
     cognitive_module_t module
 ) {
-    if (!state) return NULL;
+    if (!state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < state->num_subscribers; i++) {
         if (state->subscribers[i].module == module &&

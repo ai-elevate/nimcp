@@ -135,7 +135,13 @@ parietal_snn_config_t parietal_snn_config_default(void) {
 
 parietal_snn_bridge_t* parietal_snn_create(const parietal_snn_config_t* config) {
     parietal_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(parietal_snn_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

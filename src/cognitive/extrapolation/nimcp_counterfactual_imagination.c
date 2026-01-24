@@ -67,7 +67,13 @@ cf_config_t cf_default_config(void) {
 
 nimcp_counterfactual_t* cf_create(const cf_config_t* config) {
     nimcp_counterfactual_t* cf = calloc(1, sizeof(nimcp_counterfactual_t));
-    if (!cf) return NULL;
+    if (!cf) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cf is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {
@@ -928,7 +934,13 @@ const char* cf_variable_type_string(cf_variable_type_t type) {
 
 static cf_causal_model_t* causal_model_create(uint32_t capacity) {
     cf_causal_model_t* model = calloc(1, sizeof(cf_causal_model_t));
-    if (!model) return NULL;
+    if (!model) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "model is NULL");
+
+        return NULL;
+
+    }
 
     model->variable_capacity = capacity;
     model->variables = calloc(capacity, sizeof(cf_variable_t));

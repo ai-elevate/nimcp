@@ -131,12 +131,17 @@ omni_metacog_ctx_t* omni_metacog_create_with_config(
     const omni_metacog_config_t* config) {
 
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+
         return NULL;
     }
 
     omni_metacog_ctx_t* ctx = (omni_metacog_ctx_t*)nimcp_malloc(
         sizeof(omni_metacog_ctx_t));
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 

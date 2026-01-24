@@ -859,6 +859,8 @@ int hopfield_memory_disconnect_bio_async(hopfield_memory_t* memory) {
 hopfield_retrieval_result_t* hopfield_result_create(uint32_t dim) {
     hopfield_retrieval_result_t* result = nimcp_calloc(1, sizeof(hopfield_retrieval_result_t));
     if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
         return NULL;
     }
 
@@ -885,6 +887,8 @@ hopfield_batch_result_t* hopfield_batch_result_create(uint32_t num_queries,
                                                        uint32_t dim) {
     hopfield_batch_result_t* result = nimcp_calloc(1, sizeof(hopfield_batch_result_t));
     if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
         return NULL;
     }
 

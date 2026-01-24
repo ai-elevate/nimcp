@@ -212,6 +212,8 @@ nimcp_mechanism_t nimcp_mechanism_create(const nimcp_mechanism_config_t* config)
 
     nimcp_mechanism_t ctx = nimcp_calloc(1, sizeof(struct nimcp_mechanism_struct));
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 

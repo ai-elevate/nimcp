@@ -237,6 +237,8 @@ static nimcp_gt_q_table_t q_table_create(uint32_t num_states, uint32_t num_actio
 
     nimcp_gt_q_table_t table = nimcp_calloc(1, sizeof(struct nimcp_gt_q_table_struct));
     if (!table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "table is NULL");
+
         return NULL;
     }
 
@@ -276,6 +278,8 @@ static nimcp_gt_regret_table_t regret_table_create(uint32_t num_info_sets, uint3
 
     nimcp_gt_regret_table_t table = nimcp_calloc(1, sizeof(struct nimcp_gt_regret_table_struct));
     if (!table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "table is NULL");
+
         return NULL;
     }
 
@@ -419,6 +423,8 @@ nimcp_gt_learner_t nimcp_gt_learner_create(
 
     nimcp_gt_learner_t learner = nimcp_calloc(1, sizeof(struct nimcp_gt_learner_struct));
     if (!learner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "learner is NULL");
+
         return NULL;
     }
 

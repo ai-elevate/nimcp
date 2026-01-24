@@ -136,7 +136,13 @@ collective_snn_config_t collective_snn_config_default(void) {
 
 collective_snn_bridge_t* collective_snn_create(const collective_snn_config_t* config) {
     collective_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(collective_snn_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

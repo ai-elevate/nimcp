@@ -280,7 +280,13 @@ mirror_plasticity_bridge_t* mirror_plasticity_create(
     const mirror_plasticity_config_t* config
 ) {
     mirror_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     bridge->config = config ? *config : mirror_plasticity_config_default();
 
@@ -342,10 +348,22 @@ mirror_plasticity_bridge_t* mirror_plasticity_create_with_orchestrator(
     const mirror_plasticity_config_t* config,
     plasticity_orchestrator_t* orchestrator
 ) {
-    if (!orchestrator) return NULL;
+    if (!orchestrator) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
+
+        return NULL;
+
+    }
 
     mirror_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     bridge->config = config ? *config : mirror_plasticity_config_default();
 

@@ -181,6 +181,8 @@ pr_node_manager_t pr_node_manager_create(const pr_node_manager_config_t* config)
     pr_node_manager_t manager = (pr_node_manager_t)malloc(
         sizeof(struct pr_node_manager_struct));
     if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+
         return NULL;
     }
 
@@ -230,6 +232,8 @@ void pr_node_manager_destroy(pr_node_manager_t manager) {
 
 unified_mem_manager_t pr_node_manager_get_mem_manager(pr_node_manager_t manager) {
     if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+
         return NULL;
     }
     return manager->mem_manager;
@@ -272,6 +276,8 @@ pr_memory_node_t* pr_memory_node_create(
 ) {
     // Validate inputs
     if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+
         return NULL;
     }
 
@@ -290,6 +296,8 @@ pr_memory_node_t* pr_memory_node_create(
     // Allocate node structure
     pr_memory_node_t* node = (pr_memory_node_t*)malloc(sizeof(pr_memory_node_t));
     if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
         return NULL;
     }
 
@@ -374,6 +382,8 @@ pr_memory_node_t* pr_memory_node_create_with_signature(
 
     pr_memory_node_t* node = pr_memory_node_create(manager, data, data_size, &cfg);
     if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
         return NULL;
     }
 
@@ -411,6 +421,8 @@ pr_memory_node_t* pr_memory_node_clone(
     // Allocate new node
     pr_memory_node_t* clone = (pr_memory_node_t*)malloc(sizeof(pr_memory_node_t));
     if (!clone) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+
         return NULL;
     }
 
@@ -656,6 +668,8 @@ pr_node_error_t pr_memory_node_set_signature(
 
 const prime_signature_t* pr_memory_node_get_signature(const pr_memory_node_t* node) {
     if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
         return NULL;
     }
     return &node->signature;
@@ -1314,6 +1328,8 @@ pr_memory_node_t* pr_memory_node_deserialize(
     pr_memory_node_t* node = pr_memory_node_create(
         manager, data, header.data_size, &config);
     if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
         return NULL;
     }
 

@@ -317,7 +317,13 @@ imagination_engine_t* imagination_engine_create(
     /* Allocate engine */
     imagination_engine_t* engine = (imagination_engine_t*)calloc(
         1, sizeof(imagination_engine_t));
-    if (!engine) return NULL;
+    if (!engine) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
+        return NULL;
+
+    }
 
     /* Initialize bridge base */
     memset(&engine->base, 0, sizeof(bridge_base_t));
@@ -479,7 +485,13 @@ int imagination_engine_init_for_brain(
 }
 
 imagination_engine_t* brain_get_imagination_engine(brain_t brain) {
-    if (!brain) return NULL;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return NULL;
+
+    }
     /* Implementation depends on brain structure */
     /* Would typically be: return brain->imagination_engine; */
     return NULL;
@@ -900,7 +912,16 @@ imagination_scenario_t* imagination_begin_scenario(
     imagination_mode_t mode,
     const imagination_goal_t* goal) {
 
-    if (!engine) return NULL;
+    if (!engine) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
+
+        return NULL;
+
+
+    }
     if (mode < 0 || mode >= IMAGINATION_MODE_COUNT) return NULL;
 
     nimcp_mutex_lock(engine->mutex);
@@ -1496,7 +1517,13 @@ imagination_scenario_t* imagination_blend_scenarios(
     /* Create new scenario */
     imagination_scenario_t* blended = imagination_begin_scenario(
         engine, IMAGINATION_MODE_CREATIVE, NULL);
-    if (!blended) return NULL;
+    if (!blended) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "blended is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -1549,6 +1576,9 @@ imagination_scenario_t* imagination_counterfactual(
     }
 
     if (!scenario) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scenario is NULL");
+
+
         return NULL;
     }
 
@@ -1590,7 +1620,13 @@ imagination_scenario_t* imagination_simulate_future(
 
     imagination_scenario_t* scenario = imagination_begin_scenario(
         engine, IMAGINATION_MODE_PROSPECTIVE, NULL);
-    if (!scenario) return NULL;
+    if (!scenario) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scenario is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -1624,11 +1660,26 @@ imagination_scenario_t* imagination_simulate_agent(
     uint64_t agent_id,
     const nimcp_tensor_t* believed_state) {
 
-    if (!engine) return NULL;
+    if (!engine) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
+
+        return NULL;
+
+
+    }
 
     imagination_scenario_t* scenario = imagination_begin_scenario(
         engine, IMAGINATION_MODE_SOCIAL, NULL);
-    if (!scenario) return NULL;
+    if (!scenario) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scenario is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -1656,7 +1707,13 @@ imagination_scenario_t* imagination_creative_recombine(
 
     imagination_scenario_t* scenario = imagination_begin_scenario(
         engine, IMAGINATION_MODE_CREATIVE, NULL);
-    if (!scenario) return NULL;
+    if (!scenario) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scenario is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -1721,11 +1778,26 @@ imagination_scenario_t* imagination_numerical(
     double quantity,
     double scale) {
 
-    if (!engine) return NULL;
+    if (!engine) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
+
+        return NULL;
+
+
+    }
 
     imagination_scenario_t* scenario = imagination_begin_scenario(
         engine, IMAGINATION_MODE_MATHEMATICAL, NULL);
-    if (!scenario) return NULL;
+    if (!scenario) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scenario is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -1753,11 +1825,26 @@ imagination_scenario_t* imagination_mathematical(
     const float* variables,
     size_t num_vars) {
 
-    if (!engine) return NULL;
+    if (!engine) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
+
+        return NULL;
+
+
+    }
 
     imagination_scenario_t* scenario = imagination_begin_scenario(
         engine, IMAGINATION_MODE_MATHEMATICAL, NULL);
-    if (!scenario) return NULL;
+    if (!scenario) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scenario is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -1787,11 +1874,26 @@ imagination_scenario_t* imagination_scientific_simulate(
     const nimcp_tensor_t* initial_conditions,
     size_t steps) {
 
-    if (!engine) return NULL;
+    if (!engine) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
+
+        return NULL;
+
+
+    }
 
     imagination_scenario_t* scenario = imagination_begin_scenario(
         engine, IMAGINATION_MODE_SCIENTIFIC, NULL);
-    if (!scenario) return NULL;
+    if (!scenario) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scenario is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -1827,11 +1929,26 @@ imagination_scenario_t* imagination_simulate_chemistry(
     const nimcp_tensor_t* molecules,
     const nimcp_tensor_t* reaction_conditions) {
 
-    if (!engine) return NULL;
+    if (!engine) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
+
+        return NULL;
+
+
+    }
 
     imagination_scenario_t* scenario = imagination_begin_scenario(
         engine, IMAGINATION_MODE_DOMAIN_SIMULATION, NULL);
-    if (!scenario) return NULL;
+    if (!scenario) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scenario is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -1858,11 +1975,26 @@ imagination_scenario_t* imagination_simulate_biology(
     const nimcp_tensor_t* biological_system,
     const nimcp_tensor_t* perturbation) {
 
-    if (!engine) return NULL;
+    if (!engine) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
+
+        return NULL;
+
+
+    }
 
     imagination_scenario_t* scenario = imagination_begin_scenario(
         engine, IMAGINATION_MODE_DOMAIN_SIMULATION, NULL);
-    if (!scenario) return NULL;
+    if (!scenario) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scenario is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -1892,11 +2024,26 @@ imagination_scenario_t* imagination_simulate_physics(
     const nimcp_tensor_t* forces,
     float time_delta) {
 
-    if (!engine) return NULL;
+    if (!engine) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
+
+        return NULL;
+
+
+    }
 
     imagination_scenario_t* scenario = imagination_begin_scenario(
         engine, IMAGINATION_MODE_DOMAIN_SIMULATION, NULL);
-    if (!scenario) return NULL;
+    if (!scenario) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scenario is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -1927,11 +2074,26 @@ imagination_scenario_t* imagination_simulate_software(
     const nimcp_tensor_t* program_state,
     size_t execution_steps) {
 
-    if (!engine) return NULL;
+    if (!engine) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
+
+        return NULL;
+
+
+    }
 
     imagination_scenario_t* scenario = imagination_begin_scenario(
         engine, IMAGINATION_MODE_DOMAIN_SIMULATION, NULL);
-    if (!scenario) return NULL;
+    if (!scenario) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scenario is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -1963,7 +2125,13 @@ imagination_scenario_t* imagination_quantum_superpose(
 
     imagination_scenario_t* scenario = imagination_begin_scenario(
         engine, IMAGINATION_MODE_QUANTUM_SEARCH, NULL);
-    if (!scenario) return NULL;
+    if (!scenario) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scenario is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_mutex_lock(engine->mutex);
 
@@ -2588,7 +2756,13 @@ static void* imag_mcts_apply_action(const void* state, uint32_t action, void* us
     imag_mcts_user_data_t* ud = (imag_mcts_user_data_t*)user_data;
 
     imag_mcts_state_t* new_state = nimcp_malloc(sizeof(imag_mcts_state_t));
-    if (!new_state) return NULL;
+    if (!new_state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_state is NULL");
+
+        return NULL;
+
+    }
 
     new_state->latent_size = s->latent_size;
     new_state->depth = s->depth + 1;
@@ -2712,11 +2886,23 @@ static void imag_mcts_free_state(void* state, void* user_data) {
 
 static void* imag_mcts_clone_state(const void* state, void* user_data) {
     (void)user_data;
-    if (!state) return NULL;
+    if (!state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
+        return NULL;
+
+    }
 
     const imag_mcts_state_t* s = (const imag_mcts_state_t*)state;
     imag_mcts_state_t* clone = nimcp_malloc(sizeof(imag_mcts_state_t));
-    if (!clone) return NULL;
+    if (!clone) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+
+        return NULL;
+
+    }
 
     clone->latent_size = s->latent_size;
     clone->goal_progress = s->goal_progress;

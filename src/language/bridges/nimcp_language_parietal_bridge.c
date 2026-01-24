@@ -160,6 +160,8 @@ language_parietal_bridge_t* language_parietal_bridge_create(
 
     language_parietal_bridge_t* bridge = nimcp_calloc(1, sizeof(language_parietal_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -192,6 +194,8 @@ void language_parietal_bridge_destroy(language_parietal_bridge_t* bridge) {
 
 int language_parietal_bridge_update(language_parietal_bridge_t* bridge, uint64_t timestamp_ms) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -383,6 +387,8 @@ int language_parietal_direct_attention(
     float y)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

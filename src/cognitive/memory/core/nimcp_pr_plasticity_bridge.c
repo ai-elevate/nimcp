@@ -120,7 +120,13 @@ static pr_bcm_node_state_t* get_or_create_bcm_node(
         pr_bcm_node_state_t* new_nodes = nimcp_realloc(
             bridge->bcm_nodes,
             new_capacity * sizeof(pr_bcm_node_state_t));
-        if (!new_nodes) return NULL;
+        if (!new_nodes) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_nodes is NULL");
+
+            return NULL;
+
+        }
         bridge->bcm_nodes = new_nodes;
         bridge->bcm_node_capacity = new_capacity;
     }
@@ -275,7 +281,13 @@ pr_plasticity_bridge_t pr_plasticity_bridge_create(
     const pr_plasticity_bridge_config_t* config)
 {
     pr_plasticity_bridge_t bridge = nimcp_calloc(1, sizeof(struct pr_plasticity_bridge_struct));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

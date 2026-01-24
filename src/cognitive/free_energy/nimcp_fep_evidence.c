@@ -356,6 +356,8 @@ int fep_compare_models(
 
     float* log_evidences = (float*)nimcp_calloc(n_models, sizeof(float));
     if (!log_evidences) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "log_evidences is NULL");
+
         return -1;
     }
 

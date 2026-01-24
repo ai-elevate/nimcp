@@ -81,7 +81,13 @@ wernicke_gpu_context_t* wernicke_gpu_create(
     (void)gpu_ctx;  /* Not used in CPU fallback */
 
     wernicke_gpu_context_t* ctx = calloc(1, sizeof(wernicke_gpu_context_t));
-    if (!ctx) return NULL;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return NULL;
+
+    }
 
     ctx->config = config ? *config : wernicke_gpu_default_config();
 
@@ -712,7 +718,13 @@ nimcp_gpu_tensor_t* nimcp_gpu_tensor_create(
     if (!dims || ndim == 0) return NULL;
 
     nimcp_gpu_tensor_t* tensor = calloc(1, sizeof(nimcp_gpu_tensor_t));
-    if (!tensor) return NULL;
+    if (!tensor) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tensor is NULL");
+
+        return NULL;
+
+    }
 
     tensor->ndim = ndim;
     tensor->precision = precision;
@@ -804,11 +816,23 @@ void nimcp_gpu_tensor_destroy(nimcp_gpu_tensor_t* tensor) {
 }
 
 nimcp_gpu_tensor_t* nimcp_gpu_tensor_clone(const nimcp_gpu_tensor_t* tensor) {
-    if (!tensor) return NULL;
+    if (!tensor) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tensor is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_gpu_tensor_t* clone = nimcp_gpu_tensor_create(
         tensor->ctx, tensor->dims, tensor->ndim, tensor->precision);
-    if (!clone) return NULL;
+    if (!clone) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+
+        return NULL;
+
+    }
 
     if (tensor->data) {
         memcpy(clone->data, tensor->data, tensor->numel * tensor->elem_size);
@@ -1495,7 +1519,13 @@ nimcp_jepa_gpu_predictor_t* nimcp_jepa_gpu_predictor_create(
     if (num_layers == 0) return NULL;
 
     nimcp_jepa_gpu_predictor_t* pred = calloc(1, sizeof(nimcp_jepa_gpu_predictor_t));
-    if (!pred) return NULL;
+    if (!pred) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pred is NULL");
+
+        return NULL;
+
+    }
 
     pred->ctx = ctx;
     pred->input_dim = input_dim;
@@ -1720,7 +1750,13 @@ nimcp_jepa_gpu_inverse_t* nimcp_jepa_gpu_inverse_create(
     if (num_layers == 0) return NULL;
 
     nimcp_jepa_gpu_inverse_t* inv = calloc(1, sizeof(nimcp_jepa_gpu_inverse_t));
-    if (!inv) return NULL;
+    if (!inv) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "inv is NULL");
+
+        return NULL;
+
+    }
 
     inv->ctx = ctx;
     inv->state_dim = state_dim;
@@ -2043,7 +2079,13 @@ broca_gpu_context_t* broca_gpu_create(
     const broca_gpu_config_t* config)
 {
     broca_gpu_context_t* ctx = calloc(1, sizeof(broca_gpu_context_t));
-    if (!ctx) return NULL;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return NULL;
+
+    }
 
     ctx->gpu_ctx = gpu_ctx;
     ctx->config = config ? *config : broca_gpu_default_config();

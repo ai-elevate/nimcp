@@ -279,6 +279,8 @@ rcog_orchestrator_t* rcog_orchestrator_create(
 ) {
     rcog_orchestrator_t* orch = nimcp_calloc(1, sizeof(rcog_orchestrator_t));
     if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orch is NULL");
+
         return NULL;
     }
 
@@ -780,7 +782,13 @@ static void* rcog_mcts_apply_action(const void* state, uint32_t action, void* us
     (void)user_data;
 
     rcog_mcts_state_t* new_state = nimcp_malloc(sizeof(rcog_mcts_state_t));
-    if (!new_state) return NULL;
+    if (!new_state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_state is NULL");
+
+        return NULL;
+
+    }
 
     *new_state = *s;
     new_state->selected_strategy = (rcog_decomposition_strategy_t)action;
@@ -851,10 +859,22 @@ static void rcog_mcts_free_state(void* state, void* user_data) {
 
 static void* rcog_mcts_clone_state(const void* state, void* user_data) {
     (void)user_data;
-    if (!state) return NULL;
+    if (!state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
+        return NULL;
+
+    }
 
     rcog_mcts_state_t* clone = nimcp_malloc(sizeof(rcog_mcts_state_t));
-    if (!clone) return NULL;
+    if (!clone) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+
+        return NULL;
+
+    }
 
     *clone = *(const rcog_mcts_state_t*)state;
     return clone;

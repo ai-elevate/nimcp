@@ -45,7 +45,13 @@ intuition_thalamic_bridge_t* intuition_thalamic_bridge_create(
     const intuition_thalamic_config_t* config
 ) {
     intuition_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(intuition_thalamic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     if (bridge_base_init(&bridge->base, 0, "intuition_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);

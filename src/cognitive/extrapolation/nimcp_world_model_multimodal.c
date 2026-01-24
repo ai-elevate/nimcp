@@ -142,7 +142,13 @@ wm_config_t wm_default_config(void) {
 
 nimcp_world_model_t* wm_create(const wm_config_t* config) {
     nimcp_world_model_t* wm = calloc(1, sizeof(nimcp_world_model_t));
-    if (!wm) return NULL;
+    if (!wm) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         wm->config = *config;

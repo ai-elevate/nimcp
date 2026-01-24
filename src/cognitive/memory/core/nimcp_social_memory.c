@@ -567,6 +567,8 @@ NIMCP_EXPORT const person_node_t* social_memory_get_person(
     uint64_t person_id)
 {
     if (!social_mem) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_mem is NULL");
+
         return NULL;
     }
 
@@ -1660,6 +1662,8 @@ NIMCP_EXPORT const social_episode_t* social_memory_get_episode(
     uint64_t episode_id)
 {
     if (!social_mem) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_mem is NULL");
+
         return NULL;
     }
 
@@ -1887,6 +1891,8 @@ NIMCP_EXPORT int social_memory_degrees_of_separation(
     uint64_t person2_id)
 {
     if (!social_mem) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "social_mem is NULL");
+
         return -1;
     }
 

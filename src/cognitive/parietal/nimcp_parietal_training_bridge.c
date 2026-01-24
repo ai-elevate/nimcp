@@ -126,6 +126,8 @@ static const char* state_names[] = {
 
 int parietal_training_default_config(parietal_training_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -179,11 +181,15 @@ parietal_training_bridge_t* parietal_training_create(
     nimcp_brain_training_ctx_t* training
 ) {
     if (!parietal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal is NULL");
+
         return NULL;
     }
 
     parietal_training_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

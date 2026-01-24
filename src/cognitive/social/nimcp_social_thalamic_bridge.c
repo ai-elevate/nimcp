@@ -31,7 +31,13 @@ social_thalamic_config_t social_thalamic_default_config(void) {
 
 social_thalamic_bridge_t* social_thalamic_bridge_create(void* social, thalamic_router_t* router, const social_thalamic_config_t* config) {
     social_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(social_thalamic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     bridge->social = social;
     bridge->router = router;
     bridge->config = config ? *config : social_thalamic_default_config();

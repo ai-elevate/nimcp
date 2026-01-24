@@ -53,7 +53,13 @@ static fep_bridge_entry_t* find_bridge_by_id(
     fep_orchestrator_t* orchestrator,
     uint32_t bridge_id
 ) {
-    if (!orchestrator) return NULL;
+    if (!orchestrator) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
+
+        return NULL;
+
+    }
     for (uint32_t i = 0; i < orchestrator->bridge_count; i++) {
         if (orchestrator->bridges[i].bridge_id == bridge_id) {
             return &orchestrator->bridges[i];
@@ -487,7 +493,13 @@ const fep_bridge_entry_t* fep_orchestrator_get_bridge(
     const fep_orchestrator_t* orchestrator,
     uint32_t bridge_id
 ) {
-    if (!orchestrator) return NULL;
+    if (!orchestrator) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
+
+        return NULL;
+
+    }
     
     for (uint32_t i = 0; i < orchestrator->bridge_count; i++) {
         if (orchestrator->bridges[i].bridge_id == bridge_id) {

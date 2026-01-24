@@ -145,7 +145,13 @@ static exhaustion_cell_record_t* get_or_create_cell_record(
     exhaustion_system_t* system,
     uint32_t t_cell_id
 ) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     /* Check if already tracking */
     exhaustion_cell_record_t* existing = find_cell_record(system, t_cell_id);
@@ -522,12 +528,24 @@ exhaustion_system_t* exhaustion_create(
     const exhaustion_config_t* config,
     brain_immune_system_t* immune_system
 ) {
-    if (!immune_system) return NULL;
+    if (!immune_system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_system is NULL");
+
+        return NULL;
+
+    }
 
     exhaustion_system_t* system = (exhaustion_system_t*)nimcp_malloc(
         sizeof(exhaustion_system_t)
     );
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     memset(system, 0, sizeof(exhaustion_system_t));
 

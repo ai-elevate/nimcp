@@ -291,6 +291,8 @@ training_integration_hub_t training_hub_create(const training_hub_config_t* conf
     /* Allocate hub structure */
     training_integration_hub_t hub = nimcp_calloc(1, sizeof(struct training_integration_hub_struct));
     if (!hub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hub is NULL");
+
         return NULL;
     }
 
@@ -495,6 +497,9 @@ int training_hub_subscribe(training_integration_hub_t hub,
     }
 
     if (!callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "callback is NULL");
+
+
         return -1;
     }
 
@@ -916,6 +921,8 @@ int training_hub_publish_difficulty_update(training_integration_hub_t hub,
                                             float old_difficulty,
                                             float new_difficulty) {
     if (!hub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hub is NULL");
+
         return -1;
     }
 
@@ -948,6 +955,8 @@ int training_hub_publish_loss(training_integration_hub_t hub,
                                uint32_t batch,
                                float loss) {
     if (!hub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hub is NULL");
+
         return -1;
     }
 
@@ -980,6 +989,8 @@ int training_hub_publish_lr_adjustment(training_integration_hub_t hub,
                                         float old_lr,
                                         float new_lr) {
     if (!hub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hub is NULL");
+
         return -1;
     }
 
@@ -1011,6 +1022,8 @@ int training_hub_publish_epoch_complete(training_integration_hub_t hub,
                                          uint32_t epoch,
                                          float avg_loss) {
     if (!hub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hub is NULL");
+
         return -1;
     }
 

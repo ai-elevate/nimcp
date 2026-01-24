@@ -253,6 +253,8 @@ rcog_health_integration_t* rcog_health_create(
 ) {
     rcog_health_integration_t* integration = calloc(1, sizeof(rcog_health_integration_t));
     if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "integration is NULL");
+
         return NULL;
     }
 
@@ -702,6 +704,8 @@ int rcog_health_cancel_goal(
     uint64_t goal_id
 ) {
     if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "integration is NULL");
+
         return -1;
     }
 
@@ -815,6 +819,8 @@ int rcog_health_predict_failure(
 
 int rcog_health_register_builtin_tools(rcog_health_integration_t* integration) {
     if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "integration is NULL");
+
         return -1;
     }
 

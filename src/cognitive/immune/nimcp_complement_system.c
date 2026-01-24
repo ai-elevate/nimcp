@@ -106,7 +106,13 @@ static uint64_t get_timestamp_ms(void) {
  * @brief Find C3b by ID
  */
 static complement_c3b_t* find_c3b_by_id(complement_system_t* system, uint32_t id) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
     for (size_t i = 0; i < system->c3b_count; i++) {
         if (system->c3b_pool[i].id == id) {
             return &system->c3b_pool[i];
@@ -119,7 +125,13 @@ static complement_c3b_t* find_c3b_by_id(complement_system_t* system, uint32_t id
  * @brief Find MAC by ID
  */
 static complement_mac_t* find_mac_by_id(complement_system_t* system, uint32_t id) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
     for (size_t i = 0; i < system->mac_count; i++) {
         if (system->mac_pool[i].id == id) {
             return &system->mac_pool[i];
@@ -309,10 +321,22 @@ int complement_default_config(complement_config_t* config) {
  */
 complement_system_t* complement_create(const complement_config_t* config,
                                        brain_immune_system_t* immune_system) {
-    if (!immune_system) return NULL;
+    if (!immune_system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_system is NULL");
+
+        return NULL;
+
+    }
 
     complement_system_t* system = nimcp_malloc(sizeof(complement_system_t));
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     memset(system, 0, sizeof(complement_system_t));
 

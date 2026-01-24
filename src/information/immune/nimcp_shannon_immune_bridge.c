@@ -65,6 +65,8 @@ static float get_inflammation_channel_factor(brain_inflammation_level_t level) {
 
 int shannon_immune_default_config(shannon_immune_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -402,6 +404,8 @@ int shannon_immune_update(
 ) {
     /* Guard clauses */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -431,6 +435,8 @@ int shannon_immune_update(
 int shannon_immune_apply_modulation(shannon_immune_bridge_t* bridge) {
     /* Guard clauses */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -555,6 +561,8 @@ int shannon_immune_disconnect_bio_async(shannon_immune_bridge_t* bridge) {
 
     /* Guard: null check */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

@@ -576,7 +576,16 @@ NIMCP_EXPORT const kuramoto_oscillator_t* kuramoto_get_oscillator(
     const kuramoto_system_t* system,
     uint32_t module_id) {
 
-    if (!system) return NULL;
+    if (!system) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+
+        return NULL;
+
+
+    }
 
     int32_t idx = find_oscillator_index(system, module_id);
     if (idx < 0) {

@@ -117,7 +117,13 @@ static inline float fabsf_fast(float x) {
  * @brief Duplicate string (strdup may not be available everywhere)
  */
 static char* str_dup(const char* s) {
-    if (!s) return NULL;
+    if (!s) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "s is NULL");
+
+        return NULL;
+
+    }
     size_t len = strlen(s) + 1;
     char* dup = (char*)malloc(len);
     if (dup) {
@@ -1109,6 +1115,8 @@ schema_instantiation_t* schema_instantiate_from_memory(
     // Create basic instantiation (single source)
     schema_instantiation_t* inst = schema_instantiate(system, schema, NULL, NULL, 0);
     if (!inst) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "inst is NULL");
+
         return NULL;
     }
 
@@ -1151,7 +1159,13 @@ schema_instantiation_t* schema_get_instantiation(
     schema_system_t system,
     uint64_t instantiation_id)
 {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t i = 0; i < system->num_active; i++) {
         if (system->active[i] &&
@@ -1649,7 +1663,13 @@ schema_t* schema_abstract(
 
     // Create new abstract schema
     schema_t* abstract = schema_create(system, name, type);
-    if (!abstract) return NULL;
+    if (!abstract) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "abstract is NULL");
+
+        return NULL;
+
+    }
 
     abstract->abstraction_level = 1.0f;  // Most abstract
 
@@ -1715,7 +1735,13 @@ schema_t* schema_specialize(
 
     // Create new schema with same type
     schema_t* child = schema_create(system, name, parent_schema->type);
-    if (!child) return NULL;
+    if (!child) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "child is NULL");
+
+        return NULL;
+
+    }
 
     child->abstraction_level = parent_schema->abstraction_level * 0.5f;  // More specific
 
@@ -1788,7 +1814,13 @@ schema_t* schema_merge(
 
     // Use type of first schema
     schema_t* merged = schema_create(system, name, schema1->type);
-    if (!merged) return NULL;
+    if (!merged) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "merged is NULL");
+
+        return NULL;
+
+    }
 
     merged->abstraction_level = (schema1->abstraction_level + schema2->abstraction_level) / 2.0f;
 

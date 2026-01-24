@@ -345,7 +345,13 @@ static void record_event(
 
 collective_phi_system_t* collective_phi_create(const collective_phi_config_t* config) {
     collective_phi_system_t* cps = nimcp_malloc(sizeof(collective_phi_system_t));
-    if (!cps) return NULL;
+    if (!cps) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cps is NULL");
+
+        return NULL;
+
+    }
 
     memset(cps, 0, sizeof(collective_phi_system_t));
 

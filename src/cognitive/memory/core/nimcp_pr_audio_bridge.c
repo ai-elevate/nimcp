@@ -222,6 +222,8 @@ NIMCP_EXPORT pr_audio_bridge_t* pr_audio_bridge_create(
     /* Allocate bridge structure */
     pr_audio_bridge_t* bridge = (pr_audio_bridge_t*)calloc(1, sizeof(pr_audio_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -1408,14 +1410,32 @@ NIMCP_EXPORT pr_audio_error_t pr_audio_bridge_entangle_memories(
 NIMCP_EXPORT const pr_audio_features_t* pr_audio_bridge_get_current_features(
     const pr_audio_bridge_t* bridge) {
 
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return NULL;
+
+
+    }
     return &bridge->current_features;
 }
 
 NIMCP_EXPORT const prime_signature_t* pr_audio_bridge_get_current_signature(
     const pr_audio_bridge_t* bridge) {
 
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return NULL;
+
+
+    }
     return bridge->current_signature;
 }
 
@@ -1431,7 +1451,16 @@ NIMCP_EXPORT nimcp_quaternion_t pr_audio_bridge_get_current_quaternion(
 NIMCP_EXPORT const pr_audio_pattern_result_t* pr_audio_bridge_get_current_pattern(
     const pr_audio_bridge_t* bridge) {
 
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return NULL;
+
+
+    }
     return &bridge->current_pattern;
 }
 

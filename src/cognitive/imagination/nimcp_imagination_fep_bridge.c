@@ -269,7 +269,13 @@ imagination_fep_bridge_t* imagination_fep_bridge_create(
     const imagination_fep_config_t* config
 ) {
     imagination_fep_bridge_t* bridge = nimcp_calloc(1, sizeof(imagination_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

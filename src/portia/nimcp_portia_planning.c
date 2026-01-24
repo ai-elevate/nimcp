@@ -122,6 +122,8 @@ static float decay_confidence(float initial, uint64_t last_seen_ms)
 static portia_plan_t* find_plan(portia_planner_t planner, uint32_t plan_id)
 {
     if (!planner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "planner is NULL");
+
         return NULL;
     }
 

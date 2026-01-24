@@ -104,6 +104,8 @@ static int32_t get_free_execution_slot(mirror_motor_bridge_t* bridge) {
 
 int mirror_motor_bridge_default_config(mirror_motor_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -555,6 +557,8 @@ int mirror_motor_stop_execution(
     uint32_t program_id
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -585,6 +589,8 @@ int mirror_motor_enter_learning_mode(
     float strength
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -615,6 +621,8 @@ int mirror_motor_exit_learning_mode(
     mirror_motor_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -647,6 +655,8 @@ int mirror_motor_bridge_update(
     uint64_t delta_ms
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -787,6 +797,8 @@ int mirror_motor_bridge_reset_stats(
     mirror_motor_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

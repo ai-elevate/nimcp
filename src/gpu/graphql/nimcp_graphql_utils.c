@@ -86,12 +86,16 @@ nimcp_graphql_executor_t* nimcp_graphql_executor_create(
     nimcp_gpu_context_t* gpu_context)
 {
     if (!gpu_context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_context is NULL");
+
         return NULL;
     }
 
     nimcp_graphql_executor_t* exec = (nimcp_graphql_executor_t*)calloc(
         1, sizeof(nimcp_graphql_executor_t));
     if (!exec) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "exec is NULL");
+
         return NULL;
     }
 
@@ -351,6 +355,8 @@ nimcp_graph_query_t* nimcp_graph_query_create(void)
     nimcp_graph_query_t* query = (nimcp_graph_query_t*)calloc(
         1, sizeof(nimcp_graph_query_t));
     if (!query) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "query is NULL");
+
         return NULL;
     }
 
@@ -539,6 +545,8 @@ nimcp_graphql_filter_node_t* nimcp_graphql_parse_filter(const char* filter_str)
     nimcp_graphql_filter_node_t* node = (nimcp_graphql_filter_node_t*)calloc(
         1, sizeof(nimcp_graphql_filter_node_t));
     if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
         return NULL;
     }
 
@@ -683,6 +691,8 @@ nimcp_graphql_filter_node_t* nimcp_graphql_filter_create_comparison(
     nimcp_graphql_filter_node_t* node = (nimcp_graphql_filter_node_t*)calloc(
         1, sizeof(nimcp_graphql_filter_node_t));
     if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
         return NULL;
     }
 
@@ -709,6 +719,8 @@ nimcp_graphql_filter_node_t* nimcp_graphql_filter_create_logical(
     nimcp_graphql_filter_node_t* node = (nimcp_graphql_filter_node_t*)calloc(
         1, sizeof(nimcp_graphql_filter_node_t));
     if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
         return NULL;
     }
 

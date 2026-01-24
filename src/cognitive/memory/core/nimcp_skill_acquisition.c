@@ -165,7 +165,13 @@ static float compute_r_squared(const float* actual, const float* predicted, size
  * @brief Find skill state by ID
  */
 static skill_acquisition_state_t* find_state(skill_acquisition_t* sa, uint64_t skill_id) {
-    if (!sa) return NULL;
+    if (!sa) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sa is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t i = 0; i < sa->num_states; i++) {
         if (sa->states[i] && sa->states[i]->skill &&
@@ -215,7 +221,13 @@ static skill_acquisition_state_t* create_state(procedural_skill_t* skill,
                                                const skill_acquisition_config_t* config) {
     skill_acquisition_state_t* state = (skill_acquisition_state_t*)calloc(
         1, sizeof(skill_acquisition_state_t));
-    if (!state) return NULL;
+    if (!state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
+        return NULL;
+
+    }
 
     state->skill = skill;
 
@@ -1383,7 +1395,13 @@ NIMCP_EXPORT learning_plateau_t* skill_acquisition_get_current_plateau(
     skill_acquisition_t* sa,
     uint64_t skill_id
 ) {
-    if (!sa) return NULL;
+    if (!sa) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sa is NULL");
+
+        return NULL;
+
+    }
 
     skill_acquisition_state_t* state = find_state(sa, skill_id);
     return state ? state->current_plateau : NULL;

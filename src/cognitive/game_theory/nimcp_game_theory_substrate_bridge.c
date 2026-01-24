@@ -44,10 +44,22 @@ game_theory_substrate_config_t game_theory_substrate_default_config(void) {
 }
 
 game_theory_substrate_bridge_t* game_theory_substrate_bridge_create(void* game_theory, neural_substrate_t* substrate, const game_theory_substrate_config_t* config) {
-    if (!substrate) return NULL;
+    if (!substrate) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
+
+        return NULL;
+
+    }
 
     game_theory_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(game_theory_substrate_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     bridge->game_theory = game_theory;
     bridge->substrate = substrate;

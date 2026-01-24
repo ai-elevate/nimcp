@@ -190,6 +190,8 @@ void executive_substrate_bridge_destroy(executive_substrate_bridge_t* bridge)
 int executive_substrate_connect_bio_async(executive_substrate_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

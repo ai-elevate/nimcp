@@ -236,11 +236,15 @@ static void heap_update_priority(prospective_scheduler_t* scheduler, size_t inde
  */
 static scheduled_intention_t* scheduled_intention_create(prospective_intention_t* intention) {
     if (!intention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intention is NULL");
+
         return NULL;
     }
 
     scheduled_intention_t* scheduled = (scheduled_intention_t*)malloc(sizeof(scheduled_intention_t));
     if (!scheduled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scheduled is NULL");
+
         return NULL;
     }
 
@@ -469,6 +473,8 @@ prospective_scheduler_t* prospective_scheduler_create(
     prospective_scheduler_t* scheduler = (prospective_scheduler_t*)malloc(
         sizeof(prospective_scheduler_t));
     if (!scheduler) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scheduler is NULL");
+
         return NULL;
     }
     memset(scheduler, 0, sizeof(prospective_scheduler_t));
@@ -633,6 +639,8 @@ prospective_intention_t* prospective_intention_create(
     prospective_intention_t* intention = (prospective_intention_t*)malloc(
         sizeof(prospective_intention_t));
     if (!intention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "intention is NULL");
+
         return NULL;
     }
 
@@ -959,6 +967,8 @@ prospective_intention_t* prospective_scheduler_get_next(
     // Get and remove top of heap
     scheduled_intention_t* scheduled = heap_remove_at(scheduler, 0);
     if (!scheduled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scheduled is NULL");
+
         return NULL;
     }
 
@@ -1076,6 +1086,8 @@ int prospective_scheduler_get_in_window(
 
 int prospective_scheduler_check_reminders(prospective_scheduler_t* scheduler) {
     if (!scheduler) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scheduler is NULL");
+
         return -1;
     }
 
@@ -1817,6 +1829,8 @@ int prospective_scheduler_notify_activity(
     bool success
 ) {
     if (!scheduler) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scheduler is NULL");
+
         return -1;
     }
 
@@ -1891,12 +1905,16 @@ prospective_intention_t* prospective_scheduler_find(
     uint64_t intention_id
 ) {
     if (!scheduler) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scheduler is NULL");
+
         return NULL;
     }
 
     scheduled_intention_t* scheduled = find_scheduled_by_id(
         (prospective_scheduler_t*)scheduler, intention_id);
     if (!scheduled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scheduled is NULL");
+
         return NULL;
     }
 

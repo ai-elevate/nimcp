@@ -78,6 +78,8 @@ nimcp_gt_config_t nimcp_gt_default_config(void) {
 nimcp_gt_system_t nimcp_gt_create(const nimcp_gt_config_t* config) {
     nimcp_gt_system_t system = nimcp_calloc(1, sizeof(struct nimcp_gt_system_struct));
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
 

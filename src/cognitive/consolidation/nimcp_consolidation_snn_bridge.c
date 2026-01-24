@@ -135,7 +135,13 @@ consolidation_snn_config_t consolidation_snn_config_default(void) {
 
 consolidation_snn_bridge_t* consolidation_snn_create(const consolidation_snn_config_t* config) {
     consolidation_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(consolidation_snn_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

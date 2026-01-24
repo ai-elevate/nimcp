@@ -189,6 +189,8 @@ nimcp_combo_auction_t nimcp_combo_auction_create(
 
     nimcp_combo_auction_t ctx = nimcp_calloc(1, sizeof(struct nimcp_combo_auction_struct));
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 
@@ -631,6 +633,8 @@ nimcp_double_auction_t nimcp_double_auction_create(
 ) {
     nimcp_double_auction_t ctx = nimcp_calloc(1, sizeof(struct nimcp_double_auction_struct));
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 
@@ -1127,6 +1131,8 @@ nimcp_multi_unit_auction_t nimcp_multi_unit_create(
 
     nimcp_multi_unit_auction_t ctx = nimcp_calloc(1, sizeof(struct nimcp_multi_unit_auction_struct));
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 

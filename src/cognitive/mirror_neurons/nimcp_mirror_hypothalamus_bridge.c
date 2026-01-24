@@ -113,7 +113,13 @@ mirror_hypo_bridge_t* mirror_hypo_create(
     if (!mirror_system || !hypothalamus) return NULL;
 
     mirror_hypo_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Copy or use default config */
     if (config) {

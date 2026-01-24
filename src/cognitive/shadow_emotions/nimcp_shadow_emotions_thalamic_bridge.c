@@ -35,7 +35,13 @@ shadow_emotions_thalamic_bridge_t* shadow_emotions_thalamic_bridge_create(
     const shadow_emotions_thalamic_config_t* config
 ) {
     shadow_emotions_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(shadow_emotions_thalamic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     bridge->shadow_emotions = shadow_emotions;
     bridge->router = router;

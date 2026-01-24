@@ -418,6 +418,8 @@ int dist_init(dist_ctx_t* ctx) {
 
 int dist_finalize(dist_ctx_t* ctx) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -509,6 +511,8 @@ dist_group_t* dist_create_group(
 
 dist_group_t* dist_world_group(dist_ctx_t* ctx) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
     return ctx->world_group;
@@ -631,6 +635,8 @@ int dist_all_reduce_tensor(
 
     float* data = nimcp_tensor_data(tensor);
     if (!data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "data is NULL");
+
         return -1;
     }
 
@@ -679,6 +685,8 @@ int dist_broadcast(
 
 int dist_barrier(dist_ctx_t* ctx, dist_group_t* group) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -778,6 +786,8 @@ int dist_reduce_scatter(
 
 int dist_federated_start_round(dist_ctx_t* ctx, uint32_t round_num) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -1128,6 +1138,8 @@ bool dist_is_coordinator(const dist_ctx_t* ctx) {
 
 int dist_validate_config(const dist_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 

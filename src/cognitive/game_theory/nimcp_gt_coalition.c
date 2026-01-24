@@ -344,6 +344,8 @@ nimcp_coalition_game_t nimcp_coalition_create(const nimcp_coalition_config_t* co
 
     nimcp_coalition_game_t game = nimcp_calloc(1, sizeof(struct nimcp_coalition_game_struct));
     if (!game) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "game is NULL");
+
         return NULL;
     }
 

@@ -135,7 +135,13 @@ self_awareness_snn_config_t self_awareness_snn_config_default(void) {
 
 self_awareness_snn_bridge_t* self_awareness_snn_create(const self_awareness_snn_config_t* config) {
     self_awareness_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(self_awareness_snn_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

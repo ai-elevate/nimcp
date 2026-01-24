@@ -32,7 +32,13 @@ predictive_immune_thalamic_config_t predictive_immune_thalamic_default_config(vo
 
 predictive_immune_thalamic_bridge_t* predictive_immune_thalamic_bridge_create(void* predictive_immune, thalamic_router_t* router, const predictive_immune_thalamic_config_t* config) {
     predictive_immune_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(predictive_immune_thalamic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     if (bridge_base_init(&bridge->base, 0, "predictive_immune_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);

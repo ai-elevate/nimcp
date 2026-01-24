@@ -52,7 +52,13 @@ counterfactual_engine_t* counterfactual_engine_create(void) {
 counterfactual_engine_t* counterfactual_engine_create_custom(const cf_config_t* config) {
     if (!config) { set_error("NULL config"); return NULL; }
     counterfactual_engine_t* e = nimcp_calloc(1, sizeof(counterfactual_engine_t));
-    if (!e) return NULL;
+    if (!e) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "e is NULL");
+
+        return NULL;
+
+    }
     e->config = *config;
     e->next_cf_id = 1;
     return e;
@@ -65,7 +71,13 @@ void counterfactual_engine_destroy(counterfactual_engine_t* engine) {
 cf_state_t* counterfactual_create_state(const float* values, uint32_t dim,
     const char* description) {
     cf_state_t* s = nimcp_calloc(1, sizeof(cf_state_t));
-    if (!s) return NULL;
+    if (!s) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "s is NULL");
+
+        return NULL;
+
+    }
 
     if (values && dim > 0) {
         s->values = nimcp_calloc(dim, sizeof(float));
@@ -90,7 +102,13 @@ cf_counterfactual_t* counterfactual_imagine(counterfactual_engine_t* engine,
     if (!engine || !actual || !what_if) return NULL;
 
     cf_counterfactual_t* cf = nimcp_calloc(1, sizeof(cf_counterfactual_t));
-    if (!cf) return NULL;
+    if (!cf) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cf is NULL");
+
+        return NULL;
+
+    }
 
     cf->id = engine->next_cf_id++;
 
@@ -129,7 +147,13 @@ cf_counterfactual_t** counterfactual_explore_space(counterfactual_engine_t* engi
     if (!engine || !actual || !num_found) return NULL;
 
     cf_counterfactual_t** cfs = nimcp_calloc(max_alternatives, sizeof(cf_counterfactual_t*));
-    if (!cfs) return NULL;
+    if (!cfs) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cfs is NULL");
+
+        return NULL;
+
+    }
 
     *num_found = 0;
     for (uint32_t i = 0; i < actual->dim && *num_found < max_alternatives; i++) {

@@ -348,6 +348,8 @@ static PyObject* py_compute_pink_noise_stats(PyObject* self, PyObject* args) {
     // Build result dictionary
     PyObject* result = PyDict_New();
     if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
         return NULL;
     }
 

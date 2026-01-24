@@ -128,10 +128,22 @@ int omni_kg_sync_default_config(omni_kg_sync_config_t* config) {
 
 omni_kg_sync_t* omni_kg_sync_create(brain_kg_t* kg,
                                      const omni_kg_sync_config_t* config) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
 
     omni_kg_sync_t* sync = nimcp_calloc(1, sizeof(omni_kg_sync_t));
-    if (!sync) return NULL;
+    if (!sync) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sync is NULL");
+
+        return NULL;
+
+    }
 
     sync->kg = kg;
 

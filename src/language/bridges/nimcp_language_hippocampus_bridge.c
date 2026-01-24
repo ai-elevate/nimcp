@@ -165,7 +165,13 @@ language_hippocampus_bridge_t* language_hippocampus_bridge_create(
     const language_hippocampus_config_t* config)
 {
     language_hippocampus_bridge_t* bridge = nimcp_calloc(1, sizeof(language_hippocampus_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

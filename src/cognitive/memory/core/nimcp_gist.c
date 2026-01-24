@@ -435,7 +435,13 @@ static void create_gist_signature(gist_system_t system,
  */
 static gist_node_t* alloc_gist_node(gist_system_t system) {
     gist_node_t* gist = calloc(1, sizeof(gist_node_t));
-    if (!gist) return NULL;
+    if (!gist) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gist is NULL");
+
+        return NULL;
+
+    }
 
     // Allocate source memory array
     gist->source_memory_ids = calloc(GIST_MAX_SOURCES, sizeof(uint64_t));
@@ -477,7 +483,13 @@ static gist_node_t* alloc_gist_node(gist_system_t system) {
  */
 static dual_trace_t* alloc_dual_trace(gist_system_t system) {
     dual_trace_t* trace = calloc(1, sizeof(dual_trace_t));
-    if (!trace) return NULL;
+    if (!trace) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trace is NULL");
+
+        return NULL;
+
+    }
 
     // Generate unique ID
     trace->trace_id = atomic_fetch_add(&system->next_trace_id, 1);
@@ -886,10 +898,22 @@ dual_trace_t* gist_create_dual_trace(
     if (!system || !memory || !gist_signature) return NULL;
 
     const prime_signature_t* verbatim_sig = pr_memory_node_get_signature(memory);
-    if (!verbatim_sig) return NULL;
+    if (!verbatim_sig) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "verbatim_sig is NULL");
+
+        return NULL;
+
+    }
 
     dual_trace_t* trace = alloc_dual_trace(system);
-    if (!trace) return NULL;
+    if (!trace) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trace is NULL");
+
+        return NULL;
+
+    }
 
     // Initialize
     memcpy(&trace->verbatim_signature, verbatim_sig, sizeof(prime_signature_t));
@@ -1259,7 +1283,13 @@ gist_node_t* gist_get_by_id(
     gist_system_t system,
     uint64_t gist_id
 ) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
     return gist_table_lookup(system->gist_table, system->gist_table_size, gist_id);
 }
 
@@ -1267,7 +1297,13 @@ dual_trace_t* gist_get_dual_trace(
     gist_system_t system,
     uint64_t trace_id
 ) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
     return trace_table_lookup(system->trace_table, system->trace_table_size, trace_id);
 }
 

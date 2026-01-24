@@ -265,7 +265,13 @@ efference_copy_t* self_other_get_efference(
     self_other_system_t* system,
     uint32_t action_id
 ) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < system->efference_count; i++) {
         uint32_t idx = (system->efference_head - 1 - i + SELF_OTHER_EFFERENCE_BUFFER)

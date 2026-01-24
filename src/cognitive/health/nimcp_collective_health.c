@@ -127,11 +127,15 @@ collective_health_monitor_t* collective_health_monitor_create(
     const collective_health_config_t* config
 ) {
     if (!local_agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "local_agent is NULL");
+
         return NULL;
     }
 
     collective_health_monitor_t* monitor = calloc(1, sizeof(collective_health_monitor_t));
     if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitor is NULL");
+
         return NULL;
     }
 
@@ -177,6 +181,8 @@ void collective_health_monitor_destroy(collective_health_monitor_t* monitor) {
 
 int collective_health_monitor_start(collective_health_monitor_t* monitor) {
     if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitor is NULL");
+
         return -1;
     }
 
@@ -201,6 +207,8 @@ int collective_health_monitor_start(collective_health_monitor_t* monitor) {
 
 int collective_health_monitor_stop(collective_health_monitor_t* monitor) {
     if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitor is NULL");
+
         return -1;
     }
 
@@ -784,6 +792,8 @@ int collective_health_get_sync_state(
 
 int collective_health_force_sync(collective_health_monitor_t* monitor) {
     if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitor is NULL");
+
         return -1;
     }
 
@@ -812,6 +822,8 @@ int collective_health_register_threat_callback(
     void* user_data
 ) {
     if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitor is NULL");
+
         return -1;
     }
 
@@ -832,6 +844,8 @@ int collective_health_share_prediction(
     health_agent_source_t source
 ) {
     if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitor is NULL");
+
         return -1;
     }
 

@@ -32,9 +32,21 @@ emotional_tagging_substrate_config_t emotional_tagging_substrate_default_config(
 }
 
 emotional_tagging_substrate_bridge_t* emotional_tagging_substrate_bridge_create(void* emotional_tagging, neural_substrate_t* substrate, const emotional_tagging_substrate_config_t* config) {
-    if (!substrate) return NULL;
+    if (!substrate) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
+
+        return NULL;
+
+    }
     emotional_tagging_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(emotional_tagging_substrate_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     bridge->emotional_tagging = emotional_tagging;
     bridge->substrate = substrate;
     bridge->config = config ? *config : emotional_tagging_substrate_default_config();

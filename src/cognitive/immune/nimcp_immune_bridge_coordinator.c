@@ -53,7 +53,13 @@ static immune_bridge_entry_t* find_bridge(
     immune_bridge_coordinator_t* coordinator,
     uint32_t bridge_id
 ) {
-    if (!coordinator) return NULL;
+    if (!coordinator) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < coordinator->bridge_count; i++) {
         if (coordinator->bridges[i].bridge_id == bridge_id) {
@@ -434,6 +440,8 @@ const immune_bridge_entry_t* immune_bridge_coordinator_get_bridge(
     uint32_t bridge_id
 ) {
     if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
+
         return NULL;
     }
 

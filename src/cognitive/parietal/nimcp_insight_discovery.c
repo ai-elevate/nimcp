@@ -130,7 +130,13 @@ void insight_engine_destroy(insight_engine_t* engine) {
 
 insight_problem_t* insight_create_problem(const char* description) {
     insight_problem_t* problem = nimcp_calloc(1, sizeof(insight_problem_t));
-    if (!problem) return NULL;
+    if (!problem) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "problem is NULL");
+
+        return NULL;
+
+    }
 
     if (description) {
         strncpy(problem->description, description, sizeof(problem->description) - 1);
@@ -364,7 +370,13 @@ insight_restructuring_t* insight_attempt_restructure(insight_engine_t* engine,
     if (!engine || !problem) return NULL;
 
     insight_restructuring_t* r = nimcp_calloc(1, sizeof(insight_restructuring_t));
-    if (!r) return NULL;
+    if (!r) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "r is NULL");
+
+        return NULL;
+
+    }
 
     /* Find and relax a constraint */
     for (uint32_t i = 0; i < problem->num_constraints; i++) {
