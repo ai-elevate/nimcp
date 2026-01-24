@@ -203,6 +203,8 @@ int nimcp_circuit_init(void) {
 
     g_circuit_mutex = nimcp_platform_mutex_create();
     if (!g_circuit_mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "g_circuit_mutex is NULL");
+
         return -1;
     }
 
@@ -310,6 +312,8 @@ bool nimcp_circuit_is_open(nimcp_error_t code) {
 
 int nimcp_circuit_set_threshold(nimcp_error_t code, uint32_t threshold, uint32_t reset_ms) {
     if (!g_circuit_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "g_circuit_initialized is NULL");
+
         return -1;
     }
 
@@ -334,6 +338,8 @@ int nimcp_circuit_set_threshold(nimcp_error_t code, uint32_t threshold, uint32_t
 
 int nimcp_circuit_reset(nimcp_error_t code) {
     if (!g_circuit_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "g_circuit_initialized is NULL");
+
         return -1;
     }
 
@@ -407,6 +413,8 @@ size_t nimcp_circuit_get_count(nimcp_error_t code, uint32_t window_seconds) {
 
 const nimcp_exception_circuit_t* nimcp_circuit_get_entry(nimcp_error_t code) {
     if (!g_circuit_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "g_circuit_initialized is NULL");
+
         return NULL;
     }
 
@@ -446,6 +454,8 @@ int nimcp_circuit_get_stats(nimcp_circuit_stats_t* stats) {
 
 int nimcp_circuit_report_success(nimcp_error_t code) {
     if (!g_circuit_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "g_circuit_initialized is NULL");
+
         return -1;
     }
 
@@ -481,6 +491,8 @@ int nimcp_circuit_report_success(nimcp_error_t code) {
 
 int nimcp_exception_suppress(nimcp_error_t code, uint64_t duration_ms, const char* reason) {
     if (!g_circuit_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "g_circuit_initialized is NULL");
+
         return -1;
     }
 
@@ -531,6 +543,8 @@ int nimcp_exception_suppress(nimcp_error_t code, uint64_t duration_ms, const cha
 
 int nimcp_exception_unsuppress(nimcp_error_t code) {
     if (!g_circuit_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "g_circuit_initialized is NULL");
+
         return -1;
     }
 
@@ -651,6 +665,8 @@ void nimcp_suppression_clear_expired(void) {
 
 const nimcp_suppression_entry_t* nimcp_suppression_get_entry(nimcp_error_t code) {
     if (!g_circuit_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "g_circuit_initialized is NULL");
+
         return NULL;
     }
 

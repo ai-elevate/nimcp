@@ -669,7 +669,13 @@ cognitive_recovery_result_t* cognitive_recovery_from_error(
     error_type_t error_type,
     void* context
 ) {
-    if (!coordinator) return NULL;
+    if (!coordinator) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
+
+        return NULL;
+
+    }
 
     // Create diagnosis from error type
     diagnostic_result_t diagnosis = {0};
@@ -711,7 +717,13 @@ cognitive_recovery_result_t* cognitive_recovery_from_signal(
     int signal,
     crash_context_t* crash_ctx
 ) {
-    if (!coordinator) return NULL;
+    if (!coordinator) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
+
+        return NULL;
+
+    }
 
     // Analyze crash
     diagnostic_result_t* diagnosis = NULL;

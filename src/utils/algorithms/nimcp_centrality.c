@@ -308,6 +308,8 @@ NimcpCentralityScores* nimcp_eigenvector_centrality(const NimcpGraph* graph,
                                                      uint32_t max_iterations)
 {
     if (!graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph is NULL");
+
         return NULL;
     }
 
@@ -318,6 +320,8 @@ NimcpCentralityScores* nimcp_eigenvector_centrality(const NimcpGraph* graph,
     NimcpCentralityScores* scores =
         (NimcpCentralityScores*)nimcp_malloc(sizeof(NimcpCentralityScores));
     if (!scores) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scores is NULL");
+
         return NULL;
     }
 

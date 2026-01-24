@@ -442,6 +442,8 @@ int callosum_connect_hemispheres(
     brain_hemisphere_t* right
 ) {
     if (!cc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cc is NULL");
+
         return -1;
     }
 
@@ -649,6 +651,8 @@ int callosum_set_bandwidth_mode(
     callosum_bandwidth_mode_t mode
 ) {
     if (!cc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cc is NULL");
+
         return -1;
     }
 
@@ -686,6 +690,8 @@ int callosum_set_bandwidth_mode(
 
 int callosum_set_bandwidth_limit(corpus_callosum_t* cc, uint32_t msgs_per_second) {
     if (!cc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cc is NULL");
+
         return -1;
     }
 
@@ -768,6 +774,8 @@ int callosum_set_channel_latency(
 
 int callosum_enable_latency_simulation(corpus_callosum_t* cc, bool enable) {
     if (!cc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cc is NULL");
+
         return -1;
     }
 
@@ -791,6 +799,8 @@ float callosum_get_avg_latency(const corpus_callosum_t* cc) {
 
 int callosum_disconnect(corpus_callosum_t* cc) {
     if (!cc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cc is NULL");
+
         return -1;
     }
 
@@ -809,6 +819,8 @@ int callosum_disconnect(corpus_callosum_t* cc) {
 
 int callosum_reconnect(corpus_callosum_t* cc) {
     if (!cc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cc is NULL");
+
         return -1;
     }
 
@@ -918,6 +930,8 @@ int callosum_get_stats(const corpus_callosum_t* cc, callosum_stats_t* stats) {
 
 int callosum_reset_stats(corpus_callosum_t* cc) {
     if (!cc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cc is NULL");
+
         return -1;
     }
 
@@ -935,6 +949,8 @@ int callosum_reset_stats(corpus_callosum_t* cc) {
 
 int callosum_connect_bio_async(corpus_callosum_t* cc) {
     if (!cc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cc is NULL");
+
         return -1;
     }
 

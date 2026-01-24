@@ -92,7 +92,13 @@ int neuromod_security_bridge_default_config(neuromod_security_bridge_config_t* c
 
 neuromod_security_bridge_t* neuromod_security_bridge_create(const neuromod_security_bridge_config_t* config) {
     neuromod_security_bridge_t* bridge = calloc(1, sizeof(neuromod_security_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     bridge->magic = NEUROMOD_SECURITY_BRIDGE_MAGIC;
 

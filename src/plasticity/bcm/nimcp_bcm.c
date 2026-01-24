@@ -659,7 +659,13 @@ void* bcm_extract_quantum_stats(const bcm_synapse_t* synapses, uint32_t num_syna
 
     /* WHAT: Allocate statistics structure */
     bcm_activity_stats_t* stats = (bcm_activity_stats_t*)nimcp_malloc(sizeof(bcm_activity_stats_t));
-    if (!stats) return NULL;
+    if (!stats) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats is NULL");
+
+        return NULL;
+
+    }
 
     /* WHAT: Compute BCM statistics */
     bcm_stats_t bcm_stats;

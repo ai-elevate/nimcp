@@ -289,7 +289,13 @@ pa_fep_config_t pa_fep_config_default(void) {
 
 pa_fep_bridge_t* pa_fep_bridge_create(const pa_fep_config_t* config) {
     pa_fep_bridge_t* bridge = nimcp_calloc(1, sizeof(pa_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

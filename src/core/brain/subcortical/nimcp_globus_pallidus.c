@@ -43,11 +43,23 @@ void globus_pallidus_default_config(globus_pallidus_config_t* config,
 
 globus_pallidus_t* globus_pallidus_create(const globus_pallidus_config_t* config) {
     NIMCP_THROW_IF(!config, NIMCP_ERROR_NULL_POINTER, "config is NULL for globus pallidus");
-    if (!config) return NULL;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return NULL;
+
+    }
 
     globus_pallidus_t* gp = nimcp_malloc(sizeof(globus_pallidus_t));
     NIMCP_THROW_IF(!gp, NIMCP_ERROR_NO_MEMORY, "Failed to allocate globus pallidus");
-    if (!gp) return NULL;
+    if (!gp) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gp is NULL");
+
+        return NULL;
+
+    }
     memset(gp, 0, sizeof(globus_pallidus_t));
 
     gp->segment = config->segment;

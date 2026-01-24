@@ -139,7 +139,13 @@ static quarantined_node_state_t* find_quarantined_node(
     router_immune_bridge_t* bridge,
     uint32_t node_id
 ) {
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t i = 0; i < bridge->quarantine_count; i++) {
         if (bridge->quarantined_nodes[i].node_id == node_id) {
@@ -156,7 +162,13 @@ static inflammation_routing_impact_t* find_inflammation_impact(
     router_immune_bridge_t* bridge,
     uint32_t region_id
 ) {
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t i = 0; i < bridge->inflammation_count; i++) {
         if (bridge->inflammation_impacts[i].affected_region == region_id) {

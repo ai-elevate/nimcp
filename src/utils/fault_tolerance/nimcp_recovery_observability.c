@@ -580,10 +580,22 @@ uint64_t ro_span_duration_ns(const ro_span_t* span) {
 //=============================================================================
 
 ro_recovery_context_t* ro_start_recovery(ro_context_t* ctx, uint32_t fault_type) {
-    if (!ctx) return NULL;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return NULL;
+
+    }
 
     ro_recovery_context_t* recovery = (ro_recovery_context_t*)nimcp_malloc(sizeof(ro_recovery_context_t));
-    if (!recovery) return NULL;
+    if (!recovery) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery is NULL");
+
+        return NULL;
+
+    }
 
     memset(recovery, 0, sizeof(ro_recovery_context_t));
 

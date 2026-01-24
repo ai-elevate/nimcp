@@ -418,6 +418,8 @@ float hemisphere_get_specialization(
 
 int hemisphere_set_tier(brain_hemisphere_t* hemisphere, platform_tier_t tier) {
     if (!hemisphere) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemisphere is NULL");
+
         return -1;
     }
 
@@ -438,6 +440,8 @@ int hemisphere_set_tier(brain_hemisphere_t* hemisphere, platform_tier_t tier) {
 
 int hemisphere_set_active(brain_hemisphere_t* hemisphere, bool active) {
     if (!hemisphere) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemisphere is NULL");
+
         return -1;
     }
 
@@ -565,6 +569,8 @@ bool hemisphere_has_callosum(const brain_hemisphere_t* hemisphere) {
 
 int hemisphere_connect_bio_async(brain_hemisphere_t* hemisphere) {
     if (!hemisphere) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemisphere is NULL");
+
         return -1;
     }
 

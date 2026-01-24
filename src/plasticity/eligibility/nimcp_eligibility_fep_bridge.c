@@ -28,7 +28,13 @@ int eligibility_fep_bridge_default_config(eligibility_fep_config_t* config) {
 
 eligibility_fep_bridge_t* eligibility_fep_bridge_create(const eligibility_fep_config_t* config) {
     eligibility_fep_bridge_t* bridge = (eligibility_fep_bridge_t*)nimcp_malloc(sizeof(eligibility_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     memset(bridge, 0, sizeof(eligibility_fep_bridge_t));
     if (config) bridge->config = *config;
     else eligibility_fep_bridge_default_config(&bridge->config);

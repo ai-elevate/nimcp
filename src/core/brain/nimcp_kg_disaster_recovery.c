@@ -171,6 +171,8 @@ static void invoke_health_callbacks(
 
 int kg_dr_default_config(kg_dr_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -208,6 +210,8 @@ int kg_dr_default_config(kg_dr_config_t* config) {
 kg_dr_context_t* kg_dr_create(brain_kg_t* kg, const kg_dr_config_t* config) {
     kg_dr_context_t* dr = nimcp_calloc(1, sizeof(kg_dr_context_t));
     if (!dr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dr is NULL");
+
         return NULL;
     }
 
@@ -403,6 +407,8 @@ int kg_dr_promote_replica(kg_dr_context_t* dr, const char* replica_id) {
 
 int kg_dr_backup_full(kg_dr_context_t* dr, const char* label) {
     if (!dr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dr is NULL");
+
         return -1;
     }
 
@@ -444,6 +450,8 @@ int kg_dr_backup_full(kg_dr_context_t* dr, const char* label) {
 
 int kg_dr_backup_incremental(kg_dr_context_t* dr) {
     if (!dr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dr is NULL");
+
         return -1;
     }
 
@@ -673,6 +681,8 @@ int kg_dr_pitr_create_checkpoint(kg_dr_context_t* dr, const char* checkpoint_nam
 
 int kg_dr_trigger_failover(kg_dr_context_t* dr, const char* new_primary_id) {
     if (!dr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dr is NULL");
+
         return -1;
     }
 
@@ -764,6 +774,8 @@ int kg_dr_get_primary_id(const kg_dr_context_t* dr, char* primary_id, size_t buf
 
 int kg_dr_health_check(kg_dr_context_t* dr) {
     if (!dr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dr is NULL");
+
         return -1;
     }
 
@@ -872,6 +884,8 @@ int kg_dr_register_health_callback(kg_dr_context_t* dr,
 
 int kg_dr_wal_flush(kg_dr_context_t* dr) {
     if (!dr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dr is NULL");
+
         return -1;
     }
 
@@ -904,6 +918,8 @@ int kg_dr_wal_position(const kg_dr_context_t* dr, uint64_t* segment, uint64_t* o
 
 int kg_dr_wal_archive(kg_dr_context_t* dr) {
     if (!dr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dr is NULL");
+
         return -1;
     }
 

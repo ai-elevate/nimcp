@@ -73,7 +73,13 @@ int olfact_quantum_default_config(olfact_quantum_config_t* config) {
 
 olfact_quantum_bridge_t* olfact_quantum_bridge_create(const olfact_quantum_config_t* config) {
     olfact_quantum_bridge_t* bridge = (olfact_quantum_bridge_t*)calloc(1, sizeof(olfact_quantum_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         memcpy(&bridge->config, config, sizeof(olfact_quantum_config_t));

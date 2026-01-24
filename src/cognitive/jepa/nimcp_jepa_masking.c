@@ -289,7 +289,13 @@ jepa_mask_t* jepa_mask_create(uint32_t width, uint32_t height, uint32_t temporal
     }
 
     jepa_mask_t* mask = nimcp_malloc(sizeof(jepa_mask_t));
-    if (!mask) return NULL;
+    if (!mask) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mask is NULL");
+
+        return NULL;
+
+    }
 
     mask->width = width;
     mask->height = height;
@@ -318,10 +324,22 @@ void jepa_mask_destroy(jepa_mask_t* mask) {
 }
 
 jepa_mask_t* jepa_mask_clone(const jepa_mask_t* src) {
-    if (!src) return NULL;
+    if (!src) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "src is NULL");
+
+        return NULL;
+
+    }
 
     jepa_mask_t* dst = jepa_mask_create(src->width, src->height, src->temporal);
-    if (!dst) return NULL;
+    if (!dst) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dst is NULL");
+
+        return NULL;
+
+    }
 
     memcpy(dst->data, src->data, src->total_size * sizeof(float));
     dst->mask_ratio = src->mask_ratio;

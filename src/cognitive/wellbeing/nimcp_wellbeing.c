@@ -137,6 +137,8 @@ static int compare_timestamps(const char* key1, const char* key2)
 static const char* extract_timestamp_key(const void* data)
 {
     if (!data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "data is NULL");
+
         return NULL;
     }
 

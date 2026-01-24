@@ -108,6 +108,8 @@ vcs_config_t vcs_default_config(void) {
 vcs_integration_t* vcs_create(const vcs_config_t* config) {
     vcs_integration_t* vcs = nimcp_calloc(1, sizeof(vcs_integration_t));
     if (!vcs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vcs is NULL");
+
         return NULL;
     }
 
@@ -861,6 +863,8 @@ const vcs_commit_record_t* vcs_get_commit_record(
     uint64_t commit_id
 ) {
     if (!vcs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vcs is NULL");
+
         return NULL;
     }
 
@@ -993,6 +997,8 @@ static int execute_git_command(vcs_integration_t* vcs, const char* cmd, char* ou
 
     FILE* fp = popen(full_cmd, "r");
     if (!fp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fp is NULL");
+
         return -1;
     }
 
@@ -1041,6 +1047,8 @@ static uint64_t get_timestamp_ms(void) {
 static int copy_file(const char* src, const char* dst) {
     FILE* in = fopen(src, "rb");
     if (!in) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "in is NULL");
+
         return -1;
     }
 
@@ -1068,6 +1076,8 @@ static int copy_file(const char* src, const char* dst) {
 static int read_file_lines(const char* path, char*** lines, uint32_t* line_count) {
     FILE* fp = fopen(path, "r");
     if (!fp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fp is NULL");
+
         return -1;
     }
 
@@ -1104,6 +1114,8 @@ static int read_file_lines(const char* path, char*** lines, uint32_t* line_count
 static int write_file_lines(const char* path, char** lines, uint32_t line_count) {
     FILE* fp = fopen(path, "w");
     if (!fp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fp is NULL");
+
         return -1;
     }
 

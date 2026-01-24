@@ -109,6 +109,8 @@ static decision_record_t* find_decision_unlocked(emotion_executive_bridge_t* bri
 
 int emotion_executive_default_config(emotion_executive_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -129,6 +131,8 @@ emotion_executive_bridge_t* emotion_executive_bridge_create(
     /* Allocate bridge structure */
     emotion_executive_bridge_t* bridge = nimcp_malloc(sizeof(emotion_executive_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     memset(bridge, 0, sizeof(emotion_executive_bridge_t));

@@ -61,7 +61,13 @@ broca_substrate_bridge_t* broca_substrate_bridge_create(
     const broca_substrate_config_t* config
 ) {
     broca_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(broca_substrate_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     bridge->broca = broca;
     bridge->substrate = substrate;

@@ -110,7 +110,13 @@ int trigeminal_oral_default_config(trigeminal_oral_config_t* config) {
 
 trigeminal_oral_bridge_t* trigeminal_oral_bridge_create(const trigeminal_oral_config_t* config) {
     trigeminal_oral_bridge_t* bridge = (trigeminal_oral_bridge_t*)calloc(1, sizeof(trigeminal_oral_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         memcpy(&bridge->config, config, sizeof(trigeminal_oral_config_t));

@@ -971,6 +971,8 @@ static syntax_tree_node_t* build_tree_recursive(
     /* Allocate new node - Phase 1.5 O(1) pool allocation */
     syntax_tree_node_t* node = (syntax_tree_node_t*)memory_pool_acquire(processor->tree_node_pool);
     if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
         return NULL;
     }
     memset(node, 0, sizeof(syntax_tree_node_t));

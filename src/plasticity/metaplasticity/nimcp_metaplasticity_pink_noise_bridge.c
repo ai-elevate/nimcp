@@ -18,7 +18,13 @@ static float clamp_value(float val, float min_val, float max_val) {
 
 meta_pink_noise_bridge_t* meta_pink_noise_create(const meta_pink_noise_config_t* config) {
     meta_pink_noise_bridge_t* bridge = nimcp_calloc(1, sizeof(meta_pink_noise_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         memcpy(&bridge->config, config, sizeof(meta_pink_noise_config_t));

@@ -42,11 +42,15 @@ auditory_thalamic_bridge_t* auditory_thalamic_bridge_create(void* auditory,
                                                              thalamic_router_t* router,
                                                              const auditory_thalamic_config_t* config) {
     if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router is NULL");
+
         return NULL;
     }
 
     auditory_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(auditory_thalamic_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -73,6 +77,8 @@ void auditory_thalamic_bridge_destroy(auditory_thalamic_bridge_t* bridge) {
 
 int auditory_thalamic_bridge_reset(auditory_thalamic_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -120,6 +126,8 @@ int auditory_thalamic_route_signal(auditory_thalamic_bridge_t* bridge,
 int auditory_thalamic_route_alert(auditory_thalamic_bridge_t* bridge,
                                    const void* alert, float urgency) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -144,6 +152,8 @@ int auditory_thalamic_route_alert(auditory_thalamic_bridge_t* bridge,
 
 int auditory_thalamic_set_attention(auditory_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

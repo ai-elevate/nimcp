@@ -502,12 +502,16 @@ const cortical_area_config_t* cortical_hierarchy_get_area_config(
 {
     // Guard: Validate hierarchy
     if (!hierarchy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hierarchy is NULL");
+
         return NULL;
     }
 
     // Find area
     cortical_area_t* area = find_area_by_id(hierarchy, area_id);
     if (!area) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "area is NULL");
+
         return NULL;
     }
 

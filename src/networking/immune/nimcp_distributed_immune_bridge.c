@@ -94,6 +94,8 @@ static brain_inflammation_level_t compute_inflammation_from_congestion(
 
 int distributed_immune_default_config(distributed_immune_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -409,6 +411,8 @@ int distributed_immune_bridge_update(
 ) {
     /* Guard clauses */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -524,6 +528,8 @@ int distributed_immune_connect_bio_async(distributed_immune_bridge_t* bridge) {
 int distributed_immune_disconnect_bio_async(distributed_immune_bridge_t* bridge) {
     /* Guard: null check */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

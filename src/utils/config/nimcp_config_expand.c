@@ -371,6 +371,8 @@ static char* expand_env_recursive(const char* input, int depth) {
 
 char* config_expand_env(const char* value) {
     if (!value) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "value is NULL");
+
         return NULL;
     }
 
@@ -701,6 +703,8 @@ void config_key_list_destroy(config_key_list_t* list) {
 
 char* config_key_parent(const char* path) {
     if (!path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "path is NULL");
+
         return NULL;
     }
 
@@ -713,6 +717,8 @@ char* config_key_parent(const char* path) {
     size_t len = (size_t)(last_dot - path);
     char* parent = nimcp_malloc(len + 1);
     if (!parent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parent is NULL");
+
         return NULL;
     }
 
@@ -724,6 +730,8 @@ char* config_key_parent(const char* path) {
 
 char* config_key_leaf(const char* path) {
     if (!path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "path is NULL");
+
         return NULL;
     }
 
@@ -768,6 +776,8 @@ char* config_key_join(const char** components) {
     // Allocate buffer
     char* result = nimcp_malloc(total_len + 1);
     if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
         return NULL;
     }
 

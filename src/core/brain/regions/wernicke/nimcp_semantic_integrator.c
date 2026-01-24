@@ -159,11 +159,26 @@ static sense_entry_t* get_sense_entry(
         bucket = bucket->next;
     }
 
-    if (!create) return NULL;
+    if (!create) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "create is NULL");
+
+
+        return NULL;
+
+
+    }
 
     /* Create new entry */
     sense_bucket_t* new_bucket = calloc(1, sizeof(sense_bucket_t));
-    if (!new_bucket) return NULL;
+    if (!new_bucket) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_bucket is NULL");
+
+        return NULL;
+
+    }
 
     new_bucket->entry.word_id = word_id;
     new_bucket->entry.senses = calloc(sem->config.max_senses, sizeof(word_sense_t));
@@ -320,7 +335,13 @@ semantic_config_t semantic_default_config(void) {
 
 semantic_integrator_t* semantic_create(const semantic_config_t* config) {
     semantic_integrator_t* sem = calloc(1, sizeof(semantic_integrator_t));
-    if (!sem) return NULL;
+    if (!sem) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sem is NULL");
+
+        return NULL;
+
+    }
 
     /* Use config or defaults */
     if (config) {

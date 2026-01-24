@@ -512,6 +512,8 @@ static int hypo_cog_on_orch_event(const hypo_event_data_t* event, void* user_dat
 
 int hypo_cognitive_hub_default_config(hypo_cognitive_hub_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -553,6 +555,8 @@ hypo_cognitive_hub_bridge_t* hypo_cognitive_hub_create(
     hypo_cognitive_hub_bridge_t* bridge = (hypo_cognitive_hub_bridge_t*)nimcp_calloc(
         1, sizeof(hypo_cognitive_hub_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -1402,6 +1406,9 @@ int hypo_cognitive_hub_connect_bio_async(
     }
 
     if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router is NULL");
+
+
         return -1;
     }
 
@@ -1414,6 +1421,8 @@ int hypo_cognitive_hub_connect_bio_async(
 
     bio_module_context_t ctx = bio_router_register_module(&info);
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 

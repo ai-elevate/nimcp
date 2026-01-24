@@ -68,7 +68,13 @@ typedef struct {
 
 static id_list_t* id_list_create(void) {
     id_list_t* list = (id_list_t*)nimcp_malloc(sizeof(id_list_t));
-    if (!list) return NULL;
+    if (!list) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "list is NULL");
+
+        return NULL;
+
+    }
 
     list->capacity = 8;  // Initial capacity
     list->count = 0;

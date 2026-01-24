@@ -179,7 +179,13 @@ static normalization_stats_t* create_norm_stats(uint32_t num_features) {
     if (num_features == 0) return NULL;
 
     normalization_stats_t* stats = nimcp_calloc(1, sizeof(normalization_stats_t));
-    if (!stats) return NULL;
+    if (!stats) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats is NULL");
+
+        return NULL;
+
+    }
 
     stats->running_mean = nimcp_calloc(num_features, sizeof(float));
     stats->running_var = nimcp_calloc(num_features, sizeof(float));

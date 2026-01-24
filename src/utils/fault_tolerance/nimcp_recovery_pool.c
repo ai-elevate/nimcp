@@ -522,6 +522,8 @@ void* recovery_pool_calloc(recovery_pool_t* pool, size_t count, size_t size) {
     // Allocate
     void* ptr = recovery_pool_alloc(pool, total_size);
     if (!ptr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ptr is NULL");
+
         return NULL;
     }
 

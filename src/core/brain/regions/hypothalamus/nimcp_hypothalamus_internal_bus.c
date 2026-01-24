@@ -159,7 +159,13 @@ int hypo_ibus_default_config(hypo_ibus_config_t* config) {
 
 hypo_ibus_t hypo_ibus_create(const hypo_ibus_config_t* config) {
     struct hypo_internal_bus* bus = nimcp_calloc(1, sizeof(struct hypo_internal_bus));
-    if (!bus) return NULL;
+    if (!bus) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bus is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

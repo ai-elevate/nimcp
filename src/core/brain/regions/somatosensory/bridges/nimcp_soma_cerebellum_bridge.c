@@ -62,7 +62,13 @@ int soma_cereb_default_config(soma_cereb_config_t* config) {
 
 soma_cereb_bridge_t* soma_cereb_bridge_create(const soma_cereb_config_t* config) {
     soma_cereb_bridge_t* bridge = (soma_cereb_bridge_t*)calloc(1, sizeof(soma_cereb_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         memcpy(&bridge->config, config, sizeof(soma_cereb_config_t));

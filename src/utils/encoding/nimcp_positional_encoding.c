@@ -125,7 +125,13 @@ struct nimcp_pos_encoder_s {
 static float* compute_inv_frequencies(uint32_t dim, float base, float scale)
 {
     float* inv_freq = nimcp_calloc(dim / 2, sizeof(float));
-    if (!inv_freq) return NULL;
+    if (!inv_freq) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "inv_freq is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < dim / 2; i++) {
         float exp = (float)(2 * i) / (float)dim;
@@ -262,7 +268,13 @@ static void apply_rope_rotation(
 static float* compute_alibi_slopes(uint32_t num_heads, float slope_base)
 {
     float* slopes = nimcp_calloc(num_heads, sizeof(float));
-    if (!slopes) return NULL;
+    if (!slopes) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "slopes is NULL");
+
+        return NULL;
+
+    }
 
     float ratio = powf(slope_base, 1.0F / (float)num_heads);
     float slope = 1.0F;
@@ -319,7 +331,13 @@ static bool init_learned_embeddings(
 static nimcp_pos_cache_t* cache_create(uint32_t dim)
 {
     nimcp_pos_cache_t* cache = nimcp_calloc(1, sizeof(nimcp_pos_cache_t));
-    if (!cache) return NULL;
+    if (!cache) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cache is NULL");
+
+        return NULL;
+
+    }
 
     cache->dim = dim;
     cache->cached_length = 0;

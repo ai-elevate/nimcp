@@ -106,6 +106,8 @@ static pending_conflict_t* find_conflict(
 
 int kg_federation_default_config(kg_federation_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -143,11 +145,15 @@ kg_federation_t* kg_federation_create(
     const kg_federation_config_t* config
 ) {
     if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
         return NULL;
     }
 
     kg_federation_t* fed = nimcp_calloc(1, sizeof(kg_federation_t));
     if (!fed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fed is NULL");
+
         return NULL;
     }
 
@@ -404,6 +410,8 @@ bool kg_federation_is_peer_connected(
 
 int kg_federation_sync_now(kg_federation_t* fed) {
     if (!fed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fed is NULL");
+
         return -1;
     }
 
@@ -550,6 +558,8 @@ int kg_federation_get_sync_stats(
     uint64_t* last_sync_time
 ) {
     if (!fed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fed is NULL");
+
         return -1;
     }
 
@@ -567,6 +577,8 @@ int kg_federation_get_sync_stats(
 
 int kg_federation_start_auto_sync(kg_federation_t* fed) {
     if (!fed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fed is NULL");
+
         return -1;
     }
 
@@ -587,6 +599,8 @@ int kg_federation_start_auto_sync(kg_federation_t* fed) {
 
 int kg_federation_stop_auto_sync(kg_federation_t* fed) {
     if (!fed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fed is NULL");
+
         return -1;
     }
 
@@ -777,6 +791,8 @@ int kg_federation_resolve_conflict(
     kg_conflict_resolution_t resolution
 ) {
     if (!fed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fed is NULL");
+
         return -1;
     }
 
@@ -825,6 +841,8 @@ int kg_federation_discard_conflict(
     uint64_t conflict_id
 ) {
     if (!fed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fed is NULL");
+
         return -1;
     }
 
@@ -849,6 +867,8 @@ int kg_federation_discard_conflict(
 
 int kg_federation_start_discovery(kg_federation_t* fed) {
     if (!fed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fed is NULL");
+
         return -1;
     }
 
@@ -864,6 +884,8 @@ int kg_federation_start_discovery(kg_federation_t* fed) {
 
 int kg_federation_stop_discovery(kg_federation_t* fed) {
     if (!fed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fed is NULL");
+
         return -1;
     }
 
@@ -890,6 +912,8 @@ bool kg_federation_is_discovery_active(const kg_federation_t* fed) {
 
 int kg_federation_announce(kg_federation_t* fed) {
     if (!fed) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fed is NULL");
+
         return -1;
     }
 
@@ -950,6 +974,8 @@ const char* kg_peer_state_to_string(kg_peer_state_t state) {
 
 int kg_federation_generate_peer_id(char* peer_id_out) {
     if (!peer_id_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "peer_id_out is NULL");
+
         return -1;
     }
 
@@ -968,6 +994,8 @@ int kg_federation_generate_peer_id(char* peer_id_out) {
 
 int kg_sync_filter_init(kg_sync_filter_t* filter) {
     if (!filter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "filter is NULL");
+
         return -1;
     }
 

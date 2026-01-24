@@ -73,7 +73,13 @@ int chemosensory_default_config(chemosensory_config_t* config) {
 
 chemosensory_bridge_t* chemosensory_bridge_create(const chemosensory_config_t* config) {
     chemosensory_bridge_t* bridge = (chemosensory_bridge_t*)calloc(1, sizeof(chemosensory_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         memcpy(&bridge->config, config, sizeof(chemosensory_config_t));

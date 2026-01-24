@@ -379,7 +379,13 @@ split_brain_trial_t* split_brain_trial_create(
     split_brain_session_t* session,
     experiment_paradigm_t paradigm
 ) {
-    if (!session) return NULL;
+    if (!session) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "session is NULL");
+
+        return NULL;
+
+    }
 
     if (session->current_trial >= session->trial_capacity) {
         NIMCP_LOGGING_ERROR("Trial capacity exceeded");

@@ -213,7 +213,13 @@ pragmatics_config_t pragmatics_default_config(void) {
 pragmatics_processor_t* pragmatics_create(const pragmatics_config_t* config) {
     pragmatics_processor_t* processor = (pragmatics_processor_t*)calloc(
         1, sizeof(pragmatics_processor_t));
-    if (!processor) return NULL;
+    if (!processor) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply config */
     if (config) {

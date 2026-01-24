@@ -252,11 +252,19 @@ wernicke_substrate_bridge_t* wernicke_substrate_bridge_create(
 ) {
     /* Wernicke adapter is required */
     if (!wernicke) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke is NULL");
+
         return NULL;
     }
 
     wernicke_substrate_bridge_t* bridge = calloc(1, sizeof(wernicke_substrate_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

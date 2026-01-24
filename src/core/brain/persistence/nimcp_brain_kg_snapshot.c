@@ -348,6 +348,8 @@ static brain_t deserialize_brain_state(const void* buffer, size_t size)
 int kg_snapshot_default_config(kg_snapshot_config_t* config)
 {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 

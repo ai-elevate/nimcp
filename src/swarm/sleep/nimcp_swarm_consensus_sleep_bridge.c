@@ -63,10 +63,22 @@ int swarm_consensus_sleep_default_config(swarm_consensus_sleep_config_t* config)
 swarm_consensus_sleep_bridge_t swarm_consensus_sleep_bridge_create(
     const swarm_consensus_sleep_config_t* config, sleep_system_t sleep_system)
 {
-    if (!sleep_system) return NULL;
+    if (!sleep_system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_system is NULL");
+
+        return NULL;
+
+    }
 
     struct swarm_consensus_sleep_bridge_struct* bridge = nimcp_malloc(sizeof(*bridge));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     memset(bridge, 0, sizeof(*bridge));
 
     if (config) bridge->config = *config;

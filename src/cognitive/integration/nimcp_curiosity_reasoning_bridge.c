@@ -139,6 +139,8 @@ static exploration_topic_t* find_or_create_topic_unlocked(
 
 int curiosity_reasoning_bridge_default_config(curiosity_reasoning_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -156,6 +158,8 @@ curiosity_reasoning_bridge_t* curiosity_reasoning_bridge_create(
     curiosity_reasoning_bridge_t* bridge = (curiosity_reasoning_bridge_t*)nimcp_calloc(
         1, sizeof(curiosity_reasoning_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

@@ -427,6 +427,8 @@ const active_fault_t* fault_working_memory_get_fault_at(
 )
 {
     if (!wm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm is NULL");
+
         return NULL;
     }
 
@@ -454,6 +456,8 @@ active_fault_t* fault_working_memory_get_priority_fault(
 )
 {
     if (!wm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm is NULL");
+
         return NULL;
     }
 

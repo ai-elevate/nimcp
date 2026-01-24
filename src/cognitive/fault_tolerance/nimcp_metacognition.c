@@ -606,6 +606,8 @@ static baseline_window_t* baseline_window_create(uint32_t capacity) {
     LOG_DEBUG("Creating module");
     baseline_window_t* window = (baseline_window_t*)nimcp_malloc(sizeof(baseline_window_t));
     if (!window) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "window is NULL");
+
         return NULL;
     }
 

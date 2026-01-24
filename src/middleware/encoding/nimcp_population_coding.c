@@ -317,6 +317,8 @@ population_coding_encoder_t population_coding_create(
         1, sizeof(struct population_coding_encoder_struct)
     );
     if (!encoder) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "encoder is NULL");
+
         return NULL;
     }
 
@@ -928,6 +930,8 @@ pca_result_t* population_coding_pca_result_create(
 
     pca_result_t* result = (pca_result_t*)nimcp_calloc(1, sizeof(pca_result_t));
     if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
         return NULL;
     }
 
@@ -969,6 +973,8 @@ void population_coding_pca_result_destroy(pca_result_t* result) {
 pca_result_t* population_coding_pca_result_copy(const pca_result_t* src) {
     // Guard clause
     if (!src) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "src is NULL");
+
         return NULL;
     }
 
@@ -976,6 +982,8 @@ pca_result_t* population_coding_pca_result_copy(const pca_result_t* src) {
         src->n_components, src->dim
     );
     if (!copy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "copy is NULL");
+
         return NULL;
     }
 

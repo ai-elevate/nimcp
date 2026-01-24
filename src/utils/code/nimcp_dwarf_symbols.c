@@ -1239,6 +1239,8 @@ bool dwarf_symbols_has_dwarf(dwarf_symbols_t syms) {
 
 const char* dwarf_symbols_get_binary_path(dwarf_symbols_t syms) {
     if (!syms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "syms is NULL");
+
         return NULL;
     }
     struct dwarf_symbols* s = (struct dwarf_symbols*)syms;

@@ -243,7 +243,13 @@ stdp_guard_t stdp_guard_create(
     plasticity_guard_t base_guard
 ) {
     struct stdp_guard_internal* guard = calloc(1, sizeof(*guard));
-    if (!guard) return NULL;
+    if (!guard) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "guard is NULL");
+
+        return NULL;
+
+    }
 
     guard->magic = LGSS_STDP_GUARD_MAGIC;
 

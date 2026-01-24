@@ -385,6 +385,8 @@ static unified_mem_handle_t handle_tracker_remove(void* ptr) {
         return NULL;
     }
     if (!ptr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ptr is NULL");
+
         return NULL;
     }
 
@@ -1929,6 +1931,8 @@ nimcp_predictive_model_t nimcp_predictive_create(
     nimcp_predictive_model_t model = (nimcp_predictive_model_t)
         bio_alloc(sizeof(struct nimcp_predictive_model_struct));
     if (!model) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "model is NULL");
+
         return NULL;
     }
 
@@ -2119,6 +2123,8 @@ nimcp_glial_wave_t nimcp_glial_wave_initiate(
     nimcp_glial_wave_t wave = (nimcp_glial_wave_t)
         bio_alloc(sizeof(struct nimcp_glial_wave_struct));
     if (!wave) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wave is NULL");
+
         return NULL;
     }
 

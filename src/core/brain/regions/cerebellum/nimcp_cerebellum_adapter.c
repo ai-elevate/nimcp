@@ -377,7 +377,13 @@ float cerebellar_synapse_get_effective_weight(const cerebellar_synapse_state_t* 
  */
 static granule_layer_t* create_granule_layer(uint32_t num_cells, uint32_t num_mossy) {
     granule_layer_t* layer = nimcp_calloc(1, sizeof(granule_layer_t));
-    if (!layer) return NULL;
+    if (!layer) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer is NULL");
+
+        return NULL;
+
+    }
 
     layer->num_cells = num_cells;
     layer->num_mossy_fibers = num_mossy;
@@ -437,7 +443,13 @@ static void destroy_granule_layer(granule_layer_t* layer) {
 static purkinje_layer_t* create_purkinje_layer(uint32_t num_cells, uint32_t num_parallel,
                                                 float ltd_rate, float ltp_rate) {
     purkinje_layer_t* layer = nimcp_calloc(1, sizeof(purkinje_layer_t));
-    if (!layer) return NULL;
+    if (!layer) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer is NULL");
+
+        return NULL;
+
+    }
 
     layer->num_cells = num_cells;
     layer->ltd_rate = ltd_rate;
@@ -502,7 +514,13 @@ static void destroy_purkinje_layer(purkinje_layer_t* layer) {
 static deep_nuclei_t* create_deep_nuclei(uint32_t num_dentate, uint32_t num_interposed,
                                           uint32_t num_fastigial, uint32_t num_purkinje) {
     deep_nuclei_t* nuclei = nimcp_calloc(1, sizeof(deep_nuclei_t));
-    if (!nuclei) return NULL;
+    if (!nuclei) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nuclei is NULL");
+
+        return NULL;
+
+    }
 
     nuclei->num_dentate = num_dentate;
     nuclei->num_interposed = num_interposed;
@@ -618,7 +636,13 @@ static void destroy_deep_nuclei(deep_nuclei_t* nuclei) {
  */
 static climbing_fiber_system_t* create_climbing_fibers(uint32_t num_fibers, uint32_t num_purkinje) {
     climbing_fiber_system_t* cf = nimcp_calloc(1, sizeof(climbing_fiber_system_t));
-    if (!cf) return NULL;
+    if (!cf) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cf is NULL");
+
+        return NULL;
+
+    }
 
     cf->num_fibers = num_fibers;
     cf->error_threshold = 0.1f;
@@ -663,7 +687,13 @@ static glomerular_layer_t* create_glomerular_layer(uint32_t num_mossy,
                                                     uint32_t granules_per_glom,
                                                     bool enable_synaptic_dynamics) {
     glomerular_layer_t* layer = nimcp_calloc(1, sizeof(glomerular_layer_t));
-    if (!layer) return NULL;
+    if (!layer) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer is NULL");
+
+        return NULL;
+
+    }
 
     layer->num_glomeruli = num_mossy;
     layer->granules_per_glomerulus = granules_per_glom;
@@ -749,7 +779,13 @@ static molecular_layer_interneurons_t* create_molecular_interneurons(
     uint32_t num_purkinje, uint32_t num_parallel) {
 
     molecular_layer_interneurons_t* layer = nimcp_calloc(1, sizeof(molecular_layer_interneurons_t));
-    if (!layer) return NULL;
+    if (!layer) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer is NULL");
+
+        return NULL;
+
+    }
 
     layer->num_basket_cells = num_basket;
     layer->num_stellate_cells = num_stellate;
@@ -882,7 +918,13 @@ static golgi_cell_network_t* create_golgi_network(uint32_t num_golgi,
                                                    uint32_t granules_per_golgi,
                                                    uint32_t num_granule) {
     golgi_cell_network_t* network = nimcp_calloc(1, sizeof(golgi_cell_network_t));
-    if (!network) return NULL;
+    if (!network) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+
+        return NULL;
+
+    }
 
     network->num_cells = num_golgi;
     network->feedback_delay_ms = 5.0f;
@@ -2280,17 +2322,35 @@ bool cerebellum_get_config(const cerebellum_adapter_t* adapter, cerebellum_confi
  *===========================================================================*/
 
 granule_layer_t* cerebellum_get_granule_layer(cerebellum_adapter_t* adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->granule;
 }
 
 purkinje_layer_t* cerebellum_get_purkinje_layer(cerebellum_adapter_t* adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->purkinje;
 }
 
 deep_nuclei_t* cerebellum_get_deep_nuclei(cerebellum_adapter_t* adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->nuclei;
 }
 
@@ -2299,7 +2359,13 @@ deep_nuclei_t* cerebellum_get_deep_nuclei(cerebellum_adapter_t* adapter) {
  *===========================================================================*/
 
 bio_module_context_t cerebellum_get_bio_context(cerebellum_adapter_t* adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->bio_ctx;
 }
 
@@ -2390,18 +2456,36 @@ nimcp_error_t cerebellum_broadcast_adaptation_complete(
  *===========================================================================*/
 
 glomerular_layer_t* cerebellum_get_glomerular_layer(cerebellum_adapter_t* adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->glomerular;
 }
 
 molecular_layer_interneurons_t* cerebellum_get_molecular_interneurons(
     cerebellum_adapter_t* adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->molecular;
 }
 
 golgi_cell_network_t* cerebellum_get_golgi_network(cerebellum_adapter_t* adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->golgi;
 }
 

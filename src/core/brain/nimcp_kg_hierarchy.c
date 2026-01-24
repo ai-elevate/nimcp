@@ -2815,10 +2815,22 @@ int kg_hierarchy_get_node_count(const kg_hierarchy_t* hier, uint32_t* count) {
 }
 
 kg_edge_iterator_t* kg_hierarchy_edge_iterator(const kg_hierarchy_t* hier) {
-    if (!hier) return NULL;
+    if (!hier) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hier is NULL");
+
+        return NULL;
+
+    }
 
     kg_edge_iterator_t* iter = (kg_edge_iterator_t*)nimcp_calloc(1, sizeof(kg_edge_iterator_t));
-    if (!iter) return NULL;
+    if (!iter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "iter is NULL");
+
+        return NULL;
+
+    }
 
     iter->hier = hier;
     iter->current_entry = 0;

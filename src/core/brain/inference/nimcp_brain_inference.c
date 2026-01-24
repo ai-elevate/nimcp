@@ -84,8 +84,13 @@ extern bool ensure_writable_network(brain_t brain);
 static brain_decision_t* allocate_decision(uint32_t output_size)
 {
     brain_decision_t* decision = nimcp_calloc(1, sizeof(brain_decision_t));
-    if (!decision)
+    if (!decision) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "decision is NULL");
+
         return NULL;
+
+    }
 
     decision->output_size = output_size;
     decision->output_vector = nimcp_malloc(output_size * sizeof(float));
@@ -112,13 +117,23 @@ static brain_decision_t* allocate_decision(uint32_t output_size)
  */
 static brain_decision_t* copy_decision(const brain_decision_t* source)
 {
-    if (!source)
+    if (!source) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source is NULL");
+
         return NULL;
+
+    }
 
     // Allocate new decision structure
     brain_decision_t* copy = nimcp_calloc(1, sizeof(brain_decision_t));
-    if (!copy)
+    if (!copy) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "copy is NULL");
+
         return NULL;
+
+    }
 
     // Copy scalar fields
     memcpy(copy, source, sizeof(brain_decision_t));
@@ -587,6 +602,9 @@ static void* async_infer_thread(void* arg)
     async_infer_context_t* ctx = (async_infer_context_t*)arg;
 
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+
         return NULL;
     }
 

@@ -86,7 +86,13 @@ insula_quantum_bridge_t* insula_quantum_bridge_create(
     const insula_quantum_config_t* config
 ) {
     insula_quantum_bridge_t* bridge = nimcp_calloc(1, sizeof(insula_quantum_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     bridge->insula = insula;
     bridge->config = config ? *config : insula_quantum_default_config();

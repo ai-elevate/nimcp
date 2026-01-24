@@ -320,7 +320,13 @@ static void* monitoring_thread_func(void* arg)
 nimcp_sec_integration_t* nimcp_sec_integration_create(void)
 {
     nimcp_sec_integration_t* ctx = nimcp_calloc(1, sizeof(nimcp_sec_integration_t));
-    if (!ctx) return NULL;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return NULL;
+
+    }
 
     /* Allocate shared data structure */
     ctx->shared = nimcp_calloc(1, sizeof(nimcp_sec_shared_data_t));
@@ -1638,7 +1644,13 @@ nimcp_sec_integration_t* nimcp_sec_integration_cow_clone(nimcp_sec_integration_t
 
     /* Create new context */
     nimcp_sec_integration_t* clone = nimcp_calloc(1, sizeof(nimcp_sec_integration_t));
-    if (!clone) return NULL;
+    if (!clone) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_mutex_lock(&source->lock);
 

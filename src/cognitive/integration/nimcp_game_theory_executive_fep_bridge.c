@@ -293,7 +293,13 @@ gt_exec_fep_config_t gt_exec_fep_config_default(void) {
 
 gt_exec_fep_bridge_t* gt_exec_fep_bridge_create(const gt_exec_fep_config_t* config) {
     gt_exec_fep_bridge_t* bridge = nimcp_calloc(1, sizeof(gt_exec_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

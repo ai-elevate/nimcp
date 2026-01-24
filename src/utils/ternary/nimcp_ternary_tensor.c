@@ -55,13 +55,25 @@ trit_vector_t* trit_vector_from_tensor(
     float threshold,
     ternary_pack_mode_t pack_mode
 ) {
-    if (!tensor) return NULL;
+    if (!tensor) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tensor is NULL");
+
+        return NULL;
+
+    }
 
     size_t numel = tensor_numel(tensor);
     if (numel == 0) return NULL;
 
     trit_vector_t* vec = trit_vector_create(numel, pack_mode);
-    if (!vec) return NULL;
+    if (!vec) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vec is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t i = 0; i < numel; i++) {
         float val = tensor_get_float(tensor, i);
@@ -77,7 +89,13 @@ trit_matrix_t* trit_matrix_from_tensor(
     float threshold,
     ternary_pack_mode_t pack_mode
 ) {
-    if (!tensor) return NULL;
+    if (!tensor) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tensor is NULL");
+
+        return NULL;
+
+    }
 
     const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(tensor);
     if (!shape || shape->rank != 2) return NULL;
@@ -86,7 +104,13 @@ trit_matrix_t* trit_matrix_from_tensor(
     size_t cols = shape->dims[1];
 
     trit_matrix_t* mat = trit_matrix_create(rows, cols, pack_mode);
-    if (!mat) return NULL;
+    if (!mat) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mat is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t row = 0; row < rows; row++) {
         for (size_t col = 0; col < cols; col++) {
@@ -122,7 +146,13 @@ nimcp_tensor_t* trit_vector_to_tensor(
 
     uint32_t dims[1] = { (uint32_t)vec->length };
     nimcp_tensor_t* tensor = nimcp_tensor_create(dims, 1, dtype);
-    if (!tensor) return NULL;
+    if (!tensor) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tensor is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t i = 0; i < vec->length; i++) {
         double val = (double)trit_vector_get(vec, i) * scale;
@@ -141,7 +171,13 @@ nimcp_tensor_t* trit_matrix_to_tensor(
 
     uint32_t dims[2] = { (uint32_t)mat->rows, (uint32_t)mat->cols };
     nimcp_tensor_t* tensor = nimcp_tensor_create(dims, 2, dtype);
-    if (!tensor) return NULL;
+    if (!tensor) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tensor is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t row = 0; row < mat->rows; row++) {
         for (size_t col = 0; col < mat->cols; col++) {
@@ -173,7 +209,13 @@ nimcp_tensor_t* trit_vector_to_tensor_shaped(
     if (numel != vec->length) return NULL;
 
     nimcp_tensor_t* tensor = nimcp_tensor_create(dims, rank, dtype);
-    if (!tensor) return NULL;
+    if (!tensor) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tensor is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t i = 0; i < vec->length; i++) {
         double val = (double)trit_vector_get(vec, i) * scale;
@@ -250,7 +292,13 @@ trit_vector_t* trit_quantize_adaptive(
     ternary_pack_mode_t pack_mode,
     trit_quantization_stats_t* actual_stats
 ) {
-    if (!tensor) return NULL;
+    if (!tensor) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tensor is NULL");
+
+        return NULL;
+
+    }
 
     size_t numel = tensor_numel(tensor);
     if (numel == 0) return NULL;
@@ -344,7 +392,13 @@ nimcp_tensor_t* trit_gate_tensor(
     nimcp_dtype_t dtype = nimcp_tensor_dtype(tensor);
 
     nimcp_tensor_t* result = nimcp_tensor_create(shape->dims, shape->rank, dtype);
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t i = 0; i < numel; i++) {
         trit_t g = trit_vector_get(gate, i);
@@ -361,7 +415,13 @@ nimcp_tensor_t* trit_matmul_tensor(
     float weight_scale
 ) {
     if (!weights || weights->magic != TERNARY_MAGIC) return NULL;
-    if (!input) return NULL;
+    if (!input) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "input is NULL");
+
+        return NULL;
+
+    }
 
     size_t input_numel = tensor_numel(input);
     if (input_numel != weights->cols) return NULL;
@@ -369,7 +429,13 @@ nimcp_tensor_t* trit_matmul_tensor(
     /* Output is 1D tensor with weights->rows elements */
     uint32_t dims[1] = { (uint32_t)weights->rows };
     nimcp_tensor_t* output = nimcp_tensor_zeros(dims, 1, NIMCP_DTYPE_F32);
-    if (!output) return NULL;
+    if (!output) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "output is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t row = 0; row < weights->rows; row++) {
         double sum = 0.0;
@@ -392,13 +458,25 @@ nimcp_tensor_t* trit_quantize_ste(
     const nimcp_tensor_t* tensor,
     float threshold
 ) {
-    if (!tensor) return NULL;
+    if (!tensor) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tensor is NULL");
+
+        return NULL;
+
+    }
 
     const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(tensor);
     size_t numel = shape->numel;
 
     nimcp_tensor_t* result = nimcp_tensor_create(shape->dims, shape->rank, NIMCP_DTYPE_F32);
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t i = 0; i < numel; i++) {
         float val = tensor_get_float(tensor, i);
@@ -413,14 +491,26 @@ nimcp_tensor_t* trit_quantize_soft(
     const nimcp_tensor_t* tensor,
     float temperature
 ) {
-    if (!tensor) return NULL;
+    if (!tensor) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tensor is NULL");
+
+        return NULL;
+
+    }
     if (temperature <= 0.0f) temperature = 1.0f;
 
     const nimcp_tensor_shape_t* shape = nimcp_tensor_shape(tensor);
     size_t numel = shape->numel;
 
     nimcp_tensor_t* result = nimcp_tensor_create(shape->dims, shape->rank, NIMCP_DTYPE_F32);
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t i = 0; i < numel; i++) {
         float val = tensor_get_float(tensor, i);

@@ -32,9 +32,21 @@ bias_substrate_config_t bias_substrate_default_config(void) {
 }
 
 bias_substrate_bridge_t* bias_substrate_bridge_create(void* bias, neural_substrate_t* substrate, const bias_substrate_config_t* config) {
-    if (!substrate) return NULL;
+    if (!substrate) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
+
+        return NULL;
+
+    }
     bias_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(bias_substrate_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     bridge->bias = bias;
     bridge->substrate = substrate;
     bridge->config = config ? *config : bias_substrate_default_config();

@@ -1689,6 +1689,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_queue_spsc.c       # Phase ASY-1: Lock-free SPSC queue (<100ns)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_queue_mpmc.c       # Phase ASY-1: Lock-free MPMC queue (Vyukov algorithm)
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_graph.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_graph_ternary.c  # Ternary graph for hypergraph support
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_min_heap.c
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_darray.c           # Generic dynamic array container
     ${CMAKE_CURRENT_SOURCE_DIR}/../utils/containers/nimcp_ring_buffer.c     # Fixed-size circular buffer
@@ -2509,6 +2510,35 @@ set(NIMCP_CORE_SOURCES
 
     # Neuromodulatory-Logging Bridge (Phase 4 Logging Integration)
     ${CMAKE_CURRENT_SOURCE_DIR}/../core/brain/regions/nimcp_neuromodulatory_logging_bridge.c
+
+    # ============================================================================
+    # Neuro-Symbolic Genius Mathematics System (Mathesis-Inspired)
+    # ============================================================================
+    # Phase 1: Foundation
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/neuro_symbolic/nimcp_energy_consistency.c     # Energy-based logical consistency (E=0 = valid)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/neuro_symbolic/nimcp_hypergraph.c             # N-ary relation hypergraph structure
+
+    # Phase 2: Quantum Engine
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/neuro_symbolic/nimcp_quantum_mcts.c           # Quantum Monte Carlo Tree Search
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/neuro_symbolic/nimcp_quantum_math_engine.c    # QMC integration and path integrals
+
+    # Phase 3: Mathematical Genius Module
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_mathematical_genius.c          # Core genius framework (Gauss/Newton/Erdős)
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_genius_gauss.c                 # Number theory mode
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_genius_newton.c                # Calculus mode
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/parietal/nimcp_genius_erdos.c                 # Combinatorics mode
+
+    # Phase 4: Evolutionary Proof Search
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/neuro_symbolic/nimcp_evolutionary_proof.c     # GA+RL hybrid theorem prover
+
+    # Phase 5: Orchestration and Bridges
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/neuro_symbolic/nimcp_genius_math_orchestrator.c  # Full system orchestrator
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_fep_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_thermo_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/neuro_symbolic/bridges/nimcp_evolutionary_proof_logic_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/neuro_symbolic/bridges/nimcp_hypergraph_kg_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/neuro_symbolic/bridges/nimcp_genius_game_theory_bridge.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/neuro_symbolic/bridges/nimcp_quantum_mcts_fep_bridge.c
 )
 
 # Core library

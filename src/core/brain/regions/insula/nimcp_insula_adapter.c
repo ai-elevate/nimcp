@@ -1104,7 +1104,13 @@ bool insula_get_config(const insula_adapter_t* adapter, insula_config_t* config)
  *===========================================================================*/
 
 bio_module_context_t insula_get_bio_context(insula_adapter_t* adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->bio_ctx;
 }
 

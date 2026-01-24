@@ -158,6 +158,8 @@ static float compute_avg_priority_unlocked(const attention_wm_bridge_t* bridge) 
 
 int attention_wm_bridge_default_config(attention_wm_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -174,6 +176,8 @@ attention_wm_bridge_t* attention_wm_bridge_create(
     // Allocate bridge structure
     attention_wm_bridge_t* bridge = nimcp_calloc(1, sizeof(attention_wm_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

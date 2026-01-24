@@ -35,6 +35,8 @@ static uint64_t get_current_timestamp_ns(void) {
 kg_gpu_context_t* kg_gpu_create(kg_gpu_backend_t preferred_backend) {
     kg_gpu_context_t* gpu = nimcp_calloc(1, sizeof(kg_gpu_context_t));
     if (!gpu) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu is NULL");
+
         return NULL;
     }
 
@@ -169,6 +171,8 @@ int kg_gpu_set_kernel_config(
 
 int kg_gpu_enable_targets(kg_gpu_context_t* gpu, uint32_t targets) {
     if (!gpu) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu is NULL");
+
         return -1;
     }
 
@@ -179,6 +183,8 @@ int kg_gpu_enable_targets(kg_gpu_context_t* gpu, uint32_t targets) {
 
 int kg_gpu_disable_targets(kg_gpu_context_t* gpu, uint32_t targets) {
     if (!gpu) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu is NULL");
+
         return -1;
     }
 

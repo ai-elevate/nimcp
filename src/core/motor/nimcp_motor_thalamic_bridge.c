@@ -42,11 +42,15 @@ motor_thalamic_bridge_t* motor_thalamic_bridge_create(void* motor,
                                                        thalamic_router_t* router,
                                                        const motor_thalamic_config_t* config) {
     if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router is NULL");
+
         return NULL;
     }
 
     motor_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(motor_thalamic_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -73,6 +77,8 @@ void motor_thalamic_bridge_destroy(motor_thalamic_bridge_t* bridge) {
 
 int motor_thalamic_bridge_reset(motor_thalamic_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -120,6 +126,8 @@ int motor_thalamic_route_signal(motor_thalamic_bridge_t* bridge,
 
 int motor_thalamic_route_inhibit(motor_thalamic_bridge_t* bridge, uint32_t program_id) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -143,6 +151,8 @@ int motor_thalamic_route_inhibit(motor_thalamic_bridge_t* bridge, uint32_t progr
 
 int motor_thalamic_set_attention(motor_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

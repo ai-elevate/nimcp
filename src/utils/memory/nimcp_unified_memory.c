@@ -387,7 +387,13 @@ NIMCP_EXPORT unified_mem_manager_t unified_mem_create(
 
     // Allocate manager
     unified_mem_manager_t manager = calloc(1, sizeof(struct unified_mem_manager_struct));
-    if (!manager) return NULL;
+    if (!manager) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+
+        return NULL;
+
+    }
 
     manager->magic = UNIFIED_MANAGER_MAGIC;
     manager->config = cfg;
@@ -508,7 +514,13 @@ NIMCP_EXPORT unified_mem_handle_t unified_mem_alloc(
 
     // Allocate handle structure
     unified_mem_handle_t handle = calloc(1, sizeof(struct unified_mem_handle_struct));
-    if (!handle) return NULL;
+    if (!handle) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle is NULL");
+
+        return NULL;
+
+    }
 
     handle->magic = UNIFIED_HANDLE_MAGIC;
     handle->manager = manager;
@@ -684,7 +696,13 @@ NIMCP_EXPORT unified_mem_handle_t unified_mem_clone(unified_mem_handle_t handle)
 
     // Allocate new handle
     unified_mem_handle_t clone = calloc(1, sizeof(struct unified_mem_handle_struct));
-    if (!clone) return NULL;
+    if (!clone) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+
+        return NULL;
+
+    }
 
     clone->magic = UNIFIED_HANDLE_MAGIC;
     clone->manager = manager;
@@ -991,7 +1009,13 @@ NIMCP_EXPORT unified_mem_snapshot_t unified_mem_snapshot_create(
     if (handle->state == UNIFIED_STATE_INVALID) return NULL;
 
     unified_mem_snapshot_t snap = calloc(1, sizeof(struct unified_mem_snapshot_struct));
-    if (!snap) return NULL;
+    if (!snap) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snap is NULL");
+
+        return NULL;
+
+    }
 
     snap->magic = UNIFIED_SNAP_MAGIC;
     snap->source = handle;

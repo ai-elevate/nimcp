@@ -146,7 +146,13 @@ nimcp_kg_wiring_exception_t* nimcp_kg_wiring_exception_create(
     }
 
     nimcp_kg_wiring_exception_t* ex = nimcp_calloc(1, sizeof(nimcp_kg_wiring_exception_t));
-    if (!ex) return NULL;
+    if (!ex) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ex is NULL");
+
+        return NULL;
+
+    }
 
     /* Initialize brain exception base */
     ex->base.base.type = EXCEPTION_TYPE_BRAIN;

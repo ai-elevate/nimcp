@@ -226,7 +226,13 @@ phonological_processor_t* phonological_create(const phonological_config_t* confi
      * HOW:  Allocate buffers, initialize state */
 
     phonological_processor_t* proc = (phonological_processor_t*)nimcp_calloc(1, sizeof(phonological_processor_t));
-    if (!proc) return NULL;
+    if (!proc) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "proc is NULL");
+
+        return NULL;
+
+    }
 
     /* Set configuration */
     if (config) {

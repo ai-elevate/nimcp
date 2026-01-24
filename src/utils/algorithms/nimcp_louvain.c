@@ -94,7 +94,13 @@ static inline double calculate_modularity_gain(LouvainContext* ctx, uint32_t ver
  */
 static LouvainContext* louvain_context_create(const NimcpGraph* graph)
 {
-    if (!graph) return NULL;
+    if (!graph) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph is NULL");
+
+        return NULL;
+
+    }
     if (!graph->vertices) return NULL;
 
     if (graph->vertex_count == 0) {
@@ -103,6 +109,8 @@ static LouvainContext* louvain_context_create(const NimcpGraph* graph)
 
     LouvainContext* ctx = (LouvainContext*)nimcp_malloc(sizeof(LouvainContext));
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 
@@ -311,7 +319,13 @@ static double calculate_modularity(LouvainContext* ctx, const NimcpGraph* graph)
 NimcpCommunityPartition* nimcp_louvain_detect(const NimcpGraph* graph, double resolution,
                                               uint32_t seed)
 {
-    if (!graph) return NULL;
+    if (!graph) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph is NULL");
+
+        return NULL;
+
+    }
     if (!graph->vertices) return NULL;
 
     if (graph->vertex_count == 0) {
@@ -321,6 +335,8 @@ NimcpCommunityPartition* nimcp_louvain_detect(const NimcpGraph* graph, double re
     // Create context
     LouvainContext* ctx = louvain_context_create(graph);
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 
@@ -418,6 +434,8 @@ NimcpCommunityPartition* nimcp_louvain_refine(const NimcpGraph* graph,
     NimcpCommunityPartition* result =
         (NimcpCommunityPartition*)nimcp_malloc(sizeof(NimcpCommunityPartition));
     if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
         return NULL;
     }
 

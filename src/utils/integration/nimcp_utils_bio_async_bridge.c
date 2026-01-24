@@ -203,7 +203,13 @@ utils_bio_bridge_t* utils_bio_bridge_create(
     const utils_bio_bridge_config_t* config
 ) {
     utils_bio_bridge_t* bridge = UTILS_CALLOC(1, sizeof(*bridge));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (utils_bio_bridge_init(bridge, config) != 0) {
         UTILS_FREE(bridge);

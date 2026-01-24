@@ -629,6 +629,8 @@ static bool process_checkpoint_request(async_checkpoint_writer_t* writer, async_
 static void* worker_thread_func(void* arg) {
     async_checkpoint_writer_t* writer = (async_checkpoint_writer_t*)arg;
     if (!writer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "writer is NULL");
+
         return NULL;
     }
 

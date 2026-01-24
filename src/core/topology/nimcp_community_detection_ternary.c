@@ -138,7 +138,13 @@ trit_matrix_t* community_ternary_quantize_adjacency(
     if (!float_adj || num_nodes == 0) return NULL;
 
     trit_matrix_t* adj = trit_matrix_create(num_nodes, num_nodes, pack_mode);
-    if (!adj) return NULL;
+    if (!adj) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adj is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < num_nodes; i++) {
         for (uint32_t j = 0; j < num_nodes; j++) {
@@ -190,7 +196,13 @@ community_ternary_result_t* community_ternary_detect(
 
     /* Allocate result */
     community_ternary_result_t* result = nimcp_malloc(sizeof(community_ternary_result_t));
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
     memset(result, 0, sizeof(community_ternary_result_t));
 
     result->magic = COMMUNITY_TERNARY_MAGIC;

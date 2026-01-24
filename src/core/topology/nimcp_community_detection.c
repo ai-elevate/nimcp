@@ -394,7 +394,13 @@ community_structure_t* community_detect(
 
     // Build graph
     adjacency_list_t* graph = build_adjacency_list(network);
-    if (!graph) return NULL;
+    if (!graph) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph is NULL");
+
+        return NULL;
+
+    }
 
     uint32_t num_nodes = graph->num_nodes;
 

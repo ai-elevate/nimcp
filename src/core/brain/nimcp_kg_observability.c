@@ -174,6 +174,8 @@ static void generate_random_hex(char* buf, size_t bytes) {
 
 int kg_observability_default_config(kg_observability_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -203,6 +205,8 @@ int kg_observability_default_config(kg_observability_config_t* config) {
 kg_observability_t* kg_observability_create(const kg_observability_config_t* config) {
     kg_observability_t* obs = nimcp_calloc(1, sizeof(kg_observability_t));
     if (!obs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "obs is NULL");
+
         return NULL;
     }
 
@@ -300,6 +304,8 @@ void kg_observability_destroy(kg_observability_t* obs) {
 
 int kg_observability_start(kg_observability_t* obs) {
     if (!obs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "obs is NULL");
+
         return -1;
     }
 
@@ -321,6 +327,8 @@ int kg_observability_start(kg_observability_t* obs) {
 
 int kg_observability_stop(kg_observability_t* obs) {
     if (!obs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "obs is NULL");
+
         return -1;
     }
 
@@ -854,6 +862,8 @@ kg_trace_span_t* kg_obs_start_span(
 
     kg_trace_span_t* span = nimcp_calloc(1, sizeof(kg_trace_span_t));
     if (!span) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "span is NULL");
+
         return NULL;
     }
 
@@ -895,6 +905,8 @@ int kg_obs_add_span_tag(kg_trace_span_t* span, const char* key, const char* valu
     uint32_t new_count = span->tag_count + 2; /* key + value */
     char** new_tags = nimcp_realloc(span->tags, (new_count + 1) * sizeof(char*));
     if (!new_tags) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_tags is NULL");
+
         return -1;
     }
 
@@ -933,6 +945,8 @@ int kg_obs_set_span_status(
     const char* message
 ) {
     if (!span) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "span is NULL");
+
         return -1;
     }
 
@@ -996,6 +1010,8 @@ kg_trace_span_t* kg_obs_create_span_from_context(
 
     kg_trace_span_t* span = nimcp_calloc(1, sizeof(kg_trace_span_t));
     if (!span) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "span is NULL");
+
         return NULL;
     }
 
@@ -1087,6 +1103,8 @@ const char* kg_metric_type_to_string(kg_metric_type_t type) {
 
 int kg_metric_type_from_string(const char* str) {
     if (!str) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "str is NULL");
+
         return -1;
     }
 
@@ -1109,6 +1127,8 @@ uint64_t kg_obs_timestamp_ms(void) {
 
 int kg_obs_generate_trace_id(char* trace_id) {
     if (!trace_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trace_id is NULL");
+
         return -1;
     }
 
@@ -1119,6 +1139,8 @@ int kg_obs_generate_trace_id(char* trace_id) {
 
 int kg_obs_generate_span_id(char* span_id) {
     if (!span_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "span_id is NULL");
+
         return -1;
     }
 

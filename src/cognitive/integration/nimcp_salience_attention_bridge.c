@@ -368,6 +368,8 @@ static int salience_attention_query_handler(
 
 int salience_attention_bridge_default_config(salience_attention_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -390,6 +392,8 @@ salience_attention_bridge_t* salience_attention_bridge_create(
     salience_attention_bridge_t* bridge = (salience_attention_bridge_t*)nimcp_calloc(
         1, sizeof(salience_attention_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

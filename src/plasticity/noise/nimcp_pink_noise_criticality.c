@@ -186,10 +186,22 @@ criticality_analyzer_t* criticality_create(const criticality_config_t* config) {
      * WHAT: Create criticality analyzer
      * WHY:  Initialize monitoring and avalanche detection
      */
-    if (!config) return NULL;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return NULL;
+
+    }
 
     criticality_analyzer_t* ca = nimcp_calloc(1, sizeof(criticality_analyzer_t));
-    if (!ca) return NULL;
+    if (!ca) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ca is NULL");
+
+        return NULL;
+
+    }
 
     memcpy(&ca->config, config, sizeof(criticality_config_t));
 

@@ -169,6 +169,8 @@ static void update_degradation_level(kg_degradation_ctx_t* ctx) {
 
 int kg_degradation_default_config(kg_degradation_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -200,6 +202,8 @@ int kg_degradation_default_config(kg_degradation_config_t* config) {
 kg_degradation_ctx_t* kg_degradation_create(const kg_degradation_config_t* config) {
     kg_degradation_ctx_t* ctx = nimcp_calloc(1, sizeof(kg_degradation_ctx_t));
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 
@@ -392,6 +396,8 @@ int kg_degradation_buffer_write(
 
 int kg_degradation_flush_buffer(kg_degradation_ctx_t* ctx) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -437,6 +443,8 @@ uint64_t kg_degradation_get_buffer_memory(const kg_degradation_ctx_t* ctx) {
 
 int kg_degradation_discard_buffer(kg_degradation_ctx_t* ctx) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -465,6 +473,8 @@ int kg_degradation_discard_buffer(kg_degradation_ctx_t* ctx) {
 
 int kg_degradation_record_success(kg_degradation_ctx_t* ctx) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -500,6 +510,8 @@ int kg_degradation_record_success(kg_degradation_ctx_t* ctx) {
 
 int kg_degradation_record_failure(kg_degradation_ctx_t* ctx) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -550,6 +562,8 @@ int kg_degradation_record_failure(kg_degradation_ctx_t* ctx) {
 
 int kg_degradation_force_open_circuit(kg_degradation_ctx_t* ctx) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -570,6 +584,8 @@ int kg_degradation_force_open_circuit(kg_degradation_ctx_t* ctx) {
 
 int kg_degradation_force_close_circuit(kg_degradation_ctx_t* ctx) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -729,6 +745,8 @@ int kg_degradation_cache_invalidate(
     brain_kg_node_id_t id
 ) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -763,6 +781,8 @@ int kg_degradation_cache_invalidate(
 
 int kg_degradation_cache_clear(kg_degradation_ctx_t* ctx) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -857,6 +877,8 @@ int kg_degradation_set_level(
     kg_degradation_level_t level
 ) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 

@@ -338,6 +338,8 @@ layer_pools_t layer_pools_create(
     /* Allocate main structure */
     struct layer_pools* pools = nimcp_calloc(1, sizeof(struct layer_pools));
     if (!pools) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pools is NULL");
+
         return NULL;
     }
 
@@ -465,7 +467,13 @@ void layer_pools_destroy(layer_pools_t pools)
  */
 brain_pools_t layer_pools_get_brain_pools(layer_pools_t pools)
 {
-    if (!pools) return NULL;
+    if (!pools) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pools is NULL");
+
+        return NULL;
+
+    }
     return pools->brain_pools;
 }
 
@@ -475,7 +483,13 @@ brain_pools_t layer_pools_get_brain_pools(layer_pools_t pools)
 
 void* layer_pools_acquire_workspace_entry(layer_pools_t pools)
 {
-    if (!pools) return NULL;
+    if (!pools) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pools is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
     void* entry = acquire_from_pool(&pools->workspace_pool);
@@ -495,7 +509,13 @@ void layer_pools_release_workspace_entry(layer_pools_t pools, void* entry)
 
 void* layer_pools_acquire_knowledge_entry(layer_pools_t pools)
 {
-    if (!pools) return NULL;
+    if (!pools) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pools is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
     void* entry = acquire_from_pool(&pools->knowledge_pool);
@@ -534,7 +554,13 @@ void layer_pools_release_working_memory_item(layer_pools_t pools, void* item, si
 
 void* layer_pools_acquire_event_entry(layer_pools_t pools)
 {
-    if (!pools) return NULL;
+    if (!pools) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pools is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
     void* entry = acquire_from_pool(&pools->event_pool);
@@ -554,7 +580,13 @@ void layer_pools_release_event_entry(layer_pools_t pools, void* entry)
 
 void* layer_pools_acquire_pattern_node(layer_pools_t pools)
 {
-    if (!pools) return NULL;
+    if (!pools) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pools is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
     void* node = acquire_from_pool(&pools->pattern_pool);
@@ -574,7 +606,13 @@ void layer_pools_release_pattern_node(layer_pools_t pools, void* node)
 
 void* layer_pools_acquire_route_node(layer_pools_t pools)
 {
-    if (!pools) return NULL;
+    if (!pools) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pools is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
     void* node = acquire_from_pool(&pools->route_pool);
@@ -608,7 +646,13 @@ void layer_pools_release_feature_buffer(layer_pools_t pools, float* buffer)
 
 void* layer_pools_acquire_subscriber_entry(layer_pools_t pools)
 {
-    if (!pools) return NULL;
+    if (!pools) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pools is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
     void* entry = acquire_from_pool(&pools->subscriber_pool);
@@ -632,7 +676,13 @@ void layer_pools_release_subscriber_entry(layer_pools_t pools, void* entry)
 
 void* layer_pools_acquire_learning_signal(layer_pools_t pools)
 {
-    if (!pools) return NULL;
+    if (!pools) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pools is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
     void* signal = acquire_from_pool(&pools->signal_pool);
@@ -693,7 +743,13 @@ void layer_pools_release_target_prediction(
 
 float* layer_pools_acquire_gradient_buffer(layer_pools_t pools, size_t num_weights)
 {
-    if (!pools) return NULL;
+    if (!pools) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pools is NULL");
+
+        return NULL;
+
+    }
 
     /* For small gradients, use gradient pool; large ones use brain pools */
     if (num_weights * sizeof(float) <= pools->gradient_pool.block_size) {

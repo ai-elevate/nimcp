@@ -1201,6 +1201,9 @@ static void* async_learn_thread(void* arg)
     async_learn_context_t* ctx = (async_learn_context_t*)arg;
 
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+
         return NULL;
     }
 

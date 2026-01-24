@@ -136,7 +136,13 @@ tom_snn_config_t tom_snn_config_default(void) {
 
 tom_snn_bridge_t* tom_snn_create(const tom_snn_config_t* config) {
     tom_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(tom_snn_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

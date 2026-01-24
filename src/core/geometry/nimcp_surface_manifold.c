@@ -228,7 +228,13 @@ surface_manifold_t* surface_manifold_create(
     uint32_t max_branch_points)
 {
     surface_manifold_t* manifold = nimcp_malloc(sizeof(*manifold));
-    if (!manifold) return NULL;
+    if (!manifold) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manifold is NULL");
+
+        return NULL;
+
+    }
 
     memset(manifold, 0, sizeof(*manifold));
 

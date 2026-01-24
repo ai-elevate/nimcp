@@ -112,6 +112,8 @@ static void send_bio_async_spike_message(
 
 int axon_orchestrator_default_config(axon_orchestrator_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -266,6 +268,8 @@ static int grow_mappings(axon_orchestrator_bridge_t* bridge) {
         new_capacity, sizeof(synapse_axon_mapping_t)
     );
     if (!new_mappings) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_mappings is NULL");
+
         return -1;
     }
 
@@ -296,6 +300,8 @@ int axon_orchestrator_map_synapse(
     uint32_t axon_id
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -354,6 +360,8 @@ int axon_orchestrator_unmap_synapse(
     uint32_t synapse_id
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -512,6 +520,8 @@ int axon_orchestrator_bridge_update(
     uint64_t current_time_us
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -559,6 +569,8 @@ int axon_orchestrator_get_stats(
 
 int axon_orchestrator_reset_stats(axon_orchestrator_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -635,6 +647,8 @@ static void send_bio_async_spike_message(
 
 int axon_orchestrator_connect_bio_async(axon_orchestrator_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -671,6 +685,8 @@ int axon_orchestrator_connect_bio_async(axon_orchestrator_bridge_t* bridge) {
 
 int axon_orchestrator_disconnect_bio_async(axon_orchestrator_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -706,6 +722,8 @@ plasticity_orchestrator_t* axon_orchestrator_get_orchestrator(
     axon_orchestrator_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     return bridge->orchestrator;
@@ -715,6 +733,8 @@ axon_network_t* axon_orchestrator_get_axon_network(
     axon_orchestrator_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     return bridge->axon_network;

@@ -124,6 +124,8 @@ static substrate_neuromod_effects_t* get_effects_for_type(
 )
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

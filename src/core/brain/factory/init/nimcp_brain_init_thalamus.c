@@ -541,7 +541,13 @@ float nimcp_brain_thal_get_tonic_fraction(brain_t brain,
 //=============================================================================
 
 thalamus_t* nimcp_brain_thal_get_handle(brain_t brain) {
-    if (!brain) return NULL;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return NULL;
+
+    }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
@@ -554,7 +560,13 @@ thalamus_t* nimcp_brain_thal_get_handle(brain_t brain) {
 
 thal_nucleus_t* nimcp_brain_thal_get_nucleus(brain_t brain,
                                               thal_nucleus_type_t nucleus_type) {
-    if (!brain) return NULL;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return NULL;
+
+    }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 

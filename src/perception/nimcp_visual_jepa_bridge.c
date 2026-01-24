@@ -43,7 +43,13 @@ static visual_jepa_encoder_t* encoder_create(uint32_t input_dim,
                                                uint32_t hidden_dim,
                                                uint32_t output_dim) {
     visual_jepa_encoder_t* enc = nimcp_malloc(sizeof(visual_jepa_encoder_t));
-    if (!enc) return NULL;
+    if (!enc) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enc is NULL");
+
+        return NULL;
+
+    }
 
     enc->input_dim = input_dim;
     enc->hidden_dim = hidden_dim;
@@ -119,12 +125,24 @@ static int encoder_forward(const visual_jepa_encoder_t* enc,
 }
 
 static visual_jepa_encoder_t* encoder_clone(const visual_jepa_encoder_t* src) {
-    if (!src) return NULL;
+    if (!src) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "src is NULL");
+
+        return NULL;
+
+    }
 
     visual_jepa_encoder_t* dst = encoder_create(src->input_dim,
                                                   src->hidden_dim,
                                                   src->output_dim);
-    if (!dst) return NULL;
+    if (!dst) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dst is NULL");
+
+        return NULL;
+
+    }
 
     memcpy(dst->weights_1, src->weights_1,
            src->hidden_dim * src->input_dim * sizeof(float));
@@ -794,7 +812,13 @@ visual_jepa_batch_t* visual_jepa_batch_create(
     if (num_patches == 0) return NULL;
 
     visual_jepa_batch_t* batch = nimcp_malloc(sizeof(visual_jepa_batch_t));
-    if (!batch) return NULL;
+    if (!batch) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "batch is NULL");
+
+        return NULL;
+
+    }
     memset(batch, 0, sizeof(visual_jepa_batch_t));
 
     batch->num_patches = num_patches;

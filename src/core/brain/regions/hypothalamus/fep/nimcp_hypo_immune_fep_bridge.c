@@ -54,6 +54,8 @@ static void update_running_averages(hypo_immune_fep_bridge_t* bridge,
  */
 int hypo_immune_fep_default_config(hypo_immune_fep_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -207,6 +209,8 @@ void hypo_immune_fep_destroy(hypo_immune_fep_bridge_t* bridge) {
  */
 int hypo_immune_fep_reset(hypo_immune_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -258,6 +262,8 @@ int hypo_immune_fep_reset(hypo_immune_fep_bridge_t* bridge) {
  */
 int hypo_immune_fep_update(hypo_immune_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -419,6 +425,8 @@ int hypo_immune_fep_modulate_precision(
     float fatigue
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -509,6 +517,8 @@ int hypo_immune_fep_update_cytokines(
     float ifn
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -562,6 +572,8 @@ int hypo_immune_fep_connect_bio_async(
     bio_router_t* router
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

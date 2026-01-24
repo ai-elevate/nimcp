@@ -48,7 +48,13 @@ static pag_bio_subscription_t* find_subscription(
     pag_bio_async_bridge_t* bridge,
     uint32_t module_id
 ) {
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < bridge->subscription_count; i++) {
         if (bridge->subscriptions[i].module_id == module_id &&
@@ -109,7 +115,13 @@ pag_bio_async_bridge_t* pag_bio_async_bridge_create(
 ) {
     pag_bio_async_bridge_t* bridge = nimcp_calloc(1,
                                                    sizeof(pag_bio_async_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

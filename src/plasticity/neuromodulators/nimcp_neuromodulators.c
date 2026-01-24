@@ -831,7 +831,13 @@ neuromodulator_system_t neuromodulator_system_create(const neuromodulator_config
     /* WHAT: Guard clause - check allocation
      * WHY:  Early return prevents nested if
      */
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     /* WHAT: Initialize reader-writer lock using NIMCP platform abstraction
      * WHY:  Enable thread-safe concurrent access to concentrations

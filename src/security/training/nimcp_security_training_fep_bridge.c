@@ -178,6 +178,8 @@ static nimcp_error_t bio_message_handler(
 
 int security_train_fep_default_config(security_train_fep_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -328,6 +330,8 @@ void security_train_fep_destroy(security_train_fep_bridge_t* bridge) {
 
 int security_train_fep_reset(security_train_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -412,6 +416,8 @@ int security_train_fep_set_config(
 
 int security_train_fep_compute_effects(security_train_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -636,6 +642,8 @@ int security_train_fep_update_from_gradient_anomaly(
     float expected_norm
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -703,6 +711,8 @@ int security_train_fep_update_from_extraction_attempt(
     float query_rate
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -765,6 +775,8 @@ int security_train_fep_update_from_backdoor_detection(
     float trigger_confidence
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -872,6 +884,8 @@ int security_train_fep_report_action(
     bool success
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -934,6 +948,8 @@ int security_train_fep_report_false_positive(
     security_poisoning_type_t attack_type
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -1086,6 +1102,8 @@ bool security_train_fep_should_act(const security_train_fep_bridge_t* bridge) {
 
 int security_train_fep_connect_bio_async(security_train_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

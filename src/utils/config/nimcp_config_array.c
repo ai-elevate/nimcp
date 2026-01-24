@@ -119,7 +119,13 @@ static bool grow_array(config_array_t* arr, size_t min_capacity) {
  * @brief Trim whitespace and quotes from string
  */
 static char* trim_and_unquote(char* str) {
-    if (!str) return NULL;
+    if (!str) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "str is NULL");
+
+        return NULL;
+
+    }
 
     // Trim leading whitespace
     while (*str && isspace((unsigned char)*str)) str++;
@@ -755,11 +761,23 @@ bool config_array_resize(config_array_t* arr, size_t new_capacity) {
 //=============================================================================
 
 config_array_t* config_parse_int_array(const char* str) {
-    if (!str) return NULL;
+    if (!str) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "str is NULL");
+
+        return NULL;
+
+    }
 
     // Create array
     config_array_t* arr = config_array_create(CONFIG_TYPE_INT, 0);
-    if (!arr) return NULL;
+    if (!arr) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arr is NULL");
+
+        return NULL;
+
+    }
 
     // Copy string for tokenization
     size_t str_len = strlen(str) + 1;
@@ -801,10 +819,22 @@ config_array_t* config_parse_int_array(const char* str) {
 }
 
 config_array_t* config_parse_float_array(const char* str) {
-    if (!str) return NULL;
+    if (!str) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "str is NULL");
+
+        return NULL;
+
+    }
 
     config_array_t* arr = config_array_create(CONFIG_TYPE_FLOAT, 0);
-    if (!arr) return NULL;
+    if (!arr) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arr is NULL");
+
+        return NULL;
+
+    }
 
     size_t str_len = strlen(str) + 1;
     char* copy = (char*)nimcp_malloc(str_len);
@@ -843,10 +873,22 @@ config_array_t* config_parse_float_array(const char* str) {
 }
 
 config_array_t* config_parse_bool_array(const char* str) {
-    if (!str) return NULL;
+    if (!str) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "str is NULL");
+
+        return NULL;
+
+    }
 
     config_array_t* arr = config_array_create(CONFIG_TYPE_BOOL, 0);
-    if (!arr) return NULL;
+    if (!arr) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arr is NULL");
+
+        return NULL;
+
+    }
 
     size_t str_len = strlen(str) + 1;
     char* copy = (char*)nimcp_malloc(str_len);
@@ -885,10 +927,22 @@ config_array_t* config_parse_bool_array(const char* str) {
 }
 
 config_array_t* config_parse_string_array(const char* str) {
-    if (!str) return NULL;
+    if (!str) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "str is NULL");
+
+        return NULL;
+
+    }
 
     config_array_t* arr = config_array_create(CONFIG_TYPE_STRING, 0);
-    if (!arr) return NULL;
+    if (!arr) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arr is NULL");
+
+        return NULL;
+
+    }
 
     size_t str_len = strlen(str) + 1;
     char* copy = (char*)nimcp_malloc(str_len);
@@ -947,7 +1001,13 @@ config_array_t* config_parse_string_array(const char* str) {
 }
 
 config_array_t* config_parse_array_auto(const char* str) {
-    if (!str) return NULL;
+    if (!str) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "str is NULL");
+
+        return NULL;
+
+    }
 
     LOG_DEBUG("config_parse_array_auto: auto-detecting type for: %s", str);
 

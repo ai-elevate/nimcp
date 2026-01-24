@@ -283,6 +283,8 @@ static void* agent_thread_func(void* arg) {
 
 int kg_gc_agent_default_config(kg_gc_agent_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -315,11 +317,15 @@ int kg_gc_agent_default_config(kg_gc_agent_config_t* config) {
 
 kg_gc_agent_t* kg_gc_agent_create(brain_kg_t* kg, const kg_gc_agent_config_t* config) {
     if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
         return NULL;
     }
 
     kg_gc_agent_t* agent = nimcp_calloc(1, sizeof(kg_gc_agent_t));
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return NULL;
     }
 
@@ -384,6 +390,8 @@ void kg_gc_agent_destroy(kg_gc_agent_t* agent) {
 
 int kg_gc_agent_start(kg_gc_agent_t* agent) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 
@@ -416,6 +424,8 @@ int kg_gc_agent_start(kg_gc_agent_t* agent) {
 
 int kg_gc_agent_stop(kg_gc_agent_t* agent) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 
@@ -442,6 +452,8 @@ int kg_gc_agent_stop(kg_gc_agent_t* agent) {
 
 int kg_gc_agent_pause(kg_gc_agent_t* agent) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 
@@ -454,6 +466,8 @@ int kg_gc_agent_pause(kg_gc_agent_t* agent) {
 
 int kg_gc_agent_resume(kg_gc_agent_t* agent) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 
@@ -496,6 +510,8 @@ int kg_gc_agent_get_config(const kg_gc_agent_t* agent, kg_gc_agent_config_t* con
 
 int kg_gc_agent_set_priority(kg_gc_agent_t* agent, kg_gc_priority_t priority) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 
@@ -509,6 +525,8 @@ int kg_gc_agent_set_priority(kg_gc_agent_t* agent, kg_gc_priority_t priority) {
 
 int kg_gc_agent_set_targets(kg_gc_agent_t* agent, uint32_t targets) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 
@@ -602,6 +620,8 @@ bool kg_gc_agent_is_collecting(const kg_gc_agent_t* agent) {
 
 int kg_gc_agent_trigger_now(kg_gc_agent_t* agent) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 
@@ -622,6 +642,8 @@ int kg_gc_agent_request_escalation(
     const char* reason
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 
@@ -636,6 +658,9 @@ int kg_gc_agent_request_escalation(
         );
 
         if (!approved) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "approved is NULL");
+
+
             return -1;
         }
     }
@@ -645,6 +670,8 @@ int kg_gc_agent_request_escalation(
 
 int kg_gc_agent_cancel_current(kg_gc_agent_t* agent) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 
@@ -665,6 +692,8 @@ int kg_gc_agent_set_complete_callback(
     void* user_data
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 
@@ -682,6 +711,8 @@ int kg_gc_agent_set_escalation_callback(
     void* user_data
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 

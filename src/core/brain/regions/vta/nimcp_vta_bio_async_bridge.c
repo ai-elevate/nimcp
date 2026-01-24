@@ -75,7 +75,13 @@ int vta_bio_async_default_config(vta_bio_async_config_t* config) {
 
 vta_bio_async_bridge_t* vta_bio_async_bridge_create(const vta_bio_async_config_t* config) {
     vta_bio_async_bridge_t* bridge = calloc(1, sizeof(vta_bio_async_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

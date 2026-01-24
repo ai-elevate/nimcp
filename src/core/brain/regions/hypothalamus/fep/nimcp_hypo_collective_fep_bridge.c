@@ -59,6 +59,8 @@ static void update_running_averages(
 
 int hypo_col_fep_default_config(hypo_col_fep_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -197,6 +199,8 @@ void hypo_col_fep_destroy(hypo_col_fep_bridge_t* bridge) {
 
 int hypo_col_fep_reset(hypo_col_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -227,6 +231,8 @@ int hypo_col_fep_reset(hypo_col_fep_bridge_t* bridge) {
 
 int hypo_col_fep_update(hypo_col_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -394,6 +400,8 @@ int hypo_col_fep_compute_fe(
 
 int hypo_col_fep_modulate_precision(hypo_col_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -539,6 +547,8 @@ int hypo_col_fep_update_from_outcome(
     float individual_contribution
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -644,6 +654,8 @@ int hypo_col_fep_get_stats(
 
 int hypo_col_fep_connect_bio_async(hypo_col_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

@@ -243,13 +243,25 @@ NIMCP_EXPORT combinatorial_config_t combinatorial_default_config(void) {
 NIMCP_EXPORT combinatorial_harm_detector_t combinatorial_detector_create(
     const combinatorial_config_t* config
 ) {
-    if (!config) return NULL;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return NULL;
+
+    }
     if (config->history_capacity == 0) return NULL;
 
     // Allocate detector
     combinatorial_harm_detector_t detector = nimcp_calloc(1,
         sizeof(struct combinatorial_harm_detector_struct));
-    if (!detector) return NULL;
+    if (!detector) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detector is NULL");
+
+        return NULL;
+
+    }
 
     // Copy configuration
     memcpy(&detector->config, config, sizeof(combinatorial_config_t));

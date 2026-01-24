@@ -56,6 +56,8 @@ int nimcp_da_release_init(
     const nimcp_da_release_config_t* config
 ) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return -1;
     }
 
@@ -108,6 +110,8 @@ int nimcp_da_release_init(
 
 int nimcp_da_release_shutdown(nimcp_da_release_system_t* system) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return -1;
     }
 
@@ -117,6 +121,8 @@ int nimcp_da_release_shutdown(nimcp_da_release_system_t* system) {
 
 int nimcp_da_release_reset(nimcp_da_release_system_t* system) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return -1;
     }
 

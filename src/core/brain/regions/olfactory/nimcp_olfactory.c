@@ -38,7 +38,13 @@ nimcp_olfactory_t* olfact_create(const olfact_config_t* config) {
     }
 
     nimcp_olfactory_t* olfact = (nimcp_olfactory_t*)calloc(1, sizeof(nimcp_olfactory_t));
-    if (!olfact) return NULL;
+    if (!olfact) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact is NULL");
+
+        return NULL;
+
+    }
 
     memcpy(&olfact->config, config, sizeof(olfact_config_t));
     olfact->status = OLFACT_STATUS_IDLE;
@@ -606,7 +612,13 @@ nimcp_olfactory_t* olfact_deserialize(const uint8_t* buffer, size_t size, size_t
     offset += sizeof(uint32_t);
 
     nimcp_olfactory_t* olfact = olfact_create(&config);
-    if (!olfact) return NULL;
+    if (!olfact) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "olfact is NULL");
+
+        return NULL;
+
+    }
 
     if (num_memories > 0 && num_memories <= olfact->max_memories) {
         memcpy(olfact->odor_memories, buffer + offset,

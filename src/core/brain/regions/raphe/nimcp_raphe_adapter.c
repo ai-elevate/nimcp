@@ -123,7 +123,13 @@ nimcp_raphe_adapter_config_t nimcp_raphe_adapter_default_config(void) {
 
 nimcp_raphe_adapter_t nimcp_raphe_adapter_create(const nimcp_raphe_adapter_config_t* config) {
     struct nimcp_raphe_adapter* adapter = calloc(1, sizeof(struct nimcp_raphe_adapter));
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {
@@ -248,7 +254,13 @@ int nimcp_raphe_adapter_connect_training(nimcp_raphe_adapter_t adapter,
  *===========================================================================*/
 
 nimcp_raphe_system_t* nimcp_raphe_adapter_get_raphe(nimcp_raphe_adapter_t adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return &adapter->raphe;
 }
 

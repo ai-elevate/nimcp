@@ -343,6 +343,8 @@ bool nimcp_brain_factory_init_mental_health_guardian_subsystem(brain_t brain) {
  */
 mental_health_guardian_t* brain_get_mental_health_guardian(brain_t brain) {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return NULL;
     }
     return brain->mental_health_guardian;

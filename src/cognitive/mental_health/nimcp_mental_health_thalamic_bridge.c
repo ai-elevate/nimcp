@@ -31,7 +31,13 @@ mental_health_thalamic_config_t mental_health_thalamic_default_config(void) {
 
 mental_health_thalamic_bridge_t* mental_health_thalamic_bridge_create(void* mental_health, thalamic_router_t* router, const mental_health_thalamic_config_t* config) {
     mental_health_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(mental_health_thalamic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     if (bridge_base_init(&bridge->base, 0, "mental_health_thalamic") != 0) { nimcp_free(bridge); return NULL; }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);

@@ -57,6 +57,8 @@ int nimcp_salience_init(
     const nimcp_salience_config_t* config
 ) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return -1;
     }
 
@@ -83,6 +85,8 @@ int nimcp_salience_init(
 
 int nimcp_salience_shutdown(nimcp_salience_system_t* system) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return -1;
     }
 
@@ -92,6 +96,8 @@ int nimcp_salience_shutdown(nimcp_salience_system_t* system) {
 
 int nimcp_salience_reset(nimcp_salience_system_t* system) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return -1;
     }
 

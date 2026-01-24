@@ -69,7 +69,13 @@ int soma_medulla_default_config(soma_medulla_config_t* config) {
 
 soma_medulla_bridge_t* soma_medulla_bridge_create(const soma_medulla_config_t* config) {
     soma_medulla_bridge_t* bridge = (soma_medulla_bridge_t*)calloc(1, sizeof(soma_medulla_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         memcpy(&bridge->config, config, sizeof(soma_medulla_config_t));

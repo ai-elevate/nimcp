@@ -67,7 +67,13 @@ struct gust_bio_async_bridge_struct {
  * @brief Find subscription by module ID
  */
 static gust_bio_subscription_t* find_subscription(gust_bio_async_bridge_t* bridge, uint32_t module_id) {
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < bridge->num_subscriptions; i++) {
         if (bridge->subscriptions[i].module_id == module_id &&
@@ -121,7 +127,13 @@ int gust_bio_async_default_config(gust_bio_async_config_t* config) {
 
 gust_bio_async_bridge_t* gust_bio_async_bridge_create(const gust_bio_async_config_t* config) {
     gust_bio_async_bridge_t* bridge = (gust_bio_async_bridge_t*)calloc(1, sizeof(gust_bio_async_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         memcpy(&bridge->config, config, sizeof(gust_bio_async_config_t));

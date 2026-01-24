@@ -239,7 +239,13 @@ static float cosine_similarity(const float* a, const float* b, uint32_t size) {
 
 static place_cell_network_t* create_place_cells(const hippocampus_config_t* config) {
     place_cell_network_t* net = nimcp_calloc(1, sizeof(place_cell_network_t));
-    if (!net) return NULL;
+    if (!net) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "net is NULL");
+
+        return NULL;
+
+    }
 
     net->num_cells = config->num_place_cells;
     net->feature_dim = config->feature_dim;
@@ -279,7 +285,13 @@ static void destroy_place_cells(place_cell_network_t* net) {
 
 static grid_cell_network_t* create_grid_cells(const hippocampus_config_t* config) {
     grid_cell_network_t* net = nimcp_calloc(1, sizeof(grid_cell_network_t));
-    if (!net) return NULL;
+    if (!net) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "net is NULL");
+
+        return NULL;
+
+    }
 
     net->num_cells = config->num_grid_cells;
     net->num_modules = config->num_grid_scales;
@@ -329,7 +341,13 @@ static void destroy_grid_cells(grid_cell_network_t* net) {
 
 static pattern_separator_t* create_pattern_separator(const hippocampus_config_t* config) {
     pattern_separator_t* sep = nimcp_calloc(1, sizeof(pattern_separator_t));
-    if (!sep) return NULL;
+    if (!sep) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sep is NULL");
+
+        return NULL;
+
+    }
 
     sep->input_size = config->ec_size;
     sep->output_size = config->dg_size;
@@ -362,7 +380,13 @@ static void destroy_pattern_separator(pattern_separator_t* sep) {
 
 static memory_encoder_t* create_memory_encoder(const hippocampus_config_t* config) {
     memory_encoder_t* enc = nimcp_calloc(1, sizeof(memory_encoder_t));
-    if (!enc) return NULL;
+    if (!enc) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "enc is NULL");
+
+        return NULL;
+
+    }
 
     enc->ca3_size = config->ca3_size;
     enc->ca1_size = config->ca1_size;
@@ -1683,22 +1707,46 @@ bool hippocampus_get_config(const hippocampus_adapter_t* adapter, hippocampus_co
  *===========================================================================*/
 
 place_cell_network_t* hippocampus_get_place_cells(hippocampus_adapter_t* adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->place_cells;
 }
 
 grid_cell_network_t* hippocampus_get_grid_cells(hippocampus_adapter_t* adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->grid_cells;
 }
 
 pattern_separator_t* hippocampus_get_pattern_separator(hippocampus_adapter_t* adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->pattern_separator;
 }
 
 memory_encoder_t* hippocampus_get_memory_encoder(hippocampus_adapter_t* adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->memory_encoder;
 }
 
@@ -1707,7 +1755,13 @@ memory_encoder_t* hippocampus_get_memory_encoder(hippocampus_adapter_t* adapter)
  *===========================================================================*/
 
 bio_module_context_t hippocampus_get_bio_context(hippocampus_adapter_t* adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->bio_ctx;
 }
 

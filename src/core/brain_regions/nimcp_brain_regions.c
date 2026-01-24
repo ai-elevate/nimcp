@@ -215,7 +215,13 @@ static neuron_type_extended_t get_layer_neuron_type(brain_region_type_t region_t
 
 brain_module_t* brain_module_create(uint32_t max_regions) {
     brain_module_t* brain = (brain_module_t*)nimcp_calloc(1, sizeof(brain_module_t));
-    if (!brain) return NULL;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return NULL;
+
+    }
 
     brain->id = 1; // Fixed ID for now
     brain->max_regions = max_regions;
@@ -282,7 +288,13 @@ nimcp_result_t brain_module_add_region(brain_module_t* brain, brain_region_t* re
 }
 
 brain_region_t* brain_module_get_region(brain_module_t* brain, uint32_t region_id) {
-    if (!brain) return NULL;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < brain->num_regions; i++) {
         if (brain->regions[i]->id == region_id) {
@@ -295,7 +307,13 @@ brain_region_t* brain_module_get_region(brain_module_t* brain, uint32_t region_i
 
 brain_region_t* brain_module_get_region_by_type(brain_module_t* brain,
                                                  brain_region_type_t type) {
-    if (!brain) return NULL;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < brain->num_regions; i++) {
         if (brain->regions[i]->type == type) {
@@ -312,7 +330,13 @@ brain_region_t* brain_module_get_region_by_type(brain_module_t* brain,
 
 brain_region_t* brain_region_create(brain_region_type_t type, uint32_t num_neurons) {
     brain_region_t* region = (brain_region_t*)nimcp_calloc(1, sizeof(brain_region_t));
-    if (!region) return NULL;
+    if (!region) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "region is NULL");
+
+        return NULL;
+
+    }
 
     region->id = generate_region_id();
     region->type = type;
@@ -954,7 +978,13 @@ int brain_regions_query_self_knowledge(kg_reader_t* kg) {
  * @return Capability description string or NULL
  */
 const char* brain_regions_get_capabilities(kg_reader_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
     return kg_reader_get_module_capabilities(kg, "Brain_Regions");
 }
 
@@ -965,6 +995,12 @@ const char* brain_regions_get_capabilities(kg_reader_t* kg) {
  * @return Relation list showing integrations (caller must free)
  */
 kg_relation_list_t* brain_regions_get_integrations(kg_reader_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
     return kg_reader_get_module_integrations(kg, "Brain_Regions");
 }

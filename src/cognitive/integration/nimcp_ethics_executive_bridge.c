@@ -153,6 +153,8 @@ static action_evaluation_t* get_or_create_evaluation_unlocked(
 
 int ethics_executive_bridge_default_config(ethics_executive_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -169,6 +171,8 @@ ethics_executive_bridge_t* ethics_executive_bridge_create(
     /* Allocate bridge structure */
     ethics_executive_bridge_t* bridge = nimcp_malloc(sizeof(ethics_executive_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     memset(bridge, 0, sizeof(ethics_executive_bridge_t));
@@ -363,6 +367,8 @@ int ethics_executive_veto_action(
     uint64_t action_id
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

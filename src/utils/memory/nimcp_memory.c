@@ -531,8 +531,13 @@ static void init_if_needed(void)
  */
 static void* add_memory_guards(void* ptr, size_t size)
 {
-    if (!ptr)
+    if (!ptr) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ptr is NULL");
+
         return NULL;
+
+    }
 
     // Write head canary (8 bytes for proper alignment)
     uint64_t* guard_ptr = (uint64_t*) ptr;
@@ -1067,8 +1072,13 @@ static void track_allocation_with_handle(void* ptr, size_t size, unified_mem_han
  */
 static unified_mem_handle_t get_umm_handle(void* ptr)
 {
-    if (!ptr)
+    if (!ptr) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ptr is NULL");
+
         return NULL;
+
+    }
 
     // Note: We intentionally DO NOT check tracking_enabled here.
     // Even if tracking is currently disabled, we need to look up handle
@@ -1557,13 +1567,23 @@ void* nimcp_realloc(void* ptr, size_t new_size)
  */
 char* nimcp_strdup(const char* str)
 {
-    if (!str)
+    if (!str) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "str is NULL");
+
         return NULL;
+
+    }
 
     size_t len = strlen(str) + 1;  // Include null terminator
     char* new_str = (char*) nimcp_malloc(len);
-    if (!new_str)
+    if (!new_str) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_str is NULL");
+
         return NULL;
+
+    }
 
     memcpy(new_str, str, len);
     return new_str;

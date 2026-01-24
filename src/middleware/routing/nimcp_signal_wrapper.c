@@ -90,7 +90,13 @@ NIMCP_EXPORT signal_wrapper_t signal_wrapper_create(
 
     // Allocate wrapper structure
     signal_wrapper_t wrapper = nimcp_calloc(1, sizeof(struct signal_wrapper_struct));
-    if (!wrapper) return NULL;
+    if (!wrapper) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wrapper is NULL");
+
+        return NULL;
+
+    }
 
     // Store metadata
     wrapper->num_destinations = num_destinations;
@@ -143,7 +149,13 @@ NIMCP_EXPORT signal_wrapper_t signal_wrapper_create(
 
 NIMCP_EXPORT signal_wrapper_t signal_wrapper_acquire(signal_wrapper_t wrapper) {
     // Guard: validate input
-    if (!wrapper) return NULL;
+    if (!wrapper) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wrapper is NULL");
+
+        return NULL;
+
+    }
 
     /* P2 fix: Validate source wrapper's CoW handles are valid
      * WHY:  If source wrapper is in invalid state (e.g., after partial failure),
@@ -158,7 +170,13 @@ NIMCP_EXPORT signal_wrapper_t signal_wrapper_acquire(signal_wrapper_t wrapper) {
 
     // Allocate new wrapper structure (shares managers and handles)
     signal_wrapper_t new_wrapper = nimcp_calloc(1, sizeof(struct signal_wrapper_struct));
-    if (!new_wrapper) return NULL;
+    if (!new_wrapper) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_wrapper is NULL");
+
+        return NULL;
+
+    }
 
     // Copy metadata
     new_wrapper->num_destinations = wrapper->num_destinations;

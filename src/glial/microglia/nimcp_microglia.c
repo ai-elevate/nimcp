@@ -687,6 +687,8 @@ microglia_network_t* microglia_network_create_enhanced(
     microglia_network_t* network = (microglia_network_t*)nimcp_malloc(
         sizeof(microglia_network_t));
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+
         return NULL;
     }
 
@@ -1495,7 +1497,13 @@ void microglia_network_step(microglia_network_t* network, uint64_t current_time)
 microglia_t* microglia_network_find_by_synapse(microglia_network_t* network,
                                                 uint32_t synapse_id)
 {
-    if (!network) return NULL;
+    if (!network) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_mutex_lock(&network->lock);
 
@@ -1516,7 +1524,13 @@ microglia_t* microglia_network_find_by_synapse(microglia_network_t* network,
 microglia_t* microglia_network_find_nearest(microglia_network_t* network,
                                              float x, float y, float z)
 {
-    if (!network) return NULL;
+    if (!network) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_mutex_lock(&network->lock);
 
@@ -1733,6 +1747,8 @@ microglia_synapse_pool_t* microglia_synapse_pool_create(uint32_t capacity)
     microglia_synapse_pool_t* pool = (microglia_synapse_pool_t*)nimcp_malloc(
         sizeof(microglia_synapse_pool_t));
     if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool is NULL");
+
         return NULL;
     }
 
@@ -1789,7 +1805,13 @@ void microglia_synapse_pool_destroy(microglia_synapse_pool_t* pool)
 
 monitored_synapse_t* microglia_synapse_pool_alloc(microglia_synapse_pool_t* pool)
 {
-    if (!pool) return NULL;
+    if (!pool) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_spinlock_lock(&pool->lock);
 
@@ -1864,7 +1886,13 @@ void microglia_synapse_pool_stats(const microglia_synapse_pool_t* pool,
 
 microglia_t* microglia_cow_copy(microglia_t* mg)
 {
-    if (!mg) return NULL;
+    if (!mg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mg is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_spinlock_lock(&mg->lock);
 

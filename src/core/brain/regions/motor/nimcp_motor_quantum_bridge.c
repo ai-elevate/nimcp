@@ -156,7 +156,13 @@ motor_quantum_bridge_t* motor_quantum_bridge_create(
     const motor_quantum_config_t* config
 ) {
     motor_quantum_bridge_t* bridge = nimcp_calloc(1, sizeof(motor_quantum_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     bridge->motor = motor;
     bridge->config = config ? *config : motor_quantum_default_config();

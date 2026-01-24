@@ -95,7 +95,13 @@ int rsc_bio_async_default_config(rsc_bio_async_bridge_config_t* config) {
 
 rsc_bio_async_router_t* rsc_bio_async_router_create(const rsc_bio_async_bridge_config_t* config) {
     rsc_bio_async_router_t* bridge = calloc(1, sizeof(rsc_bio_async_router_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

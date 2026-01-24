@@ -281,6 +281,8 @@ brain_t brain_clone_cow(brain_t original)
     // Allocate clone structure
     brain_t clone = allocate_brain_simple();
     if (!clone) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+
         return NULL;
     }
 
@@ -435,6 +437,8 @@ brain_t brain_create_distributed(
     // Create standard brain first
     brain_t brain = brain_create(task_name, size, task, num_inputs, num_outputs);
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return NULL;
     }
 

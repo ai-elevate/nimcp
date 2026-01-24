@@ -65,7 +65,13 @@ brain_qreason_config_t brain_qreason_default_config(void) {
 //=============================================================================
 
 static brain_qreason_ctx_t* get_ctx(brain_t brain) {
-    if (!brain) return NULL;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return NULL;
+
+    }
     struct brain_struct* b = (struct brain_struct*)brain;
     return (brain_qreason_ctx_t*)b->quantum_reasoner;
 }

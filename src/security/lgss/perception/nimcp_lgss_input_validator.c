@@ -207,7 +207,13 @@ lgss_input_validator_t* lgss_input_validator_create(
     const lgss_input_validator_config_t* config)
 {
     lgss_input_validator_t* validator = nimcp_calloc(1, sizeof(*validator));
-    if (!validator) return NULL;
+    if (!validator) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validator is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

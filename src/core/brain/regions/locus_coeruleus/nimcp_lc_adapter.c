@@ -145,6 +145,8 @@ nimcp_lc_adapter_config_t nimcp_lc_adapter_default_config(void) {
 nimcp_lc_adapter_t nimcp_lc_adapter_create(const nimcp_lc_adapter_config_t* config) {
     nimcp_lc_adapter_t adapter = (nimcp_lc_adapter_t)calloc(1, sizeof(struct nimcp_lc_adapter_struct));
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
         return NULL;
     }
 

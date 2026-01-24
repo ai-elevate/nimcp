@@ -92,6 +92,8 @@ routing_immune_bridge_t* routing_immune_create(
 
     routing_immune_bridge_t* bridge = nimcp_malloc(sizeof(routing_immune_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

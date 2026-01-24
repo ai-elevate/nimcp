@@ -54,10 +54,22 @@ pink_sleep_config_t pink_sleep_default_config(void) {
 }
 
 pink_sleep_bridge_t* pink_sleep_create(const pink_sleep_config_t* config) {
-    if (!config) return NULL;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return NULL;
+
+    }
 
     pink_sleep_bridge_t* bridge = nimcp_calloc(1, sizeof(pink_sleep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     memcpy(&bridge->config, config, sizeof(pink_sleep_config_t));
     bridge->current_stage = PINK_SLEEP_WAKE;

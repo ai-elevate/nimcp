@@ -1193,11 +1193,15 @@ const char* signal_handler_get_signal_name(int sig)
 static int count_checkpoints_in_dir(const char* dir_path)
 {
     if (!dir_path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dir_path is NULL");
+
         return -1;
     }
 
     DIR* dir = opendir(dir_path);
     if (!dir) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dir is NULL");
+
         return -1;
     }
 
@@ -1567,6 +1571,9 @@ int signal_handler_init_thread_recovery(void)
     pthread_once(&g_recovery_ctx_key_once, init_recovery_ctx_key);
 
     if (!g_recovery_ctx_key_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "g_recovery_ctx_key_initialized is NULL");
+
+
         return -1;
     }
 
@@ -1629,6 +1636,9 @@ signal_recovery_ctx_t* signal_handler_get_recovery_ctx(void)
     pthread_once(&g_recovery_ctx_key_once, init_recovery_ctx_key);
 
     if (!g_recovery_ctx_key_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "g_recovery_ctx_key_initialized is NULL");
+
+
         return NULL;
     }
 

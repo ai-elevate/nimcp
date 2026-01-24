@@ -26,7 +26,13 @@ int predictive_coding_fep_bridge_default_config(predictive_coding_fep_config_t* 
 
 predictive_coding_fep_bridge_t* predictive_coding_fep_bridge_create(const predictive_coding_fep_config_t* config) {
     predictive_coding_fep_bridge_t* bridge = (predictive_coding_fep_bridge_t*)nimcp_malloc(sizeof(predictive_coding_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         memcpy(&bridge->config, config, sizeof(predictive_coding_fep_config_t));

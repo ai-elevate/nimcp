@@ -1327,7 +1327,13 @@ bool prefrontal_get_config(const prefrontal_adapter_t* adapter,
  *===========================================================================*/
 
 bio_module_context_t prefrontal_get_bio_context(prefrontal_adapter_t* adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->bio_ctx;
 }
 

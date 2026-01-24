@@ -267,7 +267,13 @@ static float apply_attention(const occipital_adapter_t* adapter,
 static v1_processor_t* v1_create(uint32_t num_orientations, uint32_t num_scales,
                                   uint32_t width, uint32_t height) {
     v1_processor_t* v1 = nimcp_calloc(1, sizeof(v1_processor_t));
-    if (!v1) return NULL;
+    if (!v1) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "v1 is NULL");
+
+        return NULL;
+
+    }
 
     v1->num_orientations = num_orientations;
     v1->num_scales = num_scales;
@@ -425,7 +431,13 @@ static bool v1_process(v1_processor_t* v1, const float* input,
 
 static v2_processor_t* v2_create(uint32_t width, uint32_t height) {
     v2_processor_t* v2 = nimcp_calloc(1, sizeof(v2_processor_t));
-    if (!v2) return NULL;
+    if (!v2) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "v2 is NULL");
+
+        return NULL;
+
+    }
 
     v2->max_contours = MAX_FEATURES_PER_AREA;
     v2->contour_strength = nimcp_calloc(width * height, sizeof(float));
@@ -504,7 +516,13 @@ static void v3_destroy(v3_processor_t* v3) {
 
 static v4_processor_t* v4_create(uint32_t width, uint32_t height, uint32_t color_space) {
     v4_processor_t* v4 = nimcp_calloc(1, sizeof(v4_processor_t));
-    if (!v4) return NULL;
+    if (!v4) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "v4 is NULL");
+
+        return NULL;
+
+    }
 
     v4->max_colors = MAX_COLOR_PERCEPTS;
     v4->max_forms = MAX_FEATURES_PER_AREA;
@@ -594,7 +612,13 @@ static bool v4_process(v4_processor_t* v4, const float* input,
 
 static v5_mt_processor_t* v5_create(uint32_t width, uint32_t height, uint32_t num_frames) {
     v5_mt_processor_t* v5 = nimcp_calloc(1, sizeof(v5_mt_processor_t));
-    if (!v5) return NULL;
+    if (!v5) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "v5 is NULL");
+
+        return NULL;
+
+    }
 
     v5->max_motions = MAX_MOTION_VECTORS;
     v5->frame_buffer_size = num_frames;

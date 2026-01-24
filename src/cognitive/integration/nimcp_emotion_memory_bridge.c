@@ -174,6 +174,8 @@ static void update_averages_unlocked(emotion_memory_bridge_t* bridge,
 
 int emotion_memory_bridge_default_config(emotion_memory_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -190,6 +192,8 @@ emotion_memory_bridge_t* emotion_memory_bridge_create(
     /* Allocate bridge structure */
     emotion_memory_bridge_t* bridge = nimcp_calloc(1, sizeof(emotion_memory_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

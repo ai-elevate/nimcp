@@ -141,7 +141,13 @@ void bg_beta_default_config(bg_beta_config_t* config) {
 
 bg_beta_system_t* bg_beta_create(const bg_beta_config_t* config) {
     bg_beta_system_t* system = nimcp_calloc(1, sizeof(bg_beta_system_t));
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

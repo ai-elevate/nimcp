@@ -63,6 +63,8 @@ static brain_inflammation_level_t compute_inflammation_from_unhealthy_peers(uint
 
 int p2p_immune_default_config(p2p_immune_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -373,6 +375,8 @@ int p2p_immune_release_il10_from_recovery(p2p_immune_bridge_t* bridge) {
 
 int p2p_immune_bridge_update(p2p_immune_bridge_t* bridge, uint64_t delta_ms) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

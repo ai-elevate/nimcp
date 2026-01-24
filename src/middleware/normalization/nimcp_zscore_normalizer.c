@@ -61,7 +61,13 @@ zscore_normalizer_t* zscore_normalizer_create(
     if (num_channels == 0) return NULL;
 
     zscore_normalizer_t* norm = nimcp_calloc(1, sizeof(zscore_normalizer_t));
-    if (!norm) return NULL;
+    if (!norm) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "norm is NULL");
+
+        return NULL;
+
+    }
 
     norm->num_channels = num_channels;
     norm->window_size = window_size;

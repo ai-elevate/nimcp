@@ -213,17 +213,35 @@ bool nimcp_brain_pr_memory_is_initialized(const struct brain_struct* brain) {
 //=============================================================================
 
 struct z_ladder_struct* nimcp_brain_get_z_ladder(struct brain_struct* brain) {
-    if (!brain) return NULL;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return NULL;
+
+    }
     return brain->pr_z_ladder;
 }
 
 struct theta_gamma_manager_internal* nimcp_brain_get_theta_gamma(struct brain_struct* brain) {
-    if (!brain) return NULL;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return NULL;
+
+    }
     return brain->pr_theta_gamma;
 }
 
 struct entangle_graph_struct* nimcp_brain_get_entanglement(struct brain_struct* brain) {
-    if (!brain) return NULL;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return NULL;
+
+    }
     return brain->pr_entanglement;
 }
 

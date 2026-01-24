@@ -168,7 +168,13 @@ perception_bio_bridge_t* perception_bio_async_bridge_create(
     const perception_bio_bridge_config_t* config
 ) {
     perception_bio_bridge_t* bridge = calloc(1, sizeof(perception_bio_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

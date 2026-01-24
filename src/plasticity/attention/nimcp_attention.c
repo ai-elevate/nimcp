@@ -1952,6 +1952,8 @@ struct ternary_attention_ctx_s {
 int ternary_attention_default_config(ternary_attention_config_t* config)
 {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -1975,11 +1977,15 @@ ternary_attention_ctx_t* ternary_attention_create(
     const ternary_attention_config_t* config)
 {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
     ternary_attention_ctx_t* ctx = nimcp_calloc(1, sizeof(ternary_attention_ctx_t));
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 
@@ -2201,6 +2207,8 @@ int ternary_attention_top_k(
     /* Simple O(n*k) algorithm suitable for small k */
     float* values_copy = nimcp_malloc(seq_length * sizeof(float));
     if (!values_copy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "values_copy is NULL");
+
         return -1;
     }
 

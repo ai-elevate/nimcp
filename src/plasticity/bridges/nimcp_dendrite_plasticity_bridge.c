@@ -33,7 +33,13 @@ static compartment_plasticity_state_t* find_or_create_compartment(
     dendrite_plasticity_bridge_t* bridge,
     uint32_t compartment_id)
 {
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Search existing compartments */
     for (size_t i = 0; i < bridge->num_compartments; i++) {

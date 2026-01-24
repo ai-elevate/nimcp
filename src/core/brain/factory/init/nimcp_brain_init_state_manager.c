@@ -501,6 +501,8 @@ int brain_restore_state(brain_t brain, const uint8_t* buffer, size_t size)
 int brain_validate_state(brain_t brain)
 {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return -1;
     }
 
@@ -520,6 +522,8 @@ int brain_validate_state(brain_t brain)
 int brain_reset_invalid_state(brain_t brain)
 {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return -1;
     }
 

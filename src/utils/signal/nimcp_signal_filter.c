@@ -217,7 +217,13 @@ signal_filter_t* signal_filter_create(const signal_filter_config_t* config) {
     }
 
     signal_filter_t* filter = (signal_filter_t*)nimcp_calloc(1, sizeof(signal_filter_t));
-    if (!filter) return NULL;
+    if (!filter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "filter is NULL");
+
+        return NULL;
+
+    }
 
     filter->config = *config;
     filter->num_coeffs = config->order + 1;

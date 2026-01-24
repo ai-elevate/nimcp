@@ -297,6 +297,8 @@ static int collective_query_handler(
 
 int collective_hub_bridge_default_config(collective_hub_bridge_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -323,6 +325,8 @@ collective_hub_bridge_t* collective_hub_bridge_create(
     /* Allocate bridge structure */
     collective_hub_bridge_t* bridge = nimcp_calloc(1, sizeof(collective_hub_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -525,6 +529,8 @@ int collective_hub_bridge_connect(
 
 int collective_hub_bridge_disconnect(collective_hub_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -731,6 +737,8 @@ int collective_hub_publish_event(
     size_t data_size
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -815,6 +823,8 @@ int collective_hub_publish_event(
 
 int collective_hub_bridge_update(collective_hub_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -950,6 +960,8 @@ int collective_hub_bridge_get_stats(
 
 int collective_hub_bridge_reset_stats(collective_hub_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

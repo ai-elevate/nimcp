@@ -227,7 +227,13 @@ static mps_tensor_t* mps_tensor_alloc(
     uint32_t phys_dim
 ) {
     mps_tensor_t* tensor = (mps_tensor_t*)nimcp_malloc(sizeof(mps_tensor_t));
-    if (!tensor) return NULL;
+    if (!tensor) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tensor is NULL");
+
+        return NULL;
+
+    }
 
     tensor->left_dim = left_dim;
     tensor->right_dim = right_dim;
@@ -509,7 +515,13 @@ mps_matrix_t* mps_compress_matrix(
 
     // Allocate MPS structure
     mps_matrix_t* mps = (mps_matrix_t*)nimcp_malloc(sizeof(mps_matrix_t));
-    if (!mps) return NULL;
+    if (!mps) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mps is NULL");
+
+        return NULL;
+
+    }
 
     // Compute MPS structure parameters
     mps->num_sites = compute_num_sites(num_rows, num_cols);
@@ -765,11 +777,23 @@ void mps_free(mps_matrix_t* mps) {
 }
 
 mps_matrix_t* mps_clone(const mps_matrix_t* mps) {
-    if (!mps) return NULL;
+    if (!mps) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mps is NULL");
+
+        return NULL;
+
+    }
 
     // Allocate new MPS
     mps_matrix_t* clone = (mps_matrix_t*)nimcp_malloc(sizeof(mps_matrix_t));
-    if (!clone) return NULL;
+    if (!clone) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+
+        return NULL;
+
+    }
 
     // Copy metadata
     *clone = *mps;

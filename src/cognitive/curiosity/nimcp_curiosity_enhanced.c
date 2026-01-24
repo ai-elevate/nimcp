@@ -1671,7 +1671,16 @@ curiosity_type_t curiosity_type_from_string(const char* str) {
 curiosity_quantum_bridge_t* curiosity_enhanced_get_quantum_bridge(
     curiosity_enhanced_system_t* system) {
 
-    if (!system) return NULL;
+    if (!system) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+
+        return NULL;
+
+
+    }
     return system->quantum_bridge;
 }
 

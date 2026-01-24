@@ -1209,7 +1209,13 @@ bool hypothalamus_set_autonomic_callback(hypothalamus_adapter_t* adapter,
 
 bio_module_context_t hypothalamus_get_bio_context(
     hypothalamus_adapter_t* adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->bio_ctx;
 }
 

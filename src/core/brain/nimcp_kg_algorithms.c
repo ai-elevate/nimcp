@@ -83,6 +83,8 @@ static uint32_t random_uint(uint32_t max);
 
 int kg_algorithm_config_default(kg_algorithm_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -126,11 +128,15 @@ int kg_algorithm_config_default(kg_algorithm_config_t* config) {
 
 static algorithm_graph_t* build_algorithm_graph(const kg_hierarchy_t* hier) {
     if (!hier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hier is NULL");
+
         return NULL;
     }
 
     algorithm_graph_t* graph = nimcp_calloc(1, sizeof(algorithm_graph_t));
     if (!graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph is NULL");
+
         return NULL;
     }
 
@@ -346,6 +352,8 @@ int kg_compute_centrality(
 
     algorithm_graph_t* graph = build_algorithm_graph(hier);
     if (!graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph is NULL");
+
         return -1;
     }
 
@@ -1013,11 +1021,15 @@ kg_quantum_walk_result_t* kg_quantum_walk_search(
     const kg_algorithm_config_t* config
 ) {
     if (!hier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hier is NULL");
+
         return NULL;
     }
 
     algorithm_graph_t* graph = build_algorithm_graph(hier);
     if (!graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph is NULL");
+
         return NULL;
     }
 
@@ -1195,6 +1207,8 @@ int kg_quantum_walk_spreading_activation(
 
     algorithm_graph_t* graph = build_algorithm_graph(hier);
     if (!graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph is NULL");
+
         return -1;
     }
 
@@ -1275,11 +1289,15 @@ kg_qmc_result_t* kg_qmc_estimate_reachability(
     uint32_t samples
 ) {
     if (!hier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hier is NULL");
+
         return NULL;
     }
 
     algorithm_graph_t* graph = build_algorithm_graph(hier);
     if (!graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph is NULL");
+
         return NULL;
     }
 
@@ -1439,6 +1457,8 @@ kg_similarity_result_t* kg_find_similar(
 
     algorithm_graph_t* graph = build_algorithm_graph(hier);
     if (!graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph is NULL");
+
         return NULL;
     }
 
@@ -1543,6 +1563,8 @@ kg_similarity_result_t* kg_find_in_radius(
 
     algorithm_graph_t* graph = build_algorithm_graph(hier);
     if (!graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph is NULL");
+
         return NULL;
     }
 
@@ -1626,6 +1648,8 @@ kg_similarity_result_t* kg_find_in_radius(
 
 int kg_rebuild_similarity_index(kg_hierarchy_t* hier) {
     if (!hier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hier is NULL");
+
         return -1;
     }
     /* For now, similarity is computed on-demand */
@@ -1788,6 +1812,8 @@ int kg_compute_hyperbolic_embedding(
 
     algorithm_graph_t* graph = build_algorithm_graph(hier);
     if (!graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph is NULL");
+
         return -1;
     }
 
@@ -1874,6 +1900,8 @@ int kg_set_relationship_ternary(
     trit_t relationship
 ) {
     if (!hier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hier is NULL");
+
         return -1;
     }
 

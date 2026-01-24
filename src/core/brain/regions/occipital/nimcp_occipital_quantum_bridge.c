@@ -95,7 +95,13 @@ occipital_quantum_bridge_t* occipital_quantum_bridge_create(
     const occipital_quantum_config_t* config
 ) {
     occipital_quantum_bridge_t* bridge = nimcp_calloc(1, sizeof(occipital_quantum_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     bridge->occipital = occipital;
     bridge->config = config ? *config : occipital_quantum_default_config();

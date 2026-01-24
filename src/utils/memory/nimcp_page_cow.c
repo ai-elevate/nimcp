@@ -428,7 +428,13 @@ NIMCP_EXPORT page_cow_region_t page_cow_region_create(
 
     // Allocate region structure
     page_cow_region_t region = calloc(1, sizeof(struct page_cow_region_struct));
-    if (!region) return NULL;
+    if (!region) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "region is NULL");
+
+        return NULL;
+
+    }
 
     region->magic = PAGE_COW_MAGIC;
     region->size = page_cow_align_size(config->size);
@@ -543,7 +549,13 @@ NIMCP_EXPORT page_cow_view_t page_cow_view_create(page_cow_region_t region) {
 
     // Allocate view structure
     page_cow_view_t view = calloc(1, sizeof(struct page_cow_view_struct));
-    if (!view) return NULL;
+    if (!view) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "view is NULL");
+
+        return NULL;
+
+    }
 
     view->magic = PAGE_VIEW_MAGIC;
     view->region = region;
@@ -611,11 +623,23 @@ NIMCP_EXPORT page_cow_view_t page_cow_view_clone(page_cow_view_t source) {
     if (!source || source->magic != PAGE_VIEW_MAGIC) return NULL;
 
     page_cow_region_t region = source->region;
-    if (!region) return NULL;
+    if (!region) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "region is NULL");
+
+        return NULL;
+
+    }
 
     // Create new view from same region
     page_cow_view_t clone = page_cow_view_create(region);
-    if (!clone) return NULL;
+    if (!clone) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+
+        return NULL;
+
+    }
 
     // Copy private pages from source
     spinlock_acquire(&source->spinlock);
@@ -800,7 +824,13 @@ NIMCP_EXPORT page_cow_snapshot_t page_cow_snapshot_create(page_cow_view_t view) 
     if (!view || view->magic != PAGE_VIEW_MAGIC) return NULL;
 
     page_cow_snapshot_t snap = calloc(1, sizeof(struct page_cow_snapshot_struct));
-    if (!snap) return NULL;
+    if (!snap) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snap is NULL");
+
+        return NULL;
+
+    }
 
     snap->magic = PAGE_SNAP_MAGIC;
     snap->source_view = view;

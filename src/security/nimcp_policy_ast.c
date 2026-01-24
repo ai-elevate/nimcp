@@ -21,7 +21,13 @@
  * ======================================================================== */
 
 static char* safe_strdup(const char* str) {
-    if (!str) return NULL;
+    if (!str) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "str is NULL");
+
+        return NULL;
+
+    }
     char* dup = strdup(str);
     if (!dup) {
         LOG_ERROR("Failed to duplicate string");
@@ -55,7 +61,13 @@ nimcp_ast_node_t* nimcp_ast_create_policy(
     size_t num_params)
 {
     nimcp_ast_node_t* node = create_node(NIMCP_AST_POLICY);
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
 
     node->policy.name = safe_strdup(name);
     node->policy.rules = rules;
@@ -75,7 +87,13 @@ nimcp_ast_node_t* nimcp_ast_create_rule(
     size_t num_params)
 {
     nimcp_ast_node_t* node = create_node(NIMCP_AST_RULE);
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
 
     node->rule.name = safe_strdup(name);
     node->rule.condition = condition;
@@ -93,7 +111,13 @@ nimcp_ast_node_t* nimcp_ast_create_action(
     size_t num_params)
 {
     nimcp_ast_node_t* node = create_node(NIMCP_AST_ACTION);
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
 
     node->action.action_type = safe_strdup(action_type);
     node->action.params = params;
@@ -109,7 +133,13 @@ nimcp_ast_node_t* nimcp_ast_create_binary(
     nimcp_ast_node_t* right)
 {
     nimcp_ast_node_t* node = create_node(NIMCP_AST_BINARY_OP);
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
 
     node->binary.op = op;
     node->binary.left = left;
@@ -124,7 +154,13 @@ nimcp_ast_node_t* nimcp_ast_create_unary(
     nimcp_ast_node_t* operand)
 {
     nimcp_ast_node_t* node = create_node(NIMCP_AST_UNARY_OP);
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
 
     node->unary.op = op;
     node->unary.operand = operand;
@@ -139,7 +175,13 @@ nimcp_ast_node_t* nimcp_ast_create_call(
     size_t num_args)
 {
     nimcp_ast_node_t* node = create_node(NIMCP_AST_CALL);
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
 
     node->call.name = safe_strdup(name);
     node->call.args = args;
@@ -154,7 +196,13 @@ nimcp_ast_node_t* nimcp_ast_create_member(
     const char* member)
 {
     nimcp_ast_node_t* node = create_node(NIMCP_AST_MEMBER);
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
 
     node->member.object = object;
     node->member.member = safe_strdup(member);
@@ -165,7 +213,13 @@ nimcp_ast_node_t* nimcp_ast_create_member(
 
 nimcp_ast_node_t* nimcp_ast_create_literal_string(const char* value) {
     nimcp_ast_node_t* node = create_node(NIMCP_AST_LITERAL);
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
 
     node->literal.type = NIMCP_LITERAL_STRING;
     node->literal.string_val = safe_strdup(value);
@@ -176,7 +230,13 @@ nimcp_ast_node_t* nimcp_ast_create_literal_string(const char* value) {
 
 nimcp_ast_node_t* nimcp_ast_create_literal_int(int64_t value) {
     nimcp_ast_node_t* node = create_node(NIMCP_AST_LITERAL);
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
 
     node->literal.type = NIMCP_LITERAL_INT;
     node->literal.int_val = value;
@@ -187,7 +247,13 @@ nimcp_ast_node_t* nimcp_ast_create_literal_int(int64_t value) {
 
 nimcp_ast_node_t* nimcp_ast_create_literal_float(double value) {
     nimcp_ast_node_t* node = create_node(NIMCP_AST_LITERAL);
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
 
     node->literal.type = NIMCP_LITERAL_FLOAT;
     node->literal.float_val = value;
@@ -198,7 +264,13 @@ nimcp_ast_node_t* nimcp_ast_create_literal_float(double value) {
 
 nimcp_ast_node_t* nimcp_ast_create_literal_bool(bool value) {
     nimcp_ast_node_t* node = create_node(NIMCP_AST_LITERAL);
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
 
     node->literal.type = NIMCP_LITERAL_BOOL;
     node->literal.bool_val = value;
@@ -209,7 +281,13 @@ nimcp_ast_node_t* nimcp_ast_create_literal_bool(bool value) {
 
 nimcp_ast_node_t* nimcp_ast_create_identifier(const char* name) {
     nimcp_ast_node_t* node = create_node(NIMCP_AST_IDENTIFIER);
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
 
     node->identifier.name = safe_strdup(name);
 
@@ -222,7 +300,13 @@ nimcp_ast_node_t* nimcp_ast_create_param(
     nimcp_ast_node_t* value)
 {
     nimcp_ast_node_t* node = create_node(NIMCP_AST_PARAM);
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
 
     node->param.key = safe_strdup(key);
     node->param.value = value;

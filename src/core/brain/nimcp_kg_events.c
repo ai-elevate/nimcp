@@ -239,6 +239,8 @@ static void persist_event(kg_event_stream_t* stream, const kg_event_t* event) {
 
 int kg_events_default_config(kg_event_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -255,6 +257,8 @@ int kg_events_default_config(kg_event_config_t* config) {
 kg_event_stream_t* kg_events_create(brain_kg_t* kg, const kg_event_config_t* config) {
     kg_event_stream_t* stream = nimcp_calloc(1, sizeof(kg_event_stream_t));
     if (!stream) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stream is NULL");
+
         return NULL;
     }
 
@@ -374,6 +378,8 @@ void kg_events_destroy(kg_event_stream_t* stream) {
 
 int kg_events_default_filter(kg_subscription_filter_t* filter) {
     if (!filter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "filter is NULL");
+
         return -1;
     }
 
@@ -492,6 +498,8 @@ uint32_t kg_events_get_subscription_count(const kg_event_stream_t* stream) {
 
 int kg_events_default_webhook_config(kg_webhook_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -584,6 +592,8 @@ uint32_t kg_events_get_webhook_count(const kg_event_stream_t* stream) {
 
 int kg_events_pause_webhooks(kg_event_stream_t* stream) {
     if (!stream) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stream is NULL");
+
         return -1;
     }
 
@@ -596,6 +606,8 @@ int kg_events_pause_webhooks(kg_event_stream_t* stream) {
 
 int kg_events_resume_webhooks(kg_event_stream_t* stream) {
     if (!stream) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stream is NULL");
+
         return -1;
     }
 

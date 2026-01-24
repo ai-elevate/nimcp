@@ -86,6 +86,8 @@ struct neural_plasticity_coordinator {
 
 int neural_plasticity_default_config(neural_plasticity_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -277,6 +279,8 @@ int neural_plasticity_connect_umm(
 
 int neural_plasticity_connect_bio_async(neural_plasticity_coordinator_t* coordinator) {
     if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
+
         return -1;
     }
 
@@ -385,6 +389,8 @@ int neural_plasticity_register_synapse(
     float initial_weight
 ) {
     if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
+
         return -1;
     }
 
@@ -433,6 +439,8 @@ int neural_plasticity_unregister_synapse(
     uint32_t synapse_id
 ) {
     if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
+
         return -1;
     }
 
@@ -460,6 +468,8 @@ int neural_plasticity_step(
     uint64_t current_time_us
 ) {
     if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
+
         return -1;
     }
 
@@ -676,6 +686,8 @@ int neural_plasticity_get_stats(
 
 int neural_plasticity_reset_stats(neural_plasticity_coordinator_t* coordinator) {
     if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
+
         return -1;
     }
 

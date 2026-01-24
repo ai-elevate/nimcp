@@ -338,7 +338,13 @@ phonological_analyzer_t* wernicke_phonological_create(const phonological_config_
     phonological_config_t cfg = config ? *config : wernicke_phonological_default_config();
 
     phonological_analyzer_t* analyzer = (phonological_analyzer_t*)calloc(1, sizeof(phonological_analyzer_t));
-    if (!analyzer) return NULL;
+    if (!analyzer) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analyzer is NULL");
+
+        return NULL;
+
+    }
 
     analyzer->config = cfg;
 
@@ -909,7 +915,13 @@ phonological_result_t* phonological_result_alloc(
     uint32_t max_frames)
 {
     phonological_result_t* result = (phonological_result_t*)calloc(1, sizeof(phonological_result_t));
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     result->phonemes = (phoneme_event_t*)calloc(max_phonemes, sizeof(phoneme_event_t));
     result->syllables = (syllable_t*)calloc(max_syllables, sizeof(syllable_t));

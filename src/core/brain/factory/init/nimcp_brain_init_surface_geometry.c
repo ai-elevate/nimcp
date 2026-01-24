@@ -52,7 +52,13 @@ typedef struct surface_geometry_subsystem_struct {
  * @brief Get or create subsystem storage in brain
  */
 static surface_geometry_subsystem_t* get_or_create_subsystem(brain_t brain) {
-    if (!brain) return NULL;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return NULL;
+
+    }
 
     /* For now, we'll use a static allocation since we don't have
      * direct access to brain's extension storage mechanism.
@@ -73,7 +79,13 @@ static surface_geometry_subsystem_t* get_or_create_subsystem(brain_t brain) {
  * @brief Get existing subsystem (no create)
  */
 static surface_geometry_subsystem_t* get_subsystem(brain_t brain) {
-    if (!brain) return NULL;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return NULL;
+
+    }
 
     surface_geometry_subsystem_t* subsystem = get_or_create_subsystem(brain);
     if (!subsystem || !subsystem->initialized) {

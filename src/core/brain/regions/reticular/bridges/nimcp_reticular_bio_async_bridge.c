@@ -104,7 +104,13 @@ int reticular_bridge_default_config(reticular_bridge_config_t* config) {
 
 reticular_bridge_t* reticular_bridge_create(const reticular_bridge_config_t* config) {
     reticular_bridge_t* bridge = calloc(1, sizeof(*bridge));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

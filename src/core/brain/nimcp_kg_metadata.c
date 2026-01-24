@@ -213,11 +213,15 @@ void kg_metadata_destroy(kg_metadata_t* meta) {
 
 kg_metadata_t* kg_metadata_clone(const kg_metadata_t* meta) {
     if (!meta) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta is NULL");
+
         return NULL;
     }
 
     kg_metadata_t* clone = nimcp_calloc(1, sizeof(kg_metadata_t));
     if (!clone) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+
         return NULL;
     }
 
@@ -337,6 +341,8 @@ int kg_metadata_set_string(kg_metadata_t* meta, const char* key,
 
     kg_metadata_entry_t* entry = find_or_create_entry(meta, key);
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+
         return -1;
     }
 
@@ -360,6 +366,8 @@ int kg_metadata_set_int(kg_metadata_t* meta, const char* key,
 
     kg_metadata_entry_t* entry = find_or_create_entry(meta, key);
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+
         return -1;
     }
 
@@ -381,6 +389,8 @@ int kg_metadata_set_float(kg_metadata_t* meta, const char* key,
 
     kg_metadata_entry_t* entry = find_or_create_entry(meta, key);
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+
         return -1;
     }
 
@@ -402,6 +412,8 @@ int kg_metadata_set_bool(kg_metadata_t* meta, const char* key,
 
     kg_metadata_entry_t* entry = find_or_create_entry(meta, key);
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+
         return -1;
     }
 
@@ -423,6 +435,8 @@ int kg_metadata_set_timestamp(kg_metadata_t* meta, const char* key,
 
     kg_metadata_entry_t* entry = find_or_create_entry(meta, key);
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+
         return -1;
     }
 
@@ -444,6 +458,8 @@ int kg_metadata_set_json(kg_metadata_t* meta, const char* key,
 
     kg_metadata_entry_t* entry = find_or_create_entry(meta, key);
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+
         return -1;
     }
 
@@ -462,6 +478,8 @@ int kg_metadata_set_json(kg_metadata_t* meta, const char* key,
 
 int kg_metadata_set_tags(kg_metadata_t* meta, const char* comma_separated_tags) {
     if (!meta) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta is NULL");
+
         return -1;
     }
 
@@ -757,6 +775,8 @@ const char* kg_meta_type_to_string(kg_meta_type_t type) {
 
 int kg_metadata_generate_uuid(char* uuid_out) {
     if (!uuid_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "uuid_out is NULL");
+
         return -1;
     }
 
@@ -799,6 +819,8 @@ int kg_metadata_generate_uuid(char* uuid_out) {
 
 int kg_metadata_touch(kg_metadata_t* meta) {
     if (!meta) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta is NULL");
+
         return -1;
     }
     meta->updated_at = get_current_timestamp_ms();

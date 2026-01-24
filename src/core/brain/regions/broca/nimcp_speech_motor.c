@@ -417,6 +417,8 @@ speech_motor_planner_t* speech_motor_create(const speech_motor_config_t* config)
     speech_motor_planner_t* planner =
         (speech_motor_planner_t*)nimcp_calloc(1, sizeof(speech_motor_planner_t));
     if (!planner) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "planner is NULL");
+
         return NULL;
     }
 

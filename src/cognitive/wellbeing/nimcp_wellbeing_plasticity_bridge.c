@@ -118,7 +118,13 @@ wellbeing_plasticity_bridge_t* wellbeing_plasticity_create(
     const wellbeing_plasticity_config_t* config
 ) {
     wellbeing_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(wellbeing_plasticity_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

@@ -107,7 +107,13 @@ int neuromod_logging_bridge_default_config(neuromod_logging_bridge_config_t* con
 
 neuromod_logging_bridge_t* neuromod_logging_bridge_create(const neuromod_logging_bridge_config_t* config) {
     neuromod_logging_bridge_t* bridge = calloc(1, sizeof(neuromod_logging_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     bridge->magic = NEUROMOD_LOGGING_BRIDGE_MAGIC;
 

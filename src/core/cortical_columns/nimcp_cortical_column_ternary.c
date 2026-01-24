@@ -71,7 +71,13 @@ cc_ternary_connectivity_t* cc_ternary_connectivity_create_lateral(
     cc_ternary_connectivity_t* conn = cc_ternary_connectivity_create(
         n_columns, n_columns, TERNARY_PACK_NONE
     );
-    if (!conn) return NULL;
+    if (!conn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conn is NULL");
+
+        return NULL;
+
+    }
 
     conn->n_absent = 0;
 
@@ -167,7 +173,13 @@ cc_ternary_connectivity_t* cc_ternary_connectivity_clone(
     if (!src || src->magic != CC_TERNARY_MAGIC) return NULL;
 
     cc_ternary_connectivity_t* dst = nimcp_malloc(sizeof(cc_ternary_connectivity_t));
-    if (!dst) return NULL;
+    if (!dst) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dst is NULL");
+
+        return NULL;
+
+    }
 
     memcpy(dst, src, sizeof(cc_ternary_connectivity_t));
 
@@ -275,7 +287,13 @@ cc_ternary_hypercolumn_t* cc_ternary_hypercolumn_create(
 
     /* Allocate structure */
     cc_ternary_hypercolumn_t* thcol = nimcp_malloc(sizeof(cc_ternary_hypercolumn_t));
-    if (!thcol) return NULL;
+    if (!thcol) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thcol is NULL");
+
+        return NULL;
+
+    }
     memset(thcol, 0, sizeof(cc_ternary_hypercolumn_t));
 
     thcol->magic = CC_TERNARY_MAGIC;

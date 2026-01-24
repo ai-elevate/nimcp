@@ -87,7 +87,13 @@ static inline nimcp_result_t nimcp_replay_heap_insert(nimcp_min_heap_t *heap, vo
 }
 
 static inline void *nimcp_replay_heap_extract(nimcp_min_heap_t *heap) {
-    if (!heap) return NULL;
+    if (!heap) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "heap is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_heap_element_t elem;
     if (!nimcp_min_heap_extract_min(heap, &elem)) return NULL;
@@ -3195,6 +3201,8 @@ static NimcpMemoryEntry *create_memory_entry(
 {
     NimcpMemoryEntry *entry = (NimcpMemoryEntry *)nimcp_malloc(sizeof(NimcpMemoryEntry));
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+
         return NULL;
     }
 

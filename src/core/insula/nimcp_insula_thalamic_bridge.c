@@ -42,11 +42,15 @@ insula_thalamic_bridge_t* insula_thalamic_bridge_create(void* insula,
                                                          thalamic_router_t* router,
                                                          const insula_thalamic_config_t* config) {
     if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router is NULL");
+
         return NULL;
     }
 
     insula_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(insula_thalamic_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -73,6 +77,8 @@ void insula_thalamic_bridge_destroy(insula_thalamic_bridge_t* bridge) {
 
 int insula_thalamic_bridge_reset(insula_thalamic_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -128,6 +134,8 @@ int insula_thalamic_route_signal(insula_thalamic_bridge_t* bridge,
 int insula_thalamic_route_interoception(insula_thalamic_bridge_t* bridge,
                                          const void* state, float strength) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -147,6 +155,8 @@ int insula_thalamic_route_interoception(insula_thalamic_bridge_t* bridge,
 
 int insula_thalamic_set_attention(insula_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

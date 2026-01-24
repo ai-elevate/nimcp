@@ -2016,7 +2016,13 @@ void nimcp_rsc_print_summary(const nimcp_retrosplenial_t* rsc) {
  *===========================================================================*/
 
 nimcp_mutex_t* nimcp_rsc_get_mutex(nimcp_retrosplenial_t* rsc) {
-    if (!rsc) return NULL;
+    if (!rsc) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rsc is NULL");
+
+        return NULL;
+
+    }
     return rsc->mutex;
 }
 

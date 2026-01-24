@@ -121,7 +121,13 @@ static void init_states_if_needed(void) {
  * @brief Get or create state for a system
  */
 static alignment_state_t* get_state(const hypo_drive_system_handle_t* system) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     init_states_if_needed();
 

@@ -148,12 +148,16 @@ double nimcp_histogram_percentile(const nimcp_histogram_t* hist, double percenti
 
 nimcp_metrics_aggregator_t* nimcp_metrics_aggregator_create(const char* metric_name) {
     if (!metric_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metric_name is NULL");
+
         return NULL;
     }
 
     nimcp_metrics_aggregator_t* agg =
         (nimcp_metrics_aggregator_t*)nimcp_calloc(1, sizeof(nimcp_metrics_aggregator_t));
     if (!agg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agg is NULL");
+
         return NULL;
     }
 

@@ -164,6 +164,8 @@ int reasoning_sleep_default_config(reasoning_sleep_config_t* config)
 {
     /* Guard clause: Validate config pointer */
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -283,6 +285,8 @@ int reasoning_sleep_update(reasoning_sleep_bridge_t bridge)
 {
     /* Guard clause: Validate bridge */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -447,6 +451,8 @@ int reasoning_sleep_connect_bio_async(reasoning_sleep_bridge_t bridge)
 {
     /* Guard clauses */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -482,6 +488,8 @@ int reasoning_sleep_disconnect_bio_async(reasoning_sleep_bridge_t bridge)
 {
     /* Guard clauses */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

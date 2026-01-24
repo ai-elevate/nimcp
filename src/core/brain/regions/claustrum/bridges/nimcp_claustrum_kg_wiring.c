@@ -835,7 +835,13 @@ brain_kg_node_id_t claustrum_kg_find_subsystem(
 }
 
 brain_kg_node_list_t* claustrum_kg_get_modalities(brain_kg_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
     return brain_kg_get_nodes_by_type(
         kg, (brain_kg_node_type_t)CLAUSTRUM_KG_NODE_MODALITY
     );
@@ -845,11 +851,23 @@ brain_kg_node_list_t* claustrum_kg_get_active_modalities(
     brain_kg_t* kg,
     float min_activity
 ) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
 
     /* Get all modalities then filter by activity */
     brain_kg_node_list_t* all = claustrum_kg_get_modalities(kg);
-    if (!all) return NULL;
+    if (!all) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "all is NULL");
+
+        return NULL;
+
+    }
 
     /* For now, return all - full implementation would filter by metadata */
     (void)min_activity;  /* Would be used to filter by activity metadata */
@@ -857,11 +875,23 @@ brain_kg_node_list_t* claustrum_kg_get_active_modalities(
 }
 
 brain_kg_node_list_t* claustrum_kg_get_bound_modalities(brain_kg_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
 
     /* Get all modalities then filter by bound status */
     brain_kg_node_list_t* all = claustrum_kg_get_modalities(kg);
-    if (!all) return NULL;
+    if (!all) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "all is NULL");
+
+        return NULL;
+
+    }
 
     /* For now, return all - full implementation would filter by bound metadata */
     return all;

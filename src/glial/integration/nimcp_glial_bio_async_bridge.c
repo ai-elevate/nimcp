@@ -98,7 +98,13 @@ glial_bio_async_bridge_t* glial_bio_async_bridge_create(
     const glial_bio_async_config_t* config
 ) {
     glial_bio_async_bridge_t* bridge = calloc(1, sizeof(glial_bio_async_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

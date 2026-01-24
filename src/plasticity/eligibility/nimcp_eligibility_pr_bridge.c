@@ -116,6 +116,8 @@ elig_pr_bridge_t elig_pr_bridge_create(const elig_pr_bridge_config_t* config) {
 
     elig_pr_bridge_t bridge = (elig_pr_bridge_t)calloc(1, sizeof(struct elig_pr_bridge_struct));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -297,6 +299,8 @@ int elig_pr_get_tier_parameters(elig_pr_bridge_t bridge,
                                 float* lambda,
                                 float* sensitivity) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -423,6 +427,8 @@ int elig_pr_bridge_get_stats(elig_pr_bridge_t bridge, elig_pr_bridge_stats_t* st
 
 int elig_pr_bridge_reset_stats(elig_pr_bridge_t bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -435,6 +441,8 @@ int elig_pr_bridge_reset_stats(elig_pr_bridge_t bridge) {
 
 int elig_pr_bridge_update(elig_pr_bridge_t bridge, float dt_ms) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

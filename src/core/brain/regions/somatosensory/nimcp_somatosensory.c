@@ -180,7 +180,13 @@ nimcp_somatosensory_t* soma_create(const soma_config_t* config) {
     }
 
     nimcp_somatosensory_t* soma = (nimcp_somatosensory_t*)calloc(1, sizeof(nimcp_somatosensory_t));
-    if (!soma) return NULL;
+    if (!soma) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma is NULL");
+
+        return NULL;
+
+    }
 
     memcpy(&soma->config, config, sizeof(soma_config_t));
     soma->status = SOMA_STATUS_IDLE;
@@ -1313,7 +1319,13 @@ nimcp_somatosensory_t* soma_deserialize(const uint8_t* buffer, size_t size, size
     memcpy(&config, buffer, sizeof(soma_config_t));
 
     nimcp_somatosensory_t* soma = soma_create(&config);
-    if (!soma) return NULL;
+    if (!soma) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "soma is NULL");
+
+        return NULL;
+
+    }
 
     *bytes_read = sizeof(soma_config_t);
     return soma;

@@ -731,7 +731,13 @@ static void* walk_apply_action(const void* state, uint32_t action, void* user_da
     qmc_walk_user_data_t* ud = (qmc_walk_user_data_t*)user_data;
 
     qmc_walk_state_t* new_state = nimcp_malloc(sizeof(qmc_walk_state_t));
-    if (!new_state) return NULL;
+    if (!new_state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_state is NULL");
+
+        return NULL;
+
+    }
 
     new_state->num_nodes = s->num_nodes;
     new_state->current_step = s->current_step + 1;
@@ -819,11 +825,23 @@ static void walk_free_state(void* state, void* user_data) {
 
 static void* walk_clone_state(const void* state, void* user_data) {
     (void)user_data;
-    if (!state) return NULL;
+    if (!state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
+        return NULL;
+
+    }
 
     const qmc_walk_state_t* s = (const qmc_walk_state_t*)state;
     qmc_walk_state_t* clone = nimcp_malloc(sizeof(qmc_walk_state_t));
-    if (!clone) return NULL;
+    if (!clone) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+
+        return NULL;
+
+    }
 
     *clone = *s;
     clone->amplitudes = nimcp_malloc(s->num_nodes * sizeof(float));
@@ -1135,7 +1153,13 @@ static void* sat_apply_action(const void* state, uint32_t action, void* user_dat
     qmc_sat_user_data_t* ud = (qmc_sat_user_data_t*)user_data;
 
     qmc_sat_state_t* new_state = nimcp_malloc(sizeof(qmc_sat_state_t));
-    if (!new_state) return NULL;
+    if (!new_state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_state is NULL");
+
+        return NULL;
+
+    }
 
     new_state->num_variables = s->num_variables;
     new_state->assignment = nimcp_malloc(s->num_variables);
@@ -1199,11 +1223,23 @@ static void sat_free_state(void* state, void* user_data) {
 
 static void* sat_clone_state(const void* state, void* user_data) {
     (void)user_data;
-    if (!state) return NULL;
+    if (!state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
+        return NULL;
+
+    }
 
     const qmc_sat_state_t* s = (const qmc_sat_state_t*)state;
     qmc_sat_state_t* clone = nimcp_malloc(sizeof(qmc_sat_state_t));
-    if (!clone) return NULL;
+    if (!clone) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+
+        return NULL;
+
+    }
 
     *clone = *s;
     clone->assignment = nimcp_malloc(s->num_variables);

@@ -118,7 +118,16 @@ eligibility_utils_ctx_t eligibility_utils_create(const eligibility_utils_config_
     struct eligibility_utils_ctx_internal* ctx =
         (struct eligibility_utils_ctx_internal*)calloc(1, sizeof(struct eligibility_utils_ctx_internal));
 
-    if (!ctx) return NULL;
+    if (!ctx) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+
+        return NULL;
+
+
+    }
 
     /* Copy config */
     if (config) {

@@ -275,6 +275,8 @@ int lateralization_shift_dominance(
     float shift
 ) {
     if (!profile) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "profile is NULL");
+
         return -1;
     }
 

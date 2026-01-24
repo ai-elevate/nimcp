@@ -59,6 +59,8 @@ static hypo_tom_agent_model_t* allocate_agent_slot(hypo_tom_fep_bridge_t* bridge
  */
 int hypo_tom_fep_default_config(hypo_tom_fep_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -217,6 +219,8 @@ void hypo_tom_fep_destroy(hypo_tom_fep_bridge_t* bridge) {
  */
 int hypo_tom_fep_reset(hypo_tom_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -267,6 +271,8 @@ int hypo_tom_fep_reset(hypo_tom_fep_bridge_t* bridge) {
  */
 int hypo_tom_fep_update(hypo_tom_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -500,6 +506,8 @@ int hypo_tom_fep_register_agent(
     hypo_tom_relation_t relationship
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -571,6 +579,8 @@ int hypo_tom_fep_report_prediction(
     float prediction_error
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -642,6 +652,8 @@ int hypo_tom_fep_focus_agent(
     uint32_t agent_id
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -680,6 +692,8 @@ int hypo_tom_fep_connect_bio_async(
     bio_router_t* router
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -723,6 +737,8 @@ int hypo_tom_fep_process_messages(
     uint32_t max_messages
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
     (void)max_messages;

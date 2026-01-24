@@ -61,7 +61,13 @@ struct introspection_context_struct {
 
 /* Helper to get brain from introspection context */
 static inline brain_t introspection_get_brain(introspection_context_t ctx) {
-    if (!ctx) return NULL;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return NULL;
+
+    }
     return ((struct introspection_context_struct*)ctx)->brain;
 }
 

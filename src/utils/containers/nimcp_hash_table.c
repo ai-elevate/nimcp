@@ -671,6 +671,8 @@ bool hash_table_insert_string(hash_table_t* table, const char* key, const void* 
 void* hash_table_lookup_string(hash_table_t* table, const char* key)
 {
     if (!key) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "key is NULL");
+
         return NULL;
     }
 

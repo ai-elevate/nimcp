@@ -64,7 +64,13 @@ static void dft_emit_event(dft_context_t* ctx, dft_event_type_t event, const voi
  * @brief Find peer by ID
  */
 static dft_peer_info_t* dft_find_peer(dft_context_t* ctx, uint32_t node_id) {
-    if (!ctx) return NULL;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < ctx->peer_count; i++) {
         if (ctx->peers[i].node_id == node_id) {
@@ -98,7 +104,13 @@ static uint32_t dft_crc32(const void* data, size_t size) {
  */
 static void* dft_heartbeat_thread(void* arg) {
     dft_context_t* ctx = (dft_context_t*)arg;
-    if (!ctx) return NULL;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return NULL;
+
+    }
 
     while (ctx->running) {
         // Send heartbeats

@@ -33,6 +33,8 @@ static uint64_t get_current_timestamp_ms(void) {
 
 int kg_temporal_query_default(kg_temporal_query_t* query) {
     if (!query) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "query is NULL");
+
         return -1;
     }
 

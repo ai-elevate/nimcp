@@ -75,7 +75,13 @@ int hab_bio_async_default_config(hab_bio_async_config_t* config) {
 
 hab_bio_async_bridge_t* hab_bio_async_bridge_create(const hab_bio_async_config_t* config) {
     hab_bio_async_bridge_t* bridge = calloc(1, sizeof(hab_bio_async_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

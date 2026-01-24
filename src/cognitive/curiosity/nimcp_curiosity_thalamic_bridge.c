@@ -31,7 +31,13 @@ curiosity_thalamic_config_t curiosity_thalamic_default_config(void) {
 
 curiosity_thalamic_bridge_t* curiosity_thalamic_bridge_create(void* curiosity, thalamic_router_t* router, const curiosity_thalamic_config_t* config) {
     curiosity_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(curiosity_thalamic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     bridge->curiosity = curiosity;
     bridge->router = router;
     bridge->config = config ? *config : curiosity_thalamic_default_config();

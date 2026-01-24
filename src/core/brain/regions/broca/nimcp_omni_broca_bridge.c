@@ -25,7 +25,13 @@
 static omni_phon_wm_t* phon_wm_create(uint32_t capacity, uint32_t slot_dim,
                                        float decay_rate) {
     omni_phon_wm_t* wm = nimcp_calloc(1, sizeof(omni_phon_wm_t));
-    if (!wm) return NULL;
+    if (!wm) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm is NULL");
+
+        return NULL;
+
+    }
 
     wm->slots = nimcp_calloc(capacity, sizeof(float*));
     if (!wm->slots) {
@@ -115,7 +121,13 @@ omni_broca_bridge_t* omni_broca_bridge_create(
     const omni_broca_config_t* config) {
 
     omni_broca_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_broca_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         memcpy(&bridge->config, config, sizeof(omni_broca_config_t));

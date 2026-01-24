@@ -142,7 +142,13 @@ bool elig_uq_bridge_validate_config(const elig_uq_bridge_config_t* config) {
 elig_uq_bridge_t elig_uq_bridge_create(const elig_uq_bridge_config_t* config) {
     struct elig_uq_bridge_struct* bridge =
         calloc(1, sizeof(struct elig_uq_bridge_struct));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     bridge->config = config ? *config : elig_uq_bridge_default_config();
 

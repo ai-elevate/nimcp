@@ -329,7 +329,13 @@ static void init_path_integration(nimcp_entorhinal_t* ec) {
 
 nimcp_entorhinal_t* entorhinal_create(const entorhinal_config_t* config) {
     nimcp_entorhinal_t* ec = calloc(1, sizeof(nimcp_entorhinal_t));
-    if (!ec) return NULL;
+    if (!ec) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ec is NULL");
+
+        return NULL;
+
+    }
 
     /* Copy configuration */
     if (config) {

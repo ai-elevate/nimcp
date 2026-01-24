@@ -189,7 +189,13 @@ static brainstem_arousal_level_t arousal_to_level(float arousal) {
  */
 static midbrain_processor_t* midbrain_create(const midbrain_config_t* config) {
     midbrain_processor_t* mb = nimcp_calloc(1, sizeof(midbrain_processor_t));
-    if (!mb) return NULL;
+    if (!mb) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mb is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         mb->config = *config;
@@ -219,7 +225,13 @@ static void midbrain_destroy(midbrain_processor_t* mb) {
  */
 static pons_processor_t* pons_create(const pons_config_t* config) {
     pons_processor_t* pons = nimcp_calloc(1, sizeof(pons_processor_t));
-    if (!pons) return NULL;
+    if (!pons) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pons is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         pons->config = *config;
@@ -254,7 +266,13 @@ static void pons_destroy(pons_processor_t* pons) {
  */
 static reticular_formation_t* reticular_create(const reticular_config_t* config) {
     reticular_formation_t* rf = nimcp_calloc(1, sizeof(reticular_formation_t));
-    if (!rf) return NULL;
+    if (!rf) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rf is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         rf->config = *config;

@@ -193,6 +193,8 @@ wernicke_adapter_t* wernicke_create(const wernicke_config_t* config)
     /* Allocate adapter */
     wernicke_adapter_t* adapter = (wernicke_adapter_t*)calloc(1, sizeof(wernicke_adapter_t));
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
         return NULL;
     }
 
@@ -1020,25 +1022,49 @@ bool wernicke_get_config(const wernicke_adapter_t* adapter, wernicke_config_t* c
 
 phonological_analyzer_t* wernicke_get_phonological_analyzer(wernicke_adapter_t* adapter)
 {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->phonological;
 }
 
 lexical_access_t* wernicke_get_lexical_access(wernicke_adapter_t* adapter)
 {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->lexical;
 }
 
 semantic_integrator_t* wernicke_get_semantic_integrator(wernicke_adapter_t* adapter)
 {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->semantic;
 }
 
 syntactic_comprehension_t* wernicke_get_syntactic_comprehension(wernicke_adapter_t* adapter)
 {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->syntactic;
 }
 

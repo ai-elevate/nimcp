@@ -101,6 +101,8 @@ void nimcp_bbb_release_global_system(void)
 bbb_system_t nimcp_bbb_get_global_system(void)
 {
     if (!g_bbb_mutex_initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "g_bbb_mutex_initialized is NULL");
+
         return NULL;
     }
 

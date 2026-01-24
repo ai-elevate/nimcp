@@ -135,6 +135,8 @@ static logic_clause_t* pattern_to_clause(
     // Create clause with active feature literals
     logic_clause_t* clause = (logic_clause_t*)nimcp_calloc(1, sizeof(logic_clause_t));
     if (!clause) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clause is NULL");
+
         return NULL;
     }
 

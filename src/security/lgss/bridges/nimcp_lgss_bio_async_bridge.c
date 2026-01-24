@@ -156,7 +156,13 @@ lgss_bio_bridge_t* lgss_bio_bridge_create(
     const lgss_bio_bridge_config_t* config
 ) {
     lgss_bio_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

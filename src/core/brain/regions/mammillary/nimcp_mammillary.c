@@ -80,7 +80,13 @@ nimcp_mammillary_t* mammillary_create(const mammillary_config_t* config) {
     mammillary_config_t cfg = config ? *config : mammillary_default_config();
 
     nimcp_mammillary_t* mb = (nimcp_mammillary_t*)calloc(1, sizeof(nimcp_mammillary_t));
-    if (!mb) return NULL;
+    if (!mb) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mb is NULL");
+
+        return NULL;
+
+    }
 
     mb->config = cfg;
     mb->status = MAMMILLARY_STATUS_IDLE;
@@ -1587,7 +1593,13 @@ nimcp_mammillary_t* mammillary_deserialize(const uint8_t* buffer,
 
     /* Create instance */
     nimcp_mammillary_t* mb = mammillary_create(&config);
-    if (!mb) return NULL;
+    if (!mb) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mb is NULL");
+
+        return NULL;
+
+    }
 
     /* Read status */
     memcpy(&mb->status, buffer + offset, sizeof(mammillary_status_t));

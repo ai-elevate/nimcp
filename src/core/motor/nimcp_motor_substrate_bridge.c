@@ -29,9 +29,21 @@ motor_substrate_config_t motor_substrate_default_config(void) {
 }
 
 motor_substrate_bridge_t* motor_substrate_bridge_create(void* motor, neural_substrate_t* substrate, const motor_substrate_config_t* config) {
-    if (!substrate) return NULL;
+    if (!substrate) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
+
+        return NULL;
+
+    }
     motor_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(motor_substrate_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     bridge->motor = motor;
     bridge->substrate = substrate;
     bridge->config = config ? *config : motor_substrate_default_config();

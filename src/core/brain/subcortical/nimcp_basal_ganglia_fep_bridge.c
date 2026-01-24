@@ -251,7 +251,13 @@ bool bg_fep_validate_config(const bg_fep_config_t* config) {
 
 bg_fep_bridge_t* bg_fep_create(const bg_fep_config_t* config) {
     bg_fep_bridge_t* bridge = nimcp_calloc(1, sizeof(bg_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply config */
     if (config) {

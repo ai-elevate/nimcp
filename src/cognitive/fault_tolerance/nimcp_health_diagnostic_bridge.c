@@ -201,6 +201,8 @@ static const agent_error_mapping_t* find_agent_mapping(
 static diagnostic_result_t* allocate_diagnostic_result(void) {
     diagnostic_result_t* result = nimcp_calloc(1, sizeof(diagnostic_result_t));
     if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
         return NULL;
     }
 
@@ -222,6 +224,8 @@ static diagnostic_result_t* allocate_diagnostic_result(void) {
  */
 static int capture_stack_trace(diagnostic_result_t* result) {
     if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
         return -1;
     }
 
@@ -259,6 +263,8 @@ static int capture_stack_trace(diagnostic_result_t* result) {
  */
 static int capture_memory_snapshot(diagnostic_result_t* result) {
     if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
         return -1;
     }
 
@@ -286,6 +292,8 @@ static int capture_memory_snapshot(diagnostic_result_t* result) {
 
 int health_diag_bridge_default_config(health_diag_bridge_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -309,6 +317,8 @@ health_diag_bridge_t* health_diag_bridge_create(
 ) {
     health_diag_bridge_t* bridge = nimcp_calloc(1, sizeof(health_diag_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -772,6 +782,8 @@ const anomaly_error_mapping_t* health_diag_bridge_get_anomaly_mapping(
     anomaly_type_t anomaly_type
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

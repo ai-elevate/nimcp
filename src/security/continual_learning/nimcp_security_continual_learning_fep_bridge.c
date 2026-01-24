@@ -103,6 +103,8 @@ static security_cl_fep_response_t select_response_from_severity(
 
 int security_cl_fep_default_config(security_cl_fep_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -230,6 +232,8 @@ void security_cl_fep_destroy(security_cl_fep_bridge_t* bridge) {
 
 int security_cl_fep_reset(security_cl_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -430,6 +434,8 @@ int security_cl_fep_update_from_detection(
     float severity
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -685,6 +691,8 @@ float security_cl_fep_get_attack_likelihood(
 
 int security_cl_fep_report_false_positive(security_cl_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -821,6 +829,8 @@ void security_cl_fep_print_summary(const security_cl_fep_bridge_t* bridge) {
 
 int security_cl_fep_connect_bio_async(security_cl_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

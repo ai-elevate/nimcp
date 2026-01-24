@@ -337,6 +337,8 @@ int predictive_attention_bridge_default_config(
     predictive_attention_bridge_config_t* config
 ) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -367,6 +369,8 @@ predictive_attention_bridge_t* predictive_attention_bridge_create(
     predictive_attention_bridge_t* bridge = (predictive_attention_bridge_t*)nimcp_calloc(
         1, sizeof(predictive_attention_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

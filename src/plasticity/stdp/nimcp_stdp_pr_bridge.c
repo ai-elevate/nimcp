@@ -117,7 +117,13 @@ bool stdp_pr_bridge_validate_config(const stdp_pr_bridge_config_t* config) {
 
 stdp_pr_bridge_t stdp_pr_bridge_create(const stdp_pr_bridge_config_t* config) {
     stdp_pr_bridge_t bridge = nimcp_calloc(1, sizeof(struct stdp_pr_bridge_struct));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         if (!stdp_pr_bridge_validate_config(config)) {

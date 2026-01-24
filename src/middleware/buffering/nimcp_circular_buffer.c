@@ -138,7 +138,13 @@ circular_buffer_t* circular_buffer_create(
 
     // Allocate control structure (cache-aligned due to _Alignas members)
     circular_buffer_t* buf = nimcp_aligned_alloc(CACHE_LINE_SIZE, sizeof(circular_buffer_t));
-    if (!buf) return NULL;
+    if (!buf) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buf is NULL");
+
+        return NULL;
+
+    }
 
     // Zero-initialize the structure
     memset(buf, 0, sizeof(circular_buffer_t));

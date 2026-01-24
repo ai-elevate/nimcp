@@ -117,7 +117,13 @@ entorhinal_omni_bridge_state_t* entorhinal_omni_bridge_create(
     entorhinal_omni_bridge_state_t* bridge =
         (entorhinal_omni_bridge_state_t*)calloc(1,
             sizeof(entorhinal_omni_bridge_state_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;
@@ -507,7 +513,13 @@ const omni_tracked_object_t* entorhinal_omni_get_tracked_object(
     const entorhinal_omni_bridge_state_t* bridge,
     uint32_t object_id)
 {
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < bridge->num_tracked_objects; i++) {
         if (bridge->tracked_objects[i].object_id == object_id) {

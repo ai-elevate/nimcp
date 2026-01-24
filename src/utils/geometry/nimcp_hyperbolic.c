@@ -127,6 +127,8 @@ poincare_point_t* poincare_point_create(uint32_t dim, const float *coords, float
     // Allocate point structure
     poincare_point_t *point = (poincare_point_t*)nimcp_malloc(sizeof(poincare_point_t));
     if (!point) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "point is NULL");
+
         return NULL;
     }
 
@@ -166,6 +168,8 @@ void poincare_point_destroy(poincare_point_t *point) {
 
 poincare_point_t* poincare_point_copy(const poincare_point_t *src) {
     if (!src) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "src is NULL");
+
         return NULL;
     }
     return poincare_point_create(src->dim, src->coords, src->curvature);
@@ -271,6 +275,8 @@ poincare_point_t* poincare_exp_map(const poincare_point_t *base, const float *ta
     float scale = tanh_val / v_norm;
     float *scaled_v = (float*)nimcp_malloc(base->dim * sizeof(float));
     if (!scaled_v) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scaled_v is NULL");
+
         return NULL;
     }
     vector_scale(scaled_v, scale, tangent_vec, base->dim);
@@ -279,6 +285,8 @@ poincare_point_t* poincare_exp_map(const poincare_point_t *base, const float *ta
     poincare_point_t *scaled_point = poincare_point_create(base->dim, scaled_v, base->curvature);
     nimcp_free(scaled_v);
     if (!scaled_point) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scaled_point is NULL");
+
         return NULL;
     }
 
@@ -297,6 +305,8 @@ float* poincare_log_map(const poincare_point_t *base, const poincare_point_t *po
     // Compute -base (negation of base point)
     float *neg_base = (float*)nimcp_malloc(base->dim * sizeof(float));
     if (!neg_base) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neg_base is NULL");
+
         return NULL;
     }
     vector_scale(neg_base, -1.0F, base->coords, base->dim);
@@ -305,6 +315,8 @@ float* poincare_log_map(const poincare_point_t *base, const poincare_point_t *po
     poincare_point_t *neg_base_point = poincare_point_create(base->dim, neg_base, base->curvature);
     nimcp_free(neg_base);
     if (!neg_base_point) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neg_base_point is NULL");
+
         return NULL;
     }
 
@@ -312,6 +324,8 @@ float* poincare_log_map(const poincare_point_t *base, const poincare_point_t *po
     poincare_point_t *diff = poincare_mobius_add(neg_base_point, point);
     poincare_point_destroy(neg_base_point);
     if (!diff) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "diff is NULL");
+
         return NULL;
     }
 
@@ -377,6 +391,8 @@ poincare_point_t* poincare_mobius_add(const poincare_point_t *x, const poincare_
     // Allocate result coordinates
     float *result_coords = (float*)nimcp_malloc(x->dim * sizeof(float));
     if (!result_coords) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result_coords is NULL");
+
         return NULL;
     }
 
@@ -417,6 +433,8 @@ poincare_point_t* poincare_mobius_scalar_mult(float r, const poincare_point_t *x
     // Allocate result coordinates
     float *result_coords = (float*)nimcp_malloc(x->dim * sizeof(float));
     if (!result_coords) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result_coords is NULL");
+
         return NULL;
     }
 
@@ -447,6 +465,8 @@ float* poincare_riemannian_gradient(const poincare_point_t *point, const float *
     // Allocate result
     float *riem_grad = (float*)nimcp_malloc(point->dim * sizeof(float));
     if (!riem_grad) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "riem_grad is NULL");
+
         return NULL;
     }
 

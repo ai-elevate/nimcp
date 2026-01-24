@@ -135,6 +135,8 @@ neuromod_pink_config_t neuromod_pink_default_config(void) {
 neuromod_pink_noise_t* neuromod_pink_create(const neuromod_pink_config_t* config) {
     // Guard: NULL config
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
@@ -145,6 +147,8 @@ neuromod_pink_noise_t* neuromod_pink_create(const neuromod_pink_config_t* config
 
     // Guard: Allocation failure
     if (!mod) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mod is NULL");
+
         return NULL;
     }
 
@@ -685,6 +689,8 @@ neuromod_pink_noise_t* neuromod_pink_load(FILE* file)
 {
     // Guard: Validate parameter
     if (!file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "file is NULL");
+
         return NULL;
     }
 
@@ -705,6 +711,8 @@ neuromod_pink_noise_t* neuromod_pink_load(FILE* file)
     // HOW:  Use nimcp_calloc for zero-initialization
     neuromod_pink_noise_t* mod = (neuromod_pink_noise_t*)nimcp_calloc(1, sizeof(neuromod_pink_noise_t));
     if (!mod) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mod is NULL");
+
         return NULL;
     }
 

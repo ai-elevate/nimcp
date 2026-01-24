@@ -50,6 +50,8 @@ brain_complex_oscillation_state_t* brain_complex_oscillation_create(
     brain_complex_oscillation_state_t* state =
         (brain_complex_oscillation_state_t*)nimcp_calloc(1, sizeof(brain_complex_oscillation_state_t));
     if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
         return NULL;
     }
 

@@ -113,6 +113,8 @@ incentive_validator_t* incentive_validator_create(
 {
     incentive_validator_t* validator = calloc(1, sizeof(incentive_validator_t));
     if (!validator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validator is NULL");
+
         return NULL;
     }
 

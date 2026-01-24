@@ -1465,6 +1465,8 @@ nimcp_future_t nimcp_future_all(nimcp_future_t* futures, size_t count)
     // Create promise for combined result
     nimcp_promise_t combined = nimcp_promise_create(count * sizeof(bool));
     if (!combined) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combined is NULL");
+
         return NULL;
     }
 
@@ -1616,6 +1618,8 @@ nimcp_future_t nimcp_future_any(nimcp_future_t* futures, size_t count)
     // Create promise for combined result (index of first completer)
     nimcp_promise_t combined = nimcp_promise_create(sizeof(size_t));
     if (!combined) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "combined is NULL");
+
         return NULL;
     }
 
@@ -1752,6 +1756,8 @@ nimcp_future_t nimcp_future_map(
     // Create promise for transformed result
     nimcp_promise_t output_promise = nimcp_promise_create(output_size);
     if (!output_promise) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "output_promise is NULL");
+
         return NULL;
     }
 

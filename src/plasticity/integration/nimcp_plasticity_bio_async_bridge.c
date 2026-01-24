@@ -80,7 +80,13 @@ static plasticity_bio_module_entry_t* find_module(
     plasticity_bio_async_bridge_t* b,
     plasticity_module_type_t type
 ) {
-    if (!b) return NULL;
+    if (!b) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "b is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < b->module_count; i++) {
         if (b->modules[i].type == type) {
@@ -143,7 +149,13 @@ plasticity_bio_async_bridge_t* plasticity_bio_async_bridge_create(
 ) {
     plasticity_bio_async_bridge_t* bridge = nimcp_calloc(
         1, sizeof(plasticity_bio_async_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

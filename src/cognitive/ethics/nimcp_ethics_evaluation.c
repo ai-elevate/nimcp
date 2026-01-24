@@ -180,13 +180,23 @@ float ethics_evaluate_golden_rule(ethics_engine_t engine, const action_context_t
 empathy_network_t empathy_network_create(const empathy_config_t* config)
 {
     // Guard clause: Validate input
-    if (!config)
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
+
+    }
 
     empathy_network_t network = nimcp_calloc(1, sizeof(struct empathy_network_struct));
     // Guard clause: Check allocation
-    if (!network)
+    if (!network) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+
         return NULL;
+
+    }
 
     uint32_t max_agents = 1000;
 

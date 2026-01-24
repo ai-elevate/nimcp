@@ -242,6 +242,8 @@ int nimcp_mutex_pool_unlock(nimcp_mutex_slot_t slot) {
 
 int nimcp_mutex_pool_get_stats(nimcp_mutex_pool_stats_t* stats) {
     if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats is NULL");
+
         return -1;
     }
 

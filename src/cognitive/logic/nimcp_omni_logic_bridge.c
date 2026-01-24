@@ -106,7 +106,13 @@ int omni_logic_default_config(omni_logic_config_t* config) {
 
 omni_logic_bridge_t* omni_logic_bridge_create(const omni_logic_config_t* config) {
     omni_logic_bridge_t* bridge = nimcp_calloc(1, sizeof(omni_logic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         memcpy(&bridge->config, config, sizeof(omni_logic_config_t));

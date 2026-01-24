@@ -42,11 +42,15 @@ brainstem_thalamic_bridge_t* brainstem_thalamic_bridge_create(void* brainstem,
                                                                thalamic_router_t* router,
                                                                const brainstem_thalamic_config_t* config) {
     if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router is NULL");
+
         return NULL;
     }
 
     brainstem_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(brainstem_thalamic_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -73,6 +77,8 @@ void brainstem_thalamic_bridge_destroy(brainstem_thalamic_bridge_t* bridge) {
 
 int brainstem_thalamic_bridge_reset(brainstem_thalamic_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -122,6 +128,8 @@ int brainstem_thalamic_route_signal(brainstem_thalamic_bridge_t* bridge,
 
 int brainstem_thalamic_modulate_arousal(brainstem_thalamic_bridge_t* bridge, float level) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -145,6 +153,8 @@ int brainstem_thalamic_modulate_arousal(brainstem_thalamic_bridge_t* bridge, flo
 
 int brainstem_thalamic_set_attention(brainstem_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

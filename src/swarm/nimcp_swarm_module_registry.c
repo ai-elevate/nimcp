@@ -355,7 +355,13 @@ const swarm_module_entry_t* swarm_registry_get_module(
     const swarm_module_registry_t* registry,
     uint32_t module_id
 ) {
-    if (!registry) return NULL;
+    if (!registry) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "registry is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < registry->module_count; i++) {
         if (registry->modules[i].module_id == module_id) {

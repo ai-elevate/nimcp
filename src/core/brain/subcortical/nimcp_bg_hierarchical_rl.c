@@ -84,7 +84,13 @@ void bg_hrl_default_config(bg_hrl_config_t* config) {
 
 bg_hrl_system_t* bg_hrl_create(const bg_hrl_config_t* config) {
     bg_hrl_system_t* system = nimcp_calloc(1, sizeof(bg_hrl_system_t));
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

@@ -256,7 +256,13 @@ static uint32_t sample_power_law(float gamma, uint32_t k_min, uint32_t k_max) {
  */
 static uint32_t* compute_degree_distribution(neural_network_t network, uint32_t num_neurons) {
     // Guard: NULL network
-    if (!network) return NULL;
+    if (!network) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+
+        return NULL;
+
+    }
 
     // Guard: Zero neurons
     if (num_neurons == 0) return NULL;

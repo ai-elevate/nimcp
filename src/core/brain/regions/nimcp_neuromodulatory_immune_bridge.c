@@ -102,7 +102,13 @@ int neuromod_immune_bridge_default_config(neuromod_immune_bridge_config_t* confi
 
 neuromod_immune_bridge_t* neuromod_immune_bridge_create(const neuromod_immune_bridge_config_t* config) {
     neuromod_immune_bridge_t* bridge = calloc(1, sizeof(neuromod_immune_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     bridge->magic = NEUROMOD_IMMUNE_BRIDGE_MAGIC;
 

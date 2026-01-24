@@ -157,7 +157,13 @@ event_bus_t event_bus_create(const event_bus_config_t* config) {
     event_bus_config_t cfg = config ? *config : event_bus_default_config();
 
     event_bus_t bus = nimcp_calloc(1, sizeof(struct event_bus_struct));
-    if (!bus) return NULL;
+    if (!bus) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bus is NULL");
+
+        return NULL;
+
+    }
 
     // Create queue
     event_queue_config_t queue_cfg = event_queue_default_config();

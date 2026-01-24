@@ -42,11 +42,15 @@ cingulate_thalamic_bridge_t* cingulate_thalamic_bridge_create(void* cingulate,
                                                                thalamic_router_t* router,
                                                                const cingulate_thalamic_config_t* config) {
     if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router is NULL");
+
         return NULL;
     }
 
     cingulate_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(cingulate_thalamic_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -73,6 +77,8 @@ void cingulate_thalamic_bridge_destroy(cingulate_thalamic_bridge_t* bridge) {
 
 int cingulate_thalamic_bridge_reset(cingulate_thalamic_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -128,6 +134,8 @@ int cingulate_thalamic_route_signal(cingulate_thalamic_bridge_t* bridge,
 int cingulate_thalamic_route_error(cingulate_thalamic_bridge_t* bridge,
                                     const void* error, float magnitude) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -147,6 +155,8 @@ int cingulate_thalamic_route_error(cingulate_thalamic_bridge_t* bridge,
 
 int cingulate_thalamic_set_attention(cingulate_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

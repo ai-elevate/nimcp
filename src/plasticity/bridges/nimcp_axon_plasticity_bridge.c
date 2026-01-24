@@ -30,7 +30,13 @@ static axon_segment_state_t* find_or_create_segment(
     axon_plasticity_bridge_t* bridge,
     uint32_t segment_id)
 {
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t i = 0; i < bridge->num_segments; i++) {
         if (bridge->segments[i].segment_id == segment_id) {

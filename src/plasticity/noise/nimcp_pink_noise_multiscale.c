@@ -75,14 +75,26 @@ pink_noise_multiscale_t* pink_noise_multiscale_create(
      * WHY:  Initialize complete temporal hierarchy
      * HOW:  Create independent generators, setup coupling
      */
-    if (!config) return NULL;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return NULL;
+
+    }
     if (config->num_scales == 0 || config->num_scales > PINK_NOISE_MAX_SCALES) {
         NIMCP_LOGGING_ERROR("Invalid number of scales: %u", config->num_scales);
         return NULL;
     }
 
     pink_noise_multiscale_t* ms = nimcp_calloc(1, sizeof(pink_noise_multiscale_t));
-    if (!ms) return NULL;
+    if (!ms) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ms is NULL");
+
+        return NULL;
+
+    }
 
     memcpy(&ms->config, config, sizeof(pink_noise_multiscale_config_t));
 

@@ -170,6 +170,9 @@ int kg_schema_register_migration(const kg_migration_script_t* migration) {
     ensure_registry_initialized();
 
     if (!migration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "migration is NULL");
+
+
         return -1;
     }
 
@@ -372,6 +375,8 @@ int kg_schema_migrate(
 
 int kg_schema_migrate_up(brain_kg_t* kg, kg_migration_result_t* result) {
     if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
         return -1;
     }
 
@@ -404,6 +409,8 @@ int kg_schema_migrate_up(brain_kg_t* kg, kg_migration_result_t* result) {
 
 int kg_schema_migrate_down(brain_kg_t* kg, kg_migration_result_t* result) {
     if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
         return -1;
     }
 
@@ -460,6 +467,8 @@ int kg_schema_get_migration_history(
 
 int kg_schema_clear_history(brain_kg_t* kg) {
     if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
         return -1;
     }
 

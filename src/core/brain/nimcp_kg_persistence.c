@@ -233,6 +233,8 @@ static brain_kg_t* deserialize_kg_from_buffer(const uint8_t* buffer, size_t size
     /* Create new KG */
     brain_kg_t* kg = brain_kg_create(NULL);
     if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
         return NULL;
     }
 
@@ -313,6 +315,8 @@ static int decrypt_buffer(kg_persistence_t* p, const uint8_t* input, size_t inpu
 
 int kg_persistence_default_config(kg_persistence_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -333,6 +337,8 @@ int kg_persistence_default_config(kg_persistence_config_t* config) {
 
 int kg_persistence_default_questdb_config(kg_questdb_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -396,6 +402,8 @@ int kg_persistence_default_questdb_config(kg_questdb_config_t* config) {
 
 int kg_persistence_default_encryption_config(kg_encryption_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -430,6 +438,8 @@ int kg_persistence_default_encryption_config(kg_encryption_config_t* config) {
 kg_persistence_t* kg_persistence_create(const kg_persistence_config_t* config) {
     kg_persistence_t* p = nimcp_calloc(1, sizeof(kg_persistence_t));
     if (!p) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p is NULL");
+
         return NULL;
     }
 
@@ -876,6 +886,8 @@ int kg_persistence_init_encryption(kg_persistence_t* p,
 int kg_persistence_generate_master_key(const char* output_path,
                                         kg_crypto_algorithm_t algorithm) {
     if (!output_path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "output_path is NULL");
+
         return -1;
     }
 
@@ -935,6 +947,8 @@ int kg_persistence_rotate_keys(kg_persistence_t* p) {
 
 int kg_persistence_verify_integrity(kg_persistence_t* p) {
     if (!p) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p is NULL");
+
         return -1;
     }
 
@@ -1103,6 +1117,8 @@ int kg_persistence_audit_log(kg_persistence_t* p, kg_audit_event_type_t event,
 
     kg_audit_entry_t* entry = nimcp_calloc(1, sizeof(kg_audit_entry_t));
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+
         return -1;
     }
 

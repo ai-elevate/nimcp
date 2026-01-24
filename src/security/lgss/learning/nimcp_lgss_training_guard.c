@@ -332,7 +332,13 @@ training_guard_t training_guard_create(
     security_orchestrator_t orchestrator
 ) {
     struct training_guard_internal* guard = calloc(1, sizeof(*guard));
-    if (!guard) return NULL;
+    if (!guard) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "guard is NULL");
+
+        return NULL;
+
+    }
 
     guard->magic = LGSS_TRAINING_GUARD_MAGIC;
 

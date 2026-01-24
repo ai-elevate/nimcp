@@ -41,10 +41,22 @@ ethics_substrate_config_t ethics_substrate_default_config(void) {
 }
 
 ethics_substrate_bridge_t* ethics_substrate_bridge_create(void* ethics, neural_substrate_t* substrate, const ethics_substrate_config_t* config) {
-    if (!substrate) return NULL;
+    if (!substrate) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
+
+        return NULL;
+
+    }
 
     ethics_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(ethics_substrate_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     bridge->ethics = ethics;
     bridge->substrate = substrate;

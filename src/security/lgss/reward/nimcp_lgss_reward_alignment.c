@@ -89,7 +89,13 @@ static const aligned_goal_t* find_goal(
     const reward_alignment_monitor_t* monitor,
     uint32_t goal_id)
 {
-    if (!monitor) return NULL;
+    if (!monitor) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitor is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < monitor->num_aligned_goals; i++) {
         if (monitor->aligned_goals[i].goal_id == goal_id &&
@@ -141,6 +147,8 @@ reward_alignment_monitor_t* reward_alignment_create(
 {
     reward_alignment_monitor_t* monitor = calloc(1, sizeof(reward_alignment_monitor_t));
     if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitor is NULL");
+
         return NULL;
     }
 

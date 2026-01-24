@@ -73,7 +73,13 @@ reasoning_curiosity_t* reasoning_curiosity_create_custom(
     if (!bus || !curiosity) return NULL;
     
     reasoning_curiosity_t* integration = nimcp_calloc(1, sizeof(reasoning_curiosity_t));
-    if (!integration) return NULL;
+    if (!integration) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "integration is NULL");
+
+        return NULL;
+
+    }
     
     reasoning_curiosity_config_t default_cfg = reasoning_curiosity_default_config();
     integration->config = config ? *config : default_cfg;

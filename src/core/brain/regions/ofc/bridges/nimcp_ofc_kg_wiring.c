@@ -753,21 +753,39 @@ brain_kg_node_id_t ofc_kg_find_subsystem(
 }
 
 brain_kg_node_list_t* ofc_kg_get_value_nodes(brain_kg_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
     return brain_kg_get_nodes_by_type(
         kg, (brain_kg_node_type_t)OFC_KG_NODE_VALUE_SIGNAL
     );
 }
 
 brain_kg_node_list_t* ofc_kg_get_decision_nodes(brain_kg_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
     return brain_kg_get_nodes_by_type(
         kg, (brain_kg_node_type_t)OFC_KG_NODE_DECISION_TYPE
     );
 }
 
 brain_kg_node_list_t* ofc_kg_get_subdivisions(brain_kg_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
     return brain_kg_get_nodes_by_type(
         kg, (brain_kg_node_type_t)OFC_KG_NODE_SUBDIVISION
     );

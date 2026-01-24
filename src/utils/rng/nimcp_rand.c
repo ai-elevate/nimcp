@@ -755,6 +755,8 @@ void nimcp_rand_ctx_destroy(nimcp_rand_ctx_t* ctx)
 nimcp_rand_ctx_t* nimcp_rand_ctx_clone(const nimcp_rand_ctx_t* ctx)
 {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 
@@ -765,6 +767,8 @@ nimcp_rand_ctx_t* nimcp_rand_ctx_clone(const nimcp_rand_ctx_t* ctx)
 
     nimcp_rand_ctx_t* clone = (nimcp_rand_ctx_t*)malloc(sizeof(nimcp_rand_ctx_t));
     if (!clone) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+
         return NULL;
     }
 

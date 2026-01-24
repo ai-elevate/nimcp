@@ -159,6 +159,8 @@ void vestibular_cerebellum_bridge_destroy(vestibular_cerebellum_bridge_t* bridge
 
 int vestibular_cerebellum_send_mossy_signal(vestibular_cerebellum_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -323,6 +325,8 @@ int vestibular_cerebellum_get_vor_state(const vestibular_cerebellum_bridge_t* br
                                          float vor_gain[3],
                                          bool* adaptation_active) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -343,6 +347,8 @@ int vestibular_cerebellum_get_vor_state(const vestibular_cerebellum_bridge_t* br
 
 int vestibular_cerebellum_apply_feedback(vestibular_cerebellum_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

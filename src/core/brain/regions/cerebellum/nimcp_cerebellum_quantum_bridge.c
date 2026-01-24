@@ -73,7 +73,13 @@ cerebellum_quantum_bridge_t* cerebellum_quantum_bridge_create(
     const cerebellum_quantum_config_t* config
 ) {
     cerebellum_quantum_bridge_t* bridge = nimcp_calloc(1, sizeof(cerebellum_quantum_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     bridge->cerebellum = cerebellum;
     bridge->config = config ? *config : cerebellum_quantum_default_config();

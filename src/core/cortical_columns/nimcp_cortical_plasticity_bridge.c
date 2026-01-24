@@ -26,7 +26,13 @@ static cortical_column_plasticity_state_t* find_column_state(
     cortical_plasticity_bridge_t* bridge,
     uint32_t column_id
 ) {
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < bridge->num_columns; i++) {
         if (bridge->column_states[i].column_id == column_id) {

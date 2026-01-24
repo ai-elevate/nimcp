@@ -60,6 +60,8 @@ int nimcp_arousal_init(
     const nimcp_arousal_config_t* config
 ) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return -1;
     }
 
@@ -120,6 +122,8 @@ int nimcp_arousal_init(
 
 int nimcp_arousal_shutdown(nimcp_arousal_system_t* system) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return -1;
     }
 

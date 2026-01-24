@@ -103,7 +103,13 @@ static void update_graph_stats(NimcpTernaryGraph* graph) {
 
 NimcpTernaryGraph* nimcp_ternary_graph_create(void) {
     NimcpTernaryGraph* graph = nimcp_malloc(sizeof(NimcpTernaryGraph));
-    if (!graph) return NULL;
+    if (!graph) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph is NULL");
+
+        return NULL;
+
+    }
 
     memset(graph, 0, sizeof(NimcpTernaryGraph));
     graph->magic = GRAPH_TERNARY_MAGIC;
@@ -127,7 +133,7 @@ NimcpTernaryGraph* nimcp_ternary_graph_create(void) {
 
     /* Initialize mutex */
     mutex_attr_t attr = {.type = MUTEX_TYPE_NORMAL};
-    if (nimcp_mutex_init(&graph->lock, &attr) != NIMCP_OK) {
+    if (nimcp_mutex_init(&graph->lock, &attr) != NIMCP_SUCCESS) {
         nimcp_free(graph->components);
         nimcp_free(graph->vertices);
         nimcp_free(graph);
@@ -169,10 +175,22 @@ NimcpTernaryGraph* nimcp_ternary_graph_from_graph(
     float strong_threshold,
     float weak_threshold
 ) {
-    if (!graph) return NULL;
+    if (!graph) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph is NULL");
+
+        return NULL;
+
+    }
 
     NimcpTernaryGraph* tgraph = nimcp_ternary_graph_create();
-    if (!tgraph) return NULL;
+    if (!tgraph) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tgraph is NULL");
+
+        return NULL;
+
+    }
 
     /* Copy vertices */
     for (uint32_t i = 0; i < graph->vertex_count; i++) {
@@ -828,7 +846,13 @@ trit_matrix_t* nimcp_ternary_graph_to_matrix(
     if (n == 0) return NULL;
 
     trit_matrix_t* mat = trit_matrix_create(n, n, pack_mode);
-    if (!mat) return NULL;
+    if (!mat) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mat is NULL");
+
+        return NULL;
+
+    }
 
     /* Initialize to all zeros (no edges) */
     trit_matrix_fill(mat, TRIT_UNKNOWN);
@@ -854,7 +878,13 @@ NimcpTernaryGraph* nimcp_ternary_graph_from_matrix(
     uint32_t n = adjacency->rows;
 
     NimcpTernaryGraph* graph = nimcp_ternary_graph_create();
-    if (!graph) return NULL;
+    if (!graph) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph is NULL");
+
+        return NULL;
+
+    }
 
     /* Add vertices */
     for (uint32_t i = 0; i < n; i++) {

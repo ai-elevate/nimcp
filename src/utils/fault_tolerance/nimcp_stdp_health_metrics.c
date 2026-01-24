@@ -116,6 +116,8 @@ static void report_anomaly(stdp_health_metrics_t* metrics,
 
 int stdp_health_default_config(stdp_health_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -185,6 +187,8 @@ stdp_health_metrics_t* stdp_health_create(
 ) {
     stdp_health_metrics_t* metrics = nimcp_calloc(1, sizeof(*metrics));
     if (!metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metrics is NULL");
+
         return NULL;
     }
 

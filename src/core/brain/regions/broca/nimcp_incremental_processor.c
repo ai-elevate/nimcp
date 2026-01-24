@@ -65,7 +65,13 @@ incremental_config_t incremental_default_config(void) {
 
 incremental_processor_t* incremental_create(const incremental_config_t* config) {
     incremental_processor_t* processor = (incremental_processor_t*)calloc(1, sizeof(incremental_processor_t));
-    if (!processor) return NULL;
+    if (!processor) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         processor->config = *config;

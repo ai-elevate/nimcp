@@ -122,7 +122,13 @@ perirhinal_config_t perirhinal_default_config(void) {
 
 nimcp_perirhinal_t* perirhinal_create(const perirhinal_config_t* config) {
     nimcp_perirhinal_t* pr = (nimcp_perirhinal_t*)calloc(1, sizeof(nimcp_perirhinal_t));
-    if (!pr) return NULL;
+    if (!pr) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pr is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

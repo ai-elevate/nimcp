@@ -54,6 +54,8 @@ static void update_category_state(
  */
 int sec_lang_fep_default_config(sec_lang_fep_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -245,6 +247,8 @@ void sec_lang_fep_destroy(sec_lang_fep_bridge_t* bridge) {
  */
 int sec_lang_fep_reset(sec_lang_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -294,6 +298,8 @@ int sec_lang_fep_reset(sec_lang_fep_bridge_t* bridge) {
  */
 int sec_lang_fep_compute_effects(sec_lang_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -512,6 +518,8 @@ int sec_lang_fep_update_from_semantic(
     float context_score
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -610,6 +618,8 @@ int sec_lang_fep_update_from_output(
  */
 int sec_lang_fep_update(sec_lang_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -758,6 +768,8 @@ int sec_lang_fep_get_action_efe(
  */
 int sec_lang_fep_apply_action(sec_lang_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -837,6 +849,8 @@ int sec_lang_fep_apply_action(sec_lang_fep_bridge_t* bridge) {
  */
 int sec_lang_fep_apply_precision_modulation(sec_lang_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -883,6 +897,8 @@ int sec_lang_fep_report_false_positive(
     sec_lang_fep_threat_category_t category
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -929,6 +945,8 @@ int sec_lang_fep_report_confirmed_attack(
     float severity
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -971,6 +989,8 @@ int sec_lang_fep_set_precision(
     float precision
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -1092,6 +1112,8 @@ float sec_lang_fep_get_category_fe(
  */
 int sec_lang_fep_connect_bio_async(sec_lang_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

@@ -31,7 +31,13 @@ emotion_recognition_thalamic_config_t emotion_recognition_thalamic_default_confi
 
 emotion_recognition_thalamic_bridge_t* emotion_recognition_thalamic_bridge_create(void* emotion_rec, thalamic_router_t* router, const emotion_recognition_thalamic_config_t* config) {
     emotion_recognition_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(emotion_recognition_thalamic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     bridge->emotion_rec = emotion_rec;
     bridge->router = router;
     bridge->config = config ? *config : emotion_recognition_thalamic_default_config();

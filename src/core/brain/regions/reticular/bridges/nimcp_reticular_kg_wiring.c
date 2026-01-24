@@ -1440,17 +1440,35 @@ brain_kg_node_id_t reticular_kg_find_subsystem(
 }
 
 brain_kg_node_list_t* reticular_kg_get_nuclei(brain_kg_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
     return brain_kg_get_nodes_by_type(kg, (brain_kg_node_type_t)RETICULAR_KG_NODE_NUCLEUS);
 }
 
 brain_kg_node_list_t* reticular_kg_get_arousal_states(brain_kg_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
     return brain_kg_get_nodes_by_type(kg, (brain_kg_node_type_t)RETICULAR_KG_NODE_AROUSAL_STATE);
 }
 
 brain_kg_node_list_t* reticular_kg_get_modulators(brain_kg_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
     return brain_kg_get_nodes_by_type(kg, (brain_kg_node_type_t)RETICULAR_KG_NODE_NEUROMODULATOR);
 }
 
@@ -1462,7 +1480,13 @@ brain_kg_node_list_t* reticular_kg_get_nuclei_for_modulator(
 
     /* Get incoming edges to modulator (RELEASES edges from nuclei) */
     brain_kg_edge_list_t* edges = brain_kg_get_incoming(kg, modulator_id);
-    if (!edges) return NULL;
+    if (!edges) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "edges is NULL");
+
+        return NULL;
+
+    }
 
     /* Allocate result list */
     brain_kg_node_list_t* result = (brain_kg_node_list_t*)malloc(sizeof(brain_kg_node_list_t));
@@ -1502,7 +1526,13 @@ brain_kg_node_list_t* reticular_kg_get_modulators_from_nucleus(
 
     /* Get outgoing edges from nucleus (RELEASES edges to modulators) */
     brain_kg_edge_list_t* edges = brain_kg_get_outgoing(kg, nucleus_id);
-    if (!edges) return NULL;
+    if (!edges) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "edges is NULL");
+
+        return NULL;
+
+    }
 
     /* Allocate result list */
     brain_kg_node_list_t* result = (brain_kg_node_list_t*)malloc(sizeof(brain_kg_node_list_t));

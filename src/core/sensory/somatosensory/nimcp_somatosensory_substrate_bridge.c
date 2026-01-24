@@ -29,9 +29,21 @@ somatosensory_substrate_config_t somatosensory_substrate_default_config(void) {
 }
 
 somatosensory_substrate_bridge_t* somatosensory_substrate_bridge_create(void* somatosensory, neural_substrate_t* substrate, const somatosensory_substrate_config_t* config) {
-    if (!substrate) return NULL;
+    if (!substrate) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
+
+        return NULL;
+
+    }
     somatosensory_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(somatosensory_substrate_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     bridge->somatosensory = somatosensory;
     bridge->substrate = substrate;
     bridge->config = config ? *config : somatosensory_substrate_default_config();

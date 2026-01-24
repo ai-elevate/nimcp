@@ -57,6 +57,8 @@ static void update_rate_tracking(hypo_logging_fep_bridge_t* bridge,
  */
 int hypo_logging_fep_default_config(hypo_logging_fep_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -202,6 +204,8 @@ void hypo_logging_fep_destroy(hypo_logging_fep_bridge_t* bridge) {
  */
 int hypo_logging_fep_reset(hypo_logging_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -246,6 +250,8 @@ int hypo_logging_fep_reset(hypo_logging_fep_bridge_t* bridge) {
  */
 int hypo_logging_fep_update(hypo_logging_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -397,6 +403,8 @@ int hypo_logging_fep_modulate_precision(
     float fatigue
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -480,6 +488,8 @@ int hypo_logging_fep_log_event(
     uint64_t timestamp_ms
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -556,6 +566,8 @@ int hypo_logging_fep_connect_bio_async(
     bio_router_t* router
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

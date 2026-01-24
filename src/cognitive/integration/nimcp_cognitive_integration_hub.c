@@ -275,6 +275,8 @@ cognitive_integration_hub_t cognitive_hub_create(const cognitive_hub_config_t* c
     /* Allocate hub structure */
     cognitive_integration_hub_t hub = nimcp_calloc(1, sizeof(struct cognitive_integration_hub_struct));
     if (!hub) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hub is NULL");
+
         return NULL;
     }
 
@@ -479,6 +481,9 @@ int cognitive_hub_subscribe(cognitive_integration_hub_t hub,
     }
 
     if (!callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "callback is NULL");
+
+
         return -1;
     }
 

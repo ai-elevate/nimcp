@@ -42,11 +42,15 @@ somatosensory_thalamic_bridge_t* somatosensory_thalamic_bridge_create(void* soma
                                                                        thalamic_router_t* router,
                                                                        const somatosensory_thalamic_config_t* config) {
     if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router is NULL");
+
         return NULL;
     }
 
     somatosensory_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(somatosensory_thalamic_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -73,6 +77,8 @@ void somatosensory_thalamic_bridge_destroy(somatosensory_thalamic_bridge_t* brid
 
 int somatosensory_thalamic_bridge_reset(somatosensory_thalamic_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -123,6 +129,8 @@ int somatosensory_thalamic_route_signal(somatosensory_thalamic_bridge_t* bridge,
 int somatosensory_thalamic_route_pain(somatosensory_thalamic_bridge_t* bridge,
                                        uint32_t region, float intensity) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -142,6 +150,8 @@ int somatosensory_thalamic_route_pain(somatosensory_thalamic_bridge_t* bridge,
 
 int somatosensory_thalamic_set_attention(somatosensory_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

@@ -56,6 +56,8 @@ static hypo_bias_type_t map_drive_to_bias(hypo_drive_type_t drive);
  */
 int hypo_bias_fep_default_config(hypo_bias_fep_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -222,6 +224,8 @@ void hypo_bias_fep_destroy(hypo_bias_fep_bridge_t* bridge) {
  */
 int hypo_bias_fep_reset(hypo_bias_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -264,6 +268,8 @@ int hypo_bias_fep_reset(hypo_bias_fep_bridge_t* bridge) {
  */
 int hypo_bias_fep_update(hypo_bias_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -399,6 +405,8 @@ int hypo_bias_fep_modulate_precision(
     float cognitive_load
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -602,6 +610,8 @@ int hypo_bias_fep_connect_bio_async(
     bio_router_t* router
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -645,6 +655,8 @@ int hypo_bias_fep_process_messages(
     uint32_t max_messages
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
     (void)max_messages;

@@ -86,6 +86,8 @@ static void send_sync_message(
 
 int dendrite_orchestrator_default_config(dendrite_orchestrator_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -245,6 +247,8 @@ static int grow_mappings(dendrite_orchestrator_bridge_t* bridge) {
         new_capacity, sizeof(spine_synapse_mapping_t)
     );
     if (!new_mappings) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_mappings is NULL");
+
         return -1;
     }
 
@@ -320,6 +324,8 @@ int dendrite_orchestrator_map_spine(
     uint32_t spine_index
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -381,6 +387,8 @@ int dendrite_orchestrator_unmap_spine(
     uint32_t synapse_id
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -414,6 +422,8 @@ int dendrite_orchestrator_get_spine_mapping(
     uint32_t* spine_index_out
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -422,6 +432,9 @@ int dendrite_orchestrator_get_spine_mapping(
     );
 
     if (!mapping) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mapping is NULL");
+
+
         return -1;
     }
 
@@ -444,12 +457,16 @@ int dendrite_orchestrator_sync_weight_to_spine(
     uint32_t synapse_id
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
     /* Find mapping */
     spine_synapse_mapping_t* mapping = find_mapping(bridge, synapse_id);
     if (!mapping) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mapping is NULL");
+
         return -1;
     }
 
@@ -489,12 +506,16 @@ int dendrite_orchestrator_sync_spine_to_orchestrator(
     uint32_t synapse_id
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
     /* Find mapping */
     spine_synapse_mapping_t* mapping = find_mapping(bridge, synapse_id);
     if (!mapping) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mapping is NULL");
+
         return -1;
     }
 
@@ -531,6 +552,8 @@ int dendrite_orchestrator_sync_all(
     dendrite_sync_direction_t direction
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -568,6 +591,8 @@ int dendrite_orchestrator_pre_spike(
     uint64_t timestamp_ms
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -602,6 +627,8 @@ int dendrite_orchestrator_spine_formed(
     float initial_weight
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -629,6 +656,8 @@ int dendrite_orchestrator_spine_eliminated(
     uint32_t synapse_id
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -658,6 +687,8 @@ int dendrite_orchestrator_bridge_update(
     uint64_t current_time_us
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -693,6 +724,8 @@ int dendrite_orchestrator_get_stats(
 
 int dendrite_orchestrator_reset_stats(dendrite_orchestrator_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -727,6 +760,8 @@ size_t dendrite_orchestrator_get_mapping_count(
 
 int dendrite_orchestrator_connect_bio_async(dendrite_orchestrator_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -760,6 +795,8 @@ int dendrite_orchestrator_connect_bio_async(dendrite_orchestrator_bridge_t* brid
 
 int dendrite_orchestrator_disconnect_bio_async(dendrite_orchestrator_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -795,6 +832,8 @@ plasticity_orchestrator_t* dendrite_orchestrator_get_orchestrator(
     dendrite_orchestrator_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     return bridge->orchestrator;
@@ -804,6 +843,8 @@ dendrite_network_t* dendrite_orchestrator_get_dendrite_network(
     dendrite_orchestrator_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     return bridge->dendrite_network;

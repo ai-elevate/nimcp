@@ -302,10 +302,22 @@ lgss_adversarial_detector_t* lgss_adversarial_detector_create(
     lgss_input_validator_t* validator,
     const lgss_adversarial_config_t* config)
 {
-    if (!validator) return NULL;
+    if (!validator) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validator is NULL");
+
+        return NULL;
+
+    }
 
     lgss_adversarial_detector_t* detector = nimcp_calloc(1, sizeof(*detector));
-    if (!detector) return NULL;
+    if (!detector) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detector is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

@@ -249,6 +249,8 @@ int recovery_executive_attach_parietal(
     /* Create bridge with default config */
     recovery_parietal_bridge_t* bridge = recovery_parietal_bridge_create(parietal, NULL);
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -458,6 +460,8 @@ int recovery_parietal_detect_smells(
     /* Use software engineering module */
     software_eng_t* se = software_eng_create();
     if (!se) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "se is NULL");
+
         return -1;
     }
 
@@ -718,6 +722,8 @@ recovery_plan_t* recovery_parietal_create_enhanced_plan(
     /* Create plan using executive */
     recovery_plan_t* plan = recovery_executive_create_plan(exec, diagnosis, effective_goal);
     if (!plan) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plan is NULL");
+
         return NULL;
     }
 

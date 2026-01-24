@@ -173,14 +173,26 @@ pink_noise_correlated_t* pink_noise_correlated_create(
      * WHY:  Enable biologically realistic correlated fluctuations
      * HOW:  Compute Cholesky, create per-channel generators
      */
-    if (!config) return NULL;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return NULL;
+
+    }
     if (config->num_channels == 0 || config->num_channels > PINK_NOISE_MAX_CHANNELS) {
         NIMCP_LOGGING_ERROR("Invalid channel count: %u", config->num_channels);
         return NULL;
     }
 
     pink_noise_correlated_t* cn = nimcp_calloc(1, sizeof(pink_noise_correlated_t));
-    if (!cn) return NULL;
+    if (!cn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cn is NULL");
+
+        return NULL;
+
+    }
 
     memcpy(&cn->config, config, sizeof(pink_noise_correlated_config_t));
 

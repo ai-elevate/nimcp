@@ -116,6 +116,8 @@ static void refill_bucket(
 
 int kg_ratelimit_default_config(kg_ratelimit_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -133,6 +135,8 @@ int kg_ratelimit_default_config(kg_ratelimit_config_t* config) {
 kg_ratelimiter_t* kg_ratelimit_create(const kg_ratelimit_config_t* config) {
     kg_ratelimiter_t* limiter = nimcp_calloc(1, sizeof(kg_ratelimiter_t));
     if (!limiter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "limiter is NULL");
+
         return NULL;
     }
 
@@ -303,6 +307,8 @@ int kg_ratelimit_release(
     kg_operation_type_t op
 ) {
     if (!limiter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "limiter is NULL");
+
         return -1;
     }
 
@@ -332,6 +338,8 @@ int kg_ratelimit_release(
 
 int kg_ratelimit_reset(kg_ratelimiter_t* limiter) {
     if (!limiter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "limiter is NULL");
+
         return -1;
     }
 
@@ -539,6 +547,8 @@ int kg_quota_reset_usage(
     const char* module_name
 ) {
     if (!limiter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "limiter is NULL");
+
         return -1;
     }
 
@@ -741,6 +751,8 @@ int kg_ratelimit_reset_stats(
     const char* module_name
 ) {
     if (!limiter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "limiter is NULL");
+
         return -1;
     }
 

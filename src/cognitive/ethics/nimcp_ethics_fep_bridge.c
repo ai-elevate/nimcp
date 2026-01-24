@@ -30,7 +30,13 @@ int ethics_fep_bridge_default_config(ethics_fep_config_t* config) {
 
 ethics_fep_bridge_t* ethics_fep_bridge_create(const ethics_fep_config_t* config) {
     ethics_fep_bridge_t* bridge = (ethics_fep_bridge_t*)nimcp_malloc(sizeof(ethics_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     memset(bridge, 0, sizeof(ethics_fep_bridge_t));
     if (config) bridge->config = *config;
     else ethics_fep_bridge_default_config(&bridge->config);

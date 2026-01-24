@@ -1014,17 +1014,35 @@ bool parietal_cortex_get_config(const parietal_adapter_t* adapter, parietal_cort
  *===========================================================================*/
 
 parietal_cortex_somatosensory_processor_t* parietal_cortex_get_somatosensory_processor(parietal_adapter_t* adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->somatosensory;
 }
 
 parietal_cortex_spatial_attention_processor_t* parietal_cortex_get_spatial_attention_processor(parietal_adapter_t* adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->spatial_attention;
 }
 
 parietal_cortex_sensorimotor_integrator_t* parietal_cortex_get_sensorimotor_integrator(parietal_adapter_t* adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->sensorimotor;
 }
 
@@ -1033,7 +1051,13 @@ parietal_cortex_sensorimotor_integrator_t* parietal_cortex_get_sensorimotor_inte
  *===========================================================================*/
 
 bio_module_context_t parietal_cortex_get_bio_context(parietal_adapter_t* adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->bio_ctx;
 }
 

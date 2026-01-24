@@ -93,7 +93,13 @@ int soma_bio_async_default_config(soma_bio_async_config_t* config) {
 
 soma_bio_router_t* soma_bio_async_bridge_create(const soma_bio_async_config_t* config) {
     soma_bio_router_t* bridge = calloc(1, sizeof(soma_bio_router_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

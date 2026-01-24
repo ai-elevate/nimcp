@@ -985,6 +985,8 @@ recovery_plan_t* recovery_executive_replan_with_goal(
     const char* reason
 ) {
     if (!exec) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "exec is NULL");
+
         return NULL;
     }
 

@@ -136,12 +136,24 @@ static inline size_t get_accumulator_buffer_size(const buffer_pool_config_t* con
 //=============================================================================
 
 NIMCP_EXPORT buffer_pool_t buffer_pool_create(const buffer_pool_config_t* config) {
-    if (!config) return NULL;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return NULL;
+
+    }
     if (config->max_channels == 0 || config->expected_active == 0) return NULL;
 
     // Allocate pool structure
     buffer_pool_t pool = calloc(1, sizeof(struct buffer_pool_struct));
-    if (!pool) return NULL;
+    if (!pool) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool is NULL");
+
+        return NULL;
+
+    }
 
     // Copy configuration
     memcpy(&pool->config, config, sizeof(buffer_pool_config_t));

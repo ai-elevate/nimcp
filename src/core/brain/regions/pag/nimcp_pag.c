@@ -1453,6 +1453,12 @@ const char* pag_coping_string(pag_coping_strategy_t coping) {
 }
 
 nimcp_mutex_t* pag_get_mutex(nimcp_pag_t* pag) {
-    if (!pag) return NULL;
+    if (!pag) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag is NULL");
+
+        return NULL;
+
+    }
     return pag->mutex;
 }

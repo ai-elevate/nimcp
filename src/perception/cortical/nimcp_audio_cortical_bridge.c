@@ -813,7 +813,13 @@ const feature_hypercolumn_t* audio_cortical_get_hypercolumn(
     const audio_cortical_bridge_t* bridge,
     float frequency_hz)
 {
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     uint32_t idx = compute_hypercolumn_index(bridge, frequency_hz);
     if (idx >= bridge->num_hypercolumns) return NULL;

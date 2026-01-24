@@ -454,7 +454,13 @@ int med_cereb_bridge_default_config(med_cereb_bridge_config_t* config) {
 
 med_cereb_bridge_t med_cereb_bridge_create(const med_cereb_bridge_config_t* config) {
     struct med_cereb_bridge_struct* bridge = nimcp_calloc(1, sizeof(*bridge));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

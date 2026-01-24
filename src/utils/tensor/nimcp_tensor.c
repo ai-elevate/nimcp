@@ -384,7 +384,13 @@ nimcp_tensor_t* nimcp_tensor_zeros(
 )
 {
     nimcp_tensor_t* t = nimcp_tensor_create(dims, rank, dtype);
-    if (!t) return NULL;
+    if (!t) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "t is NULL");
+
+        return NULL;
+
+    }
 
     memset(t->data, 0, t->shape.nbytes);
     return t;
@@ -397,7 +403,13 @@ nimcp_tensor_t* nimcp_tensor_ones(
 )
 {
     nimcp_tensor_t* t = nimcp_tensor_create(dims, rank, dtype);
-    if (!t) return NULL;
+    if (!t) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "t is NULL");
+
+        return NULL;
+
+    }
 
     /* Fill with ones based on dtype */
     if (dtype == NIMCP_DTYPE_F32) {
@@ -428,7 +440,13 @@ nimcp_tensor_t* nimcp_tensor_full(
 )
 {
     nimcp_tensor_t* t = nimcp_tensor_create(dims, rank, dtype);
-    if (!t) return NULL;
+    if (!t) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "t is NULL");
+
+        return NULL;
+
+    }
 
     if (dtype == NIMCP_DTYPE_F32) {
         float* data = (float*)t->data;
@@ -460,10 +478,22 @@ nimcp_tensor_t* nimcp_tensor_from_data(
     bool copy
 )
 {
-    if (!data) return NULL;
+    if (!data) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "data is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_tensor_t* t = nimcp_tensor_create(dims, rank, dtype);
-    if (!t) return NULL;
+    if (!t) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "t is NULL");
+
+        return NULL;
+
+    }
 
     if (copy) {
         memcpy(t->data, data, t->shape.nbytes);
@@ -481,7 +511,13 @@ nimcp_tensor_t* nimcp_tensor_eye(uint32_t n, nimcp_dtype_t dtype)
 {
     uint32_t dims[2] = {n, n};
     nimcp_tensor_t* t = nimcp_tensor_zeros(dims, 2, dtype);
-    if (!t) return NULL;
+    if (!t) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "t is NULL");
+
+        return NULL;
+
+    }
 
     /* Set diagonal to 1 */
     if (dtype == NIMCP_DTYPE_F32) {
@@ -508,7 +544,13 @@ nimcp_tensor_t* nimcp_tensor_randn(
 )
 {
     nimcp_tensor_t* t = nimcp_tensor_create(dims, rank, dtype);
-    if (!t) return NULL;
+    if (!t) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "t is NULL");
+
+        return NULL;
+
+    }
 
     /* Box-Muller transform for normal distribution */
     float* data = (float*)t->data;
@@ -537,7 +579,13 @@ nimcp_tensor_t* nimcp_tensor_rand(
 )
 {
     nimcp_tensor_t* t = nimcp_tensor_create(dims, rank, dtype);
-    if (!t) return NULL;
+    if (!t) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "t is NULL");
+
+        return NULL;
+
+    }
 
     float* data = (float*)t->data;
     double range = high - low;
@@ -562,7 +610,13 @@ nimcp_tensor_t* nimcp_tensor_arange(
     if (n == 0) return NULL;
 
     nimcp_tensor_t* t = nimcp_tensor_create(&n, 1, dtype);
-    if (!t) return NULL;
+    if (!t) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "t is NULL");
+
+        return NULL;
+
+    }
 
     float* data = (float*)t->data;
     for (uint32_t i = 0; i < n; i++) {
@@ -582,7 +636,13 @@ nimcp_tensor_t* nimcp_tensor_linspace(
     if (num == 0) return NULL;
 
     nimcp_tensor_t* t = nimcp_tensor_create(&num, 1, dtype);
-    if (!t) return NULL;
+    if (!t) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "t is NULL");
+
+        return NULL;
+
+    }
 
     float* data = (float*)t->data;
     double step = (num > 1) ? (stop - start) / (num - 1) : 0;
@@ -598,7 +658,13 @@ nimcp_tensor_t* nimcp_tensor_clone(const nimcp_tensor_t* t)
     if (!tensor_is_valid(t)) return NULL;
 
     nimcp_tensor_t* clone = nimcp_tensor_create(t->shape.dims, t->shape.rank, t->dtype);
-    if (!clone) return NULL;
+    if (!clone) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+
+        return NULL;
+
+    }
 
     memcpy(clone->data, t->data, t->shape.nbytes);
     clone->requires_grad = t->requires_grad;
@@ -751,7 +817,13 @@ nimcp_tensor_t* nimcp_tensor_contiguous(const nimcp_tensor_t* t)
 
     /* Need to copy with proper layout */
     nimcp_tensor_t* result = nimcp_tensor_create(t->shape.dims, t->shape.rank, t->dtype);
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     /* Copy element by element (handles non-contiguous case) */
     uint32_t indices[NIMCP_TENSOR_MAX_RANK] = {0};
@@ -888,7 +960,13 @@ nimcp_tensor_t* nimcp_tensor_reshape(
         result = nimcp_tensor_from_data(t->data, new_dims, new_rank, t->dtype, false);
     } else {
         result = nimcp_tensor_contiguous(t);
-        if (!result) return NULL;
+        if (!result) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+            return NULL;
+
+        }
         /* Now reshape the contiguous copy */
         result->shape.rank = new_rank;
         memcpy(result->shape.dims, new_dims, new_rank * sizeof(uint32_t));
@@ -931,7 +1009,13 @@ nimcp_tensor_t* nimcp_tensor_permute(
     }
 
     nimcp_tensor_t* result = nimcp_tensor_create(new_dims, rank, t->dtype);
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     /* Copy with permuted indices */
     uint32_t src_indices[NIMCP_TENSOR_MAX_RANK] = {0};
@@ -1044,7 +1128,13 @@ nimcp_tensor_t* nimcp_tensor_cat(
     out_dims[dim] = total_dim;
 
     nimcp_tensor_t* result = nimcp_tensor_create(out_dims, first->shape.rank, first->dtype);
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     /* Copy data from each tensor */
     uint32_t offset = 0;
@@ -1083,7 +1173,13 @@ nimcp_tensor_t* nimcp_tensor_stack(
 
     /* First unsqueeze all tensors, then cat */
     nimcp_tensor_t** unsqueezed = nimcp_calloc(count, sizeof(nimcp_tensor_t*));
-    if (!unsqueezed) return NULL;
+    if (!unsqueezed) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "unsqueezed is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < count; i++) {
         unsqueezed[i] = nimcp_tensor_unsqueeze(tensors[i], dim);
@@ -1128,7 +1224,13 @@ static nimcp_tensor_t* binary_op(
     }
 
     nimcp_tensor_t* result = nimcp_tensor_create(result_shape.dims, result_shape.rank, a->dtype);
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     /* Iterate over result indices */
     uint32_t indices[NIMCP_TENSOR_MAX_RANK] = {0};
@@ -1209,7 +1311,13 @@ nimcp_tensor_t* nimcp_tensor_add_scalar(const nimcp_tensor_t* t, double s)
     if (!tensor_is_valid(t)) return NULL;
 
     nimcp_tensor_t* result = nimcp_tensor_clone(t);
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     float* data = (float*)result->data;
     for (size_t i = 0; i < result->shape.numel; i++) {
@@ -1224,7 +1332,13 @@ nimcp_tensor_t* nimcp_tensor_mul_scalar(const nimcp_tensor_t* t, double s)
     if (!tensor_is_valid(t)) return NULL;
 
     nimcp_tensor_t* result = nimcp_tensor_clone(t);
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     float* data = (float*)result->data;
     for (size_t i = 0; i < result->shape.numel; i++) {
@@ -1246,7 +1360,13 @@ static nimcp_tensor_t* unary_op(const nimcp_tensor_t* t, double (*op)(double))
     if (!tensor_is_valid(t)) return NULL;
 
     nimcp_tensor_t* result = nimcp_tensor_create(t->shape.dims, t->shape.rank, t->dtype);
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     float* src = (float*)t->data;
     float* dst = (float*)result->data;
@@ -1304,7 +1424,13 @@ nimcp_tensor_t* nimcp_tensor_sum(const nimcp_tensor_t* t)
     double sum = tensor_simd_sum_f32(data, t->shape.numel);
 
     nimcp_tensor_t* result = nimcp_tensor_create(NULL, 0, t->dtype);
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_tensor_set_flat(result, 0, sum);
     stats_update_op(&g_stats.ops_reduction);
@@ -1316,7 +1442,13 @@ nimcp_tensor_t* nimcp_tensor_mean(const nimcp_tensor_t* t)
     if (!tensor_is_valid(t)) return NULL;
 
     nimcp_tensor_t* s = nimcp_tensor_sum(t);
-    if (!s) return NULL;
+    if (!s) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "s is NULL");
+
+        return NULL;
+
+    }
 
     double mean = nimcp_tensor_get_flat(s, 0) / (double)t->shape.numel;
     nimcp_tensor_set_flat(s, 0, mean);
@@ -1334,7 +1466,13 @@ nimcp_tensor_t* nimcp_tensor_max(const nimcp_tensor_t* t)
     float max_val = tensor_simd_max_f32(data, t->shape.numel);
 
     nimcp_tensor_t* result = nimcp_tensor_create(NULL, 0, t->dtype);
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_tensor_set_flat(result, 0, (double)max_val);
     stats_update_op(&g_stats.ops_reduction);
@@ -1351,7 +1489,13 @@ nimcp_tensor_t* nimcp_tensor_min(const nimcp_tensor_t* t)
     float min_val = tensor_simd_min_f32(data, t->shape.numel);
 
     nimcp_tensor_t* result = nimcp_tensor_create(NULL, 0, t->dtype);
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_tensor_set_flat(result, 0, (double)min_val);
     stats_update_op(&g_stats.ops_reduction);
@@ -1386,7 +1530,13 @@ nimcp_tensor_t* nimcp_tensor_sum_dim(const nimcp_tensor_t* t, int dim, bool keep
     }
 
     nimcp_tensor_t* result = nimcp_tensor_zeros(out_dims, out_rank, t->dtype);
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     /* Sum along dimension */
     uint32_t indices[NIMCP_TENSOR_MAX_RANK] = {0};
@@ -1442,7 +1592,13 @@ nimcp_tensor_t* nimcp_tensor_var(const nimcp_tensor_t* t, bool unbiased)
     var /= (double)divisor;
 
     nimcp_tensor_t* result = nimcp_tensor_create(NULL, 0, t->dtype);
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_tensor_set_flat(result, 0, var);
     stats_update_op(&g_stats.ops_reduction);
@@ -1452,7 +1608,13 @@ nimcp_tensor_t* nimcp_tensor_var(const nimcp_tensor_t* t, bool unbiased)
 nimcp_tensor_t* nimcp_tensor_std(const nimcp_tensor_t* t, bool unbiased)
 {
     nimcp_tensor_t* var = nimcp_tensor_var(t, unbiased);
-    if (!var) return NULL;
+    if (!var) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "var is NULL");
+
+        return NULL;
+
+    }
 
     double std_val = sqrt(nimcp_tensor_get_flat(var, 0));
     nimcp_tensor_set_flat(var, 0, std_val);
@@ -1497,7 +1659,13 @@ nimcp_tensor_t* nimcp_tensor_matmul(const nimcp_tensor_t* a, const nimcp_tensor_
     out_dims[1] = N;
 
     nimcp_tensor_t* result = nimcp_tensor_zeros(out_dims, out_rank, a->dtype);
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     /* Simple matrix multiply (not BLAS-optimized for now) */
     float* A = (float*)a->data;
@@ -1539,7 +1707,13 @@ nimcp_tensor_t* nimcp_tensor_mv(const nimcp_tensor_t* mat, const nimcp_tensor_t*
     /* Create output vector [M] */
     uint32_t out_dims[1] = {M};
     nimcp_tensor_t* result = nimcp_tensor_zeros(out_dims, 1, mat->dtype);
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     float* A = (float*)mat->data;
     float* x = (float*)vec->data;
@@ -1578,7 +1752,13 @@ nimcp_tensor_t* nimcp_tensor_vm(const nimcp_tensor_t* vec, const nimcp_tensor_t*
     /* Create output vector [N] */
     uint32_t out_dims[1] = {N};
     nimcp_tensor_t* result = nimcp_tensor_zeros(out_dims, 1, mat->dtype);
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     float* x = (float*)vec->data;
     float* A = (float*)mat->data;
@@ -1607,7 +1787,13 @@ nimcp_tensor_t* nimcp_tensor_dot(const nimcp_tensor_t* a, const nimcp_tensor_t* 
     double dot = tensor_simd_dot_f32(da, db, a->shape.numel);
 
     nimcp_tensor_t* result = nimcp_tensor_create(NULL, 0, a->dtype);
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_tensor_set_flat(result, 0, dot);
     return result;
@@ -1778,7 +1964,13 @@ nimcp_tensor_t* nimcp_tensor_contract(
     }
 
     nimcp_tensor_t* result = nimcp_tensor_zeros(out_dims, out_rank, a->dtype);
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     /* Iterate over all index combinations (brute force for now) */
     /* This is O(n^(rank_a + rank_b)) - can be optimized */
@@ -1888,7 +2080,13 @@ nimcp_tensor_t* nimcp_tensor_numerical_gradient(
     }
 
     nimcp_tensor_t* grad = nimcp_tensor_create(x->shape.dims, x->shape.rank, x->dtype);
-    if (!grad) return NULL;
+    if (!grad) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "grad is NULL");
+
+        return NULL;
+
+    }
 
     /* Central differences */
     nimcp_tensor_t* x_plus = nimcp_tensor_clone(x);
@@ -1940,7 +2138,13 @@ nimcp_tensor_t* nimcp_tensor_jacobian(
 
     /* Evaluate f(x) to get output dimension */
     nimcp_tensor_t* f_x = f(x, ctx);
-    if (!f_x) return NULL;
+    if (!f_x) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "f_x is NULL");
+
+        return NULL;
+
+    }
 
     uint32_t m = (uint32_t)f_x->shape.numel;  /* Output dimension */
     uint32_t n = (uint32_t)x->shape.numel;    /* Input dimension */
@@ -2021,7 +2225,13 @@ nimcp_tensor_t* nimcp_tensor_hessian(
     uint32_t hess_dims[2] = {n, n};
 
     nimcp_tensor_t* hess = nimcp_tensor_create(hess_dims, 2, x->dtype);
-    if (!hess) return NULL;
+    if (!hess) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hess is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_tensor_t* x_work = nimcp_tensor_clone(x);
     if (!x_work) {
@@ -2087,7 +2297,13 @@ nimcp_tensor_t* nimcp_tensor_gradient_dim(
     if (spacing == 0) spacing = 1.0;
 
     nimcp_tensor_t* grad = nimcp_tensor_create(t->shape.dims, t->shape.rank, t->dtype);
-    if (!grad) return NULL;
+    if (!grad) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "grad is NULL");
+
+        return NULL;
+
+    }
 
     uint32_t n = t->shape.dims[dim];
     uint32_t indices[NIMCP_TENSOR_MAX_RANK] = {0};
@@ -2144,7 +2360,13 @@ nimcp_tensor_t* nimcp_tensor_divergence(
         components[0]->shape.rank,
         components[0]->dtype
     );
-    if (!div) return NULL;
+    if (!div) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "div is NULL");
+
+        return NULL;
+
+    }
 
     /* div(F) = sum_i (dF_i/dx_i) */
     for (uint32_t i = 0; i < num_dims; i++) {
@@ -2209,7 +2431,13 @@ nimcp_tensor_t* nimcp_tensor_laplacian(
     if (!tensor_is_valid(t)) return NULL;
 
     nimcp_tensor_t* lap = nimcp_tensor_zeros(t->shape.dims, t->shape.rank, t->dtype);
-    if (!lap) return NULL;
+    if (!lap) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lap is NULL");
+
+        return NULL;
+
+    }
 
     /* Laplacian = sum_i (d²f/dx_i²) */
     for (uint32_t i = 0; i < t->shape.rank; i++) {
@@ -2340,7 +2568,13 @@ nimcp_tensor_t* nimcp_tensor_softmax(const nimcp_tensor_t* t, int dim)
     if (dim < 0 || dim >= (int)t->shape.rank) return NULL;
 
     nimcp_tensor_t* result = nimcp_tensor_clone(t);
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     /* Compute softmax along dimension */
     /* For numerical stability: softmax(x) = softmax(x - max(x)) */
@@ -2396,11 +2630,23 @@ nimcp_tensor_t* nimcp_tensor_attention(
 
     /* Compute Q @ K^T */
     nimcp_tensor_t* kt = nimcp_tensor_transpose(key);
-    if (!kt) return NULL;
+    if (!kt) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kt is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_tensor_t* scores = nimcp_tensor_matmul(query, kt);
     nimcp_tensor_destroy(kt);
-    if (!scores) return NULL;
+    if (!scores) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scores is NULL");
+
+        return NULL;
+
+    }
 
     /* Scale */
     if (scale == 0.0) {
@@ -2423,7 +2669,13 @@ nimcp_tensor_t* nimcp_tensor_attention(
     /* Softmax */
     nimcp_tensor_t* attn_weights = nimcp_tensor_softmax(scores, -1);
     nimcp_tensor_destroy(scores);
-    if (!attn_weights) return NULL;
+    if (!attn_weights) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attn_weights is NULL");
+
+        return NULL;
+
+    }
 
     /* Multiply by V */
     nimcp_tensor_t* output = nimcp_tensor_matmul(attn_weights, value);
@@ -2465,7 +2717,13 @@ bool nimcp_tensor_allclose(
 nimcp_autodiff_ctx_t* nimcp_autodiff_create(void)
 {
     nimcp_autodiff_ctx_t* ctx = nimcp_calloc(1, sizeof(nimcp_autodiff_ctx_t));
-    if (!ctx) return NULL;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return NULL;
+
+    }
 
     /* Initialize mutex with error checking */
     if (nimcp_mutex_init(&ctx->lock, NULL) != 0) {
@@ -2641,7 +2899,13 @@ const char* nimcp_tensor_error_string(nimcp_tensor_error_t err)
 
 nimcp_tensor_t* nimcp_tensor_square(const nimcp_tensor_t* t)
 {
-    if (!t) return NULL;
+    if (!t) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "t is NULL");
+
+        return NULL;
+
+    }
     // Square: element-wise t * t
     return nimcp_tensor_mul(t, t);
 }
@@ -2654,7 +2918,13 @@ nimcp_tensor_t* nimcp_tensor_layer_norm(const nimcp_tensor_t* t,
     (void)gamma;
     (void)beta;
     (void)eps;
-    if (!t) return NULL;
+    if (!t) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "t is NULL");
+
+        return NULL;
+
+    }
     // Stub: return a copy for now
     // Full layer norm implementation TBD
     LOG_WARN("nimcp_tensor_layer_norm is a stub implementation");
@@ -2664,7 +2934,13 @@ nimcp_tensor_t* nimcp_tensor_layer_norm(const nimcp_tensor_t* t,
 nimcp_tensor_t* nimcp_tensor_log_softmax(const nimcp_tensor_t* input, int dim)
 {
     (void)dim;
-    if (!input) return NULL;
+    if (!input) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "input is NULL");
+
+        return NULL;
+
+    }
     // Stub: return log of softmax approximation
     LOG_WARN("nimcp_tensor_log_softmax is a stub implementation");
     return nimcp_tensor_clone(input);

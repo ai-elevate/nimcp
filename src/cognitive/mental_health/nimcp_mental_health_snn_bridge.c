@@ -135,7 +135,13 @@ mental_health_snn_config_t mental_health_snn_config_default(void) {
 
 mental_health_snn_bridge_t* mental_health_snn_create(const mental_health_snn_config_t* config) {
     mental_health_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(mental_health_snn_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

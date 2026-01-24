@@ -688,6 +688,8 @@ nimcp_loss_context_t* nimcp_brain_training_get_loss(
     uint32_t loss_id)
 {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 
@@ -785,6 +787,8 @@ nimcp_optimizer_context_t* nimcp_brain_training_get_optimizer(
     uint32_t optimizer_id)
 {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 
@@ -1277,6 +1281,8 @@ nimcp_lr_scheduler_ctx_t* nimcp_brain_training_get_scheduler(
     uint32_t scheduler_id)
 {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 
@@ -1434,6 +1440,8 @@ nimcp_gradient_manager_ctx_t* nimcp_brain_training_get_gradient_manager(
     uint32_t gradmgr_id)
 {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 
@@ -1949,6 +1957,8 @@ tpb_context_t* nimcp_brain_training_get_plasticity_bridge(
     const nimcp_brain_training_ctx_t* ctx)
 {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
     return ctx->plasticity_bridge;
@@ -2225,6 +2235,8 @@ nimcp_result_t nimcp_brain_training_create_callbacks(nimcp_brain_training_ctx_t*
 tcb_context_t* nimcp_brain_training_get_callbacks(const nimcp_brain_training_ctx_t* ctx)
 {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
     return ctx->callbacks;

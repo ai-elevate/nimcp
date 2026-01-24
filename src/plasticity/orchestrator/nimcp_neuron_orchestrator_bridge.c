@@ -97,6 +97,8 @@ static void update_firing_rate(
 
 int neuron_orchestrator_default_config(neuron_orchestrator_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -254,6 +256,8 @@ static int grow_neurons(neuron_orchestrator_bridge_t* bridge) {
         new_capacity, sizeof(neuron_bridge_entry_t)
     );
     if (!new_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_neurons is NULL");
+
         return -1;
     }
 
@@ -353,6 +357,8 @@ int neuron_orchestrator_register_neuron(
     const neuron_model_vtable_t* vtable
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
     /* Allow NULL model_state and vtable for testing - reduced functionality */
@@ -422,6 +428,8 @@ int neuron_orchestrator_unregister_neuron(
     uint32_t neuron_id
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -453,6 +461,8 @@ int neuron_orchestrator_add_axon(
     uint32_t axon_id
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -490,6 +500,8 @@ int neuron_orchestrator_add_dendrite(
     uint32_t dendrite_id
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -533,12 +545,16 @@ int neuron_orchestrator_step(
     uint64_t current_time_us
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
     /* Find neuron entry */
     neuron_bridge_entry_t* entry = find_neuron_entry(bridge, neuron_id);
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+
         return -1;
     }
 
@@ -652,6 +668,8 @@ int neuron_orchestrator_step_all(
     uint64_t current_time_us
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -708,6 +726,8 @@ const neuron_bridge_entry_t* neuron_orchestrator_get_entry(
     uint32_t neuron_id
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -728,6 +748,8 @@ int neuron_orchestrator_get_stats(
 
 int neuron_orchestrator_reset_stats(neuron_orchestrator_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -762,6 +784,8 @@ size_t neuron_orchestrator_get_neuron_count(
 
 int neuron_orchestrator_connect_bio_async(neuron_orchestrator_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -795,6 +819,8 @@ int neuron_orchestrator_connect_bio_async(neuron_orchestrator_bridge_t* bridge) 
 
 int neuron_orchestrator_disconnect_bio_async(neuron_orchestrator_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -830,6 +856,8 @@ plasticity_orchestrator_t* neuron_orchestrator_get_orchestrator(
     neuron_orchestrator_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     return bridge->orchestrator;
@@ -839,6 +867,8 @@ axon_network_t* neuron_orchestrator_get_axon_network(
     neuron_orchestrator_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     return bridge->axon_network;
@@ -848,6 +878,8 @@ dendrite_network_t* neuron_orchestrator_get_dendrite_network(
     neuron_orchestrator_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     return bridge->dendrite_network;

@@ -30,7 +30,13 @@ pattern_cow_t* pattern_cow_create(const float* data, uint32_t dimension) {
 
     // Allocate CoW wrapper
     pattern_cow_t* cow = (pattern_cow_t*)nimcp_malloc(sizeof(pattern_cow_t));
-    if (!cow) return NULL;
+    if (!cow) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cow is NULL");
+
+        return NULL;
+
+    }
 
     // Allocate pattern data
     cow->data = (float*)nimcp_malloc(dimension * sizeof(float));
@@ -50,7 +56,13 @@ pattern_cow_t* pattern_cow_create(const float* data, uint32_t dimension) {
 }
 
 pattern_cow_t* pattern_cow_clone(pattern_cow_t* cow) {
-    if (!cow) return NULL;
+    if (!cow) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cow is NULL");
+
+        return NULL;
+
+    }
 
     // Atomically increment reference count
     atomic_fetch_add(&cow->refcount, 1);
@@ -72,7 +84,13 @@ void pattern_cow_release(pattern_cow_t* cow) {
 }
 
 const float* pattern_cow_data(const pattern_cow_t* cow) {
-    if (!cow) return NULL;
+    if (!cow) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cow is NULL");
+
+        return NULL;
+
+    }
     return cow->data;
 }
 

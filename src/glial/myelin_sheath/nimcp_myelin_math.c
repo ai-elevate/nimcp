@@ -159,7 +159,16 @@ nimcp_myelin_biophysics_t* nimcp_myelin_biophysics_create(bool use_stochastic,
     nimcp_myelin_biophysics_t* bio = (nimcp_myelin_biophysics_t*)
         nimcp_malloc(sizeof(nimcp_myelin_biophysics_t));
 
-    if (!bio) return NULL;
+    if (!bio) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bio is NULL");
+
+
+        return NULL;
+
+
+    }
 
     memset(bio, 0, sizeof(nimcp_myelin_biophysics_t));
 

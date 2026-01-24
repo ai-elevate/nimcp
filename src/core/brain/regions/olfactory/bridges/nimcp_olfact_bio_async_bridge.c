@@ -92,7 +92,13 @@ int olfact_bio_async_default_config(olfact_bio_async_config_t* config) {
 
 olfact_bio_async_bridge_t* olfact_bio_async_bridge_create(const olfact_bio_async_config_t* config) {
     olfact_bio_async_bridge_t* bridge = calloc(1, sizeof(olfact_bio_async_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

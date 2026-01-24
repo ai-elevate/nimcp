@@ -46,7 +46,13 @@ void nac_default_config(nac_config_t* config) {
 
 nucleus_accumbens_t* nac_create(const nac_config_t* config) {
     nucleus_accumbens_t* nac = nimcp_calloc(1, sizeof(nucleus_accumbens_t));
-    if (!nac) return NULL;
+    if (!nac) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nac is NULL");
+
+        return NULL;
+
+    }
     if (config) nac->config = *config; else nac_default_config(&nac->config);
     nac->core_activity = nimcp_calloc(nac->config.core_neurons, sizeof(float));
     nac->shell_activity = nimcp_calloc(nac->config.shell_neurons, sizeof(float));

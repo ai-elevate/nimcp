@@ -111,7 +111,13 @@ entorhinal_hypothalamus_bridge_state_t* entorhinal_hypothalamus_bridge_create(
     entorhinal_hypothalamus_bridge_state_t* bridge =
         (entorhinal_hypothalamus_bridge_state_t*)calloc(1,
             sizeof(entorhinal_hypothalamus_bridge_state_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

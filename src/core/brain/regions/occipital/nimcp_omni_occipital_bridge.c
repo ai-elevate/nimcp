@@ -95,7 +95,13 @@ omni_occipital_bridge_t* omni_occipital_bridge_create(
 
     omni_occipital_bridge_t* bridge =
         nimcp_calloc(1, sizeof(omni_occipital_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         memcpy(&bridge->config, config, sizeof(omni_occipital_config_t));

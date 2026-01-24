@@ -1101,17 +1101,35 @@ bool broca_get_config(const broca_adapter_t* adapter, broca_config_t* config) {
  *===========================================================================*/
 
 syntax_processor_t* broca_get_syntax_processor(broca_adapter_t* adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->syntax;
 }
 
 phonological_processor_t* broca_get_phonological_processor(broca_adapter_t* adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->phonological;
 }
 
 speech_motor_planner_t* broca_get_speech_motor_planner(broca_adapter_t* adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->motor;
 }
 
@@ -1120,7 +1138,13 @@ speech_motor_planner_t* broca_get_speech_motor_planner(broca_adapter_t* adapter)
  *===========================================================================*/
 
 bio_module_context_t broca_get_bio_context(broca_adapter_t* adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return adapter->bio_ctx;
 }
 

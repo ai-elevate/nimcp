@@ -31,7 +31,13 @@ bias_thalamic_config_t bias_thalamic_default_config(void) {
 
 bias_thalamic_bridge_t* bias_thalamic_bridge_create(void* bias, thalamic_router_t* router, const bias_thalamic_config_t* config) {
     bias_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(bias_thalamic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     bridge->bias = bias;
     bridge->router = router;
     bridge->config = config ? *config : bias_thalamic_default_config();

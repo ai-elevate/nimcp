@@ -249,7 +249,13 @@ static lsh_table_t* lsh_table_create(uint32_t num_buckets)
 {
     LOG_DEBUG("Creating module");
     lsh_table_t* table = nimcp_calloc(1, sizeof(lsh_table_t));
-    if (!table) return NULL;
+    if (!table) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "table is NULL");
+
+        return NULL;
+
+    }
 
     // Ensure power of 2 for fast modulo
     uint32_t buckets_pow2 = 1;

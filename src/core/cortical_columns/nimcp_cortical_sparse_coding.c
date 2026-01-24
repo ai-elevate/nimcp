@@ -1170,6 +1170,8 @@ trit_vector_t* cortical_sparse_create_ternary_vector(
         system->config.ternary_pack_mode
     );
     if (!vec) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vec is NULL");
+
         return NULL;
     }
 

@@ -229,6 +229,8 @@ occipital_training_bridge_t* occipital_training_bridge_create(
 {
     occipital_training_bridge_t* bridge = nimcp_calloc(1, sizeof(occipital_training_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

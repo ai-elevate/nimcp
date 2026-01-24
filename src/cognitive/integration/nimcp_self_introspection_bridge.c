@@ -203,6 +203,8 @@ static self_introspection_query_type_t get_suggested_focus(
 
 int self_introspection_default_config(self_introspection_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -225,6 +227,8 @@ self_introspection_bridge_t* self_introspection_bridge_create(
     self_introspection_bridge_t* bridge =
         (self_introspection_bridge_t*)nimcp_malloc(sizeof(self_introspection_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -490,6 +494,8 @@ int self_introspection_trigger_reflection(
     self_introspection_trigger_type_t trigger_type
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
     if (!bridge->initialized) {

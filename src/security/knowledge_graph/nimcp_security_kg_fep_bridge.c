@@ -42,6 +42,8 @@ static void update_running_average(float* avg, float new_value, float alpha);
  */
 int sec_kg_fep_default_config(sec_kg_fep_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -214,6 +216,8 @@ void sec_kg_fep_destroy(sec_kg_fep_bridge_t* bridge) {
  */
 int sec_kg_fep_reset(sec_kg_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -252,6 +256,8 @@ int sec_kg_fep_reset(sec_kg_fep_bridge_t* bridge) {
  */
 int sec_kg_fep_compute_effects(sec_kg_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -343,6 +349,8 @@ int sec_kg_fep_update_from_detection(
     float schema_deviation
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -414,6 +422,8 @@ int sec_kg_fep_update_from_traversal(
     float anomaly_score
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -452,6 +462,8 @@ int sec_kg_fep_update_from_traversal(
  */
 int sec_kg_fep_update(sec_kg_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -581,6 +593,8 @@ int sec_kg_fep_get_action_efe(
  */
 int sec_kg_fep_apply_precision_modulation(sec_kg_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -624,6 +638,8 @@ int sec_kg_fep_apply_precision_modulation(sec_kg_fep_bridge_t* bridge) {
  */
 int sec_kg_fep_report_false_positive(sec_kg_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -663,6 +679,8 @@ int sec_kg_fep_report_confirmed_attack(
     float severity
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -696,6 +714,8 @@ int sec_kg_fep_set_precision(
     float precision
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -798,6 +818,8 @@ float sec_kg_fep_get_surprise(const sec_kg_fep_bridge_t* bridge) {
  */
 int sec_kg_fep_connect_bio_async(sec_kg_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

@@ -23,7 +23,13 @@ void collective_workspace_fep_default_config(collective_workspace_fep_config_t* 
 collective_workspace_fep_bridge_t* collective_workspace_fep_create(const collective_workspace_fep_config_t* config, collective_workspace_t* workspace, fep_system_t* fep_system) {
     if (!workspace || !fep_system) return NULL;
     collective_workspace_fep_bridge_t* bridge = (collective_workspace_fep_bridge_t*)nimcp_malloc(sizeof(collective_workspace_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     memset(bridge, 0, sizeof(collective_workspace_fep_bridge_t));
     if (config) bridge->config = *config;
     else collective_workspace_fep_default_config(&bridge->config);

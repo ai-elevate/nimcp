@@ -424,6 +424,8 @@ int swarm_task_add_dependency(
     uint64_t depends_on_id)
 {
     if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+
         return -1;
     }
 
@@ -470,6 +472,8 @@ int swarm_task_set_deadline(
     uint64_t deadline_ms)
 {
     if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+
         return -1;
     }
 
@@ -495,6 +499,8 @@ int swarm_task_set_callback(
     void* user_data)
 {
     if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+
         return -1;
     }
 
@@ -521,6 +527,8 @@ int swarm_task_set_data(
     size_t data_size)
 {
     if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+
         return -1;
     }
 
@@ -560,6 +568,8 @@ int swarm_task_set_mission(
     uint64_t mission_id)
 {
     if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+
         return -1;
     }
 
@@ -583,6 +593,8 @@ int swarm_task_submit(
     uint64_t task_id)
 {
     if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+
         return -1;
     }
 
@@ -620,6 +632,8 @@ int swarm_task_assign(
     uint32_t agent_id)
 {
     if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+
         return -1;
     }
 
@@ -652,6 +666,8 @@ int swarm_task_start(
     uint64_t task_id)
 {
     if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+
         return -1;
     }
 
@@ -686,6 +702,8 @@ int swarm_task_update_progress(
     float progress)
 {
     if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+
         return -1;
     }
 
@@ -719,6 +737,8 @@ int swarm_task_complete(
     const swarm_task_result_t* result)
 {
     if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+
         return -1;
     }
 
@@ -768,6 +788,8 @@ int swarm_task_fail(
     swarm_task_failure_reason_t reason)
 {
     if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+
         return -1;
     }
 
@@ -817,6 +839,8 @@ int swarm_task_cancel(
     uint64_t task_id)
 {
     if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+
         return -1;
     }
 
@@ -857,6 +881,8 @@ int swarm_task_retry(
     uint64_t task_id)
 {
     if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+
         return -1;
     }
 
@@ -926,6 +952,8 @@ const swarm_task_t* swarm_task_get(
     uint64_t task_id)
 {
     if (!manager) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+
         return NULL;
     }
 

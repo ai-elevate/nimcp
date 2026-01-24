@@ -171,7 +171,13 @@ static ast_node_t* alloc_ast_node(void) {
  */
 static ast_node_t* create_variable_node(char var_name) {
     ast_node_t* node = alloc_ast_node();
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
 
     node->type = AST_NODE_VARIABLE;
     node->data.variable.name = var_name;
@@ -191,7 +197,13 @@ static ast_node_t* create_operator_node(
     ast_node_t* right
 ) {
     ast_node_t* node = alloc_ast_node();
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
 
     node->type = AST_NODE_OPERATOR;
     node->data.op.gate_type = gate_type;
@@ -276,7 +288,13 @@ static ast_node_t* parse_factor(const char* expr, size_t* pos) {
  */
 static ast_node_t* parse_term(const char* expr, size_t* pos) {
     ast_node_t* left = parse_factor(expr, pos);
-    if (!left) return NULL;
+    if (!left) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "left is NULL");
+
+        return NULL;
+
+    }
 
     while (true) {
         skip_whitespace(expr, pos);
@@ -313,7 +331,13 @@ static ast_node_t* parse_term(const char* expr, size_t* pos) {
  */
 static ast_node_t* parse_expression(const char* expr, size_t* pos) {
     ast_node_t* left = parse_term(expr, pos);
-    if (!left) return NULL;
+    if (!left) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "left is NULL");
+
+        return NULL;
+
+    }
 
     while (true) {
         skip_whitespace(expr, pos);

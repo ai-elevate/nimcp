@@ -42,11 +42,15 @@ parietal_thalamic_bridge_t* parietal_thalamic_bridge_create(void* parietal,
                                                              thalamic_router_t* router,
                                                              const parietal_thalamic_config_t* config) {
     if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router is NULL");
+
         return NULL;
     }
 
     parietal_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(parietal_thalamic_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -73,6 +77,8 @@ void parietal_thalamic_bridge_destroy(parietal_thalamic_bridge_t* bridge) {
 
 int parietal_thalamic_bridge_reset(parietal_thalamic_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -127,6 +133,8 @@ int parietal_thalamic_route_signal(parietal_thalamic_bridge_t* bridge,
 int parietal_thalamic_route_attention(parietal_thalamic_bridge_t* bridge,
                                        const void* target, float weight) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -146,6 +154,8 @@ int parietal_thalamic_route_attention(parietal_thalamic_bridge_t* bridge,
 
 int parietal_thalamic_set_attention(parietal_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

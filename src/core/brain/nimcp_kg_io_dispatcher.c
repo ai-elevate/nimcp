@@ -180,6 +180,8 @@ static uint64_t get_timestamp_ns(void) {
 
 static int queue_init(kg_io_queue_t* queue, uint32_t capacity) {
     if (!queue) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "queue is NULL");
+
         return -1;
     }
 
@@ -191,6 +193,8 @@ static int queue_init(kg_io_queue_t* queue, uint32_t capacity) {
     /* Create sentinel node */
     kg_io_queue_entry_t* sentinel = nimcp_calloc(1, sizeof(kg_io_queue_entry_t));
     if (!sentinel) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sentinel is NULL");
+
         return -1;
     }
     sentinel->next = NULL;
@@ -231,6 +235,8 @@ static int queue_push(kg_io_queue_t* queue, const kg_io_request_t* request) {
 
     kg_io_queue_entry_t* entry = nimcp_calloc(1, sizeof(kg_io_queue_entry_t));
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+
         return -1;
     }
 
@@ -355,6 +361,8 @@ static void pool_destroy(kg_io_pool_t* pool) {
 
 static kg_io_connection_t* pool_acquire(kg_io_pool_t* pool, uint32_t timeout_ms) {
     if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool is NULL");
+
         return NULL;
     }
 
@@ -599,6 +607,8 @@ static void* reader_thread_func(void* arg) {
 
 int kg_io_default_config(kg_questdb_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -639,6 +649,8 @@ int kg_io_default_config(kg_questdb_config_t* config) {
 kg_io_dispatcher_t* kg_io_dispatcher_create(const kg_questdb_config_t* config) {
     kg_io_dispatcher_t* dispatcher = nimcp_calloc(1, sizeof(kg_io_dispatcher_t));
     if (!dispatcher) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dispatcher is NULL");
+
         return NULL;
     }
 
@@ -773,6 +785,8 @@ void kg_io_dispatcher_destroy(kg_io_dispatcher_t* dispatcher) {
 
 int kg_io_dispatcher_start(kg_io_dispatcher_t* dispatcher) {
     if (!dispatcher) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dispatcher is NULL");
+
         return -1;
     }
 
@@ -1108,6 +1122,8 @@ kg_io_batch_t* kg_io_batch_create(kg_io_dispatcher_t* dispatcher,
 
     kg_io_batch_t* batch = nimcp_calloc(1, sizeof(kg_io_batch_t));
     if (!batch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "batch is NULL");
+
         return NULL;
     }
 
@@ -1146,6 +1162,8 @@ int kg_io_batch_add_row(kg_io_batch_t* batch, const void* row_data, size_t size)
 
         uint8_t* new_buffer = nimcp_realloc(batch->buffer, new_capacity);
         if (!new_buffer) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_buffer is NULL");
+
             return -1;
         }
         batch->buffer = new_buffer;
@@ -1205,6 +1223,8 @@ bool kg_io_can_accept_writes(const kg_io_dispatcher_t* dispatcher) {
 
 int kg_io_flush(kg_io_dispatcher_t* dispatcher, uint32_t timeout_ms) {
     if (!dispatcher) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dispatcher is NULL");
+
         return -1;
     }
 
@@ -1230,6 +1250,8 @@ int kg_io_flush(kg_io_dispatcher_t* dispatcher, uint32_t timeout_ms) {
 
 int kg_io_sync(kg_io_dispatcher_t* dispatcher, uint32_t timeout_ms) {
     if (!dispatcher) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dispatcher is NULL");
+
         return -1;
     }
 

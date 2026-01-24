@@ -28,7 +28,13 @@ int neuromod_fep_bridge_default_config(neuromod_fep_config_t* config) {
 
 neuromod_fep_bridge_t* neuromod_fep_bridge_create(const neuromod_fep_config_t* config) {
     neuromod_fep_bridge_t* bridge = (neuromod_fep_bridge_t*)nimcp_malloc(sizeof(neuromod_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) memcpy(&bridge->config, config, sizeof(neuromod_fep_config_t));
     else neuromod_fep_bridge_default_config(&bridge->config);

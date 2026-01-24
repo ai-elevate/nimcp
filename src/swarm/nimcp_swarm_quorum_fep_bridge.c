@@ -23,7 +23,13 @@ void swarm_quorum_fep_default_config(swarm_quorum_fep_config_t* config) {
 swarm_quorum_fep_bridge_t* swarm_quorum_fep_create(const swarm_quorum_fep_config_t* config, nimcp_swarm_quorum_t* quorum_system, fep_system_t* fep_system) {
     if (!quorum_system || !fep_system) return NULL;
     swarm_quorum_fep_bridge_t* bridge = (swarm_quorum_fep_bridge_t*)nimcp_malloc(sizeof(swarm_quorum_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     memset(bridge, 0, sizeof(swarm_quorum_fep_bridge_t));
     if (config) bridge->config = *config;
     else swarm_quorum_fep_default_config(&bridge->config);

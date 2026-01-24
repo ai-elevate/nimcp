@@ -271,7 +271,13 @@ quantum_walker_t* quantum_walk_create(
 
     // Allocate walker structure
     quantum_walker_t* walker = (quantum_walker_t*)nimcp_malloc(sizeof(quantum_walker_t));
-    if (!walker) return NULL;
+    if (!walker) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "walker is NULL");
+
+        return NULL;
+
+    }
 
     // Initialize fields
     memset(walker, 0, sizeof(quantum_walker_t));
@@ -343,11 +349,23 @@ void quantum_walk_destroy(quantum_walker_t* walker) {
 }
 
 quantum_walker_t* quantum_walk_clone(const quantum_walker_t* walker) {
-    if (!walker) return NULL;
+    if (!walker) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "walker is NULL");
+
+        return NULL;
+
+    }
 
     // Create new walker with same configuration
     quantum_walker_t* clone = quantum_walk_create(walker->network, &walker->config);
-    if (!clone) return NULL;
+    if (!clone) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+
+        return NULL;
+
+    }
 
     // Copy quantum state
     memcpy(clone->amplitudes, walker->amplitudes,

@@ -161,6 +161,8 @@ static pattern_node_t* find_pattern(
     uint32_t target)
 {
     if (!chain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chain is NULL");
+
         return NULL;
     }
 
@@ -415,6 +417,8 @@ int predictive_protocol_observe_message(
 {
     /* Guard: validate input */
     if (!protocol) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol is NULL");
+
         return -1;
     }
 
@@ -763,6 +767,8 @@ int predictive_protocol_connect_predictive_coding(
 {
     /* Guard: validate input */
     if (!protocol) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protocol is NULL");
+
         return -1;
     }
 

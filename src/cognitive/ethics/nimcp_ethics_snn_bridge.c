@@ -132,7 +132,13 @@ ethics_snn_config_t ethics_snn_config_default(void) {
 
 ethics_snn_bridge_t* ethics_snn_create(const ethics_snn_config_t* config) {
     ethics_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(ethics_snn_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

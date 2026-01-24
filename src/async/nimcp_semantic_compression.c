@@ -194,7 +194,13 @@ static float* extract_segment(
     if (!signal || offset + segment_len > signal_len) return NULL;
 
     float* segment = (float*)nimcp_malloc(segment_len * sizeof(float));
-    if (!segment) return NULL;
+    if (!segment) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "segment is NULL");
+
+        return NULL;
+
+    }
 
     memcpy(segment, signal + offset, segment_len * sizeof(float));
     return segment;

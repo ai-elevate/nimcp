@@ -29,9 +29,21 @@ prefrontal_substrate_config_t prefrontal_substrate_default_config(void) {
 }
 
 prefrontal_substrate_bridge_t* prefrontal_substrate_bridge_create(void* prefrontal, neural_substrate_t* substrate, const prefrontal_substrate_config_t* config) {
-    if (!substrate) return NULL;
+    if (!substrate) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
+
+        return NULL;
+
+    }
     prefrontal_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(prefrontal_substrate_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     bridge->prefrontal = prefrontal;
     bridge->substrate = substrate;
     bridge->config = config ? *config : prefrontal_substrate_default_config();

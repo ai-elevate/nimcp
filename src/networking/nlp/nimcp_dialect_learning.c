@@ -146,7 +146,13 @@ static dialect_entry_t* find_dialect_entry(
     uint32_t target
 ) {
     // Guard clauses
-    if (!dl) return NULL;
+    if (!dl) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dl is NULL");
+
+        return NULL;
+
+    }
 
     uint32_t hash = dialect_hash(source, target);
     dialect_entry_t* entry = dl->dialect_table[hash];

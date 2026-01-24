@@ -671,6 +671,8 @@ bool nimcp_brain_factory_language_is_initialized(brain_t brain) {
 
 struct language_orchestrator* nimcp_brain_factory_get_language_orchestrator(brain_t brain) {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return NULL;
     }
     return brain->language_layer;

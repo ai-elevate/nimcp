@@ -56,7 +56,13 @@ void bg_neuromod_default_config(bg_neuromod_config_t* config) {
 
 bg_neuromod_system_t* bg_neuromod_create(const bg_neuromod_config_t* config) {
     bg_neuromod_system_t* sys = nimcp_calloc(1, sizeof(bg_neuromod_system_t));
-    if (!sys) return NULL;
+    if (!sys) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         sys->config = *config;

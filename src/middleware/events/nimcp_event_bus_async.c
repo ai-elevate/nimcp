@@ -205,6 +205,8 @@ static void* request_timeout_worker(void* arg)
 {
     request_response_ctx_t* ctx = (request_response_ctx_t*)arg;
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 

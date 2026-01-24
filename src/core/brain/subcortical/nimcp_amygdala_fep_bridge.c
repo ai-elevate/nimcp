@@ -232,7 +232,13 @@ amyg_fep_bridge_t* amyg_fep_bridge_create(
     const amyg_fep_config_t* config
 ) {
     amyg_fep_bridge_t* bridge = calloc(1, sizeof(amyg_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         if (amyg_fep_bridge_validate_config(config) != 0) {

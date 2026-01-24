@@ -600,10 +600,22 @@ int brain_kg_remove_node(brain_kg_t* kg, brain_kg_node_id_t id) {
 }
 
 brain_kg_node_list_t* brain_kg_get_nodes_by_type(const brain_kg_t* kg, brain_kg_node_type_t type) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
 
     brain_kg_node_list_t* list = nimcp_malloc(sizeof(*list));
-    if (!list) return NULL;
+    if (!list) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "list is NULL");
+
+        return NULL;
+
+    }
 
     list->count = 0;
     list->capacity = 64;
@@ -634,10 +646,22 @@ brain_kg_node_list_t* brain_kg_get_nodes_by_type(const brain_kg_t* kg, brain_kg_
 }
 
 brain_kg_node_list_t* brain_kg_get_all_nodes(const brain_kg_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
 
     brain_kg_node_list_t* list = nimcp_malloc(sizeof(*list));
-    if (!list) return NULL;
+    if (!list) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "list is NULL");
+
+        return NULL;
+
+    }
 
     list->count = 0;
     list->capacity = kg->node_count > 0 ? kg->node_count : 64;
@@ -858,7 +882,13 @@ brain_kg_edge_list_t* brain_kg_get_outgoing(const brain_kg_t* kg, brain_kg_node_
     if (!kg || node_id == BRAIN_KG_INVALID_NODE) return NULL;
 
     brain_kg_edge_list_t* list = nimcp_malloc(sizeof(*list));
-    if (!list) return NULL;
+    if (!list) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "list is NULL");
+
+        return NULL;
+
+    }
 
     list->count = 0;
     list->capacity = 32;
@@ -892,7 +922,13 @@ brain_kg_edge_list_t* brain_kg_get_incoming(const brain_kg_t* kg, brain_kg_node_
     if (!kg || node_id == BRAIN_KG_INVALID_NODE) return NULL;
 
     brain_kg_edge_list_t* list = nimcp_malloc(sizeof(*list));
-    if (!list) return NULL;
+    if (!list) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "list is NULL");
+
+        return NULL;
+
+    }
 
     list->count = 0;
     list->capacity = 32;
@@ -923,10 +959,22 @@ brain_kg_edge_list_t* brain_kg_get_incoming(const brain_kg_t* kg, brain_kg_node_
 }
 
 brain_kg_edge_list_t* brain_kg_get_edges_by_type(const brain_kg_t* kg, brain_kg_edge_type_t type) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
 
     brain_kg_edge_list_t* list = nimcp_malloc(sizeof(*list));
-    if (!list) return NULL;
+    if (!list) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "list is NULL");
+
+        return NULL;
+
+    }
 
     list->count = 0;
     list->capacity = 64;
@@ -1104,7 +1152,13 @@ brain_kg_node_list_t* brain_kg_get_reachable(
     if (!kg || start_node == BRAIN_KG_INVALID_NODE) return NULL;
 
     brain_kg_node_list_t* list = nimcp_malloc(sizeof(*list));
-    if (!list) return NULL;
+    if (!list) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "list is NULL");
+
+        return NULL;
+
+    }
 
     list->count = 0;
     list->capacity = 64;
@@ -1212,7 +1266,13 @@ brain_kg_node_list_t* brain_kg_search_nodes(const brain_kg_t* kg, const char* pa
     if (!kg || !pattern) return NULL;
 
     brain_kg_node_list_t* list = nimcp_malloc(sizeof(*list));
-    if (!list) return NULL;
+    if (!list) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "list is NULL");
+
+        return NULL;
+
+    }
 
     list->count = 0;
     list->capacity = 32;
@@ -1252,7 +1312,13 @@ brain_kg_node_list_t* brain_kg_get_neighbors(const brain_kg_t* kg, brain_kg_node
     if (!kg || node_id == BRAIN_KG_INVALID_NODE) return NULL;
 
     brain_kg_node_list_t* list = nimcp_malloc(sizeof(*list));
-    if (!list) return NULL;
+    if (!list) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "list is NULL");
+
+        return NULL;
+
+    }
 
     list->count = 0;
     list->capacity = 32;
@@ -1308,7 +1374,13 @@ brain_kg_node_list_t* brain_kg_get_neighbors(const brain_kg_t* kg, brain_kg_node
 }
 
 brain_kg_node_list_t* brain_kg_get_hubs(const brain_kg_t* kg, uint32_t max_count) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
 
     brain_kg_node_list_t* list = brain_kg_get_all_nodes(kg);
     if (!list || list->count == 0) return list;
@@ -2022,10 +2094,22 @@ brain_kg_handler_list_t* brain_kg_get_handlers_for_message_type(
     const brain_kg_t* kg,
     uint32_t message_type
 ) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
 
     brain_kg_handler_list_t* list = nimcp_malloc(sizeof(*list));
-    if (!list) return NULL;
+    if (!list) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "list is NULL");
+
+        return NULL;
+
+    }
 
     list->count = 0;
     list->capacity = 16;

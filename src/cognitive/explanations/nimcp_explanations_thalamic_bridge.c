@@ -35,7 +35,13 @@ explanations_thalamic_bridge_t* explanations_thalamic_bridge_create(
     const explanations_thalamic_config_t* config
 ) {
     explanations_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(explanations_thalamic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Initialize mutex for thread safety */
     if (bridge_base_init(&bridge->base, 0, "explanations_thalamic") != 0) { nimcp_free(bridge); return NULL; }

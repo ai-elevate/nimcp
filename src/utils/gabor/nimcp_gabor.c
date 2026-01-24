@@ -293,6 +293,8 @@ gabor_kernel_t* gabor_kernel_create(uint32_t size,
 gabor_kernel_t* gabor_kernel_create_auto_size(const gabor_filter_params_t* params,
                                                bool dc_balance) {
     if (!params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "params is NULL");
+
         return NULL;
     }
 
@@ -320,6 +322,8 @@ float* gabor_create_kernel_data(int kernel_size, const gabor_filter_params_t* pa
 
     gabor_kernel_t* kernel = gabor_kernel_create((uint32_t)kernel_size, params, true);
     if (!kernel) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kernel is NULL");
+
         return NULL;
     }
 

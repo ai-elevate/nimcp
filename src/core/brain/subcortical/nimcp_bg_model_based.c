@@ -104,7 +104,13 @@ void bg_mb_default_config(bg_mb_config_t* config) {
 
 bg_model_based_t* bg_mb_create(const bg_mb_config_t* config) {
     bg_model_based_t* mb = nimcp_calloc(1, sizeof(bg_model_based_t));
-    if (!mb) return NULL;
+    if (!mb) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mb is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

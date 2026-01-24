@@ -112,7 +112,16 @@ static agent_model_t* find_or_create_agent_unlocked(tom_social_bridge_t* bridge,
         agent = &bridge->agents[bridge->agent_count];
     }
 
-    if (!agent) return NULL;
+    if (!agent) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
+
+        return NULL;
+
+
+    }
 
     /* Initialize new agent */
     memset(agent, 0, sizeof(agent_model_t));
@@ -159,7 +168,13 @@ int tom_social_default_config(tom_social_config_t* config) {
 
 tom_social_bridge_t* tom_social_bridge_create(const tom_social_config_t* config) {
     tom_social_bridge_t* bridge = nimcp_malloc(sizeof(tom_social_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     memset(bridge, 0, sizeof(tom_social_bridge_t));
 

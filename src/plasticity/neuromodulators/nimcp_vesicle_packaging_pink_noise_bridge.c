@@ -145,6 +145,8 @@ vesicle_pink_noise_bridge_t* vesicle_pink_noise_create(const vesicle_pink_noise_
         sizeof(vesicle_pink_noise_bridge_t)
     );
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

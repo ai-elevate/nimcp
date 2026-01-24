@@ -1121,6 +1121,8 @@ const char* failure_predictor_get_highest_priority_action(
 )
 {
     if (!predictor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictor is NULL");
+
         return NULL;
     }
 

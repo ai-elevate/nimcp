@@ -52,7 +52,13 @@ hypo_intro_fep_bridge_t* hypo_intro_fep_create(
 
     hypo_intro_fep_bridge_t* bridge = (hypo_intro_fep_bridge_t*)
         nimcp_malloc(sizeof(hypo_intro_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     memset(bridge, 0, sizeof(hypo_intro_fep_bridge_t));
 

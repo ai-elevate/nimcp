@@ -45,6 +45,8 @@ static const char* get_extension(const char* path) {
 
 int kg_export_options_default(kg_export_options_t* options) {
     if (!options) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "options is NULL");
+
         return -1;
     }
 
@@ -64,6 +66,8 @@ int kg_export_options_default(kg_export_options_t* options) {
 
 int kg_import_options_default(kg_import_options_t* options) {
     if (!options) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "options is NULL");
+
         return -1;
     }
 
@@ -126,6 +130,8 @@ int kg_export_full(
 
     FILE* file = fopen(output_path, "w");
     if (!file) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "file is NULL");
+
         return -1;
     }
 
@@ -284,6 +290,8 @@ int kg_import_validate(
     kg_import_result_t* preview
 ) {
     if (!input_path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "input_path is NULL");
+
         return -1;
     }
 

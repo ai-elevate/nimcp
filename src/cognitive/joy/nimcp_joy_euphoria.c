@@ -143,7 +143,13 @@ joy_system_t* joy_system_create(void) {
     // HOW:  Zero-initialize all state, set up default parameters
 
     joy_system_t* system = (joy_system_t*)nimcp_calloc(1, sizeof(joy_system_t));
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     // Initialize all values as inactive
     for (int i = 0; i < JOY_MAX_VALUES; i++) {

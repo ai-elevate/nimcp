@@ -254,6 +254,8 @@ cognitive_bio_bridge_t* cognitive_bio_bridge_create(
 ) {
     cognitive_bio_bridge_t* bridge = nimcp_calloc(1, sizeof(cognitive_bio_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -451,6 +453,8 @@ const cog_module_registration_t* cognitive_bio_bridge_get_module(
     cog_module_type_t type
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

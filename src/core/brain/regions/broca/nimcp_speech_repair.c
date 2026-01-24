@@ -95,7 +95,13 @@ speech_repair_config_t speech_repair_default_config(void) {
 
 speech_repair_t* speech_repair_create(const speech_repair_config_t* config) {
     speech_repair_t* processor = (speech_repair_t*)calloc(1, sizeof(speech_repair_t));
-    if (!processor) return NULL;
+    if (!processor) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         processor->config = *config;

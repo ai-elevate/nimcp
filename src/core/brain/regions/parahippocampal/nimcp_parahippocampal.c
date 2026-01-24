@@ -130,7 +130,13 @@ parahipp_config_t parahipp_default_config(void) {
 
 nimcp_parahippocampal_t* parahipp_create(const parahipp_config_t* config) {
     nimcp_parahippocampal_t* ph = (nimcp_parahippocampal_t*)calloc(1, sizeof(nimcp_parahippocampal_t));
-    if (!ph) return NULL;
+    if (!ph) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ph is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

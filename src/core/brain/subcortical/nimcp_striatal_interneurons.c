@@ -93,7 +93,13 @@ void sint_default_config(sint_config_t* config) {
 
 striatal_interneurons_t* sint_create(const sint_config_t* config) {
     striatal_interneurons_t* sint = nimcp_calloc(1, sizeof(striatal_interneurons_t));
-    if (!sint) return NULL;
+    if (!sint) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sint is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

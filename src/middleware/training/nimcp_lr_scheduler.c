@@ -354,6 +354,8 @@ static float compute_polynomial_lr(const nimcp_lr_scheduler_ctx_t* ctx, uint64_t
 
 nimcp_lr_scheduler_ctx_t* nimcp_lr_scheduler_create(const nimcp_lr_scheduler_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
@@ -364,6 +366,8 @@ nimcp_lr_scheduler_ctx_t* nimcp_lr_scheduler_create(const nimcp_lr_scheduler_con
 
     nimcp_lr_scheduler_ctx_t* ctx = (nimcp_lr_scheduler_ctx_t*)nimcp_calloc(1, sizeof(nimcp_lr_scheduler_ctx_t));
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 
@@ -1006,6 +1010,8 @@ nimcp_lr_scheduler_ctx_t* nimcp_lr_scheduler_create_with_warmup(
 
     nimcp_lr_scheduler_ctx_t* ctx = nimcp_lr_scheduler_create(&config);
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 

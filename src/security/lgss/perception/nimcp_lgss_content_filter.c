@@ -354,10 +354,22 @@ lgss_content_filter_t* lgss_content_filter_create(
     lgss_input_validator_t* validator,
     const lgss_content_filter_config_t* config)
 {
-    if (!validator) return NULL;
+    if (!validator) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "validator is NULL");
+
+        return NULL;
+
+    }
 
     lgss_content_filter_t* filter = nimcp_calloc(1, sizeof(*filter));
-    if (!filter) return NULL;
+    if (!filter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "filter is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

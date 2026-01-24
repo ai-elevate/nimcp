@@ -333,8 +333,13 @@ static void init_spike_buffer_pool(spike_buffer_pool_t* pool)
 static uint8_t* acquire_spike_buffer(spike_buffer_pool_t* pool)
 {
     // Guard clause: Validate input
-    if (!pool)
+    if (!pool) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool is NULL");
+
         return NULL;
+
+    }
 
     // Find available buffer starting from next_available
     for (uint32_t i = 0; i < MAX_POOL_BUFFERS; i++) {
@@ -913,8 +918,13 @@ static adaptive_neuron_state_t* allocate_neuron_states(uint32_t num_neurons,
     adaptive_neuron_state_t* states = nimcp_calloc(num_neurons, sizeof(adaptive_neuron_state_t));
 
     // Guard clause: Check allocation
-    if (!states)
+    if (!states) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "states is NULL");
+
         return NULL;
+
+    }
 
     initialize_neuron_states(states, num_neurons, default_threshold);
     return states;
@@ -989,6 +999,8 @@ adaptive_network_t adaptive_network_create(const adaptive_network_config_t* conf
 
     // Guard clause: Check allocation
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+
         return NULL;
     }
 
@@ -1187,8 +1199,13 @@ static float* convert_input_to_spikes(const float* input, uint32_t input_size, f
     // Phase MP: Allocate from pool for hot path performance
     float* spike_input = (float*)alloc_hot_buffer(input_size * sizeof(float));
     // Guard clause: Check allocation
-    if (!spike_input)
+    if (!spike_input) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spike_input is NULL");
+
         return NULL;
+
+    }
 
     // Guard clause: Use integer encoding only
     if (encoding == SPIKE_ENCODING_INTEGER) {
@@ -1797,12 +1814,22 @@ bool adaptive_network_save(adaptive_network_t network, const char* filepath,
 
 adaptive_network_t adaptive_network_load(const char* filepath)
 {
-    if (!filepath)
+    if (!filepath) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "filepath is NULL");
+
         return NULL;
 
+    }
+
     FILE* file = fopen(filepath, "rb");
-    if (!file)
+    if (!file) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "file is NULL");
+
         return NULL;
+
+    }
 
     // Read magic header
     uint32_t magic = 0;
@@ -2356,8 +2383,13 @@ bool adaptive_network_get_total_weight(adaptive_network_t network, uint32_t neur
  */
 neural_network_t adaptive_network_get_base_network(adaptive_network_t network)
 {
-    if (!network)
+    if (!network) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+
         return NULL;
+
+    }
     return network->base_network;
 }
 
@@ -2376,6 +2408,8 @@ const adaptive_network_config_t* adaptive_network_get_config(adaptive_network_t 
 {
     /* Guard: Validate network handle */
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+
         return NULL;
     }
 

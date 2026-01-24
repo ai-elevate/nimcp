@@ -155,7 +155,13 @@ static region_inflammation_state_t* get_or_create_inflammation_state(
     uint32_t region_id,
     brain_region_type_t region_type
 ) {
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Search existing */
     for (uint32_t i = 0; i < bridge->inflammation_state_count; i++) {
@@ -193,7 +199,13 @@ static region_abnormality_state_t* get_or_create_abnormality_state(
     uint32_t region_id,
     brain_region_type_t region_type
 ) {
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Search existing */
     for (uint32_t i = 0; i < bridge->abnormality_state_count; i++) {
@@ -230,7 +242,13 @@ static const region_cytokine_sensitivity_t* find_sensitivity(
     const brain_regions_immune_bridge_t* bridge,
     brain_region_type_t region_type
 ) {
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Search custom sensitivities */
     for (uint32_t i = 0; i < bridge->sensitivity_count; i++) {

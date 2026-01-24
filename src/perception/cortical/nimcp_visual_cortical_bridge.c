@@ -824,7 +824,13 @@ const orientation_hypercolumn_t* visual_cortical_get_hypercolumn(
     float retino_x,
     float retino_y)
 {
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     uint32_t idx = compute_hypercolumn_index(bridge, retino_x, retino_y);
     if (idx >= bridge->num_hypercolumns) return NULL;

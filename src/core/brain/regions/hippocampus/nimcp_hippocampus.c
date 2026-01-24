@@ -136,7 +136,13 @@ nimcp_hippocampus_t* hippo_create(const hippo_config_t* config) {
     hippo_config_t cfg = config ? *config : hippo_default_config();
 
     nimcp_hippocampus_t* hippo = (nimcp_hippocampus_t*)calloc(1, sizeof(nimcp_hippocampus_t));
-    if (!hippo) return NULL;
+    if (!hippo) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo is NULL");
+
+        return NULL;
+
+    }
 
     hippo->config = cfg;
     hippo->status = HIPPO_STATUS_IDLE;
@@ -1180,7 +1186,13 @@ int hippo_process_replay(nimcp_hippocampus_t* hippo) {
 }
 
 const nimcp_ripple_event_t* hippo_get_last_ripple(nimcp_hippocampus_t* hippo) {
-    if (!hippo) return NULL;
+    if (!hippo) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo is NULL");
+
+        return NULL;
+
+    }
 
     uint32_t prev_idx = (hippo->replay_head == 0) ?
                         hippo->replay_buffer_size - 1 : hippo->replay_head - 1;
@@ -2220,7 +2232,13 @@ nimcp_hippocampus_t* hippo_deserialize(const uint8_t* buffer, size_t size, size_
 
     /* Create instance */
     nimcp_hippocampus_t* hippo = hippo_create(&config);
-    if (!hippo) return NULL;
+    if (!hippo) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hippo is NULL");
+
+        return NULL;
+
+    }
 
     /* Read status */
     memcpy(&hippo->status, buffer + offset, sizeof(hippo_status_t));

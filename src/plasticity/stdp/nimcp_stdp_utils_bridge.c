@@ -97,7 +97,13 @@ stdp_utils_config_t stdp_utils_default_config(void) {
 
 stdp_utils_ctx_t stdp_utils_create(const stdp_utils_config_t* config) {
     struct stdp_utils_ctx_internal* ctx = calloc(1, sizeof(*ctx));
-    if (!ctx) return NULL;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

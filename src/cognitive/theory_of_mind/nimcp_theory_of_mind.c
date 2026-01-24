@@ -1005,7 +1005,13 @@ const char* tom_emotion_to_string(tom_emotion_t emotion)
  */
 static agent_model_t* find_agent_model(theory_of_mind_t tom, agent_id_t agent_id)
 {
-    if (!tom) return NULL;
+    if (!tom) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < MAX_TRACKED_AGENTS; i++) {
         if (tom->agent_models[i].active && tom->agent_models[i].agent_id == agent_id) {
@@ -1026,7 +1032,13 @@ static agent_model_t* find_agent_model(theory_of_mind_t tom, agent_id_t agent_id
  */
 static agent_model_t* get_or_create_agent_model(theory_of_mind_t tom, agent_id_t agent_id)
 {
-    if (!tom) return NULL;
+    if (!tom) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom is NULL");
+
+        return NULL;
+
+    }
 
     // First, try to find existing
     agent_model_t* existing = find_agent_model(tom, agent_id);

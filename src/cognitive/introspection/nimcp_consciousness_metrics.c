@@ -161,6 +161,8 @@ static transition_probability_matrix_t* build_tpm(
     uint32_t max_elements
 ) {
     if (!context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "context is NULL");
+
         return NULL;
     }
 
@@ -168,6 +170,8 @@ static transition_probability_matrix_t* build_tpm(
     transition_probability_matrix_t* tpm =
         (transition_probability_matrix_t*)nimcp_calloc(1, sizeof(transition_probability_matrix_t));
     if (!tpm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tpm is NULL");
+
         return NULL;
     }
 
@@ -334,6 +338,8 @@ static phi_partition_t* find_mip_internal(
     /* WHAT: Return deep copy of MIP */
     phi_partition_t* mip = (phi_partition_t*)nimcp_malloc(sizeof(phi_partition_t));
     if (!mip) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mip is NULL");
+
         return NULL;
     }
 
@@ -622,6 +628,8 @@ phi_partition_t* introspection_get_mip(
     /* WHAT: Compute full Φ to get MIP */
     consciousness_phi_result_t* result = introspection_compute_phi(context, config);
     if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
         return NULL;
     }
 
@@ -652,6 +660,8 @@ conceptual_structure_t* introspection_get_conceptual_structure(
     conceptual_structure_t* structure =
         (conceptual_structure_t*)nimcp_calloc(1, sizeof(conceptual_structure_t));
     if (!structure) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "structure is NULL");
+
         return NULL;
     }
 
@@ -681,6 +691,8 @@ conceptual_structure_t* introspection_get_conceptual_structure(
 static void* consciousness_monitoring_thread(void* arg) {
     consciousness_monitor_t* monitor = (consciousness_monitor_t*)arg;
     if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitor is NULL");
+
         return NULL;
     }
 

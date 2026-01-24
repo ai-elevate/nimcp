@@ -127,6 +127,8 @@ jepa_latent_t* jepa_latent_create_dim(uint32_t latent_dim) {
 
 jepa_latent_t* jepa_latent_clone(const jepa_latent_t* src) {
     if (!src) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "src is NULL");
+
         return NULL;
     }
 
@@ -142,6 +144,8 @@ jepa_latent_t* jepa_latent_clone(const jepa_latent_t* src) {
     /* Create new latent */
     jepa_latent_t* clone = jepa_latent_create(&config);
     if (!clone) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+
         return NULL;
     }
 

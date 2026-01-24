@@ -594,6 +594,8 @@ static ast_node_t* parse_primary(const char* expr, size_t* pos) {
     if (parse_variable(expr, pos, &var_name)) {
         ast_node_t* node = (ast_node_t*)nimcp_malloc(sizeof(ast_node_t));
         if (!node) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
             return NULL;
         }
         node->is_variable = true;

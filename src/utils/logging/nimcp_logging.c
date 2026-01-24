@@ -1036,6 +1036,8 @@ nimcp_logger_t nimcp_log_create(const nimcp_log_config_t* config) {
     // Allocate logger (can't use unified memory yet as it's not initialized)
     nimcp_logger_t logger = (nimcp_logger_t)malloc(sizeof(struct nimcp_logger_struct));
     if (!logger) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "logger is NULL");
+
         return NULL;
     }
 
@@ -1548,7 +1550,13 @@ nimcp_log_context_t nimcp_log_context_create(nimcp_logger_t logger, const char* 
 
     nimcp_log_context_t ctx = (nimcp_log_context_t)log_alloc(logger,
                                                               sizeof(struct nimcp_log_context_struct));
-    if (!ctx) return NULL;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return NULL;
+
+    }
 
     ctx->logger = logger;
 

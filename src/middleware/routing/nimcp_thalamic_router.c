@@ -466,10 +466,22 @@ thalamic_router_config_t thalamic_router_default_config(void) {
 }
 
 thalamic_router_t* thalamic_router_create(const thalamic_router_config_t* config) {
-    if (!config) return NULL;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return NULL;
+
+    }
 
     thalamic_router_t* router = (thalamic_router_t*)nimcp_calloc(1, sizeof(thalamic_router_t));
-    if (!router) return NULL;
+    if (!router) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router is NULL");
+
+        return NULL;
+
+    }
 
     router->config = *config;
 
@@ -923,7 +935,13 @@ routed_signal_t* thalamic_router_create_signal(uint32_t source_id,
     }
 
     routed_signal_t* signal = (routed_signal_t*)nimcp_calloc(1, sizeof(routed_signal_t));
-    if (!signal) return NULL;
+    if (!signal) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "signal is NULL");
+
+        return NULL;
+
+    }
 
     signal->dest_ids = (uint32_t*)nimcp_malloc(num_dests * sizeof(uint32_t));
     if (!signal->dest_ids) {

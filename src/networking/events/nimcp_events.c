@@ -489,8 +489,13 @@ static void* event_worker_thread(void* arg)
 event_generator_t event_generator_create(const event_generator_config_t* config)
 {
     // Guard clause: Validate config
-    if (!config)
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
+
+    }
 
     // Guard clause: Check required callback
     if (!config->callback)
@@ -518,8 +523,13 @@ event_generator_t event_generator_create(const event_generator_config_t* config)
 
     event_generator_t gen = nimcp_malloc(sizeof(struct event_generator_struct));
     // Guard clause: Check allocation
-    if (!gen)
+    if (!gen) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gen is NULL");
+
         return NULL;
+
+    }
 
     // Initialize basic fields
     memset(gen, 0, sizeof(struct event_generator_struct));
@@ -930,8 +940,13 @@ static void copy_initial_filters(event_receiver_t receiver, const event_receiver
 event_receiver_t event_receiver_create(const event_receiver_config_t* config)
 {
     // Guard clause: Validate config
-    if (!config)
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
+
+    }
 
     // Guard clause: Check required network
     if (!config->network)
@@ -939,8 +954,13 @@ event_receiver_t event_receiver_create(const event_receiver_config_t* config)
 
     event_receiver_t receiver = nimcp_malloc(sizeof(struct event_receiver_struct));
     // Guard clause: Check allocation
-    if (!receiver)
+    if (!receiver) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "receiver is NULL");
+
         return NULL;
+
+    }
 
     // Initialize basic fields
     receiver->network = config->network;

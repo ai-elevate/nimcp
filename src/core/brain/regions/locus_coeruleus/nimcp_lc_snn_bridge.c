@@ -126,7 +126,13 @@ nimcp_lc_snn_config_t nimcp_lc_snn_config_default(void) {
 
 nimcp_lc_snn_bridge_t* nimcp_lc_snn_create(const nimcp_lc_snn_config_t* config) {
     nimcp_lc_snn_bridge_t* bridge = calloc(1, sizeof(nimcp_lc_snn_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Set configuration */
     if (config) {

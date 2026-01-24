@@ -221,6 +221,8 @@ fft_plan_t* fft_plan_create(uint32_t size, fft_type_t type)
     // Allocate plan
     fft_plan_t* plan = (fft_plan_t*)nimcp_calloc(1, sizeof(fft_plan_t));
     if (!plan) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plan is NULL");
+
         return NULL;
     }
 

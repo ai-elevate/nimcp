@@ -547,6 +547,8 @@ static sec_log_fep_inject_type_t check_injection_patterns(
 int sec_log_fep_default_config(sec_log_fep_config_t* config)
 {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -725,6 +727,9 @@ int sec_log_fep_reset(sec_log_fep_bridge_t* bridge)
      */
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
         return -1;
     }
 
@@ -828,6 +833,9 @@ int sec_log_fep_compute_effects(sec_log_fep_bridge_t* bridge)
      */
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
         return -1;
     }
 
@@ -1384,6 +1392,9 @@ int sec_log_fep_update_from_detection(
      */
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
         return -1;
     }
 
@@ -1462,6 +1473,9 @@ int sec_log_fep_apply_precision_modulation(sec_log_fep_bridge_t* bridge)
      */
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
         return -1;
     }
 
@@ -1594,6 +1608,9 @@ int sec_log_fep_execute_protection(
      */
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
         return -1;
     }
 
@@ -1684,6 +1701,9 @@ int sec_log_fep_report_protection(
      */
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
         return -1;
     }
 
@@ -1793,6 +1813,8 @@ float sec_log_fep_get_free_energy(const sec_log_fep_bridge_t* bridge)
 int sec_log_fep_reset_stats(sec_log_fep_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -1811,6 +1833,8 @@ int sec_log_fep_reset_stats(sec_log_fep_bridge_t* bridge)
 int sec_log_fep_connect_bio_async(sec_log_fep_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

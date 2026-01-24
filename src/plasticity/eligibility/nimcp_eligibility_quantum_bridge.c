@@ -89,7 +89,13 @@ elig_quantum_config_t elig_quantum_default_config(void) {
 eligibility_quantum_ctx_t elig_quantum_create(const elig_quantum_config_t* config) {
     struct eligibility_quantum_ctx_internal* ctx =
         calloc(1, sizeof(struct eligibility_quantum_ctx_internal));
-    if (!ctx) return NULL;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return NULL;
+
+    }
 
     ctx->config = config ? *config : elig_quantum_default_config();
     ctx->enabled = true;

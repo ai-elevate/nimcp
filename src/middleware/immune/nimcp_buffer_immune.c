@@ -80,7 +80,13 @@ static buffer_immune_handle_t* find_buffer(
     buffer_immune_system_t* system,
     uint32_t buffer_id
 ) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < system->buffer_count; i++) {
         if (system->buffers[i].id == buffer_id) {

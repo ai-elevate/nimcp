@@ -348,6 +348,8 @@ occipital_substrate_bridge_t* occipital_substrate_bridge_create(
 
     occipital_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(occipital_substrate_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -396,6 +398,8 @@ void occipital_substrate_bridge_destroy(occipital_substrate_bridge_t* bridge) {
 
 int occipital_substrate_bridge_reset(occipital_substrate_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -433,6 +437,8 @@ int occipital_substrate_bridge_reset(occipital_substrate_bridge_t* bridge) {
 
 int occipital_substrate_bridge_update(occipital_substrate_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -482,6 +488,8 @@ int occipital_substrate_bridge_get_effects(
 
 int occipital_substrate_bridge_apply_effects(occipital_substrate_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -534,6 +542,8 @@ int occipital_substrate_bridge_register_bio_async(
     bio_router_t* router)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -555,6 +565,8 @@ int occipital_substrate_bridge_broadcast_capacity(
     occipital_substrate_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -573,6 +585,8 @@ int occipital_substrate_bridge_process_messages(
     uint32_t max_messages)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

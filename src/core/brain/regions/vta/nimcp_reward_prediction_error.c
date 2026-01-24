@@ -42,6 +42,8 @@ nimcp_rpe_config_t nimcp_rpe_default_config(void) {
 
 int nimcp_rpe_init(nimcp_rpe_system_t* system, const nimcp_rpe_config_t* config) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return -1;
     }
 
@@ -67,6 +69,8 @@ int nimcp_rpe_init(nimcp_rpe_system_t* system, const nimcp_rpe_config_t* config)
 
 int nimcp_rpe_shutdown(nimcp_rpe_system_t* system) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return -1;
     }
 
@@ -76,6 +80,8 @@ int nimcp_rpe_shutdown(nimcp_rpe_system_t* system) {
 
 int nimcp_rpe_reset(nimcp_rpe_system_t* system) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return -1;
     }
 

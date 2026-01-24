@@ -1384,6 +1384,8 @@ NIMCP_EXPORT bool neural_logic_connect(
 NIMCP_EXPORT bio_module_context_t neural_logic_get_bio_context(neural_logic_network_t network)
 {
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+
         return NULL;
     }
     return network->bio_ctx;

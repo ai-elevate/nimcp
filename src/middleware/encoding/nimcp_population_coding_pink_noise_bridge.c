@@ -116,7 +116,13 @@ population_pink_bridge_t* population_pink_bridge_create(
 
     // Allocate bridge
     population_pink_bridge_t* bridge = (population_pink_bridge_t*)nimcp_malloc(sizeof(population_pink_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     memset(bridge, 0, sizeof(population_pink_bridge_t));
     bridge->config = cfg;

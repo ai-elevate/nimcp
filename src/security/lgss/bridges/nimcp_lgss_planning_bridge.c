@@ -617,6 +617,8 @@ plan_node_t* planning_safety_create_node(
 ) {
     plan_node_t* node = nimcp_malloc(sizeof(plan_node_t));
     if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
         return NULL;
     }
 

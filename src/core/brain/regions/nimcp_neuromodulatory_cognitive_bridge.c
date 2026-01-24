@@ -84,7 +84,13 @@ int neuromod_cognitive_hub_default_config(neuromod_cognitive_hub_config_t* confi
 
 neuromod_cognitive_hub_bridge_t* neuromod_cognitive_hub_create(const neuromod_cognitive_hub_config_t* config) {
     neuromod_cognitive_hub_bridge_t* bridge = calloc(1, sizeof(neuromod_cognitive_hub_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

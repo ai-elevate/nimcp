@@ -162,7 +162,13 @@ NIMCP_EXPORT cow_manager_t cow_manager_create(
 
     // Allocate manager (use nimcp_calloc for tracking)
     cow_manager_t manager = nimcp_calloc(1, sizeof(struct cow_manager_struct));
-    if (!manager) return NULL;
+    if (!manager) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+
+        return NULL;
+
+    }
 
     // Copy configuration
     manager->data_size = config->data_size;
@@ -230,11 +236,23 @@ NIMCP_EXPORT void cow_manager_destroy(cow_manager_t manager) {
 }
 
 NIMCP_EXPORT cow_handle_t cow_acquire(cow_manager_t manager) {
-    if (!manager) return NULL;
+    if (!manager) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+
+        return NULL;
+
+    }
 
     // Allocate handle (use nimcp_calloc for tracking)
     cow_handle_t handle = nimcp_calloc(1, sizeof(struct cow_handle_struct));
-    if (!handle) return NULL;
+    if (!handle) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle is NULL");
+
+        return NULL;
+
+    }
 
     // Initialize handle
     handle->manager = manager;
@@ -324,7 +342,13 @@ NIMCP_EXPORT void* cow_write(cow_handle_t handle) {
 
     // Trigger CoW copy
     cow_manager_t manager = handle->manager;
-    if (!manager) return NULL;
+    if (!manager) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_platform_mutex_lock(&manager->mutex);
 

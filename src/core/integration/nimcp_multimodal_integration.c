@@ -63,6 +63,8 @@ multimodal_integration_t multimodal_integration_create(const multimodal_config_t
 
     multimodal_integration_t integration = nimcp_calloc(1, sizeof(struct multimodal_integration_struct));
     if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "integration is NULL");
+
         return NULL;
     }
 

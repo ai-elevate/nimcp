@@ -132,6 +132,8 @@ int cortical_column_sleep_default_config(cortical_column_sleep_config_t* config)
 {
     /* Guard clause: Validate config */
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -248,6 +250,8 @@ int cortical_column_sleep_update(cortical_column_sleep_bridge_t bridge)
 {
     /* Guard clause: Validate bridge */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -261,6 +265,8 @@ int cortical_column_sleep_apply_modulation(cortical_column_sleep_bridge_t bridge
 {
     /* Guard clause: Validate bridge */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

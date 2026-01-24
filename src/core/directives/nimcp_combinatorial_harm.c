@@ -66,6 +66,8 @@ struct combinatorial_harm_system_t {
 static nimcp_mutex_t* combinatorial_mutex_create(void) {
     nimcp_mutex_t* mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mutex is NULL");
+
         return NULL;
     }
 

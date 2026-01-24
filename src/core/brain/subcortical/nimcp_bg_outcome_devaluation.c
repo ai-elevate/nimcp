@@ -80,7 +80,13 @@ void bgod_default_config(bgod_config_t* config) {
 
 bg_outcome_deval_t* bgod_create(const bgod_config_t* config) {
     bg_outcome_deval_t* deval = nimcp_calloc(1, sizeof(bg_outcome_deval_t));
-    if (!deval) return NULL;
+    if (!deval) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deval is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

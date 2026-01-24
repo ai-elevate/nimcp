@@ -101,7 +101,13 @@ void sc_default_config(sc_config_t* config) {
 
 superior_colliculus_t* sc_create(const sc_config_t* config) {
     superior_colliculus_t* sc = nimcp_calloc(1, sizeof(superior_colliculus_t));
-    if (!sc) return NULL;
+    if (!sc) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sc is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

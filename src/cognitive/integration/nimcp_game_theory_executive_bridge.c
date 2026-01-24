@@ -296,6 +296,8 @@ static int gt_exec_query_handler(
 
 int game_theory_executive_bridge_default_config(game_theory_executive_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -328,6 +330,8 @@ game_theory_executive_bridge_t* game_theory_executive_bridge_create(
         (game_theory_executive_bridge_t*)nimcp_calloc(
             1, sizeof(game_theory_executive_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

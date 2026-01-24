@@ -302,11 +302,15 @@ lpb_config_t lpb_default_config(void) {
 language_production_bridge_t* lpb_create(const lpb_config_t* config,
                                           broca_adapter_t* broca) {
     if (!broca) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "broca is NULL");
+
         return NULL;
     }
 
     language_production_bridge_t* bridge = nimcp_calloc(1, sizeof(language_production_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -1422,6 +1426,12 @@ bool lpb_get_second_messenger_state(const language_production_bridge_t* bridge,
  *===========================================================================*/
 
 broca_adapter_t* lpb_get_broca_adapter(language_production_bridge_t* bridge) {
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     return bridge->broca;
 }

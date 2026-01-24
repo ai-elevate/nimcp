@@ -86,7 +86,13 @@ static nimcp_cache_state_t g_cache_state = {
  * HOW: Pointer arithmetic
  */
 static inline nimcp_cache_header_t* get_cache_header(const void* ptr) {
-    if (!ptr) return NULL;
+    if (!ptr) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ptr is NULL");
+
+        return NULL;
+
+    }
     return (nimcp_cache_header_t*)((char*)ptr - sizeof(nimcp_cache_header_t));
 }
 
@@ -96,7 +102,13 @@ static inline nimcp_cache_header_t* get_cache_header(const void* ptr) {
  * HOW: Pointer arithmetic
  */
 static inline void* get_user_ptr(nimcp_cache_header_t* header) {
-    if (!header) return NULL;
+    if (!header) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "header is NULL");
+
+        return NULL;
+
+    }
     return (char*)header + sizeof(nimcp_cache_header_t);
 }
 
@@ -331,6 +343,8 @@ void* nimcp_cache_alloc(size_t size) {
     // Allocate memory
     nimcp_cache_header_t* header = nimcp_malloc(total_size);
     if (!header) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "header is NULL");
+
         return NULL;
     }
 
@@ -379,7 +393,13 @@ void* nimcp_cache_calloc(size_t count, size_t size) {
 }
 
 void* nimcp_cache_reference(void* ptr) {
-    if (!ptr) return NULL;
+    if (!ptr) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ptr is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_cache_header_t* header = get_cache_header(ptr);
     if (!validate_cache_header(header)) {
@@ -403,7 +423,13 @@ void* nimcp_cache_reference(void* ptr) {
 }
 
 void* nimcp_cache_make_writable(void* ptr) {
-    if (!ptr) return NULL;
+    if (!ptr) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ptr is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_cache_header_t* header = get_cache_header(ptr);
     if (!validate_cache_header(header)) {
@@ -624,7 +650,13 @@ void nimcp_cache_analyze_efficiency(void) {
 //=============================================================================
 
 void* nimcp_cache_force_copy(void* ptr) {
-    if (!ptr) return NULL;
+    if (!ptr) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ptr is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_cache_header_t* header = get_cache_header(ptr);
     if (!validate_cache_header(header)) {
@@ -634,6 +666,8 @@ void* nimcp_cache_force_copy(void* ptr) {
     // Allocate new memory
     void* new_ptr = nimcp_cache_alloc(header->size);
     if (!new_ptr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_ptr is NULL");
+
         return NULL;
     }
 

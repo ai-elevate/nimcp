@@ -67,6 +67,8 @@ static void update_running_averages(
  */
 int sgt_fep_default_config(sgt_fep_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -218,6 +220,8 @@ void sgt_fep_destroy(sgt_fep_bridge_t* bridge) {
  */
 int sgt_fep_reset(sgt_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -286,6 +290,8 @@ int sgt_fep_set_config(
  */
 int sgt_fep_update(sgt_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -394,6 +400,8 @@ int sgt_fep_update_from_detection(
     float confidence
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -843,6 +851,8 @@ int sgt_fep_full_analysis(
  */
 int sgt_fep_apply_precision_modulation(sgt_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -903,6 +913,8 @@ int sgt_fep_apply_precision_modulation(sgt_fep_bridge_t* bridge) {
  */
 int sgt_fep_report_false_positive(sgt_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -932,6 +944,8 @@ int sgt_fep_report_false_positive(sgt_fep_bridge_t* bridge) {
 
 int sgt_fep_set_precision(sgt_fep_bridge_t* bridge, float precision) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -1043,6 +1057,8 @@ float sgt_fep_get_surprise(const sgt_fep_bridge_t* bridge) {
  */
 int sgt_fep_connect_bio_async(sgt_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

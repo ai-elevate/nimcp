@@ -47,7 +47,13 @@ multimodal_config_t multimodal_lang_default_config(void) {
 
 multimodal_language_t* multimodal_lang_create(const multimodal_config_t* config) {
     multimodal_language_t* processor = (multimodal_language_t*)calloc(1, sizeof(multimodal_language_t));
-    if (!processor) return NULL;
+    if (!processor) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         processor->config = *config;

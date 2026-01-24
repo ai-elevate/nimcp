@@ -7372,6 +7372,8 @@ int nimcp_health_agent_get_capacity_metrics(
         return -1;
     }
     if (!metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metrics is NULL");
+
         return -1;
     }
 
@@ -7570,6 +7572,8 @@ int nimcp_health_agent_disconnect_symbolic_logic(
         return -1;
     }
     if (!logic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "logic is NULL");
+
         return -1;
     }
     if (!agent->logic_mutex) {
@@ -7609,6 +7613,8 @@ int nimcp_health_agent_get_logic_metrics(
         return -1;
     }
     if (!metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metrics is NULL");
+
         return -1;
     }
 
@@ -7934,6 +7940,8 @@ int nimcp_health_agent_update_logic_config(
         return -1;
     }
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -8004,6 +8012,8 @@ int nimcp_health_agent_connect_substrate(
     const health_agent_substrate_config_t* config
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
     if (!substrate) {
@@ -8277,6 +8287,8 @@ int nimcp_health_agent_substrate_recovery(
     int substrate_index
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 
@@ -8988,6 +9000,8 @@ int nimcp_health_agent_thalamic_recovery(
     int bridge_index
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 
@@ -9114,6 +9128,8 @@ int nimcp_health_agent_middleware_recovery(
     int context_index
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 
@@ -10009,6 +10025,8 @@ int nimcp_health_agent_perception_recovery(
     int bridge_index
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 
@@ -10075,6 +10093,8 @@ int nimcp_health_agent_cortical_recovery(
     int column_index
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 
@@ -10711,6 +10731,8 @@ int nimcp_health_agent_brain_probe_recovery(
     int brain_index
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 
@@ -10886,6 +10908,8 @@ int nimcp_health_agent_probe_all_brains_now(
     nimcp_health_agent_t* agent
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 
@@ -11035,6 +11059,8 @@ int nimcp_health_agent_disconnect_jepa(
     nimcp_health_agent_t* agent
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 
@@ -11103,6 +11129,8 @@ int nimcp_health_agent_disconnect_world_model(
     nimcp_health_agent_t* agent
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 
@@ -11170,6 +11198,8 @@ int nimcp_health_agent_disconnect_imagination(
     nimcp_health_agent_t* agent
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 
@@ -11347,6 +11377,8 @@ int nimcp_health_agent_world_model_recovery(
     const char* reason
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 
@@ -11561,6 +11593,8 @@ int nimcp_health_agent_check_world_model_now(
     nimcp_health_agent_t* agent
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 
@@ -11694,6 +11728,8 @@ int nimcp_health_agent_check_imagination_now(
     nimcp_health_agent_t* agent
 ) {
     if (!agent) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
         return -1;
     }
 

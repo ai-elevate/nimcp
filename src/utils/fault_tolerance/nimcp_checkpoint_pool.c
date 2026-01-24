@@ -109,7 +109,13 @@ NIMCP_EXPORT checkpoint_pool_t checkpoint_pool_create(
 
     // Allocate pool structure
     checkpoint_pool_t pool = nimcp_calloc(1, sizeof(struct checkpoint_pool_struct));
-    if (!pool) return NULL;
+    if (!pool) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool is NULL");
+
+        return NULL;
+
+    }
 
     // Copy configuration
     memcpy(&pool->config, config, sizeof(checkpoint_pool_config_t));

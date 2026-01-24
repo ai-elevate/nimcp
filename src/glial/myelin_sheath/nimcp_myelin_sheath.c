@@ -133,7 +133,13 @@ void myelin_sheath_pool_destroy(myelin_sheath_pool_t* pool)
 
 myelin_sheath_t* myelin_sheath_pool_alloc(myelin_sheath_pool_t* pool)
 {
-    if (!pool) return NULL;
+    if (!pool) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_spinlock_lock(&pool->lock);
 
@@ -199,6 +205,8 @@ myelin_segment_pool_t* myelin_segment_pool_create(uint32_t capacity)
 
     myelin_segment_pool_t* pool = nimcp_calloc(1, sizeof(myelin_segment_pool_t));
     if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool is NULL");
+
         return NULL;
     }
 
@@ -239,7 +247,13 @@ void myelin_segment_pool_destroy(myelin_segment_pool_t* pool)
 
 myelin_segment_t* myelin_segment_pool_alloc(myelin_segment_pool_t* pool)
 {
-    if (!pool) return NULL;
+    if (!pool) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_spinlock_lock(&pool->lock);
 
@@ -376,6 +390,8 @@ myelin_sheath_t* myelin_sheath_create_for_axon(uint32_t id, uint32_t axon_id,
 
     myelin_sheath_t* sheath = myelin_sheath_create(id, axon_id, oligo_id, num_segments);
     if (!sheath) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sheath is NULL");
+
         return NULL;
     }
 
@@ -428,11 +444,23 @@ myelin_segment_t* myelin_sheath_add_segment(myelin_sheath_t* sheath,
                                              float length_um,
                                              float axon_diameter)
 {
-    if (!sheath) return NULL;
+    if (!sheath) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sheath is NULL");
+
+        return NULL;
+
+    }
     if (sheath->num_segments >= sheath->max_segments) return NULL;
 
     myelin_segment_t* segment = nimcp_calloc(1, sizeof(myelin_segment_t));
-    if (!segment) return NULL;
+    if (!segment) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "segment is NULL");
+
+        return NULL;
+
+    }
 
     // Assign ID
     segment->id = sheath->num_segments;
@@ -540,7 +568,13 @@ myelin_segment_t* myelin_sheath_get_segment(myelin_sheath_t* sheath, uint32_t in
 myelin_segment_t* myelin_sheath_find_segment_at(myelin_sheath_t* sheath,
                                                  float position_um)
 {
-    if (!sheath) return NULL;
+    if (!sheath) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sheath is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < sheath->num_segments; i++) {
         myelin_segment_t* seg = sheath->segments[i];
@@ -1127,7 +1161,13 @@ void myelin_sheath_demyelinate(myelin_sheath_t* sheath, float rate, float dt)
 
 myelin_sheath_t* myelin_sheath_cow_copy(myelin_sheath_t* sheath)
 {
-    if (!sheath) return NULL;
+    if (!sheath) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sheath is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_spinlock_lock(&sheath->lock);
 
@@ -1277,6 +1317,8 @@ myelin_sheath_network_t* myelin_network_create(const myelin_network_config_t* co
 
     myelin_sheath_network_t* network = nimcp_calloc(1, sizeof(myelin_sheath_network_t));
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+
         return NULL;
     }
 
@@ -1420,7 +1462,13 @@ nimcp_result_t myelin_network_remove_sheath(myelin_sheath_network_t* network,
 myelin_sheath_t* myelin_network_find_sheath(myelin_sheath_network_t* network,
                                              uint32_t sheath_id)
 {
-    if (!network) return NULL;
+    if (!network) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < network->num_sheaths; i++) {
         if (network->sheaths[i] && network->sheaths[i]->id == sheath_id) {
@@ -1433,7 +1481,13 @@ myelin_sheath_t* myelin_network_find_sheath(myelin_sheath_network_t* network,
 myelin_sheath_t* myelin_network_find_by_axon(myelin_sheath_network_t* network,
                                               uint32_t axon_id)
 {
-    if (!network) return NULL;
+    if (!network) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < network->num_sheaths; i++) {
         if (network->sheaths[i] && network->sheaths[i]->axon_id == axon_id) {
@@ -1571,7 +1625,13 @@ myelin_sheath_t* myelin_network_create_sheath_for_axon(
     float axon_diameter,
     float start_position)
 {
-    if (!network) return NULL;
+    if (!network) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+
+        return NULL;
+
+    }
 
     // Check if sheath already exists for this axon
     myelin_sheath_t* existing = myelin_network_find_by_axon(network, axon_id);
@@ -1587,7 +1647,16 @@ myelin_sheath_t* myelin_network_create_sheath_for_axon(
         sheath_id, axon_id, oligo_id, axon_length, axon_diameter,
         network->config.max_segments_per_sheath);
 
-    if (!sheath) return NULL;
+    if (!sheath) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sheath is NULL");
+
+
+        return NULL;
+
+
+    }
 
     // Add to network
     if (myelin_network_add_sheath(network, sheath) != NIMCP_SUCCESS) {

@@ -175,10 +175,22 @@ pink_quantum_config_t pink_quantum_default_config(void) {
 //=============================================================================
 
 pink_quantum_bridge_t* pink_quantum_create(const pink_quantum_config_t* config) {
-    if (!config) return NULL;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return NULL;
+
+    }
 
     pink_quantum_bridge_t* bridge = nimcp_calloc(1, sizeof(pink_quantum_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     memcpy(&bridge->config, config, sizeof(pink_quantum_config_t));
     bridge->rng_state = (config->seed != 0) ? config->seed : 42;

@@ -1013,7 +1013,13 @@ static bool stream_push_sample(stream_context_t* ctx, const float* features,
 
 static stream_sample_t* stream_pop_sample(stream_context_t* ctx, int32_t timeout_ms)
 {
-    if (!ctx) return NULL;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return NULL;
+
+    }
     nimcp_mutex_lock(&ctx->queue_lock);
     while (ctx->queue_head == NULL && ctx->active) {
         if (timeout_ms == 0) { nimcp_mutex_unlock(&ctx->queue_lock); return NULL; }

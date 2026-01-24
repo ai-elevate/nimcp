@@ -98,7 +98,13 @@ int lc_bio_async_default_config(lc_bio_async_config_t* config) {
 
 lc_bio_async_bridge_t* lc_bio_async_bridge_create(const lc_bio_async_config_t* config) {
     lc_bio_async_bridge_t* bridge = calloc(1, sizeof(lc_bio_async_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

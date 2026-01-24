@@ -103,7 +103,13 @@ int sensory_swarm_default_config(sensory_swarm_config_t* config) {
 
 sensory_swarm_bridge_t* sensory_swarm_bridge_create(const sensory_swarm_config_t* config) {
     sensory_swarm_bridge_t* bridge = (sensory_swarm_bridge_t*)calloc(1, sizeof(sensory_swarm_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         memcpy(&bridge->config, config, sizeof(sensory_swarm_config_t));

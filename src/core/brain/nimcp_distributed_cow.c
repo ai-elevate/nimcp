@@ -160,6 +160,8 @@ static void ensure_registry_mutex_initialized(void) {
  */
 static neural_network_t get_base_network(adaptive_network_t network) {
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+
         return NULL;
     }
     // ASSUMPTION: This relies on adaptive_network_struct having base_network as its
@@ -216,6 +218,8 @@ static int serialize_network_segment(
     // Get base neural network
     neural_network_t base_net = get_base_network(network);
     if (!base_net) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "base_net is NULL");
+
         return -1;
     }
 
@@ -233,6 +237,8 @@ static int serialize_network_segment(
     size_t temp_buffer_size = 1024 + num_neurons * (32 + 50 * 8);
     uint8_t* temp_buffer = nimcp_malloc(temp_buffer_size);
     if (!temp_buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "temp_buffer is NULL");
+
         return -1;
     }
 
@@ -597,6 +603,8 @@ static distributed_cow_state_t* create_distributed_cow_state(
 ) {
     distributed_cow_state_t* state = nimcp_calloc(1, sizeof(distributed_cow_state_t));
     if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
         return NULL;
     }
 

@@ -98,11 +98,23 @@ mental_health_sleep_bridge_t mental_health_sleep_bridge_create(
     const mental_health_sleep_config_t* config,
     sleep_system_t sleep)
 {
-    if (!sleep) return NULL;
+    if (!sleep) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep is NULL");
+
+        return NULL;
+
+    }
 
     struct mental_health_sleep_bridge_struct* bridge =
         (struct mental_health_sleep_bridge_struct*)nimcp_malloc(sizeof(struct mental_health_sleep_bridge_struct));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     memset(bridge, 0, sizeof(struct mental_health_sleep_bridge_struct));
 

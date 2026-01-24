@@ -137,7 +137,13 @@ nimcp_habenula_adapter_t nimcp_habenula_adapter_create(
     const nimcp_habenula_adapter_config_t* config) {
 
     nimcp_habenula_adapter_t adapter = calloc(1, sizeof(*adapter));
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         adapter->config = *config;
@@ -187,7 +193,13 @@ int nimcp_habenula_adapter_disconnect(nimcp_habenula_adapter_t adapter) {
 
 nimcp_habenula_system_t* nimcp_habenula_adapter_get_habenula(
     nimcp_habenula_adapter_t adapter) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     return &adapter->habenula;
 }
 

@@ -132,7 +132,13 @@ curiosity_plasticity_bridge_t* curiosity_plasticity_create(
     const curiosity_plasticity_config_t* config
 ) {
     curiosity_plasticity_bridge_t* bridge = nimcp_calloc(1, sizeof(curiosity_plasticity_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

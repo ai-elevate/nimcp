@@ -66,6 +66,8 @@ static void ensure_registry_initialized(void) {
 
 int kg_compliance_default_retention(kg_retention_policy_t* policy) {
     if (!policy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "policy is NULL");
+
         return -1;
     }
 
@@ -84,6 +86,9 @@ int kg_compliance_set_retention(const kg_retention_policy_t* policy) {
     ensure_registry_initialized();
 
     if (!policy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "policy is NULL");
+
+
         return -1;
     }
 
@@ -148,6 +153,8 @@ int kg_compliance_get_retention(const char* policy_name, kg_retention_policy_t* 
 
 int kg_compliance_apply_retention(brain_kg_t* kg) {
     if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
         return -1;
     }
 
@@ -331,6 +338,8 @@ int kg_compliance_unmask_pii(const brain_kg_t* kg, brain_kg_node_id_t node_id,
 int kg_compliance_classify_node(brain_kg_t* kg, brain_kg_node_id_t node_id,
                                  kg_data_classification_t classification) {
     if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
         return -1;
     }
 

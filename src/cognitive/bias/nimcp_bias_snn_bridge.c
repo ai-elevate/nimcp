@@ -163,10 +163,22 @@ bias_snn_config_t bias_snn_config_default(void) {
 }
 
 bias_snn_bridge_t* bias_snn_create(const bias_snn_config_t* config) {
-    if (!config) return NULL;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return NULL;
+
+    }
 
     bias_snn_bridge_t* bridge = calloc(1, sizeof(bias_snn_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     bridge->config = *config;
     bridge->state = BIAS_SNN_STATE_IDLE;

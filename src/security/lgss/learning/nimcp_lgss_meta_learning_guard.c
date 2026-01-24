@@ -369,6 +369,8 @@ meta_learning_guard_t meta_learning_guard_create(
 ) {
     struct meta_learning_guard_internal* guard = calloc(1, sizeof(*guard));
     if (!guard) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "guard is NULL");
+
         return NULL;
     }
 

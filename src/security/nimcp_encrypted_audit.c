@@ -407,6 +407,8 @@ nimcp_encrypted_audit_t nimcp_encrypted_audit_create(
 
     nimcp_encrypted_audit_t audit = calloc(1, sizeof(struct nimcp_encrypted_audit_impl));
     if (!audit) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "audit is NULL");
+
         return NULL;
     }
 

@@ -760,7 +760,13 @@ kg_search_results_t* kg_search_execute(const kg_search_index_t* idx,
 
     /* Allocate results container */
     kg_search_results_t* results = nimcp_calloc(1, sizeof(kg_search_results_t));
-    if (!results) return NULL;
+    if (!results) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "results is NULL");
+
+        return NULL;
+
+    }
 
     /* Allocate temporary results array */
     uint32_t max_results = idx->module_count + MAX_INDEXED_LAYERS +
@@ -875,7 +881,13 @@ void kg_search_results_free(kg_search_results_t* results) {
 
 kg_search_query_t* kg_search_query_create(void) {
     kg_search_query_t* query = nimcp_calloc(1, sizeof(kg_search_query_t));
-    if (!query) return NULL;
+    if (!query) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "query is NULL");
+
+        return NULL;
+
+    }
 
     /* Set defaults */
     query->match_all = true;
@@ -989,10 +1001,22 @@ int kg_search_query_clear_conditions(kg_search_query_t* query) {
 }
 
 kg_search_query_t* kg_search_query_clone(const kg_search_query_t* query) {
-    if (!query) return NULL;
+    if (!query) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "query is NULL");
+
+        return NULL;
+
+    }
 
     kg_search_query_t* clone = nimcp_calloc(1, sizeof(kg_search_query_t));
-    if (!clone) return NULL;
+    if (!clone) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+
+        return NULL;
+
+    }
 
     memcpy(clone, query, sizeof(kg_search_query_t));
     clone->conditions = NULL;
@@ -1019,7 +1043,13 @@ kg_search_results_t* kg_search_by_tag(const kg_search_index_t* idx, const char* 
     if (!idx || !tag) return NULL;
 
     kg_search_query_t* query = kg_search_query_create();
-    if (!query) return NULL;
+    if (!query) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "query is NULL");
+
+        return NULL;
+
+    }
 
     kg_search_query_add_condition(query, "tags", KG_SEARCH_OP_HAS_TAG, tag);
     kg_search_query_set_scope(query, true, false, false, false);
@@ -1034,7 +1064,13 @@ kg_search_results_t* kg_search_by_type(const kg_search_index_t* idx,
     if (!idx || !module_type) return NULL;
 
     kg_search_query_t* query = kg_search_query_create();
-    if (!query) return NULL;
+    if (!query) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "query is NULL");
+
+        return NULL;
+
+    }
 
     kg_search_query_add_condition(query, "module_type", KG_SEARCH_OP_EQUALS, module_type);
     kg_search_query_set_scope(query, true, false, false, false);
@@ -1049,7 +1085,13 @@ kg_search_results_t* kg_search_by_subsystem(const kg_search_index_t* idx,
     if (!idx || !subsystem) return NULL;
 
     kg_search_query_t* query = kg_search_query_create();
-    if (!query) return NULL;
+    if (!query) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "query is NULL");
+
+        return NULL;
+
+    }
 
     kg_search_query_add_condition(query, "subsystem", KG_SEARCH_OP_EQUALS, subsystem);
     kg_search_query_set_scope(query, true, false, false, false);
@@ -1064,7 +1106,13 @@ kg_search_results_t* kg_search_full_text(const kg_search_index_t* idx,
     if (!idx || !query_text) return NULL;
 
     kg_search_query_t* query = kg_search_query_create();
-    if (!query) return NULL;
+    if (!query) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "query is NULL");
+
+        return NULL;
+
+    }
 
     kg_search_query_add_condition(query, "", KG_SEARCH_OP_FULL_TEXT, query_text);
 
@@ -1075,10 +1123,22 @@ kg_search_results_t* kg_search_full_text(const kg_search_index_t* idx,
 
 kg_search_results_t* kg_search_by_health(const kg_search_index_t* idx,
                                           float min_health, float max_health) {
-    if (!idx) return NULL;
+    if (!idx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "idx is NULL");
+
+        return NULL;
+
+    }
 
     kg_search_query_t* query = kg_search_query_create();
-    if (!query) return NULL;
+    if (!query) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "query is NULL");
+
+        return NULL;
+
+    }
 
     char min_str[32], max_str[32];
     snprintf(min_str, sizeof(min_str), "%.4f", min_health);
@@ -1094,10 +1154,22 @@ kg_search_results_t* kg_search_by_health(const kg_search_index_t* idx,
 
 kg_search_results_t* kg_search_by_hemisphere(const kg_search_index_t* idx,
                                               uint8_t hemisphere) {
-    if (!idx) return NULL;
+    if (!idx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "idx is NULL");
+
+        return NULL;
+
+    }
 
     kg_search_query_t* query = kg_search_query_create();
-    if (!query) return NULL;
+    if (!query) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "query is NULL");
+
+        return NULL;
+
+    }
 
     char hemi_str[8];
     snprintf(hemi_str, sizeof(hemi_str), "%u", hemisphere);
@@ -1111,10 +1183,22 @@ kg_search_results_t* kg_search_by_hemisphere(const kg_search_index_t* idx,
 }
 
 kg_search_results_t* kg_search_by_layer(const kg_search_index_t* idx, uint8_t layer) {
-    if (!idx) return NULL;
+    if (!idx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "idx is NULL");
+
+        return NULL;
+
+    }
 
     kg_search_query_t* query = kg_search_query_create();
-    if (!query) return NULL;
+    if (!query) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "query is NULL");
+
+        return NULL;
+
+    }
 
     char layer_str[8];
     snprintf(layer_str, sizeof(layer_str), "%u", layer);
@@ -1131,7 +1215,13 @@ kg_search_results_t* kg_search_by_status(const kg_search_index_t* idx, const cha
     if (!idx || !status) return NULL;
 
     kg_search_query_t* query = kg_search_query_create();
-    if (!query) return NULL;
+    if (!query) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "query is NULL");
+
+        return NULL;
+
+    }
 
     kg_search_query_add_condition(query, "status", KG_SEARCH_OP_EQUALS, status);
     kg_search_query_set_scope(query, true, false, false, false);

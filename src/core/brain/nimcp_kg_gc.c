@@ -219,6 +219,8 @@ static int collect_tombstones(kg_gc_context_t* gc) {
 
 int kg_gc_default_config(kg_gc_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -242,6 +244,8 @@ int kg_gc_default_config(kg_gc_config_t* config) {
 kg_gc_context_t* kg_gc_create(brain_kg_t* kg, const kg_gc_config_t* config) {
     kg_gc_context_t* gc = nimcp_calloc(1, sizeof(kg_gc_context_t));
     if (!gc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gc is NULL");
+
         return NULL;
     }
 
@@ -331,6 +335,8 @@ int kg_gc_get_config(const kg_gc_context_t* gc, kg_gc_config_t* config) {
 
 int kg_gc_run(kg_gc_context_t* gc, uint32_t targets) {
     if (!gc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gc is NULL");
+
         return -1;
     }
 
@@ -400,6 +406,8 @@ int kg_gc_run(kg_gc_context_t* gc, uint32_t targets) {
 
 int kg_gc_run_incremental(kg_gc_context_t* gc, uint32_t max_items) {
     if (!gc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gc is NULL");
+
         return -1;
     }
 
@@ -464,6 +472,8 @@ int kg_gc_run_with_progress(
     void* user_data
 ) {
     if (!gc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gc is NULL");
+
         return -1;
     }
 
@@ -519,6 +529,8 @@ int kg_gc_run_with_progress(
 
 int kg_gc_compact(kg_gc_context_t* gc) {
     if (!gc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gc is NULL");
+
         return -1;
     }
 
@@ -542,6 +554,8 @@ int kg_gc_compact(kg_gc_context_t* gc) {
 
 int kg_gc_defragment(kg_gc_context_t* gc) {
     if (!gc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gc is NULL");
+
         return -1;
     }
 
@@ -551,6 +565,8 @@ int kg_gc_defragment(kg_gc_context_t* gc) {
 
 int kg_gc_cancel(kg_gc_context_t* gc) {
     if (!gc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gc is NULL");
+
         return -1;
     }
 
@@ -623,6 +639,9 @@ int64_t kg_gc_estimate_reclaimable(
     (void)targets;
 
     if (!gc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gc is NULL");
+
+
         return -1;
     }
 
@@ -650,6 +669,8 @@ const char* kg_gc_get_last_error(const kg_gc_context_t* gc) {
 
 int kg_gc_schedule(kg_gc_context_t* gc, uint64_t run_at_timestamp) {
     if (!gc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gc is NULL");
+
         return -1;
     }
 
@@ -662,6 +683,8 @@ int kg_gc_schedule(kg_gc_context_t* gc, uint64_t run_at_timestamp) {
 
 int kg_gc_cancel_scheduled(kg_gc_context_t* gc) {
     if (!gc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gc is NULL");
+
         return -1;
     }
 
@@ -688,6 +711,8 @@ uint64_t kg_gc_get_scheduled_time(const kg_gc_context_t* gc) {
 
 int kg_gc_enable_auto(kg_gc_context_t* gc) {
     if (!gc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gc is NULL");
+
         return -1;
     }
 
@@ -701,6 +726,8 @@ int kg_gc_enable_auto(kg_gc_context_t* gc) {
 
 int kg_gc_disable_auto(kg_gc_context_t* gc) {
     if (!gc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gc is NULL");
+
         return -1;
     }
 
@@ -720,6 +747,8 @@ bool kg_gc_is_auto_enabled(const kg_gc_context_t* gc) {
 
 int kg_gc_trigger_if_needed(kg_gc_context_t* gc) {
     if (!gc) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gc is NULL");
+
         return -1;
     }
 

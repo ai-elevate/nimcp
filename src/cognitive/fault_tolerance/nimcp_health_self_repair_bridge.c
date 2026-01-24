@@ -284,6 +284,8 @@ int health_self_repair_bridge_default_config(
     health_self_repair_bridge_config_t* config
 ) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -334,6 +336,8 @@ health_self_repair_bridge_t* health_self_repair_bridge_create(
 
     health_self_repair_bridge_t* bridge = nimcp_calloc(1, sizeof(health_self_repair_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -810,6 +814,8 @@ int health_self_repair_bridge_set_trigger_callback(
     void* user_data
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -827,6 +833,8 @@ int health_self_repair_bridge_set_outcome_callback(
     void* user_data
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -1081,6 +1089,8 @@ int health_self_repair_bridge_broadcast_outcome(
     health_repair_outcome_t outcome
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

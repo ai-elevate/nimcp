@@ -251,11 +251,19 @@ wernicke_broca_bridge_t* wbb_create(
 ) {
     /* Wernicke adapter is required for arcuate fasciculus bridge */
     if (!wernicke) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke is NULL");
+
         return NULL;
     }
 
     wernicke_broca_bridge_t* bridge = calloc(1, sizeof(wernicke_broca_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

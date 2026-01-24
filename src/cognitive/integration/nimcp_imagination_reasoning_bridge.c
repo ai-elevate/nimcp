@@ -381,6 +381,8 @@ static int imagination_reasoning_query_handler(
 
 int imagination_reasoning_bridge_default_config(imagination_reasoning_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -413,6 +415,8 @@ imagination_reasoning_bridge_t* imagination_reasoning_bridge_create(
     imagination_reasoning_bridge_t* bridge = nimcp_calloc(
         1, sizeof(imagination_reasoning_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -624,6 +628,8 @@ int imagination_reasoning_bridge_unregister_from_hub(
     imagination_reasoning_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -1386,6 +1392,8 @@ int imagination_reasoning_bridge_get_stats(
 
 int imagination_reasoning_bridge_reset_stats(imagination_reasoning_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -1402,6 +1410,8 @@ int imagination_reasoning_bridge_reset_stats(imagination_reasoning_bridge_t* bri
 
 int imagination_reasoning_bridge_force_update(imagination_reasoning_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

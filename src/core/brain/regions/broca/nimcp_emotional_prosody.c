@@ -74,7 +74,13 @@ emotional_prosody_config_t emotional_prosody_default_config(void) {
 
 emotional_prosody_t* emotional_prosody_create(const emotional_prosody_config_t* config) {
     emotional_prosody_t* processor = (emotional_prosody_t*)calloc(1, sizeof(emotional_prosody_t));
-    if (!processor) return NULL;
+    if (!processor) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "processor is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         processor->config = *config;

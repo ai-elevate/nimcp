@@ -31,7 +31,13 @@ jepa_thalamic_config_t jepa_thalamic_default_config(void) {
 
 jepa_thalamic_bridge_t* jepa_thalamic_bridge_create(void* jepa, thalamic_router_t* router, const jepa_thalamic_config_t* config) {
     jepa_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(jepa_thalamic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     bridge->jepa = jepa;
     bridge->router = router;
     bridge->config = config ? *config : jepa_thalamic_default_config();

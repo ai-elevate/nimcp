@@ -1169,7 +1169,13 @@ kg_module_wiring_t* nimcp_exception_create_kg_wiring(void) {
         KG_EXCEPTION_MODULE_NAME,
         KG_EXCEPTION_MODULE_TYPE
     );
-    if (!wiring) return NULL;
+    if (!wiring) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring is NULL");
+
+        return NULL;
+
+    }
 
     /* Set metadata */
     kg_module_wiring_set_metadata(wiring,

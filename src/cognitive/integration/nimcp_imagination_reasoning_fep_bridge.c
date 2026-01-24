@@ -295,7 +295,13 @@ imag_reason_fep_bridge_t* imag_reason_fep_bridge_create(
     const imag_reason_fep_config_t* config
 ) {
     imag_reason_fep_bridge_t* bridge = nimcp_calloc(1, sizeof(imag_reason_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

@@ -969,6 +969,8 @@ jepa_mm_batch_t* jepa_mm_batch_create(uint32_t max_pairs)
 
     jepa_mm_batch_t* batch = (jepa_mm_batch_t*)nimcp_calloc(1, sizeof(jepa_mm_batch_t));
     if (!batch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "batch is NULL");
+
         return NULL;
     }
 

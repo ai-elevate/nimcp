@@ -70,7 +70,13 @@ brain_temporal_buffer_t* brain_create_temporal_buffer(
 
     // Allocate structure
     brain_temporal_buffer_t* buffer = (brain_temporal_buffer_t*)nimcp_calloc(1, sizeof(brain_temporal_buffer_t));
-    if (!buffer) return NULL;
+    if (!buffer) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer is NULL");
+
+        return NULL;
+
+    }
 
     // Get buffer sizes
     size_t window_size, fast_size, medium_size, slow_size;
@@ -201,7 +207,13 @@ brain_feature_normalizer_t* brain_create_feature_normalizer(
 
     // Allocate structure
     brain_feature_normalizer_t* normalizer = (brain_feature_normalizer_t*)nimcp_calloc(1, sizeof(brain_feature_normalizer_t));
-    if (!normalizer) return NULL;
+    if (!normalizer) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "normalizer is NULL");
+
+        return NULL;
+
+    }
 
     // Create normalizers based on type
     switch (type) {
@@ -392,7 +404,13 @@ brain_spike_feature_extractor_t brain_create_spike_feature_extractor(
     // Allocate structure
     struct brain_spike_feature_extractor_struct* extractor =
         nimcp_calloc(1, sizeof(struct brain_spike_feature_extractor_struct));
-    if (!extractor) return NULL;
+    if (!extractor) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "extractor is NULL");
+
+        return NULL;
+
+    }
 
     // Configure feature extractor for brain use
     feature_extractor_config_t config = {
@@ -447,7 +465,13 @@ brain_population_analyzer_t brain_create_population_analyzer(void) {
     // Allocate structure
     struct brain_population_analyzer_struct* analyzer =
         nimcp_calloc(1, sizeof(struct brain_population_analyzer_struct));
-    if (!analyzer) return NULL;
+    if (!analyzer) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analyzer is NULL");
+
+        return NULL;
+
+    }
 
     // Configure for brain use with sensible defaults
     population_coding_config_t config = {

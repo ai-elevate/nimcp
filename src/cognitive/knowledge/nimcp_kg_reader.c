@@ -96,7 +96,13 @@ static char* parse_json_string(const char** pos) {
 
     /* Allocate and copy with escape handling */
     char* result = malloc(len + 1);
-    if (!result) return NULL;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return NULL;
+
+    }
 
     const char* src = start;
     char* dst = result;
@@ -130,7 +136,13 @@ static const char* find_json_key(const char* json, const char* key) {
     snprintf(search, sizeof(search), "\"%s\"", key);
 
     const char* pos = strstr(json, search);
-    if (!pos) return NULL;
+    if (!pos) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pos is NULL");
+
+        return NULL;
+
+    }
 
     pos += strlen(search);
     pos = skip_ws(pos);
@@ -168,7 +180,13 @@ static int parse_json_string_array(const char* json, char** out_strings, uint32_
  */
 static kg_entity_t* parse_entity(const char* json) {
     kg_entity_t* entity = calloc(1, sizeof(kg_entity_t));
-    if (!entity) return NULL;
+    if (!entity) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entity is NULL");
+
+        return NULL;
+
+    }
 
     /* Parse name */
     const char* name_pos = find_json_key(json, "name");
@@ -213,7 +231,13 @@ static kg_entity_t* parse_entity(const char* json) {
  */
 static kg_relation_t* parse_relation(const char* json) {
     kg_relation_t* relation = calloc(1, sizeof(kg_relation_t));
-    if (!relation) return NULL;
+    if (!relation) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "relation is NULL");
+
+        return NULL;
+
+    }
 
     /* Parse from */
     const char* from_pos = find_json_key(json, "from");
@@ -425,7 +449,13 @@ kg_entity_list_t* kg_reader_get_entities_by_type(const kg_reader_t* reader, cons
     if (!reader || !entity_type) return NULL;
 
     kg_entity_list_t* list = calloc(1, sizeof(kg_entity_list_t));
-    if (!list) return NULL;
+    if (!list) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "list is NULL");
+
+        return NULL;
+
+    }
 
     list->capacity = 64;
     list->entities = calloc(list->capacity, sizeof(kg_entity_t*));
@@ -450,10 +480,22 @@ kg_entity_list_t* kg_reader_get_entities_by_type(const kg_reader_t* reader, cons
 }
 
 kg_entity_list_t* kg_reader_get_all_entities(const kg_reader_t* reader) {
-    if (!reader) return NULL;
+    if (!reader) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reader is NULL");
+
+        return NULL;
+
+    }
 
     kg_entity_list_t* list = calloc(1, sizeof(kg_entity_list_t));
-    if (!list) return NULL;
+    if (!list) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "list is NULL");
+
+        return NULL;
+
+    }
 
     list->capacity = reader->num_entities;
     list->entities = calloc(list->capacity, sizeof(kg_entity_t*));
@@ -475,7 +517,13 @@ kg_entity_list_t* kg_reader_search_entities(const kg_reader_t* reader, const cha
     if (!reader || !search_text) return NULL;
 
     kg_entity_list_t* list = calloc(1, sizeof(kg_entity_list_t));
-    if (!list) return NULL;
+    if (!list) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "list is NULL");
+
+        return NULL;
+
+    }
 
     list->capacity = 64;
     list->entities = calloc(list->capacity, sizeof(kg_entity_t*));
@@ -534,7 +582,13 @@ kg_relation_list_t* kg_reader_get_relations_from(const kg_reader_t* reader, cons
     if (!reader || !from_entity) return NULL;
 
     kg_relation_list_t* list = calloc(1, sizeof(kg_relation_list_t));
-    if (!list) return NULL;
+    if (!list) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "list is NULL");
+
+        return NULL;
+
+    }
 
     list->capacity = 32;
     list->relations = calloc(list->capacity, sizeof(kg_relation_t*));
@@ -562,7 +616,13 @@ kg_relation_list_t* kg_reader_get_relations_to(const kg_reader_t* reader, const 
     if (!reader || !to_entity) return NULL;
 
     kg_relation_list_t* list = calloc(1, sizeof(kg_relation_list_t));
-    if (!list) return NULL;
+    if (!list) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "list is NULL");
+
+        return NULL;
+
+    }
 
     list->capacity = 32;
     list->relations = calloc(list->capacity, sizeof(kg_relation_t*));
@@ -590,7 +650,13 @@ kg_relation_list_t* kg_reader_get_relations_by_type(const kg_reader_t* reader, c
     if (!reader || !relation_type) return NULL;
 
     kg_relation_list_t* list = calloc(1, sizeof(kg_relation_list_t));
-    if (!list) return NULL;
+    if (!list) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "list is NULL");
+
+        return NULL;
+
+    }
 
     list->capacity = 32;
     list->relations = calloc(list->capacity, sizeof(kg_relation_t*));

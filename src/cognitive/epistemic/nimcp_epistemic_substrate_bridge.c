@@ -32,9 +32,21 @@ epistemic_substrate_config_t epistemic_substrate_default_config(void) {
 }
 
 epistemic_substrate_bridge_t* epistemic_substrate_bridge_create(void* epistemic, neural_substrate_t* substrate, const epistemic_substrate_config_t* config) {
-    if (!substrate) return NULL;
+    if (!substrate) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
+
+        return NULL;
+
+    }
     epistemic_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(epistemic_substrate_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     bridge->epistemic = epistemic;
     bridge->substrate = substrate;
     bridge->config = config ? *config : epistemic_substrate_default_config();

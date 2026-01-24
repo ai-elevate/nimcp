@@ -42,11 +42,15 @@ hypothalamus_thalamic_bridge_t* hypothalamus_thalamic_bridge_create(void* hypoth
                                                                      thalamic_router_t* router,
                                                                      const hypothalamus_thalamic_config_t* config) {
     if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router is NULL");
+
         return NULL;
     }
 
     hypothalamus_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(hypothalamus_thalamic_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -73,6 +77,8 @@ void hypothalamus_thalamic_bridge_destroy(hypothalamus_thalamic_bridge_t* bridge
 
 int hypothalamus_thalamic_bridge_reset(hypothalamus_thalamic_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -128,6 +134,8 @@ int hypothalamus_thalamic_route_signal(hypothalamus_thalamic_bridge_t* bridge,
 int hypothalamus_thalamic_route_drive(hypothalamus_thalamic_bridge_t* bridge,
                                        uint32_t drive_type, float strength) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -150,6 +158,8 @@ int hypothalamus_thalamic_route_drive(hypothalamus_thalamic_bridge_t* bridge,
 
 int hypothalamus_thalamic_set_attention(hypothalamus_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

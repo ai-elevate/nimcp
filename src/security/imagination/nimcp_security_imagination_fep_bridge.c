@@ -44,6 +44,8 @@ int security_imagination_fep_default_config(
     security_imagination_fep_config_t* config
 ) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -164,6 +166,8 @@ int security_imagination_fep_reset(
     security_imagination_fep_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -241,6 +245,8 @@ int security_imagination_fep_compute_effects(
     security_imagination_fep_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -460,6 +466,8 @@ int security_imagination_fep_apply_precision(
     security_imagination_fep_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -518,6 +526,8 @@ int security_imagination_fep_ground(
     uint64_t sandbox_id
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -639,6 +649,8 @@ int security_imagination_fep_execute_response(
     active_inference_response_t response
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -694,6 +706,8 @@ int security_imagination_fep_report_false_positive(
     security_imagination_fep_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -725,6 +739,8 @@ int security_imagination_fep_confirm_confabulation(
     confabulation_type_t confab_type
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -948,6 +964,8 @@ int security_imagination_fep_connect_bio_async(
     security_imagination_fep_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

@@ -972,7 +972,13 @@ jepa_prediction_error_t* jepa_prediction_error_create(uint32_t dim) {
     if (dim == 0) return NULL;
 
     jepa_prediction_error_t* error = nimcp_malloc(sizeof(jepa_prediction_error_t));
-    if (!error) return NULL;
+    if (!error) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "error is NULL");
+
+        return NULL;
+
+    }
 
     error->dim = dim;
     error->error = nimcp_malloc(dim * sizeof(float));
@@ -1923,7 +1929,13 @@ typedef struct jepa_mcts_node {
  */
 static jepa_mcts_node_t* jepa_mcts_node_create(uint32_t dim) {
     jepa_mcts_node_t* node = nimcp_malloc(sizeof(jepa_mcts_node_t));
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
 
     node->embedding = nimcp_malloc(dim * sizeof(float));
     if (!node->embedding) {

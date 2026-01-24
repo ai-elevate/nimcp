@@ -48,7 +48,13 @@ nimcp_raphe_plasticity_config_t nimcp_raphe_plasticity_config_default(void) {
 
 nimcp_raphe_plasticity_bridge_t* nimcp_raphe_plasticity_create(const nimcp_raphe_plasticity_config_t* config) {
     nimcp_raphe_plasticity_bridge_t* b = calloc(1, sizeof(*b));
-    if (!b) return NULL;
+    if (!b) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "b is NULL");
+
+        return NULL;
+
+    }
     b->config = config ? *config : nimcp_raphe_plasticity_config_default();
     b->synapse_capacity = RAPHE_PLASTICITY_MAX_SYNAPSES;
     b->synapses = calloc(b->synapse_capacity, sizeof(nimcp_raphe_plasticity_synapse_t));

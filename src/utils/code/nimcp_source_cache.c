@@ -691,6 +691,8 @@ char* source_cache_get_function_source(
     struct nimcp_source_cache* c = (struct nimcp_source_cache*)cache;
     source_file_entry_t* entry = get_or_load_file(c, filename);
     if (!entry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+
         return NULL;
     }
 
@@ -1134,6 +1136,8 @@ void source_cache_print_stats(source_cache_t cache) {
 
 const char* source_cache_get_root(source_cache_t cache) {
     if (!cache) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cache is NULL");
+
         return NULL;
     }
 

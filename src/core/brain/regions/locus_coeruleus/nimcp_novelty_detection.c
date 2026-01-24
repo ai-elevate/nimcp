@@ -75,6 +75,8 @@ int nimcp_novelty_init(
     const nimcp_novelty_config_t* config
 ) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return -1;
     }
 
@@ -143,6 +145,8 @@ int nimcp_novelty_init(
 
 int nimcp_novelty_shutdown(nimcp_novelty_system_t* system) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return -1;
     }
 

@@ -74,7 +74,13 @@ static uint64_t get_timestamp(void) {
  * @brief Find node by ID
  */
 static sensory_kg_node_t* find_node(sensory_kg_wiring_t* wiring, uint32_t node_id) {
-    if (!wiring) return NULL;
+    if (!wiring) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < wiring->num_nodes; i++) {
         if (wiring->nodes[i].node_id == node_id) {

@@ -740,7 +740,13 @@ const qa_immune_problem_event_t* qa_immune_get_event(
     const qa_immune_bridge_t* bridge,
     uint32_t event_id
 ) {
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t i = 0; i < bridge->event_count; i++) {
         if (bridge->events[i].event_id == event_id) {

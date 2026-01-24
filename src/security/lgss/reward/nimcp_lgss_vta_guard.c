@@ -112,6 +112,8 @@ vta_guard_config_t vta_guard_default_config(void) {
 vta_guard_t* vta_guard_create(const vta_guard_config_t* config) {
     vta_guard_t* guard = calloc(1, sizeof(vta_guard_t));
     if (!guard) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "guard is NULL");
+
         return NULL;
     }
 

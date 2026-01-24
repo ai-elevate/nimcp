@@ -74,7 +74,13 @@ hippocampus_quantum_bridge_t* hippocampus_quantum_bridge_create(
     const hippocampus_quantum_config_t* config
 ) {
     hippocampus_quantum_bridge_t* bridge = nimcp_calloc(1, sizeof(hippocampus_quantum_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     bridge->hippocampus = hippocampus;
     bridge->config = config ? *config : hippocampus_quantum_default_config();

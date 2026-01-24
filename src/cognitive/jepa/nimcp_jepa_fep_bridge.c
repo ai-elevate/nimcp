@@ -232,7 +232,13 @@ jepa_fep_config_t jepa_fep_config_default(void) {
 
 jepa_fep_bridge_t* jepa_fep_bridge_create(const jepa_fep_config_t* config) {
     jepa_fep_bridge_t* bridge = nimcp_calloc(1, sizeof(jepa_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

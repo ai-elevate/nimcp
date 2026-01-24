@@ -1100,6 +1100,9 @@ static void* async_neuromod_broadcast_worker(void* arg)
     async_neuromod_broadcast_ctx_t* ctx = (async_neuromod_broadcast_ctx_t*)arg;
 
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+
         return NULL;
     }
 
@@ -1137,6 +1140,9 @@ static void* async_calcium_wave_worker(void* arg)
     async_calcium_wave_ctx_t* ctx = (async_calcium_wave_ctx_t*)arg;
 
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+
         return NULL;
     }
 
@@ -1175,6 +1181,9 @@ static void* async_pruning_worker(void* arg)
     async_pruning_ctx_t* ctx = (async_pruning_ctx_t*)arg;
 
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+
         return NULL;
     }
 

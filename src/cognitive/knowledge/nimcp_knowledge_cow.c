@@ -82,7 +82,13 @@ NIMCP_EXPORT knowledge_cow_base_t knowledge_cow_base_create(
 
     // Allocate base structure
     knowledge_cow_base_t base = nimcp_calloc(1, sizeof(struct knowledge_cow_base_struct));
-    if (!base) return NULL;
+    if (!base) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "base is NULL");
+
+        return NULL;
+
+    }
 
     base->magic = KNOWLEDGE_COW_BASE_MAGIC;
     memcpy(&base->config, config, sizeof(knowledge_cow_config_t));
@@ -205,7 +211,13 @@ NIMCP_EXPORT knowledge_cow_view_t knowledge_cow_view_create(knowledge_cow_base_t
     if (!base->initialized || !base->region) return NULL;
 
     knowledge_cow_view_t view = nimcp_calloc(1, sizeof(struct knowledge_cow_view_struct));
-    if (!view) return NULL;
+    if (!view) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "view is NULL");
+
+        return NULL;
+
+    }
 
     view->magic = KNOWLEDGE_COW_VIEW_MAGIC;
     view->base = base;
@@ -224,7 +236,13 @@ NIMCP_EXPORT knowledge_cow_view_t knowledge_cow_view_clone(knowledge_cow_view_t 
     if (!source || source->magic != KNOWLEDGE_COW_VIEW_MAGIC) return NULL;
 
     knowledge_cow_view_t clone = nimcp_calloc(1, sizeof(struct knowledge_cow_view_struct));
-    if (!clone) return NULL;
+    if (!clone) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+
+        return NULL;
+
+    }
 
     clone->magic = KNOWLEDGE_COW_VIEW_MAGIC;
     clone->base = source->base;
@@ -304,7 +322,13 @@ NIMCP_EXPORT knowledge_cow_snapshot_t knowledge_cow_snapshot_create(knowledge_co
     if (!view || view->magic != KNOWLEDGE_COW_VIEW_MAGIC) return NULL;
 
     knowledge_cow_snapshot_t snap = nimcp_calloc(1, sizeof(struct knowledge_cow_snapshot_struct));
-    if (!snap) return NULL;
+    if (!snap) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snap is NULL");
+
+        return NULL;
+
+    }
 
     snap->magic = KNOWLEDGE_COW_SNAP_MAGIC;
     snap->source_view = view;

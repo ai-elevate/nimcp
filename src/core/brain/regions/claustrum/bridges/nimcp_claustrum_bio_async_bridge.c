@@ -117,7 +117,13 @@ claustrum_bio_async_bridge_t* claustrum_bio_async_bridge_create(
     claustrum_bio_async_bridge_t* bridge = nimcp_calloc(
         1, sizeof(claustrum_bio_async_bridge_t)
     );
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

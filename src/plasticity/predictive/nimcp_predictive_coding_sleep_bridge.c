@@ -101,7 +101,13 @@ predictive_sleep_bridge_t predictive_sleep_bridge_create(
     struct predictive_sleep_bridge_struct* bridge =
         (struct predictive_sleep_bridge_struct*)nimcp_malloc(
             sizeof(struct predictive_sleep_bridge_struct));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     memset(bridge, 0, sizeof(struct predictive_sleep_bridge_struct));
 

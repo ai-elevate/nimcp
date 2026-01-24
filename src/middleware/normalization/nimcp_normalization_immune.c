@@ -42,6 +42,8 @@ normalization_immune_context_t* normalization_immune_create(
 
     normalization_immune_context_t* ctx = nimcp_calloc(1, sizeof(normalization_immune_context_t));
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 
@@ -281,6 +283,9 @@ int normalization_immune_detect_zscore_outlier(
     );
 
     if (!outlier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "outlier is NULL");
+
+
         return -1;
     }
 
@@ -357,6 +362,9 @@ int normalization_immune_detect_rapid_shift(
     );
 
     if (!outlier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "outlier is NULL");
+
+
         return -1;
     }
 
@@ -425,6 +433,9 @@ int normalization_immune_detect_homeostatic_drift(
     );
 
     if (!outlier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "outlier is NULL");
+
+
         return -1;
     }
 
@@ -499,6 +510,9 @@ int normalization_immune_report_range_violation(
     );
 
     if (!outlier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "outlier is NULL");
+
+
         return -1;
     }
 
@@ -838,6 +852,8 @@ int normalization_immune_capture_baselines(
     normalization_immune_context_t* ctx
 ) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -889,6 +905,8 @@ const normalization_outlier_t* normalization_immune_get_outlier(
     uint32_t outlier_id
 ) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 

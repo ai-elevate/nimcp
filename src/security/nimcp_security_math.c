@@ -227,7 +227,13 @@ nimcp_entropy_config_t nimcp_entropy_default_config(void)
 nimcp_entropy_analyzer_t* nimcp_entropy_create(void)
 {
     nimcp_entropy_analyzer_t* analyzer = nimcp_calloc(1, sizeof(*analyzer));
-    if (!analyzer) return NULL;
+    if (!analyzer) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analyzer is NULL");
+
+        return NULL;
+
+    }
 
     if (nimcp_mutex_init(&analyzer->lock, NULL) != NIMCP_SUCCESS) {
         nimcp_free(analyzer);
@@ -510,7 +516,13 @@ nimcp_trust_config_t nimcp_trust_default_config(void)
 nimcp_trust_network_t* nimcp_trust_create(void)
 {
     nimcp_trust_network_t* network = nimcp_calloc(1, sizeof(*network));
-    if (!network) return NULL;
+    if (!network) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+
+        return NULL;
+
+    }
 
     if (nimcp_mutex_init(&network->lock, NULL) != NIMCP_SUCCESS) {
         nimcp_free(network);
@@ -808,7 +820,13 @@ nimcp_dp_config_t nimcp_dp_default_config(void)
 nimcp_dp_context_t* nimcp_dp_create(void)
 {
     nimcp_dp_context_t* ctx = nimcp_calloc(1, sizeof(*ctx));
-    if (!ctx) return NULL;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return NULL;
+
+    }
 
     if (nimcp_mutex_init(&ctx->lock, NULL) != NIMCP_SUCCESS) {
         nimcp_free(ctx);

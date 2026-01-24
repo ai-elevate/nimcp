@@ -390,7 +390,13 @@ hypo_training_bridge_t* hypo_training_bridge_create(
     training_integration_hub_t training_hub
 ) {
     hypo_training_bridge_t* bridge = calloc(1, sizeof(hypo_training_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

@@ -100,7 +100,13 @@ adaptive_sleep_bridge_t adaptive_sleep_bridge_create(
     struct adaptive_sleep_bridge_struct* bridge =
         (struct adaptive_sleep_bridge_struct*)nimcp_malloc(
             sizeof(struct adaptive_sleep_bridge_struct));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     memset(bridge, 0, sizeof(struct adaptive_sleep_bridge_struct));
 

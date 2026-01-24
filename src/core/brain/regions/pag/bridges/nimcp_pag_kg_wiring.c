@@ -1110,27 +1110,57 @@ brain_kg_node_id_t pag_kg_find_subsystem(
 }
 
 brain_kg_node_list_t* pag_kg_get_columns(brain_kg_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
     return brain_kg_get_nodes_by_type(kg, (brain_kg_node_type_t)PAG_KG_NODE_COLUMN);
 }
 
 brain_kg_node_list_t* pag_kg_get_pain_pathways(brain_kg_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
     return brain_kg_get_nodes_by_type(kg, (brain_kg_node_type_t)PAG_KG_NODE_PAIN_PATHWAY);
 }
 
 brain_kg_node_list_t* pag_kg_get_defense_states(brain_kg_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
     return brain_kg_get_nodes_by_type(kg, (brain_kg_node_type_t)PAG_KG_NODE_DEFENSE_STATE);
 }
 
 brain_kg_node_list_t* pag_kg_get_emotions(brain_kg_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
     return brain_kg_get_nodes_by_type(kg, (brain_kg_node_type_t)PAG_KG_NODE_EMOTION_STATE);
 }
 
 brain_kg_node_list_t* pag_kg_get_vocalizations(brain_kg_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
     return brain_kg_get_nodes_by_type(kg, (brain_kg_node_type_t)PAG_KG_NODE_VOCALIZATION);
 }
 

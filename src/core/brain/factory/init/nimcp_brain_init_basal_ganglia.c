@@ -341,7 +341,13 @@ float nimcp_brain_bg_get_motivation(brain_t brain) {
 //=============================================================================
 
 bgtr_bridge_t* nimcp_brain_bg_get_training_bridge(brain_t brain) {
-    if (!brain) return NULL;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return NULL;
+
+    }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
@@ -383,6 +389,8 @@ int nimcp_brain_bg_connect_training_context(brain_t brain,
 
     bgtr_bridge_t* bridge = bg_enhanced_get_training_bridge(b->basal_ganglia);
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

@@ -797,7 +797,13 @@ oligodendrocyte_network_t* oligodendrocyte_network_create_enhanced(
 
     oligodendrocyte_network_t* network =
         (oligodendrocyte_network_t*)nimcp_malloc(sizeof(oligodendrocyte_network_t));
-    if (!network) return NULL;
+    if (!network) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+
+        return NULL;
+
+    }
 
     memset(network, 0, sizeof(oligodendrocyte_network_t));
 
@@ -1820,7 +1826,13 @@ oligodendrocyte_t* oligodendrocyte_network_find_by_axon(oligodendrocyte_network_
 
 oligodendrocyte_t* oligodendrocyte_network_find_by_neuron(oligodendrocyte_network_t* network,
                                                            uint32_t neuron_id) {
-    if (!network) return NULL;
+    if (!network) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_mutex_lock(&network->lock);
 
@@ -1841,7 +1853,13 @@ oligodendrocyte_t* oligodendrocyte_network_find_by_neuron(oligodendrocyte_networ
 
 oligodendrocyte_t* oligodendrocyte_network_find_nearest(oligodendrocyte_network_t* network,
                                                          float x, float y, float z) {
-    if (!network) return NULL;
+    if (!network) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_mutex_lock(&network->lock);
 
@@ -2044,7 +2062,13 @@ oligo_axon_pool_t* oligo_axon_pool_create(uint32_t capacity) {
     uint32_t num_bitmap_words = aligned_capacity / 64;
 
     oligo_axon_pool_t* pool = (oligo_axon_pool_t*)nimcp_malloc(sizeof(oligo_axon_pool_t));
-    if (!pool) return NULL;
+    if (!pool) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool is NULL");
+
+        return NULL;
+
+    }
 
     pool->buffer = (myelinated_axon_t*)nimcp_malloc(aligned_capacity * sizeof(myelinated_axon_t));
     if (!pool->buffer) {
@@ -2083,7 +2107,13 @@ void oligo_axon_pool_destroy(oligo_axon_pool_t* pool) {
 }
 
 myelinated_axon_t* oligo_axon_pool_alloc(oligo_axon_pool_t* pool) {
-    if (!pool) return NULL;
+    if (!pool) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_spinlock_lock(&pool->lock);
 
@@ -2156,7 +2186,13 @@ oligo_internode_pool_t* oligo_internode_pool_create(uint32_t capacity) {
     uint32_t num_bitmap_words = aligned_capacity / 64;
 
     oligo_internode_pool_t* pool = (oligo_internode_pool_t*)nimcp_malloc(sizeof(oligo_internode_pool_t));
-    if (!pool) return NULL;
+    if (!pool) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool is NULL");
+
+        return NULL;
+
+    }
 
     pool->buffer = (internode_segment_t*)nimcp_malloc(aligned_capacity * sizeof(internode_segment_t));
     if (!pool->buffer) {
@@ -2195,7 +2231,13 @@ void oligo_internode_pool_destroy(oligo_internode_pool_t* pool) {
 }
 
 internode_segment_t* oligo_internode_pool_alloc(oligo_internode_pool_t* pool) {
-    if (!pool) return NULL;
+    if (!pool) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_spinlock_lock(&pool->lock);
 
@@ -2265,7 +2307,13 @@ void oligo_internode_pool_stats(const oligo_internode_pool_t* pool,
 //=============================================================================
 
 oligodendrocyte_t* oligodendrocyte_cow_copy(oligodendrocyte_t* oligo) {
-    if (!oligo) return NULL;
+    if (!oligo) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oligo is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_spinlock_lock(&oligo->lock);
 

@@ -150,6 +150,8 @@ nimcp_vta_adapter_config_t nimcp_vta_adapter_default_config(void) {
 nimcp_vta_adapter_t nimcp_vta_adapter_create(const nimcp_vta_adapter_config_t* config) {
     nimcp_vta_adapter_t adapter = (nimcp_vta_adapter_t)calloc(1, sizeof(struct nimcp_vta_adapter));
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
         return NULL;
     }
 
@@ -209,6 +211,8 @@ int nimcp_vta_adapter_connect_brain(
     struct nimcp_brain* brain
 ) {
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
         return -1;
     }
 
@@ -218,6 +222,8 @@ int nimcp_vta_adapter_connect_brain(
 
 int nimcp_vta_adapter_disconnect(nimcp_vta_adapter_t adapter) {
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
         return -1;
     }
 
@@ -232,6 +238,8 @@ int nimcp_vta_adapter_set_router(
     struct nimcp_bio_router* router
 ) {
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
         return -1;
     }
 
@@ -244,6 +252,8 @@ int nimcp_vta_adapter_connect_immune(
     struct nimcp_immune_system* immune
 ) {
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
         return -1;
     }
 
@@ -257,6 +267,8 @@ int nimcp_vta_adapter_connect_immune(
 
 nimcp_vta_system_t* nimcp_vta_adapter_get_vta(nimcp_vta_adapter_t adapter) {
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
         return NULL;
     }
     return &adapter->vta;
@@ -282,6 +294,8 @@ int nimcp_vta_adapter_process_messages(
     int max_messages
 ) {
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
         return -1;
     }
 
@@ -342,6 +356,8 @@ int nimcp_vta_adapter_register_callback(
 
 int nimcp_vta_adapter_update(nimcp_vta_adapter_t adapter, float dt) {
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
         return -1;
     }
 
@@ -389,6 +405,8 @@ int nimcp_vta_adapter_process_reward(
     float reward_magnitude
 ) {
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
         return -1;
     }
 
@@ -418,6 +436,8 @@ int nimcp_vta_adapter_process_cue(
     float predictive_value
 ) {
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
         return -1;
     }
 
@@ -443,6 +463,8 @@ int nimcp_vta_adapter_process_goal(
     float distance
 ) {
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
         return -1;
     }
 
@@ -474,6 +496,8 @@ int nimcp_vta_adapter_process_immune(
     uint32_t num_cytokines
 ) {
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
         return -1;
     }
 
@@ -499,6 +523,8 @@ int nimcp_vta_adapter_apply_pfc_modulation(
     float inhibition
 ) {
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
         return -1;
     }
 
@@ -512,6 +538,8 @@ int nimcp_vta_adapter_apply_habenula_inhibition(
     float inhibition
 ) {
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
         return -1;
     }
 
@@ -554,6 +582,8 @@ int nimcp_vta_adapter_get_state(
 
 int nimcp_vta_adapter_reset_stats(nimcp_vta_adapter_t adapter) {
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
         return -1;
     }
 
@@ -632,6 +662,8 @@ int nimcp_vta_adapter_connect_training(
     struct nimcp_training_hub* training_hub
 ) {
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
         return -1;
     }
 
@@ -647,6 +679,8 @@ int nimcp_vta_adapter_on_training_event(
     const nimcp_vta_training_state_t* state
 ) {
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
         return -1;
     }
 
@@ -746,6 +780,8 @@ int nimcp_vta_adapter_register_training_callback(
     void* user_data
 ) {
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
         return -1;
     }
 
@@ -778,6 +814,8 @@ int nimcp_vta_adapter_process_training_reward(
     float reward
 ) {
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
         return -1;
     }
 
@@ -798,6 +836,8 @@ int nimcp_vta_adapter_process_goal_progress(
     float progress
 ) {
     if (!adapter) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
         return -1;
     }
 

@@ -222,7 +222,13 @@ static recovery_action_t find_most_common_action(
  */
 static void* background_consolidation_thread(void* arg) {
     recovery_consolidation_t* cons = (recovery_consolidation_t*)arg;
-    if (!cons) return NULL;
+    if (!cons) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cons is NULL");
+
+        return NULL;
+
+    }
 
     LOG_INFO("Background consolidation thread started");
 

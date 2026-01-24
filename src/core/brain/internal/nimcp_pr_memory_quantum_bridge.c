@@ -99,7 +99,13 @@ pr_quantum_config_t pr_quantum_default_config(void) {
 pr_memory_quantum_ctx_t pr_quantum_create(const pr_quantum_config_t* config) {
     struct pr_memory_quantum_ctx_internal* ctx =
         calloc(1, sizeof(struct pr_memory_quantum_ctx_internal));
-    if (!ctx) return NULL;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return NULL;
+
+    }
 
     ctx->config = config ? *config : pr_quantum_default_config();
     ctx->enabled = true;

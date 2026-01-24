@@ -54,6 +54,8 @@ static hypo_gt_partner_type_t classify_partner_from_history(
 
 int hypo_gt_fep_default_config(hypo_gt_fep_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -187,6 +189,8 @@ void hypo_gt_fep_destroy(hypo_gt_fep_bridge_t* bridge) {
 
 int hypo_gt_fep_reset(hypo_gt_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -216,6 +220,8 @@ int hypo_gt_fep_reset(hypo_gt_fep_bridge_t* bridge) {
 
 int hypo_gt_fep_update(hypo_gt_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -321,6 +327,8 @@ int hypo_gt_fep_compute_fe(
 
 int hypo_gt_fep_modulate_precision(hypo_gt_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -418,6 +426,8 @@ int hypo_gt_fep_update_from_outcome(
     bool partner_cooperated
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -541,6 +551,8 @@ int hypo_gt_fep_get_stats(
 
 int hypo_gt_fep_connect_bio_async(hypo_gt_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

@@ -468,8 +468,13 @@ static float strategy_association_loss(const float* pred, const float* target, u
 static task_strategy_t* strategy_create(brain_task_t task)
 {
     task_strategy_t* strategy = nimcp_calloc(1, sizeof(task_strategy_t));
-    if (!strategy)
+    if (!strategy) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "strategy is NULL");
+
         return NULL;
+
+    }
 
     strategy->task_type = task;
 
@@ -985,6 +990,8 @@ static void cache_decision(brain_t brain, const float* features, uint32_t num_fe
 static int mutex_lock_with_timeout(nimcp_platform_mutex_t* mutex, uint64_t timeout_us)
 {
     if (!mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mutex is NULL");
+
         return -1;
     }
 
@@ -1707,11 +1714,23 @@ bool init_epistemic_subsystem(brain_t brain)
 static personality_profile_t* create_personality(const brain_config_t* config)
 {
     // Guard: NULL check
-    if (!config) return NULL;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return NULL;
+
+    }
 
     // Allocate personality profile
     personality_profile_t* profile = nimcp_malloc(sizeof(personality_profile_t));
-    if (!profile) return NULL;
+    if (!profile) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "profile is NULL");
+
+        return NULL;
+
+    }
 
     // Generate personality based on configuration
     if (config->use_random_personality) {
@@ -2395,6 +2414,8 @@ void brain_destroy(brain_t brain)
 working_memory_t* brain_get_working_memory(brain_t brain)
 {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return NULL;
     }
 
@@ -2428,6 +2449,8 @@ working_memory_t* brain_get_working_memory(brain_t brain)
 executive_controller_t* brain_get_executive(brain_t brain)
 {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return NULL;
     }
     return brain->executive;
@@ -2448,6 +2471,8 @@ executive_controller_t* brain_get_executive(brain_t brain)
 global_workspace_t* brain_get_global_workspace(brain_t brain)
 {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return NULL;
     }
 
@@ -2482,6 +2507,8 @@ sleep_system_t brain_get_sleep_system(brain_t brain)
 {
     /* Guard clause: Validate input */
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return NULL;
     }
 
@@ -2505,6 +2532,8 @@ theory_of_mind_t brain_get_theory_of_mind(brain_t brain)
 {
     /* Guard clause: Validate input */
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return NULL;
     }
 
@@ -2539,6 +2568,8 @@ explanation_generator_t brain_get_explanation_generator(brain_t brain)
 {
     /* Guard clause: Validate input */
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return NULL;
     }
 
@@ -2922,8 +2953,13 @@ static float quantum_weight_energy(const float* weights, uint32_t dim, void* use
 static brain_decision_t* allocate_decision(uint32_t output_size)
 {
     brain_decision_t* decision = nimcp_calloc(1, sizeof(brain_decision_t));
-    if (!decision)
+    if (!decision) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "decision is NULL");
+
         return NULL;
+
+    }
 
     decision->output_size = output_size;
     decision->output_vector = nimcp_malloc(output_size * sizeof(float));
@@ -2963,13 +2999,23 @@ static brain_decision_t* allocate_decision(uint32_t output_size)
  */
 brain_decision_t* copy_decision(brain_decision_t* source)
 {
-    if (!source)
+    if (!source) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source is NULL");
+
         return NULL;
+
+    }
 
     // Allocate new decision structure for the shallow copy
     brain_decision_t* copy = nimcp_calloc(1, sizeof(brain_decision_t));
-    if (!copy)
+    if (!copy) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "copy is NULL");
+
         return NULL;
+
+    }
 
     // Copy all scalar fields (includes label, explanation, confidence, etc.)
     memcpy(copy, source, sizeof(brain_decision_t));
@@ -3036,13 +3082,23 @@ brain_decision_t* copy_decision(brain_decision_t* source)
  */
 brain_decision_t* copy_decision_deep(const brain_decision_t* source)
 {
-    if (!source)
+    if (!source) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source is NULL");
+
         return NULL;
+
+    }
 
     // Allocate new decision structure
     brain_decision_t* copy = nimcp_calloc(1, sizeof(brain_decision_t));
-    if (!copy)
+    if (!copy) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "copy is NULL");
+
         return NULL;
+
+    }
 
     // Copy scalar fields
     memcpy(copy, source, sizeof(brain_decision_t));
@@ -5719,11 +5775,15 @@ size_t brain_get_memory_usage(brain_t brain)
 char* brain_export_json(brain_t brain, uint32_t flags)
 {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return NULL;
     }
 
     cJSON* root = cJSON_CreateObject();
     if (!root) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "root is NULL");
+
         return NULL;
     }
 

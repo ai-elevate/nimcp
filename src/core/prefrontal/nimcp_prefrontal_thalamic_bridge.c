@@ -42,11 +42,15 @@ prefrontal_thalamic_bridge_t* prefrontal_thalamic_bridge_create(void* prefrontal
                                                                  thalamic_router_t* router,
                                                                  const prefrontal_thalamic_config_t* config) {
     if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router is NULL");
+
         return NULL;
     }
 
     prefrontal_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(prefrontal_thalamic_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -73,6 +77,8 @@ void prefrontal_thalamic_bridge_destroy(prefrontal_thalamic_bridge_t* bridge) {
 
 int prefrontal_thalamic_bridge_reset(prefrontal_thalamic_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -122,6 +128,8 @@ int prefrontal_thalamic_route_signal(prefrontal_thalamic_bridge_t* bridge,
 int prefrontal_thalamic_route_inhibition(prefrontal_thalamic_bridge_t* bridge,
                                           const void* target, float strength) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -146,6 +154,8 @@ int prefrontal_thalamic_route_inhibition(prefrontal_thalamic_bridge_t* bridge,
 
 int prefrontal_thalamic_set_attention(prefrontal_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

@@ -262,7 +262,13 @@ brain_pools_t brain_pools_create(const brain_pools_config_t* config) {
 
     /* Allocate pool structure */
     struct brain_pools* pools = nimcp_calloc(1, sizeof(struct brain_pools));
-    if (!pools) return NULL;
+    if (!pools) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pools is NULL");
+
+        return NULL;
+
+    }
 
     pools->config = cfg;
 
@@ -421,7 +427,13 @@ void brain_pools_release_decision(brain_pools_t pools, void* decision) {
 //=============================================================================
 
 float* brain_pools_acquire_activation(brain_pools_t pools, size_t num_floats) {
-    if (!pools) return NULL;
+    if (!pools) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pools is NULL");
+
+        return NULL;
+
+    }
 
     size_t required_bytes = num_floats * sizeof(float);
     uint64_t start_ns = get_time_ns();
@@ -677,7 +689,13 @@ void brain_pools_release_feature_buffer(
 //=============================================================================
 
 void* brain_pools_cow_acquire(brain_pools_t pools, int pool_type) {
-    if (!pools) return NULL;
+    if (!pools) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pools is NULL");
+
+        return NULL;
+
+    }
 
     nimcp_platform_mutex_lock(&pools->mutex);
 
@@ -703,12 +721,24 @@ void* brain_pools_cow_acquire(brain_pools_t pools, int pool_type) {
 }
 
 const void* brain_pools_cow_read(void* handle) {
-    if (!handle) return NULL;
+    if (!handle) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle is NULL");
+
+        return NULL;
+
+    }
     return cow_read((cow_handle_t)handle);
 }
 
 void* brain_pools_cow_write(void* handle) {
-    if (!handle) return NULL;
+    if (!handle) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle is NULL");
+
+        return NULL;
+
+    }
     return cow_write((cow_handle_t)handle);
 }
 

@@ -1286,6 +1286,8 @@ bool mental_health_guardian_connect_plasticity(
  */
 int mental_health_guardian_fep_update(void* handle) {
     if (!handle) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle is NULL");
+
         return -1;
     }
 

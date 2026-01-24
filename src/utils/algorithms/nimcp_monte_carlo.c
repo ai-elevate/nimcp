@@ -321,7 +321,13 @@ static mcts_node_t* mcts_alloc_node(mcts_tree_t* tree) {
     }
 
     mcts_node_t* node = (mcts_node_t*)nimcp_calloc(1, sizeof(mcts_node_t));
-    if (!node) return NULL;
+    if (!node) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
+        return NULL;
+
+    }
 
     node->id = tree->num_nodes;
     node->parent_id = MCTS_INVALID_NODE;

@@ -182,7 +182,13 @@ static uint32_t simple_rand(uint32_t max) {
  * @brief Find peer by ID
  */
 static swarm_peer_info_t* find_peer(swarm_brain_t* swarm, uint16_t drone_id) {
-    if (!swarm) return NULL;
+    if (!swarm) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < swarm->peer_count; i++) {
         if (swarm->peers[i].active && swarm->peers[i].drone_id == drone_id) {
@@ -272,7 +278,13 @@ static void remove_inactive_peers(swarm_brain_t* swarm) {
  */
 static collective_workspace_t* create_workspace(uint32_t size) {
     collective_workspace_t* ws = (collective_workspace_t*)nimcp_malloc(sizeof(collective_workspace_t));
-    if (!ws) return NULL;
+    if (!ws) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ws is NULL");
+
+        return NULL;
+
+    }
 
     ws->entries = (workspace_entry_t*)nimcp_calloc(size, sizeof(workspace_entry_t));
     if (!ws->entries) {
@@ -404,7 +416,13 @@ static float workspace_calculate_coherence(collective_workspace_t* ws) {
  */
 static emergence_context_t* create_emergence_context(void) {
     emergence_context_t* ctx = (emergence_context_t*)nimcp_calloc(1, sizeof(emergence_context_t));
-    if (!ctx) return NULL;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return NULL;
+
+    }
 
     ctx->current_tier = SWARM_TIER_INDIVIDUAL;
     ctx->tier_enter_time_ms = get_time_ms();
@@ -477,7 +495,13 @@ static void emergence_update_tier(emergence_context_t* ctx, uint32_t peer_count,
  */
 static consensus_context_t* create_consensus_context(void) {
     consensus_context_t* ctx = (consensus_context_t*)nimcp_calloc(1, sizeof(consensus_context_t));
-    if (!ctx) return NULL;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return NULL;
+
+    }
 
     ctx->lock = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!ctx->lock || nimcp_platform_mutex_init(ctx->lock, false) != 0) {
@@ -1325,7 +1349,13 @@ bool swarm_brain_get_stats(const swarm_brain_t* swarm, swarm_stats_t* stats) {
 }
 
 brain_t swarm_brain_get_local_brain(swarm_brain_t* swarm) {
-    if (!swarm) return NULL;
+    if (!swarm) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm is NULL");
+
+        return NULL;
+
+    }
     return swarm->local_brain;
 }
 
@@ -1401,7 +1431,13 @@ static local_brain_instance_t* get_local_brains(swarm_brain_t* swarm) {
  * @brief Find local brain by agent ID
  */
 static local_brain_instance_t* find_local_brain(swarm_brain_t* swarm, uint16_t agent_id) {
-    if (!swarm) return NULL;
+    if (!swarm) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "swarm is NULL");
+
+        return NULL;
+
+    }
 
     local_brain_instance_t* brains = get_local_brains(swarm);
     for (uint32_t i = 0; i < MAX_LOCAL_BRAINS; i++) {
@@ -1835,7 +1871,13 @@ int swarm_brain_query_self_knowledge(kg_reader_t* kg) {
  * @return Capability description string or NULL
  */
 const char* swarm_brain_get_capabilities(kg_reader_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
     return kg_reader_get_module_capabilities(kg, "Swarm_Brain");
 }
 
@@ -1846,7 +1888,13 @@ const char* swarm_brain_get_capabilities(kg_reader_t* kg) {
  * @return Relation list showing integrations (caller must free)
  */
 kg_relation_list_t* swarm_brain_get_integrations(kg_reader_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
     return kg_reader_get_module_integrations(kg, "Swarm_Brain");
 }
 

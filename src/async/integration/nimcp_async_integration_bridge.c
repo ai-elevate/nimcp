@@ -177,7 +177,13 @@ static uint64_t get_time_ms(void)
 static task_registry_t* task_registry_create(uint32_t capacity)
 {
     task_registry_t* reg = (task_registry_t*)nimcp_malloc(sizeof(task_registry_t));
-    if (!reg) return NULL;
+    if (!reg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reg is NULL");
+
+        return NULL;
+
+    }
 
     reg->entries = (task_entry_t*)nimcp_calloc(capacity, sizeof(task_entry_t));
     if (!reg->entries) {
@@ -208,7 +214,13 @@ static void task_registry_destroy(task_registry_t* reg)
 
 static task_entry_t* task_registry_find(task_registry_t* reg, uint64_t task_id)
 {
-    if (!reg) return NULL;
+    if (!reg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reg is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < reg->capacity; i++) {
         if (reg->entries[i].active && reg->entries[i].task_id == task_id) {
@@ -221,7 +233,13 @@ static task_entry_t* task_registry_find(task_registry_t* reg, uint64_t task_id)
 static promise_registry_t* promise_registry_create(uint32_t capacity)
 {
     promise_registry_t* reg = (promise_registry_t*)nimcp_malloc(sizeof(promise_registry_t));
-    if (!reg) return NULL;
+    if (!reg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reg is NULL");
+
+        return NULL;
+
+    }
 
     reg->entries = (promise_entry_t*)nimcp_calloc(capacity, sizeof(promise_entry_t));
     if (!reg->entries) {
@@ -245,7 +263,13 @@ static void promise_registry_destroy(promise_registry_t* reg)
 static future_registry_t* future_registry_create(uint32_t capacity)
 {
     future_registry_t* reg = (future_registry_t*)nimcp_malloc(sizeof(future_registry_t));
-    if (!reg) return NULL;
+    if (!reg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reg is NULL");
+
+        return NULL;
+
+    }
 
     reg->entries = (future_entry_t*)nimcp_calloc(capacity, sizeof(future_entry_t));
     if (!reg->entries) {
@@ -270,7 +294,13 @@ static sync_group_registry_t* sync_group_registry_create(uint32_t capacity)
 {
     sync_group_registry_t* reg = (sync_group_registry_t*)nimcp_malloc(
         sizeof(sync_group_registry_t));
-    if (!reg) return NULL;
+    if (!reg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reg is NULL");
+
+        return NULL;
+
+    }
 
     reg->groups = (sync_group_t*)nimcp_calloc(capacity, sizeof(sync_group_t));
     if (!reg->groups) {
@@ -310,7 +340,13 @@ static void sync_group_registry_destroy(sync_group_registry_t* reg)
 static priority_queue_t* priority_queue_create(uint32_t capacity)
 {
     priority_queue_t* queue = (priority_queue_t*)nimcp_malloc(sizeof(priority_queue_t));
-    if (!queue) return NULL;
+    if (!queue) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "queue is NULL");
+
+        return NULL;
+
+    }
 
     queue->task_ids = (uint64_t*)nimcp_calloc(capacity, sizeof(uint64_t));
     if (!queue->task_ids) {
@@ -464,7 +500,13 @@ async_integration_t* async_integration_create(
     /* Allocate bridge structure */
     async_integration_t* bridge = (async_integration_t*)nimcp_calloc(
         1, sizeof(async_integration_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     /* Copy configuration */
     memcpy(&bridge->config, config, sizeof(async_integration_config_t));

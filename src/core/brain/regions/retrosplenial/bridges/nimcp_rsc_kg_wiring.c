@@ -43,6 +43,8 @@ static const char* IMAGINATION_SUBSYSTEM_DESC =
 int rsc_kg_default_config(rsc_kg_config_t* config)
 {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
     config->register_frames = true;
@@ -527,6 +529,9 @@ int rsc_kg_register_all(
     rsc_kg_state_t local_state;
 
     if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+
         return -1;
     }
     if (!state) {
@@ -671,6 +676,8 @@ brain_kg_node_list_t* rsc_kg_get_reference_frames(brain_kg_t* kg)
 {
     brain_kg_node_id_t id;
     if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
         return NULL;
     }
     id = brain_kg_find_node(kg, RSC_KG_FRAMES_NAME);
@@ -684,6 +691,8 @@ brain_kg_node_list_t* rsc_kg_get_context_types(brain_kg_t* kg)
 {
     brain_kg_node_id_t id;
     if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
         return NULL;
     }
     id = brain_kg_find_node(kg, RSC_KG_CONTEXT_NAME);
@@ -697,6 +706,8 @@ brain_kg_node_list_t* rsc_kg_get_navigation_components(brain_kg_t* kg)
 {
     brain_kg_node_id_t id;
     if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
         return NULL;
     }
     id = brain_kg_find_node(kg, RSC_KG_NAVIGATION_NAME);
@@ -710,6 +721,8 @@ brain_kg_node_list_t* rsc_kg_get_imagination_modes(brain_kg_t* kg)
 {
     brain_kg_node_id_t id;
     if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
         return NULL;
     }
     id = brain_kg_find_node(kg, RSC_KG_IMAGINATION_NAME);

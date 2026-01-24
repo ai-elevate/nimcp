@@ -42,11 +42,15 @@ cerebellum_thalamic_bridge_t* cerebellum_thalamic_bridge_create(void* cerebellum
                                                                  thalamic_router_t* router,
                                                                  const cerebellum_thalamic_config_t* config) {
     if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router is NULL");
+
         return NULL;
     }
 
     cerebellum_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(cerebellum_thalamic_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -73,6 +77,8 @@ void cerebellum_thalamic_bridge_destroy(cerebellum_thalamic_bridge_t* bridge) {
 
 int cerebellum_thalamic_bridge_reset(cerebellum_thalamic_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -123,6 +129,8 @@ int cerebellum_thalamic_route_signal(cerebellum_thalamic_bridge_t* bridge,
 int cerebellum_thalamic_route_correction(cerebellum_thalamic_bridge_t* bridge,
                                           const void* correction, float magnitude) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -142,6 +150,8 @@ int cerebellum_thalamic_route_correction(cerebellum_thalamic_bridge_t* bridge,
 
 int cerebellum_thalamic_set_attention(cerebellum_thalamic_bridge_t* bridge, float attention) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

@@ -70,6 +70,8 @@ struct lgss_ethics_bridge {
 int lgss_ethics_bridge_config_init(lgss_ethics_bridge_config_t* config)
 {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 

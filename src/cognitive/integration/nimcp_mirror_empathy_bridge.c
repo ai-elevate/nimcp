@@ -404,6 +404,8 @@ static int mirror_empathy_on_event(
 
 int mirror_empathy_bridge_default_config(mirror_empathy_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -430,6 +432,8 @@ mirror_empathy_bridge_t* mirror_empathy_bridge_create(
     mirror_empathy_bridge_t* bridge = (mirror_empathy_bridge_t*)nimcp_calloc(
         1, sizeof(mirror_empathy_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

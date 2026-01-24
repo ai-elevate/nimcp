@@ -308,7 +308,13 @@ const char* rsc_get_version(void) {
 }
 
 nimcp_retrosplenial_t* rsc_get_from_brain(brain_t brain) {
-    if (!brain) return NULL;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return NULL;
+
+    }
 
     /* Would retrieve RSC from brain's subsystem registry */
     /* return (nimcp_retrosplenial_t*)brain_get_subsystem(brain, "rsc"); */

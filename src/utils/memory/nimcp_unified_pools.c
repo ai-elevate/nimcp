@@ -313,7 +313,13 @@ static void* allocate_from_pool(
     unified_pool_type_t pool,
     size_t size)
 {
-    if (!pools) return NULL;
+    if (!pools) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pools is NULL");
+
+        return NULL;
+
+    }
 
     void* ptr = NULL;
 
@@ -490,7 +496,13 @@ unified_pools_t unified_pools_create(const unified_pools_config_t* config)
 
     /* Allocate manager */
     struct unified_pools* pools = nimcp_calloc(1, sizeof(struct unified_pools));
-    if (!pools) return NULL;
+    if (!pools) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pools is NULL");
+
+        return NULL;
+
+    }
 
     /* Store config */
     pools->config = *config;
@@ -738,7 +750,13 @@ unified_cow_handle_t unified_pools_cow_acquire(
 
 const void* unified_pools_cow_read(unified_cow_handle_t handle)
 {
-    if (!handle) return NULL;
+    if (!handle) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle is NULL");
+
+        return NULL;
+
+    }
 
     /* Return private copy if exists, else template */
     return handle->is_private ? handle->private_data
@@ -747,7 +765,13 @@ const void* unified_pools_cow_read(unified_cow_handle_t handle)
 
 void* unified_pools_cow_write(unified_cow_handle_t handle)
 {
-    if (!handle) return NULL;
+    if (!handle) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle is NULL");
+
+        return NULL;
+
+    }
 
     /* Already private */
     if (handle->is_private) {
@@ -757,7 +781,13 @@ void* unified_pools_cow_write(unified_cow_handle_t handle)
     /* Trigger copy-on-write */
     cow_template_t* tmpl = handle->template_ref;
     void* private_copy = nimcp_malloc(tmpl->size);
-    if (!private_copy) return NULL;
+    if (!private_copy) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "private_copy is NULL");
+
+        return NULL;
+
+    }
 
     memcpy(private_copy, tmpl->data, tmpl->size);
 

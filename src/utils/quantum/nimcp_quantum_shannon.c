@@ -249,7 +249,13 @@ quantum_shannon_diffusion_t* quantum_shannon_create(
     // Allocate structure (zero-initialized to ensure all pointers are NULL)
     quantum_shannon_diffusion_t* qsd =
         (quantum_shannon_diffusion_t*)nimcp_calloc(1, sizeof(quantum_shannon_diffusion_t));
-    if (!qsd) return NULL;
+    if (!qsd) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qsd is NULL");
+
+        return NULL;
+
+    }
 
     // Create quantum walker
     qsd->walker = quantum_walk_create(network, &config->quantum_config);

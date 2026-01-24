@@ -123,7 +123,13 @@ nimcp_handler_registration_t* nimcp_handler_register(
     if (g_handler_count >= NIMCP_HANDLER_MAX_REGISTERED) return NULL;
 
     nimcp_handler_registration_t* reg = nimcp_calloc(1, sizeof(nimcp_handler_registration_t));
-    if (!reg) return NULL;
+    if (!reg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reg is NULL");
+
+        return NULL;
+
+    }
 
     reg->id = g_next_handler_id++;
     reg->options = *options;

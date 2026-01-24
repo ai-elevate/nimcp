@@ -37,7 +37,13 @@ int reasoning_fep_bridge_default_config(reasoning_fep_config_t* config) {
 
 reasoning_fep_bridge_t* reasoning_fep_bridge_create(const reasoning_fep_config_t* config) {
     reasoning_fep_bridge_t* bridge = nimcp_malloc(sizeof(reasoning_fep_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     memset(bridge, 0, sizeof(reasoning_fep_bridge_t));
     if (config) bridge->config = *config;
     else reasoning_fep_bridge_default_config(&bridge->config);

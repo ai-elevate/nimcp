@@ -281,6 +281,8 @@ static const plasticity_detection_rule_t default_learning_rules[] = {
 
 int plasticity_anomaly_default_config(plasticity_anomaly_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -322,6 +324,8 @@ plasticity_anomaly_detector_t* plasticity_anomaly_create(
 ) {
     plasticity_anomaly_detector_t* detector = nimcp_calloc(1, sizeof(*detector));
     if (!detector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detector is NULL");
+
         return NULL;
     }
 
@@ -640,6 +644,8 @@ static int submit_metric_unlocked(
 ) {
     metric_tracker_t* tracker = find_or_create_tracker(detector, metric_name, category);
     if (!tracker) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tracker is NULL");
+
         return -1;
     }
 

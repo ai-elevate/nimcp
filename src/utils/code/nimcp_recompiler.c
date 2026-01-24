@@ -2135,6 +2135,8 @@ static char* generate_temp_path(recompiler_t recompiler, const char* suffix)
     size_t len = strlen(recompiler->config.temp_dir) + 32 + strlen(suffix);
     char* path = nimcp_malloc(len);
     if (!path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "path is NULL");
+
         return NULL;
     }
 

@@ -39,7 +39,13 @@ nimcp_gustatory_t* gust_create(const gust_config_t* config) {
     }
 
     nimcp_gustatory_t* gust = (nimcp_gustatory_t*)calloc(1, sizeof(nimcp_gustatory_t));
-    if (!gust) return NULL;
+    if (!gust) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust is NULL");
+
+        return NULL;
+
+    }
 
     memcpy(&gust->config, config, sizeof(gust_config_t));
     gust->status = GUST_STATUS_IDLE;
@@ -553,7 +559,13 @@ nimcp_gustatory_t* gust_deserialize(const uint8_t* buffer, size_t size, size_t* 
     offset += sizeof(gust_config_t);
 
     nimcp_gustatory_t* gust = gust_create(&config);
-    if (!gust) return NULL;
+    if (!gust) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gust is NULL");
+
+        return NULL;
+
+    }
 
     memcpy(gust->learned_preferences, buffer + offset, sizeof(float) * TASTE_COUNT);
     offset += sizeof(float) * TASTE_COUNT;

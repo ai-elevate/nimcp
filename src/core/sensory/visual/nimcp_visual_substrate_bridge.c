@@ -29,9 +29,21 @@ visual_substrate_config_t visual_substrate_default_config(void) {
 }
 
 visual_substrate_bridge_t* visual_substrate_bridge_create(void* visual, neural_substrate_t* substrate, const visual_substrate_config_t* config) {
-    if (!substrate) return NULL;
+    if (!substrate) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
+
+        return NULL;
+
+    }
     visual_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(visual_substrate_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     bridge->visual = visual;
     bridge->substrate = substrate;
     bridge->config = config ? *config : visual_substrate_default_config();

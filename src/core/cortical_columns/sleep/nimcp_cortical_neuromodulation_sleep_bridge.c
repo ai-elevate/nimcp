@@ -92,7 +92,13 @@ cortical_neuromodulation_sleep_bridge_t cortical_neuromodulation_sleep_bridge_cr
     struct cortical_neuromodulation_sleep_bridge_struct* bridge =
         (struct cortical_neuromodulation_sleep_bridge_struct*)nimcp_malloc(
             sizeof(struct cortical_neuromodulation_sleep_bridge_struct));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     memset(bridge, 0, sizeof(struct cortical_neuromodulation_sleep_bridge_struct));
 

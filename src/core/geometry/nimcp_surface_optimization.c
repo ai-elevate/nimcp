@@ -710,10 +710,22 @@ int surface_annealing_default_config(surface_annealing_config_t* config) {
 surface_annealing_state_t* surface_annealing_state_create(
     const surface_annealing_config_t* config
 ) {
-    if (!config) return NULL;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return NULL;
+
+    }
 
     surface_annealing_state_t* state = nimcp_malloc(sizeof(surface_annealing_state_t));
-    if (!state) return NULL;
+    if (!state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
+        return NULL;
+
+    }
 
     memset(state, 0, sizeof(*state));
     state->temperature = config->temperature_initial;
@@ -1490,7 +1502,13 @@ surface_optimizer_t* surface_optimizer_create(
     const void* config
 ) {
     surface_optimizer_t* opt = nimcp_malloc(sizeof(surface_optimizer_t));
-    if (!opt) return NULL;
+    if (!opt) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "opt is NULL");
+
+        return NULL;
+
+    }
 
     memset(opt, 0, sizeof(*opt));
     opt->method = method;

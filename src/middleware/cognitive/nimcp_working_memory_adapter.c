@@ -53,7 +53,13 @@ working_memory_adapter_t working_memory_adapter_create(
 
     struct working_memory_adapter_struct* adapter =
         nimcp_calloc(1, sizeof(struct working_memory_adapter_struct));
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
 
     adapter->config = *config;
 

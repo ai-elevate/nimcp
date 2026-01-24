@@ -14,7 +14,13 @@ static float clamp(float v, float min, float max) { return v < min ? min : (v > 
 
 sfa_pink_noise_bridge_t* sfa_pink_noise_create(const sfa_pink_noise_config_t* config) {
     sfa_pink_noise_bridge_t* bridge = nimcp_calloc(1, sizeof(sfa_pink_noise_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     bridge->config = config ? *config : sfa_pink_noise_default_config();
 

@@ -401,7 +401,13 @@ static void init_key_store(void)
  */
 static trusted_key_entry_t* find_key(const char* key_id)
 {
-    if (!key_id) return NULL;
+    if (!key_id) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "key_id is NULL");
+
+        return NULL;
+
+    }
 
     for (uint32_t i = 0; i < MAX_TRUSTED_KEYS; i++) {
         if (g_key_store.keys[i].in_use &&

@@ -90,7 +90,13 @@ void bgcb_default_config(bgcb_config_t* config) {
 
 bg_cerebellar_coord_t* bgcb_create(const bgcb_config_t* config) {
     bg_cerebellar_coord_t* coord = nimcp_calloc(1, sizeof(bg_cerebellar_coord_t));
-    if (!coord) return NULL;
+    if (!coord) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "coord is NULL");
+
+        return NULL;
+
+    }
 
     /* Apply configuration */
     if (config) {

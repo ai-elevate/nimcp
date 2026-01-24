@@ -56,7 +56,13 @@ nimcp_habenula_snn_config_t nimcp_habenula_snn_config_default(void) {
 
 nimcp_habenula_snn_bridge_t* nimcp_habenula_snn_create(const nimcp_habenula_snn_config_t* config) {
     nimcp_habenula_snn_bridge_t* b = calloc(1, sizeof(*b));
-    if (!b) return NULL;
+    if (!b) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "b is NULL");
+
+        return NULL;
+
+    }
     b->config = config ? *config : nimcp_habenula_snn_config_default();
     b->spike_buffer_size = b->config.population_size;
     b->input_spikes = calloc(b->spike_buffer_size, sizeof(float));

@@ -229,7 +229,13 @@ training_immune_system_t* training_immune_create(
     /* Allocate system */
     training_immune_system_t* system =
         (training_immune_system_t*)nimcp_malloc(sizeof(training_immune_system_t));
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     memset(system, 0, sizeof(training_immune_system_t));
 
@@ -986,7 +992,13 @@ const training_instability_event_t* training_immune_get_event(
     const training_immune_system_t* system,
     uint32_t event_id
 ) {
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     for (size_t i = 0; i < system->event_count; i++) {
         if (system->events[i].event_id == event_id) {

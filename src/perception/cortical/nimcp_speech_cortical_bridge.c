@@ -846,7 +846,13 @@ const feature_hypercolumn_t* speech_cortical_get_hypercolumn(
     float tono_x,
     float tono_y)
 {
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     uint32_t idx = compute_hypercolumn_index(bridge, tono_x, tono_y);
     if (idx >= bridge->num_hypercolumns) return NULL;

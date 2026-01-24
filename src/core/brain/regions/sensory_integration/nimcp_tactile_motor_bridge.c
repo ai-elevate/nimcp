@@ -70,7 +70,13 @@ int tactile_motor_default_config(tactile_motor_config_t* config) {
 
 tactile_motor_bridge_t* tactile_motor_bridge_create(const tactile_motor_config_t* config) {
     tactile_motor_bridge_t* bridge = (tactile_motor_bridge_t*)calloc(1, sizeof(tactile_motor_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         memcpy(&bridge->config, config, sizeof(tactile_motor_config_t));

@@ -227,7 +227,13 @@ static pattern_entry_t* find_or_create_pattern(const uint8_t* epitope, size_t le
     /* Create new entry in chain */
     if (g_pattern_count < NIMCP_METRICS_MAX_PATTERNS) {
         pattern_entry_t* new_entry = nimcp_calloc(1, sizeof(pattern_entry_t));
-        if (!new_entry) return NULL;
+        if (!new_entry) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_entry is NULL");
+
+            return NULL;
+
+        }
 
         new_entry->hash = hash;
         new_entry->occupied = true;

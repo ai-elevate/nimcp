@@ -875,27 +875,57 @@ brain_kg_node_id_t rn_kg_find_subsystem(
 }
 
 brain_kg_node_list_t* rn_kg_get_subdivisions(brain_kg_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
     return brain_kg_get_nodes_by_type(kg, (brain_kg_node_type_t)RN_KG_NODE_SUBDIVISION);
 }
 
 brain_kg_node_list_t* rn_kg_get_motor_cmds(brain_kg_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
     return brain_kg_get_nodes_by_type(kg, (brain_kg_node_type_t)RN_KG_NODE_MOTOR_CMD);
 }
 
 brain_kg_node_list_t* rn_kg_get_effectors(brain_kg_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
     return brain_kg_get_nodes_by_type(kg, (brain_kg_node_type_t)RN_KG_NODE_EFFECTOR);
 }
 
 brain_kg_node_list_t* rn_kg_get_error_types(brain_kg_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
     return brain_kg_get_nodes_by_type(kg, (brain_kg_node_type_t)RN_KG_NODE_ERROR_TYPE);
 }
 
 brain_kg_node_list_t* rn_kg_get_cerebellar_conns(brain_kg_t* kg) {
-    if (!kg) return NULL;
+    if (!kg) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kg is NULL");
+
+        return NULL;
+
+    }
     return brain_kg_get_nodes_by_type(kg, (brain_kg_node_type_t)RN_KG_NODE_CEREBELLAR_CONN);
 }
 

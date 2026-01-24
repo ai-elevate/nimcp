@@ -749,6 +749,8 @@ const char* jepa_bidir_state_to_string(jepa_bidir_state_t state) {
 jepa_bidir_result_t* jepa_bidir_result_create(uint32_t dim) {
     jepa_bidir_result_t* result = nimcp_calloc(1, sizeof(jepa_bidir_result_t));
     if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
         return NULL;
     }
 
@@ -775,6 +777,8 @@ jepa_bidir_multi_result_t* jepa_bidir_multi_result_create(uint32_t num_direction
                                                            uint32_t dim) {
     jepa_bidir_multi_result_t* result = nimcp_calloc(1, sizeof(jepa_bidir_multi_result_t));
     if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
         return NULL;
     }
 

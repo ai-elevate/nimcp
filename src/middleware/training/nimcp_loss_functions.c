@@ -1411,6 +1411,8 @@ nimcp_tensor_t* nimcp_loss_mse_grad_tensor(
     /* gradient = 2 * (pred - target) / n */
     nimcp_tensor_t* grad = nimcp_tensor_sub(predictions, targets);
     if (!grad) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "grad is NULL");
+
         return NULL;
     }
 
@@ -1432,6 +1434,8 @@ nimcp_tensor_t* nimcp_loss_softmax_tensor(
     int axis
 ) {
     if (!logits) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "logits is NULL");
+
         return NULL;
     }
     return nimcp_tensor_softmax(logits, axis);

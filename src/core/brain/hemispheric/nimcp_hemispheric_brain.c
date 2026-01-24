@@ -568,6 +568,8 @@ int hemispheric_brain_infer(
     uint32_t output_size
 ) {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return -1;
     }
 
@@ -645,12 +647,24 @@ brain_hemisphere_t* hemispheric_brain_get_hemisphere(
     hemispheric_brain_t* brain,
     hemisphere_id_t id
 ) {
-    if (!brain) return NULL;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return NULL;
+
+    }
     return (id == HEMISPHERE_LEFT) ? brain->left : brain->right;
 }
 
 brain_hemisphere_t* hemispheric_brain_get_dominant(hemispheric_brain_t* brain) {
-    if (!brain) return NULL;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return NULL;
+
+    }
     return (brain->dominant_hemisphere == HEMISPHERE_LEFT)
         ? brain->left : brain->right;
 }

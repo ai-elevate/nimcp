@@ -110,7 +110,13 @@ uint64_t health_monitor_get_timestamp_us(void) {
  */
 static metric_history_t* create_metric_history(uint32_t capacity) {
     metric_history_t* history = (metric_history_t*)nimcp_malloc(sizeof(metric_history_t));
-    if (!history) return NULL;
+    if (!history) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "history is NULL");
+
+        return NULL;
+
+    }
 
     history->values = (double*)nimcp_calloc(capacity, sizeof(double));
     if (!history->values) {

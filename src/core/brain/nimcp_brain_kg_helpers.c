@@ -28,6 +28,8 @@ int kg_module_init(
     const char* module_name)
 {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -76,6 +78,8 @@ int kg_module_init_direct(
     const char* module_name)
 {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return -1;
     }
 
@@ -262,6 +266,8 @@ brain_kg_node_list_t* kg_get_nodes_by_state_safe(
     /* Get all nodes and filter by state */
     brain_kg_node_list_t* all_nodes = brain_kg_get_all_nodes(ctx->kg);
     if (!all_nodes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "all_nodes is NULL");
+
         return NULL;
     }
 

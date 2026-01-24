@@ -420,7 +420,13 @@ brain_region_predictive_t* brain_region_get_predictive(brain_region_t* region) {
     /* WHAT: Get predictive extension (caller must lock)
      * WHY:  Access predictive processing state
      */
-    if (!region) return NULL;
+    if (!region) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "region is NULL");
+
+        return NULL;
+
+    }
     return region->predictive_extension;
 }
 

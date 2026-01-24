@@ -417,11 +417,15 @@ float compute_assortativity(NimcpGraph* graph)
 graph_metrics_t* compute_graph_metrics(NimcpGraph* graph)
 {
     if (!graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph is NULL");
+
         return NULL;
     }
 
     graph_metrics_t* metrics = (graph_metrics_t*)nimcp_malloc(sizeof(graph_metrics_t));
     if (!metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metrics is NULL");
+
         return NULL;
     }
 

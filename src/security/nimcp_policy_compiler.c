@@ -81,7 +81,13 @@ typedef struct {
 
 static bytecode_t* bytecode_create(void) {
     bytecode_t* bc = calloc(1, sizeof(bytecode_t));
-    if (!bc) return NULL;
+    if (!bc) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bc is NULL");
+
+        return NULL;
+
+    }
 
     bc->capacity = 64;
     bc->instructions = calloc(bc->capacity, sizeof(instruction_t));

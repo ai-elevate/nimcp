@@ -257,11 +257,23 @@ extern void set_error(const char* format, ...);
 personality_profile_t* create_personality(const brain_config_t* config)
 {
     // Guard: NULL check
-    if (!config) return NULL;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return NULL;
+
+    }
 
     // Allocate personality profile
     personality_profile_t* profile = nimcp_malloc(sizeof(personality_profile_t));
-    if (!profile) return NULL;
+    if (!profile) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "profile is NULL");
+
+        return NULL;
+
+    }
 
     // Generate personality based on configuration
     if (config->use_random_personality) {
@@ -391,8 +403,13 @@ brain_t brain_create_custom(const brain_config_t* config)
     // ========================================================================
 
     brain_t brain = nimcp_brain_factory_allocate_brain();
-    if (!brain)
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return NULL;
+
+    }
 
     // Copy configuration
     brain->config = *config;

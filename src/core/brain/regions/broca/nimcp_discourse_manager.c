@@ -125,7 +125,13 @@ static bool contains_word(const char* text, const char* word) {
 }
 
 static const pronoun_info_t* find_pronoun(const char* word) {
-    if (!word) return NULL;
+    if (!word) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "word is NULL");
+
+        return NULL;
+
+    }
 
     /* Convert to lowercase for comparison */
     char lower[32];
@@ -175,7 +181,13 @@ discourse_config_t discourse_default_config(void) {
 
 discourse_manager_t* discourse_create(const discourse_config_t* config) {
     discourse_manager_t* manager = (discourse_manager_t*)calloc(1, sizeof(discourse_manager_t));
-    if (!manager) return NULL;
+    if (!manager) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         manager->config = *config;

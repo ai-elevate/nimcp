@@ -206,10 +206,22 @@ static void voss_sse4(
 //=============================================================================
 
 pink_simd_generator_t* pink_simd_create(const pink_simd_config_t* config) {
-    if (!config) return NULL;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return NULL;
+
+    }
 
     pink_simd_generator_t* gen = nimcp_calloc(1, sizeof(pink_simd_generator_t));
-    if (!gen) return NULL;
+    if (!gen) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gen is NULL");
+
+        return NULL;
+
+    }
 
     memcpy(&gen->config, config, sizeof(pink_simd_config_t));
     gen->active_simd = pink_simd_detect();

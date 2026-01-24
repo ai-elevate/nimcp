@@ -89,6 +89,8 @@ static void update_memory_type_stats(
  */
 int sec_mem_fep_default_config(sec_mem_fep_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -256,6 +258,8 @@ void sec_mem_fep_destroy(sec_mem_fep_bridge_t* bridge) {
  */
 int sec_mem_fep_reset(sec_mem_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -358,6 +362,8 @@ int sec_mem_fep_set_config(
  */
 int sec_mem_fep_compute_effects(sec_mem_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -439,6 +445,8 @@ int sec_mem_fep_update_from_detection(
     security_mem_system_type_t memory_type
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -560,6 +568,8 @@ int sec_mem_fep_update_from_detection(
  */
 int sec_mem_fep_update(sec_mem_fep_bridge_t* bridge, uint64_t delta_ms) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -1100,6 +1110,8 @@ int sec_mem_fep_get_attack_response(
  */
 int sec_mem_fep_report_false_positive(sec_mem_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -1140,6 +1152,8 @@ int sec_mem_fep_report_true_positive(
     sec_mem_fep_attack_type_t attack_type
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -1298,6 +1312,8 @@ float sec_mem_fep_get_memory_type_fe(
  */
 int sec_mem_fep_connect_bio_async(sec_mem_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -1570,6 +1586,8 @@ void sec_mem_fep_print_stats(const sec_mem_fep_stats_t* stats) {
 
 int sec_mem_fep_reset_stats(sec_mem_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

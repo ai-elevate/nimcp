@@ -31,7 +31,13 @@ tom_thalamic_config_t tom_thalamic_default_config(void) {
 
 tom_thalamic_bridge_t* tom_thalamic_bridge_create(void* tom, thalamic_router_t* router, const tom_thalamic_config_t* config) {
     tom_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(tom_thalamic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     bridge->tom = tom;
     bridge->router = router;
     bridge->config = config ? *config : tom_thalamic_default_config();

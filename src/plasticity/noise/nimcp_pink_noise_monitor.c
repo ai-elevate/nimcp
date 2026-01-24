@@ -119,10 +119,22 @@ static float estimate_alpha(
 //=============================================================================
 
 pink_noise_monitor_t* pink_monitor_create(const pink_monitor_config_t* config) {
-    if (!config) return NULL;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return NULL;
+
+    }
 
     pink_noise_monitor_t* monitor = nimcp_calloc(1, sizeof(pink_noise_monitor_t));
-    if (!monitor) return NULL;
+    if (!monitor) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitor is NULL");
+
+        return NULL;
+
+    }
 
     memcpy(&monitor->config, config, sizeof(pink_monitor_config_t));
 

@@ -99,12 +99,24 @@ oscillations_sleep_bridge_t oscillations_sleep_bridge_create(
     const oscillations_sleep_config_t* config,
     sleep_system_t sleep)
 {
-    if (!sleep) return NULL;
+    if (!sleep) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep is NULL");
+
+        return NULL;
+
+    }
 
     struct oscillations_sleep_bridge_struct* bridge =
         (struct oscillations_sleep_bridge_struct*)nimcp_malloc(
             sizeof(struct oscillations_sleep_bridge_struct));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     memset(bridge, 0, sizeof(struct oscillations_sleep_bridge_struct));
 

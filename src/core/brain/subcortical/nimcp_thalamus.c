@@ -217,7 +217,13 @@ void thal_nucleus_destroy(thal_nucleus_t* nucleus) {
 
 static thalamic_reticular_nucleus_t* trn_create(uint32_t num_channels) {
     thalamic_reticular_nucleus_t* trn = nimcp_malloc(sizeof(thalamic_reticular_nucleus_t));
-    if (!trn) return NULL;
+    if (!trn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trn is NULL");
+
+        return NULL;
+
+    }
     memset(trn, 0, sizeof(thalamic_reticular_nucleus_t));
 
     trn->num_channels = num_channels;
@@ -894,7 +900,13 @@ int thalamus_pulvinar_attention(
 }
 
 thal_nucleus_t* thalamus_get_nucleus(thalamus_t* thal, thal_nucleus_type_t type) {
-    if (!thal) return NULL;
+    if (!thal) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thal is NULL");
+
+        return NULL;
+
+    }
 
     switch (type) {
         case THAL_NUCLEUS_LGN:      return thal->lgn;

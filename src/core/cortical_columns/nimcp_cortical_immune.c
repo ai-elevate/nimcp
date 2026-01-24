@@ -193,7 +193,13 @@ cortical_immune_system_t* cortical_immune_create(
 ) {
     cortical_immune_system_t* system = (cortical_immune_system_t*)
         nimcp_malloc(sizeof(cortical_immune_system_t));
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     memset(system, 0, sizeof(cortical_immune_system_t));
 

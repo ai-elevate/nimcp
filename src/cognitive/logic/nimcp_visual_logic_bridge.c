@@ -91,7 +91,13 @@ visual_logic_bridge_t* visual_logic_bridge_create(
     const visual_logic_config_t* config
 ) {
     visual_logic_bridge_t* bridge = nimcp_calloc(1, sizeof(visual_logic_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     bridge->visual = visual;
     bridge->logic = logic;

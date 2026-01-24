@@ -392,7 +392,13 @@ syntactic_comprehension_t* syntactic_comprehension_create(
     const syntactic_config_t* config
 ) {
     syntactic_comprehension_t* ctx = calloc(1, sizeof(syntactic_comprehension_t));
-    if (!ctx) return NULL;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         ctx->config = *config;

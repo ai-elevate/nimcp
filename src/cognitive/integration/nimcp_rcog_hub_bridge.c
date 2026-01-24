@@ -337,6 +337,8 @@ static int rcog_hub_query_handler(
 
 int rcog_hub_bridge_default_config(rcog_hub_bridge_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -358,6 +360,8 @@ rcog_hub_bridge_t* rcog_hub_bridge_create(
     rcog_hub_bridge_t* bridge = (rcog_hub_bridge_t*)nimcp_calloc(
         1, sizeof(rcog_hub_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

@@ -139,7 +139,13 @@ entorhinal_brain_init_bridge_t* entorhinal_brain_init_bridge_create(
     entorhinal_brain_init_bridge_t* bridge =
         (entorhinal_brain_init_bridge_t*)calloc(1,
             sizeof(entorhinal_brain_init_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

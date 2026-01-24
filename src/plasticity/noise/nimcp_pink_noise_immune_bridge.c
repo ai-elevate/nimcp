@@ -87,10 +87,22 @@ pink_immune_config_t pink_immune_bridge_default_config(void) {
 pink_immune_bridge_t* pink_immune_bridge_create(
     const pink_immune_config_t* config
 ) {
-    if (!config) return NULL;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return NULL;
+
+    }
 
     pink_immune_bridge_t* bridge = nimcp_calloc(1, sizeof(pink_immune_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     memcpy(&bridge->config, config, sizeof(pink_immune_config_t));
 

@@ -97,7 +97,13 @@ eligibility_sleep_bridge_t eligibility_sleep_bridge_create(
     struct eligibility_sleep_bridge_struct* bridge =
         (struct eligibility_sleep_bridge_struct*)nimcp_malloc(
             sizeof(struct eligibility_sleep_bridge_struct));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     memset(bridge, 0, sizeof(struct eligibility_sleep_bridge_struct));
 

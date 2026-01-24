@@ -133,6 +133,8 @@ int core_bio_async_default_config(core_bio_async_config_t* config)
 {
     /* Guard clause */
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -521,6 +523,8 @@ int core_bio_async_update(
 {
     /* Guard clause */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -860,6 +864,8 @@ int core_bio_async_process_pending_spikes(core_bio_async_bridge_t* bridge)
 {
     /* Guard clause */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -924,6 +930,8 @@ int core_bio_async_health_check_all(core_bio_async_bridge_t* bridge)
 {
     /* Guard clause */
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -981,6 +989,8 @@ int core_bio_async_get_stats(
 int core_bio_async_reset_stats(core_bio_async_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

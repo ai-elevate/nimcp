@@ -1091,6 +1091,8 @@ int security_immune_fep_process_messages(
     security_immune_fep_bridge_t* bridge
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

@@ -127,6 +127,8 @@ static void compute_entry_hash(
 int lgss_telemetry_config_init(lgss_telemetry_config_t* config)
 {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -522,6 +524,8 @@ int lgss_telemetry_log_override(
     const char* reason)
 {
     if (!telemetry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "telemetry is NULL");
+
         return -1;
     }
 
@@ -541,6 +545,8 @@ int lgss_telemetry_log_system(
     const char* description)
 {
     if (!telemetry) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "telemetry is NULL");
+
         return -1;
     }
 

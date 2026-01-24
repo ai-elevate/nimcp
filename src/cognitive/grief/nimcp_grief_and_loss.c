@@ -132,7 +132,13 @@ grief_system_t* grief_system_create(void) {
     // HOW:  Zero-initialize all state, set up default parameters
 
     grief_system_t* system = (grief_system_t*)nimcp_calloc(1, sizeof(grief_system_t));
-    if (!system) return NULL;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return NULL;
+
+    }
 
     // Initialize all attachments as inactive
     for (int i = 0; i < GRIEF_MAX_ATTACHMENTS; i++) {

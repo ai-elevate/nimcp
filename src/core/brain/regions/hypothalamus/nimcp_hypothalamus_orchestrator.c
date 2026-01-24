@@ -386,6 +386,8 @@ static void update_bridge_drive_from_event(
 int hypo_orch_default_config(hypo_orch_config_t* config)
 {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -417,6 +419,8 @@ hypo_orchestrator_t hypo_orch_create(const hypo_orch_config_t* config)
 {
     hypo_orchestrator_t orch = nimcp_calloc(1, sizeof(*orch));
     if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orch is NULL");
+
         return NULL;
     }
 

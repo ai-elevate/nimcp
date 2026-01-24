@@ -28,6 +28,8 @@
 
 int feedback_default_policy(feedback_policy_t* policy) {
     if (!policy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "policy is NULL");
+
         return -1;
     }
 
@@ -53,6 +55,8 @@ int feedback_default_policy(feedback_policy_t* policy) {
 
 int feedback_conservative_policy(feedback_policy_t* policy) {
     if (!policy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "policy is NULL");
+
         return -1;
     }
 
@@ -78,6 +82,8 @@ int feedback_conservative_policy(feedback_policy_t* policy) {
 
 int feedback_aggressive_policy(feedback_policy_t* policy) {
     if (!policy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "policy is NULL");
+
         return -1;
     }
 
@@ -103,6 +109,8 @@ int feedback_aggressive_policy(feedback_policy_t* policy) {
 
 int feedback_gated_policy(feedback_policy_t* policy, float gate_threshold) {
     if (!policy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "policy is NULL");
+
         return -1;
     }
 
@@ -164,6 +172,8 @@ float feedback_apply_transfer(
 
 int feedback_system_init(feedback_system_t* system) {
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return -1;
     }
 

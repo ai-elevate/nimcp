@@ -34,9 +34,21 @@ grief_substrate_config_t grief_substrate_default_config(void) {
 }
 
 grief_substrate_bridge_t* grief_substrate_bridge_create(void* grief, neural_substrate_t* substrate, const grief_substrate_config_t* config) {
-    if (!substrate) return NULL;
+    if (!substrate) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
+
+        return NULL;
+
+    }
     grief_substrate_bridge_t* bridge = nimcp_calloc(1, sizeof(grief_substrate_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
     bridge->grief = grief;
     bridge->substrate = substrate;
     bridge->config = config ? *config : grief_substrate_default_config();

@@ -81,7 +81,13 @@ typedef struct {
 
 static value_stack_t* stack_create(void) {
     value_stack_t* stack = calloc(1, sizeof(value_stack_t));
-    if (!stack) return NULL;
+    if (!stack) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stack is NULL");
+
+        return NULL;
+
+    }
 
     stack->capacity = 256;
     stack->values = calloc(stack->capacity, sizeof(nimcp_policy_value_t));
@@ -460,7 +466,13 @@ typedef struct {
 /* Non-static - called from nimcp_policy_engine.c */
 function_registry_t* registry_create(void) {
     function_registry_t* registry = calloc(1, sizeof(function_registry_t));
-    if (!registry) return NULL;
+    if (!registry) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "registry is NULL");
+
+        return NULL;
+
+    }
 
     registry->capacity = 16;
     registry->functions = calloc(registry->capacity, sizeof(function_entry_t));

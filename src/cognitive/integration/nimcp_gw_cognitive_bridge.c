@@ -126,6 +126,8 @@ static void free_competitor_data(competition_entry_t* entry) {
 
 int gw_cognitive_default_config(gw_cognitive_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -149,6 +151,8 @@ gw_cognitive_bridge_t* gw_cognitive_bridge_create(
 {
     gw_cognitive_bridge_t* bridge = nimcp_calloc(1, sizeof(gw_cognitive_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

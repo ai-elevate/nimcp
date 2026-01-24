@@ -273,6 +273,8 @@ occipital_thalamic_bridge_t* occipital_thalamic_bridge_create(
 
     occipital_thalamic_bridge_t* bridge = nimcp_calloc(1, sizeof(occipital_thalamic_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -322,6 +324,8 @@ void occipital_thalamic_bridge_destroy(occipital_thalamic_bridge_t* bridge) {
 
 int occipital_thalamic_bridge_reset(occipital_thalamic_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -418,6 +422,8 @@ int occipital_thalamic_route_v1(
     float intensity)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -445,6 +451,8 @@ int occipital_thalamic_route_dorsal(
     float motion_strength)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -472,6 +480,8 @@ int occipital_thalamic_route_ventral(
     float form_strength)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -556,6 +566,8 @@ int occipital_thalamic_set_attention(
     float attention)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -573,6 +585,8 @@ int occipital_thalamic_set_spatial_attention(
     float radius)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -602,6 +616,8 @@ int occipital_thalamic_set_nucleus_gain(
     float gain)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -645,6 +661,8 @@ int occipital_thalamic_apply_feedback(
     uint32_t signal_dim)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -685,6 +703,8 @@ int occipital_thalamic_bridge_register_bio_async(
     bio_router_t* router)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -706,6 +726,8 @@ int occipital_thalamic_bridge_broadcast_routing(
     occipital_thalamic_bridge_t* bridge)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -724,6 +746,8 @@ int occipital_thalamic_bridge_process_messages(
     uint32_t max_messages)
 {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 

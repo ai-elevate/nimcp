@@ -126,6 +126,8 @@ self_repair_coordinator_t* self_repair_create_with_deps(
 ) {
     self_repair_coordinator_t* coord = nimcp_calloc(1, sizeof(self_repair_coordinator_t));
     if (!coord) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "coord is NULL");
+
         return NULL;
     }
 
@@ -737,6 +739,8 @@ int self_repair_rollback(
     uint64_t repair_id
 ) {
     if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
+
         return -1;
     }
 
@@ -794,6 +798,8 @@ int self_repair_report_regression(
     bool auto_rollback
 ) {
     if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
+
         return -1;
     }
 
@@ -814,6 +820,8 @@ int self_repair_set_stage_callback(
     void* user_data
 ) {
     if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
+
         return -1;
     }
 
@@ -831,6 +839,8 @@ int self_repair_set_complete_callback(
     void* user_data
 ) {
     if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
+
         return -1;
     }
 
@@ -848,6 +858,8 @@ int self_repair_set_approval_callback(
     void* user_data
 ) {
     if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
+
         return -1;
     }
 
@@ -868,6 +880,8 @@ const self_repair_record_t* self_repair_get_record(
     uint64_t repair_id
 ) {
     if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "coordinator is NULL");
+
         return NULL;
     }
 

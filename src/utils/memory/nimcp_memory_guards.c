@@ -66,17 +66,35 @@ static void unlock_guards(void) {
 }
 
 static allocation_header_t* get_header(void* ptr) {
-    if (!ptr) return NULL;
+    if (!ptr) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ptr is NULL");
+
+        return NULL;
+
+    }
     return (allocation_header_t*)((char*)ptr - sizeof(allocation_header_t));
 }
 
 static allocation_footer_t* get_footer(allocation_header_t* header) {
-    if (!header) return NULL;
+    if (!header) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "header is NULL");
+
+        return NULL;
+
+    }
     return (allocation_footer_t*)((char*)(header + 1) + header->size);
 }
 
 static void* get_user_ptr(allocation_header_t* header) {
-    if (!header) return NULL;
+    if (!header) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "header is NULL");
+
+        return NULL;
+
+    }
     return (void*)(header + 1);
 }
 
@@ -263,7 +281,13 @@ void* nimcp_realloc_guarded(void* ptr, size_t size, const char* file, int line) 
 
     // Allocate new block
     void* new_ptr = nimcp_malloc_guarded(size, file, line);
-    if (!new_ptr) return NULL;
+    if (!new_ptr) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_ptr is NULL");
+
+        return NULL;
+
+    }
 
     // Copy old data
     allocation_header_t* old_header = get_header(ptr);

@@ -85,7 +85,13 @@ int rn_bio_bridge_default_config(rn_bio_bridge_config_t* config) {
 
 rn_bio_bridge_t* rn_bio_bridge_create(const rn_bio_bridge_config_t* config) {
     rn_bio_bridge_t* bridge = nimcp_calloc(1, sizeof(rn_bio_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     if (config) {
         bridge->config = *config;

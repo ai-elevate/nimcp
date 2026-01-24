@@ -185,7 +185,13 @@ static void emit_event(temporal_adapter_t* adapter, uint32_t event_type, const v
  */
 static auditory_processor_t* create_auditory_processor(const temporal_config_t* config) {
     auditory_processor_t* proc = (auditory_processor_t*)nimcp_calloc(1, sizeof(auditory_processor_t));
-    if (!proc) return NULL;
+    if (!proc) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "proc is NULL");
+
+        return NULL;
+
+    }
 
     proc->num_bands = config->tonotopic_bands;
     proc->fft_size = config->fft_size;
@@ -214,7 +220,13 @@ static void destroy_auditory_processor(auditory_processor_t* proc) {
  */
 static object_recognition_t* create_object_recognition(const temporal_config_t* config) {
     object_recognition_t* obj = (object_recognition_t*)nimcp_calloc(1, sizeof(object_recognition_t));
-    if (!obj) return NULL;
+    if (!obj) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "obj is NULL");
+
+        return NULL;
+
+    }
 
     obj->prototype_capacity = config->max_objects;
     obj->feature_dim = config->feature_dim;
@@ -254,7 +266,13 @@ static void destroy_object_recognition(object_recognition_t* obj) {
  */
 static semantic_memory_core_t* create_semantic_memory(const temporal_config_t* config) {
     semantic_memory_core_t* sem = (semantic_memory_core_t*)nimcp_calloc(1, sizeof(semantic_memory_core_t));
-    if (!sem) return NULL;
+    if (!sem) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sem is NULL");
+
+        return NULL;
+
+    }
 
     sem->concept_capacity = config->max_concepts;
     sem->embedding_dim = config->concept_dim;
@@ -1066,7 +1084,13 @@ nimcp_bio_future_t temporal_request_semantic_async(
     temporal_adapter_t* adapter,
     uint32_t concept_id
 ) {
-    if (!adapter) return NULL;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return NULL;
+
+    }
     (void)concept_id;
     /* TODO: Implement async semantic request */
     return NULL;

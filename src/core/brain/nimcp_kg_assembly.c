@@ -80,6 +80,8 @@ kg_layer_wiring_t* kg_assembly_create_layer(uint8_t layer_index) {
 
     kg_layer_wiring_t* layer = nimcp_calloc(1, sizeof(kg_layer_wiring_t));
     if (!layer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer is NULL");
+
         return NULL;
     }
 
@@ -141,6 +143,8 @@ int kg_assembly_add_module_to_layer(
             new_capacity * sizeof(kg_module_wiring_t*)
         );
         if (!new_modules) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_modules is NULL");
+
             return -1;
         }
         layer->modules = new_modules;
@@ -175,6 +179,8 @@ int kg_assembly_add_internal_edge(
             new_capacity * sizeof(kg_internal_edge_t)
         );
         if (!new_edges) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_edges is NULL");
+
             return -1;
         }
         layer->internal_edges = new_edges;
@@ -217,6 +223,8 @@ int kg_assembly_add_external_edge(
             new_capacity * sizeof(kg_external_edge_t)
         );
         if (!new_edges) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_edges is NULL");
+
             return -1;
         }
         layer->external_edges = new_edges;
@@ -235,6 +243,8 @@ int kg_assembly_add_external_edge(
 
 int kg_assembly_finalize_layer(kg_layer_wiring_t* layer) {
     if (!layer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer is NULL");
+
         return -1;
     }
 
@@ -297,6 +307,8 @@ kg_hemisphere_wiring_t* kg_assembly_create_hemisphere(uint8_t hemisphere) {
 
     kg_hemisphere_wiring_t* hemi = nimcp_calloc(1, sizeof(kg_hemisphere_wiring_t));
     if (!hemi) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemi is NULL");
+
         return NULL;
     }
 
@@ -369,6 +381,8 @@ int kg_assembly_add_layer_to_hemisphere(
 
 int kg_assembly_finalize_hemisphere(kg_hemisphere_wiring_t* hemi) {
     if (!hemi) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hemi is NULL");
+
         return -1;
     }
 
@@ -457,6 +471,8 @@ void kg_assembly_destroy_hemisphere(kg_hemisphere_wiring_t* hemi) {
 kg_brain_wiring_t* kg_assembly_create_brain(void) {
     kg_brain_wiring_t* brain = nimcp_calloc(1, sizeof(kg_brain_wiring_t));
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return NULL;
     }
 
@@ -573,6 +589,8 @@ int kg_assembly_add_callosal_connection(
     float bandwidth
 ) {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return -1;
     }
 
@@ -592,6 +610,8 @@ int kg_assembly_add_callosal_connection(
             new_capacity * sizeof(kg_callosal_connection_t)
         );
         if (!new_conns) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_conns is NULL");
+
             return -1;
         }
         brain->callosal_connections = new_conns;
@@ -609,6 +629,8 @@ int kg_assembly_add_callosal_connection(
 
 int kg_assembly_finalize_brain(kg_brain_wiring_t* brain) {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return -1;
     }
 
@@ -946,6 +968,8 @@ int kg_assembly_get_stats(
     uint32_t* total_callosal
 ) {
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return -1;
     }
 

@@ -214,7 +214,13 @@ lexical_access_t* lexical_create(const lexical_config_t* config)
     lexical_config_t cfg = config ? *config : lexical_default_config();
 
     lexical_access_t* lex = (lexical_access_t*)calloc(1, sizeof(lexical_access_t));
-    if (!lex) return NULL;
+    if (!lex) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "lex is NULL");
+
+        return NULL;
+
+    }
 
     lex->config = cfg;
     lex->hash_buckets = cfg.hash_buckets;

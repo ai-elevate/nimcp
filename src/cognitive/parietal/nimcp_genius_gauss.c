@@ -1,0 +1,113 @@
+/**
+ * @file nimcp_genius_gauss.c
+ * @brief Gauss Mode Implementation (Number Theory & Patterns)
+ *
+ * Implements Gauss-style mathematical reasoning focusing on:
+ * - Number theory (primes, modular arithmetic)
+ * - Pattern recognition and closed-form discovery
+ * - Statistical analysis
+ *
+ * @author NIMCP Team
+ * @version 2.6.3
+ */
+
+#include "cognitive/parietal/nimcp_mathematical_genius.h"
+#include "utils/memory/nimcp_memory.h"
+#include "utils/time/nimcp_time.h"
+#include <math.h>
+#include <string.h>
+
+/* ============================================================================
+ * Gauss Mode Analysis Implementation
+ * ============================================================================ */
+
+nimcp_error_t genius_gauss_analyze_impl(
+    mathematical_genius_t* genius,
+    const math_problem_t* problem,
+    genius_result_t* result) {
+
+    (void)genius;  /* Suppress unused warning for now */
+
+    if (!problem || !result) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    uint64_t start = nimcp_time_monotonic_us();
+
+    /* Initialize result */
+    memset(result, 0, sizeof(genius_result_t));
+    result->mode_used = GENIUS_MODE_GAUSS;
+
+    /* Basic Gauss analysis - placeholder implementation */
+    result->elegance_score = 0.8f;
+    result->novelty_score = 0.7f;
+    result->generalization_score = 0.75f;
+
+    (void)start;  /* Timing tracked elsewhere */
+
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Pattern Discovery Implementation
+ * ============================================================================ */
+
+/**
+ * @brief Discover patterns in a sequence (Gauss-style)
+ *
+ * Attempts to find closed-form expressions for sequences,
+ * like Gauss's famous 1+2+...+n = n(n+1)/2 discovery.
+ */
+nimcp_error_t genius_gauss_discover_pattern_impl(
+    mathematical_genius_t* genius,
+    const float* sequence,
+    uint32_t length,
+    conjecture_t* conjecture) {
+
+    (void)genius;
+
+    if (!sequence || length == 0 || !conjecture) {
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Initialize conjecture */
+    memset(conjecture, 0, sizeof(conjecture_t));
+    conjecture->domain = GENIUS_DOMAIN_NUMBER_THEORY;
+    conjecture->generating_mode = GENIUS_MODE_GAUSS;
+
+    /* Check for arithmetic sequence */
+    if (length >= 3) {
+        float d1 = sequence[1] - sequence[0];
+        float d2 = sequence[2] - sequence[1];
+        if (fabsf(d1 - d2) < 0.0001f) {
+            /* Arithmetic sequence detected */
+            conjecture->confidence = 0.9f;
+            conjecture->novelty = 0.3f;  /* Arithmetic patterns are common */
+            conjecture->importance = 0.5f;
+            conjecture->statement = nimcp_strdup("Arithmetic sequence: a_n = a_0 + n*d");
+            return NIMCP_SUCCESS;
+        }
+    }
+
+    /* Check for geometric sequence */
+    if (length >= 3 && fabsf(sequence[0]) > 0.0001f && fabsf(sequence[1]) > 0.0001f) {
+        float r1 = sequence[1] / sequence[0];
+        float r2 = sequence[2] / sequence[1];
+        if (fabsf(r1 - r2) < 0.0001f) {
+            /* Geometric sequence detected */
+            conjecture->confidence = 0.9f;
+            conjecture->novelty = 0.4f;
+            conjecture->importance = 0.6f;
+            conjecture->statement = nimcp_strdup("Geometric sequence: a_n = a_0 * r^n");
+            return NIMCP_SUCCESS;
+        }
+    }
+
+    /* No pattern found - return low confidence conjecture */
+    conjecture->confidence = 0.1f;
+    conjecture->novelty = 0.0f;
+    conjecture->importance = 0.0f;
+    conjecture->statement = nimcp_strdup("Unknown pattern");
+
+    return NIMCP_SUCCESS;
+}

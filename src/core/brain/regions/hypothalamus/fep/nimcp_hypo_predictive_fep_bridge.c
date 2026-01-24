@@ -57,6 +57,8 @@ static hypo_pred_channel_t map_drive_to_channel(hypo_drive_type_t drive);
  */
 int hypo_pred_fep_default_config(hypo_pred_fep_config_t* config) {
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return -1;
     }
 
@@ -219,6 +221,8 @@ void hypo_pred_fep_destroy(hypo_pred_fep_bridge_t* bridge) {
  */
 int hypo_pred_fep_reset(hypo_pred_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -278,6 +282,8 @@ int hypo_pred_fep_reset(hypo_pred_fep_bridge_t* bridge) {
  */
 int hypo_pred_fep_update(hypo_pred_fep_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -689,6 +695,8 @@ int hypo_pred_fep_connect_bio_async(
     bio_router_t* router
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
 
@@ -732,6 +740,8 @@ int hypo_pred_fep_process_messages(
     uint32_t max_messages
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return -1;
     }
     (void)max_messages;

@@ -14,7 +14,13 @@ static float clamp(float v, float min, float max) { return v < min ? min : (v > 
 
 tag_pink_noise_bridge_t* tag_pink_noise_create(const tag_pink_noise_config_t* config) {
     tag_pink_noise_bridge_t* bridge = nimcp_calloc(1, sizeof(tag_pink_noise_bridge_t));
-    if (!bridge) return NULL;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return NULL;
+
+    }
 
     bridge->config = config ? *config : tag_pink_noise_default_config();
 
