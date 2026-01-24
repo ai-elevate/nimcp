@@ -284,7 +284,7 @@ typedef struct {
  * 4. Handlers: What message types this module processes
  * 5. Weights: Internal network parameters for introspection
  */
-typedef struct {
+typedef struct kg_module_wiring {
     /* Module identification */
     char module_name[KG_WIRING_MAX_NAME_LEN];   /**< Module identifier */
     char module_type[KG_WIRING_MAX_TYPE_LEN];   /**< "SNN", "LNN", "CNN", "COGNITIVE", etc. */

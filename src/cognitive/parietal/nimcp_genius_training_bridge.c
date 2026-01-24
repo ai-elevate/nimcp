@@ -12,6 +12,8 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "core/brain/nimcp_kg_module_wiring.h"
+#include "core/brain/nimcp_kg_hierarchy.h"
 
 #include <string.h>
 #include <math.h>
@@ -247,8 +249,11 @@ void genius_training_destroy(genius_training_bridge_t* bridge) {
 
     if (bridge->tasks) nimcp_free(bridge->tasks);
 
-    /* KG wiring not yet implemented */
-    bridge->kg_wiring = NULL;
+    /* Destroy KG wiring */
+    if (bridge->kg_wiring) {
+        kg_module_wiring_destroy(bridge->kg_wiring);
+        bridge->kg_wiring = NULL;
+    }
 
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
@@ -971,12 +976,57 @@ bool genius_training_verify_checksum(const genius_training_serialized_t* seriali
 // KG Wiring Integration
 //=============================================================================
 
-struct kg_module_wiring* genius_training_create_kg_wiring(void) {
-    /* TODO: Implement when kg_module_wiring API is fully defined */
-    return NULL;
+kg_module_wiring_t* genius_training_create_kg_wiring(void) {
+    kg_module_wiring_t* wiring = kg_module_wiring_create(
+        KG_GENIUS_TRAINING_MODULE_NAME,
+        KG_GENIUS_TRAINING_MODULE_TYPE
+    );
+    if (!wiring) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring is NULL");
+        return NULL;
+    }
+
+    /* Set hierarchical placement - parietal cortex layer III */
+    wiring->target_layer = KG_LAYER_III;
+    wiring->hemisphere_affinity = KG_HEMISPHERE_BILATERAL;
+
+    /* Set metadata */
+    kg_module_wiring_set_metadata(wiring,
+        "NIMCP Team",
+        "MATHEMATICAL_CURRICULUM",
+        "Mathematical genius curriculum learning and training bridge"
+    );
+    kg_module_wiring_set_version(wiring, 1, 0, 0);
+
+    /* Register inputs from training system */
+    kg_module_wiring_add_input(wiring, "data_loader", KG_MSG_TRAINING_BATCH_INPUT, true);
+    kg_module_wiring_add_input(wiring, "curriculum_scheduler", KG_MSG_TRAINING_CURRICULUM_CHECK, false);
+    kg_module_wiring_add_input(wiring, "validation_system", KG_MSG_TRAINING_VALIDATION_DATA, false);
+    kg_module_wiring_add_input(wiring, "difficulty_controller", KG_MSG_TRAINING_DIFFICULTY_ADJUST, false);
+
+    /* Register outputs for training events */
+    kg_module_wiring_add_output(wiring, KG_MSG_TRAINING_EPOCH_COMPLETE, "Training epoch completion notification");
+    kg_module_wiring_add_output(wiring, KG_MSG_TRAINING_STAGE_ADVANCE, "Curriculum stage advancement event");
+    kg_module_wiring_add_output(wiring, KG_MSG_TRAINING_VALIDATION_RESULT, "Validation results for current stage");
+    kg_module_wiring_add_output(wiring, KG_MSG_TRAINING_CHECKPOINT, "Model checkpoint saved event");
+
+    /* Register message handlers */
+    kg_module_wiring_add_handler(wiring, KG_MSG_TRAINING_TRAIN_REQUEST, 100);
+    kg_module_wiring_add_handler(wiring, KG_MSG_TRAINING_VALIDATE_REQUEST, 100);
+    kg_module_wiring_add_handler(wiring, KG_MSG_TRAINING_ADVANCE_REQUEST, 150);
+
+    /* Set network type to hybrid (SNN + curriculum) */
+    wiring->network_type = KG_WEIGHT_HYBRID;
+
+    /* Add custom metadata */
+    kg_module_wiring_add_metadata_entry(wiring, "brain_region", "parietal_supramarginal_gyrus");
+    kg_module_wiring_add_metadata_entry(wiring, "training_types", "curriculum,continual,transfer");
+    kg_module_wiring_add_metadata_entry(wiring, "domains", "number_theory,calculus,combinatorics");
+
+    return wiring;
 }
 
-struct kg_module_wiring* genius_training_get_kg_wiring(genius_training_bridge_t* bridge) {
+kg_module_wiring_t* genius_training_get_kg_wiring(genius_training_bridge_t* bridge) {
     if (!bridge) return NULL;
     return bridge->kg_wiring;
 }

@@ -14,6 +14,8 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "core/brain/nimcp_kg_module_wiring.h"
+#include "core/brain/nimcp_kg_hierarchy.h"
 
 #include <string.h>
 #include <math.h>
@@ -228,8 +230,11 @@ void genius_snn_destroy(genius_snn_bridge_t* bridge) {
     if (bridge->mode_buffer) nimcp_free(bridge->mode_buffer);
     if (bridge->prev_state) nimcp_free(bridge->prev_state);
 
-    /* KG wiring not yet implemented */
-    bridge->kg_wiring = NULL;
+    /* Destroy KG wiring */
+    if (bridge->kg_wiring) {
+        kg_module_wiring_destroy(bridge->kg_wiring);
+        bridge->kg_wiring = NULL;
+    }
 
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
@@ -774,12 +779,57 @@ bool genius_snn_verify_checksum(const genius_snn_serialized_t* serialized) {
 // KG Wiring Integration
 //=============================================================================
 
-struct kg_module_wiring* genius_snn_create_kg_wiring(void) {
-    /* TODO: Implement when kg_module_wiring API is fully defined */
-    return NULL;
+kg_module_wiring_t* genius_snn_create_kg_wiring(void) {
+    kg_module_wiring_t* wiring = kg_module_wiring_create(
+        KG_GENIUS_SNN_MODULE_NAME,
+        KG_GENIUS_SNN_MODULE_TYPE
+    );
+    if (!wiring) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring is NULL");
+        return NULL;
+    }
+
+    /* Set hierarchical placement - parietal cortex layer IV */
+    wiring->target_layer = KG_LAYER_IV;
+    wiring->hemisphere_affinity = KG_HEMISPHERE_BILATERAL;
+
+    /* Set metadata */
+    kg_module_wiring_set_metadata(wiring,
+        "NIMCP Team",
+        "MATHEMATICAL_REASONING",
+        "Mathematical genius SNN encoding and decoding bridge"
+    );
+    kg_module_wiring_set_version(wiring, 1, 0, 0);
+
+    /* Register inputs from mathematical genius module */
+    kg_module_wiring_add_input(wiring, "mathematical_genius", KG_MSG_GENIUS_MATH_STATE, true);
+    kg_module_wiring_add_input(wiring, "mathematical_genius", KG_MSG_GENIUS_MODE_ACTIVATION, false);
+    kg_module_wiring_add_input(wiring, "pattern_detector", KG_MSG_GENIUS_PATTERN_INPUT, false);
+    kg_module_wiring_add_input(wiring, "proof_system", KG_MSG_GENIUS_PROOF_STEP, false);
+
+    /* Register outputs to SNN and observation systems */
+    kg_module_wiring_add_output(wiring, KG_MSG_GENIUS_INSIGHT_DETECTED, "Mathematical insight detected from spike patterns");
+    kg_module_wiring_add_output(wiring, KG_MSG_GENIUS_MODE_RECOMMEND, "Recommended genius mode based on SNN activity");
+    kg_module_wiring_add_output(wiring, KG_MSG_GENIUS_SPIKE_PATTERN, "Encoded spike pattern representation");
+    kg_module_wiring_add_output(wiring, KG_MSG_GENIUS_BREAKTHROUGH, "Mathematical breakthrough event");
+
+    /* Register message handlers */
+    kg_module_wiring_add_handler(wiring, KG_MSG_GENIUS_ENCODE_REQUEST, 100);
+    kg_module_wiring_add_handler(wiring, KG_MSG_GENIUS_SIMULATE_REQUEST, 150);
+    kg_module_wiring_add_handler(wiring, KG_MSG_GENIUS_DECODE_REQUEST, 100);
+
+    /* Set network type to SNN */
+    wiring->network_type = KG_WEIGHT_SNN;
+
+    /* Add custom metadata */
+    kg_module_wiring_add_metadata_entry(wiring, "brain_region", "parietal_intraparietal_sulcus");
+    kg_module_wiring_add_metadata_entry(wiring, "encoding_type", "population_coding");
+    kg_module_wiring_add_metadata_entry(wiring, "genius_modes", "gauss,newton,erdos");
+
+    return wiring;
 }
 
-struct kg_module_wiring* genius_snn_get_kg_wiring(genius_snn_bridge_t* bridge) {
+kg_module_wiring_t* genius_snn_get_kg_wiring(genius_snn_bridge_t* bridge) {
     if (!bridge) return NULL;
     return bridge->kg_wiring;
 }

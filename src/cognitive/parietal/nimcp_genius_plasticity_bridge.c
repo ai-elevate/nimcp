@@ -12,6 +12,8 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "core/brain/nimcp_kg_module_wiring.h"
+#include "core/brain/nimcp_kg_hierarchy.h"
 
 #include <string.h>
 #include <math.h>
@@ -210,8 +212,11 @@ void genius_plasticity_destroy(genius_plasticity_bridge_t* bridge) {
 
     if (bridge->synapses) nimcp_free(bridge->synapses);
 
-    /* KG wiring not yet implemented */
-    bridge->kg_wiring = NULL;
+    /* Destroy KG wiring */
+    if (bridge->kg_wiring) {
+        kg_module_wiring_destroy(bridge->kg_wiring);
+        bridge->kg_wiring = NULL;
+    }
 
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
@@ -993,12 +998,57 @@ bool genius_plasticity_verify_checksum(const genius_plasticity_serialized_t* ser
 // KG Wiring Integration
 //=============================================================================
 
-struct kg_module_wiring* genius_plasticity_create_kg_wiring(void) {
-    /* TODO: Implement when kg_module_wiring API is fully defined */
-    return NULL;
+kg_module_wiring_t* genius_plasticity_create_kg_wiring(void) {
+    kg_module_wiring_t* wiring = kg_module_wiring_create(
+        KG_GENIUS_PLASTICITY_MODULE_NAME,
+        KG_GENIUS_PLASTICITY_MODULE_TYPE
+    );
+    if (!wiring) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring is NULL");
+        return NULL;
+    }
+
+    /* Set hierarchical placement - parietal cortex layer V */
+    wiring->target_layer = KG_LAYER_V;
+    wiring->hemisphere_affinity = KG_HEMISPHERE_BILATERAL;
+
+    /* Set metadata */
+    kg_module_wiring_set_metadata(wiring,
+        "NIMCP Team",
+        "MATHEMATICAL_LEARNING",
+        "Mathematical genius plasticity and learning bridge"
+    );
+    kg_module_wiring_set_version(wiring, 1, 0, 0);
+
+    /* Register inputs from proof system and reward systems */
+    kg_module_wiring_add_input(wiring, "proof_system", KG_MSG_PLASTICITY_PROOF_RESULT, true);
+    kg_module_wiring_add_input(wiring, "genius_snn_bridge", KG_MSG_PLASTICITY_INSIGHT_EVENT, false);
+    kg_module_wiring_add_input(wiring, "reward_system", KG_MSG_PLASTICITY_REWARD_SIGNAL, false);
+    kg_module_wiring_add_input(wiring, "mode_controller", KG_MSG_PLASTICITY_MODE_FEEDBACK, false);
+
+    /* Register outputs for weight updates and skill changes */
+    kg_module_wiring_add_output(wiring, KG_MSG_PLASTICITY_WEIGHT_UPDATE, "Synaptic weight update for mathematical concepts");
+    kg_module_wiring_add_output(wiring, KG_MSG_PLASTICITY_SKILL_CHANGE, "Mathematical skill level change notification");
+    kg_module_wiring_add_output(wiring, KG_MSG_PLASTICITY_CONSOLIDATION, "Mathematical knowledge consolidation event");
+    kg_module_wiring_add_output(wiring, KG_MSG_PLASTICITY_HOMEOSTASIS, "Homeostatic plasticity adjustment event");
+
+    /* Register message handlers */
+    kg_module_wiring_add_handler(wiring, KG_MSG_PLASTICITY_LEARN_EVENT, 100);
+    kg_module_wiring_add_handler(wiring, KG_MSG_PLASTICITY_STDP_UPDATE, 150);
+    kg_module_wiring_add_handler(wiring, KG_MSG_PLASTICITY_BCM_UPDATE, 150);
+
+    /* Set network type to SNN (STDP-based plasticity) */
+    wiring->network_type = KG_WEIGHT_SNN;
+
+    /* Add custom metadata */
+    kg_module_wiring_add_metadata_entry(wiring, "brain_region", "parietal_angular_gyrus");
+    kg_module_wiring_add_metadata_entry(wiring, "plasticity_types", "stdp,bcm,reward_modulated");
+    kg_module_wiring_add_metadata_entry(wiring, "protected_synapses", "pattern_recognition,intuition");
+
+    return wiring;
 }
 
-struct kg_module_wiring* genius_plasticity_get_kg_wiring(genius_plasticity_bridge_t* bridge) {
+kg_module_wiring_t* genius_plasticity_get_kg_wiring(genius_plasticity_bridge_t* bridge) {
     if (!bridge) return NULL;
     return bridge->kg_wiring;
 }
