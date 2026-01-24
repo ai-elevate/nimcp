@@ -58,6 +58,33 @@ extern "C" {
 #define BIO_MODULE_GENIUS_PLASTICITY       0x0399
 
 //=============================================================================
+// KG Wiring Constants
+//=============================================================================
+
+/** @brief KG module name */
+#define KG_GENIUS_PLASTICITY_MODULE_NAME   "genius_plasticity_bridge"
+
+/** @brief KG module type */
+#define KG_GENIUS_PLASTICITY_MODULE_TYPE   "MATHEMATICAL_LEARNING"
+
+/* Input message types */
+#define KG_MSG_PLASTICITY_PROOF_RESULT     "PROOF_RESULT"
+#define KG_MSG_PLASTICITY_INSIGHT_EVENT    "INSIGHT_EVENT"
+#define KG_MSG_PLASTICITY_REWARD_SIGNAL    "REWARD_SIGNAL"
+#define KG_MSG_PLASTICITY_MODE_FEEDBACK    "MODE_FEEDBACK"
+
+/* Output message types */
+#define KG_MSG_PLASTICITY_WEIGHT_UPDATE    "WEIGHT_UPDATE"
+#define KG_MSG_PLASTICITY_SKILL_CHANGE     "SKILL_CHANGE"
+#define KG_MSG_PLASTICITY_CONSOLIDATION    "CONSOLIDATION_EVENT"
+#define KG_MSG_PLASTICITY_HOMEOSTASIS      "HOMEOSTASIS_EVENT"
+
+/* Handler message types */
+#define KG_MSG_PLASTICITY_LEARN_EVENT      "LEARN_EVENT"
+#define KG_MSG_PLASTICITY_STDP_UPDATE      "STDP_UPDATE"
+#define KG_MSG_PLASTICITY_BCM_UPDATE       "BCM_UPDATE"
+
+//=============================================================================
 // Enumerations
 //=============================================================================
 
@@ -587,6 +614,135 @@ int genius_plasticity_bio_async_disconnect(genius_plasticity_bridge_t* bridge);
  * @return true if connected, false otherwise
  */
 bool genius_plasticity_is_bio_async_connected(genius_plasticity_bridge_t* bridge);
+
+//=============================================================================
+// Heartbeat and State Serialization (Phase 8)
+//=============================================================================
+
+/** @brief Default heartbeat interval in milliseconds */
+#define GENIUS_PLASTICITY_HEARTBEAT_INTERVAL_MS  1000
+
+/** @brief Heartbeat timeout multiplier */
+#define GENIUS_PLASTICITY_HEARTBEAT_TIMEOUT_MULT 3.0f
+
+/**
+ * @brief Serialized state structure for persistence/recovery
+ */
+typedef struct {
+    uint32_t version;                        /**< Serialization version */
+    uint32_t num_synapses;                   /**< Number of synapses */
+    genius_plasticity_bridge_state_t state;  /**< Bridge state snapshot */
+    genius_learning_state_t learning;        /**< Learning state snapshot */
+    genius_plasticity_stats_t stats;         /**< Statistics snapshot */
+    uint64_t timestamp_us;                   /**< Serialization timestamp */
+    uint32_t checksum;                       /**< Data integrity checksum */
+} genius_plasticity_serialized_t;
+
+/**
+ * @brief Send heartbeat signal
+ *
+ * WHAT: Broadcast heartbeat to indicate bridge is alive
+ * WHY:  Enable health monitoring and fault detection
+ * HOW:  Send bio-async heartbeat message with current state
+ *
+ * @param bridge Bridge handle
+ * @return 0 on success, -1 on failure
+ */
+int genius_plasticity_send_heartbeat(genius_plasticity_bridge_t* bridge);
+
+/**
+ * @brief Get last heartbeat timestamp
+ *
+ * @param bridge Bridge handle
+ * @return Last heartbeat timestamp in microseconds, 0 on error
+ */
+uint64_t genius_plasticity_get_last_heartbeat(
+    const genius_plasticity_bridge_t* bridge
+);
+
+/**
+ * @brief Check if heartbeat is stale
+ *
+ * @param bridge Bridge handle
+ * @param timeout_ms Timeout threshold in milliseconds
+ * @return true if stale (timeout exceeded), false otherwise
+ */
+bool genius_plasticity_is_heartbeat_stale(
+    const genius_plasticity_bridge_t* bridge,
+    uint32_t timeout_ms
+);
+
+/**
+ * @brief Serialize bridge state for persistence
+ *
+ * WHAT: Capture full bridge state for recovery
+ * WHY:  Enable fault tolerance and state migration
+ * HOW:  Serialize synapse weights, learning state, statistics
+ *
+ * @param bridge Bridge handle
+ * @param serialized Output serialized state
+ * @return 0 on success, -1 on failure
+ */
+int genius_plasticity_serialize_state(
+    genius_plasticity_bridge_t* bridge,
+    genius_plasticity_serialized_t* serialized
+);
+
+/**
+ * @brief Deserialize and restore bridge state
+ *
+ * @param bridge Bridge handle
+ * @param serialized Serialized state to restore
+ * @return 0 on success, -1 on failure
+ */
+int genius_plasticity_deserialize_state(
+    genius_plasticity_bridge_t* bridge,
+    const genius_plasticity_serialized_t* serialized
+);
+
+/**
+ * @brief Compute checksum for state verification
+ *
+ * @param serialized Serialized state
+ * @return Computed checksum
+ */
+uint32_t genius_plasticity_compute_checksum(
+    const genius_plasticity_serialized_t* serialized
+);
+
+/**
+ * @brief Verify serialized state integrity
+ *
+ * @param serialized Serialized state to verify
+ * @return true if checksum matches, false otherwise
+ */
+bool genius_plasticity_verify_checksum(
+    const genius_plasticity_serialized_t* serialized
+);
+
+//=============================================================================
+// KG Wiring Integration
+//=============================================================================
+
+/* Forward declaration */
+struct kg_module_wiring;
+
+/**
+ * @brief Create KG wiring descriptor for this bridge
+ *
+ * Creates a module wiring descriptor that enables brain self-awareness
+ * of this bridge's topology, connections, inputs/outputs, and weights.
+ *
+ * @return Wiring descriptor or NULL on failure (caller owns memory)
+ */
+struct kg_module_wiring* genius_plasticity_create_kg_wiring(void);
+
+/**
+ * @brief Get KG wiring from bridge instance
+ * @param bridge Bridge handle
+ * @return Wiring descriptor or NULL if not initialized
+ */
+struct kg_module_wiring* genius_plasticity_get_kg_wiring(genius_plasticity_bridge_t* bridge);
 
 #ifdef __cplusplus
 }

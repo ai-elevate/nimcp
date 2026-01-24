@@ -31,6 +31,9 @@ struct genius_plasticity_bridge {
     uint64_t current_time_us;
     bool bio_async_connected;
 
+    /* Heartbeat tracking (Phase 8) */
+    uint64_t last_heartbeat_us;
+
     /* Synapse management */
     genius_plasticity_synapse_t* synapses;
     uint32_t synapse_count;
@@ -52,6 +55,9 @@ struct genius_plasticity_bridge {
 
     /* Statistics */
     genius_plasticity_stats_t stats;
+
+    /* KG Wiring */
+    struct kg_module_wiring* kg_wiring;
 };
 
 //=============================================================================
@@ -193,6 +199,9 @@ genius_plasticity_bridge_t* genius_plasticity_create(const genius_plasticity_con
 
     memset(&bridge->stats, 0, sizeof(genius_plasticity_stats_t));
 
+    /* Initialize KG wiring */
+    bridge->kg_wiring = genius_plasticity_create_kg_wiring();
+
     return bridge;
 }
 
@@ -200,6 +209,9 @@ void genius_plasticity_destroy(genius_plasticity_bridge_t* bridge) {
     if (!bridge) return;
 
     if (bridge->synapses) nimcp_free(bridge->synapses);
+
+    /* KG wiring not yet implemented */
+    bridge->kg_wiring = NULL;
 
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
@@ -841,4 +853,152 @@ bool genius_plasticity_is_bio_async_connected(genius_plasticity_bridge_t* bridge
     bool connected = bridge->bio_async_connected;
     nimcp_mutex_unlock(bridge->base.mutex);
     return connected;
+}
+
+//=============================================================================
+// Heartbeat and State Serialization (Phase 8)
+//=============================================================================
+
+int genius_plasticity_send_heartbeat(genius_plasticity_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "genius_plasticity_send_heartbeat: bridge is NULL");
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->last_heartbeat_us = nimcp_time_get_us();
+    nimcp_mutex_unlock(bridge->base.mutex);
+
+    return 0;
+}
+
+uint64_t genius_plasticity_get_last_heartbeat(const genius_plasticity_bridge_t* bridge) {
+    if (!bridge) return 0;
+
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    uint64_t last_hb = bridge->last_heartbeat_us;
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    return last_hb;
+}
+
+bool genius_plasticity_is_heartbeat_stale(const genius_plasticity_bridge_t* bridge,
+                                           uint32_t timeout_ms) {
+    if (!bridge) return true;
+
+    uint64_t last_hb = genius_plasticity_get_last_heartbeat(bridge);
+    if (last_hb == 0) return true;
+
+    uint64_t now_us = nimcp_time_get_us();
+    uint64_t elapsed_us = now_us - last_hb;
+    uint64_t timeout_us = (uint64_t)timeout_ms * 1000;
+
+    return elapsed_us > timeout_us;
+}
+
+int genius_plasticity_serialize_state(genius_plasticity_bridge_t* bridge,
+                                       genius_plasticity_serialized_t* serialized) {
+    if (!bridge || !serialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "genius_plasticity_serialize_state: bridge or serialized is NULL");
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    memset(serialized, 0, sizeof(*serialized));
+    serialized->version = 1;
+    serialized->num_synapses = bridge->synapse_count;
+    serialized->timestamp_us = nimcp_time_get_us();
+
+    /* Capture bridge state */
+    serialized->state.state = bridge->state;
+    serialized->state.active_synapses = bridge->synapse_count;
+
+    /* Compute mean weight */
+    float sum_weight = 0.0f;
+    for (uint32_t i = 0; i < bridge->synapse_count; i++) {
+        sum_weight += bridge->synapses[i].weight;
+    }
+    serialized->state.mean_weight = (bridge->synapse_count > 0)
+        ? (sum_weight / (float)bridge->synapse_count) : 0.0f;
+
+    /* Copy learning state */
+    memcpy(&serialized->learning, &bridge->learning_state, sizeof(genius_learning_state_t));
+
+    /* Copy statistics */
+    memcpy(&serialized->stats, &bridge->stats, sizeof(genius_plasticity_stats_t));
+
+    /* Compute checksum */
+    serialized->checksum = genius_plasticity_compute_checksum(serialized);
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_plasticity_deserialize_state(genius_plasticity_bridge_t* bridge,
+                                         const genius_plasticity_serialized_t* serialized) {
+    if (!bridge || !serialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "genius_plasticity_deserialize_state: bridge or serialized is NULL");
+        return -1;
+    }
+
+    /* Verify checksum */
+    if (!genius_plasticity_verify_checksum(serialized)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_plasticity_deserialize_state: checksum verification failed");
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    /* Restore state */
+    bridge->state = serialized->state.state;
+
+    /* Restore learning state */
+    memcpy(&bridge->learning_state, &serialized->learning, sizeof(genius_learning_state_t));
+
+    /* Restore statistics */
+    memcpy(&bridge->stats, &serialized->stats, sizeof(genius_plasticity_stats_t));
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+uint32_t genius_plasticity_compute_checksum(const genius_plasticity_serialized_t* serialized) {
+    if (!serialized) return 0;
+
+    /* Simple FNV-1a hash over relevant fields */
+    uint32_t hash = 2166136261u;
+    const uint8_t* data = (const uint8_t*)serialized;
+    size_t len = offsetof(genius_plasticity_serialized_t, checksum);
+
+    for (size_t i = 0; i < len; i++) {
+        hash ^= data[i];
+        hash *= 16777619u;
+    }
+
+    return hash;
+}
+
+bool genius_plasticity_verify_checksum(const genius_plasticity_serialized_t* serialized) {
+    if (!serialized) return false;
+
+    uint32_t computed = genius_plasticity_compute_checksum(serialized);
+    return computed == serialized->checksum;
+}
+
+//=============================================================================
+// KG Wiring Integration
+//=============================================================================
+
+struct kg_module_wiring* genius_plasticity_create_kg_wiring(void) {
+    /* TODO: Implement when kg_module_wiring API is fully defined */
+    return NULL;
+}
+
+struct kg_module_wiring* genius_plasticity_get_kg_wiring(genius_plasticity_bridge_t* bridge) {
+    if (!bridge) return NULL;
+    return bridge->kg_wiring;
 }

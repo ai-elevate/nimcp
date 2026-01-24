@@ -62,6 +62,33 @@ extern "C" {
 #define BIO_MODULE_GENIUS_SNN           0x0398
 
 //=============================================================================
+// KG Wiring Constants
+//=============================================================================
+
+/** @brief KG module name */
+#define KG_GENIUS_SNN_MODULE_NAME       "genius_snn_bridge"
+
+/** @brief KG module type */
+#define KG_GENIUS_SNN_MODULE_TYPE       "MATHEMATICAL_REASONING"
+
+/* Input message types */
+#define KG_MSG_GENIUS_MATH_STATE        "MATH_STATE"
+#define KG_MSG_GENIUS_MODE_ACTIVATION   "MODE_ACTIVATION"
+#define KG_MSG_GENIUS_PATTERN_INPUT     "PATTERN_INPUT"
+#define KG_MSG_GENIUS_PROOF_STEP        "PROOF_STEP"
+
+/* Output message types */
+#define KG_MSG_GENIUS_INSIGHT_DETECTED  "INSIGHT_DETECTED"
+#define KG_MSG_GENIUS_MODE_RECOMMEND    "MODE_RECOMMENDATION"
+#define KG_MSG_GENIUS_SPIKE_PATTERN     "SPIKE_PATTERN"
+#define KG_MSG_GENIUS_BREAKTHROUGH      "BREAKTHROUGH_EVENT"
+
+/* Handler message types */
+#define KG_MSG_GENIUS_ENCODE_REQUEST    "ENCODE_REQUEST"
+#define KG_MSG_GENIUS_SIMULATE_REQUEST  "SIMULATE_REQUEST"
+#define KG_MSG_GENIUS_DECODE_REQUEST    "DECODE_REQUEST"
+
+//=============================================================================
 // Enumerations
 //=============================================================================
 
@@ -567,6 +594,113 @@ int genius_snn_bio_async_disconnect(genius_snn_bridge_t* bridge);
  * @return true if connected, false otherwise
  */
 bool genius_snn_is_bio_async_connected(genius_snn_bridge_t* bridge);
+
+//=============================================================================
+// Heartbeat and State Serialization (Phase 8)
+//=============================================================================
+
+/** @brief Default heartbeat interval in milliseconds */
+#define GENIUS_SNN_HEARTBEAT_INTERVAL_MS  1000
+
+/** @brief Heartbeat timeout multiplier */
+#define GENIUS_SNN_HEARTBEAT_TIMEOUT_MULT 3.0f
+
+/**
+ * @brief Serialized state structure for persistence/recovery
+ */
+typedef struct {
+    uint32_t version;                    /**< Serialization version */
+    uint32_t num_dimensions;             /**< Number of dimensions */
+    genius_snn_bridge_state_t state;     /**< Bridge state snapshot */
+    genius_snn_stats_t stats;            /**< Statistics snapshot */
+    uint64_t timestamp_us;               /**< Serialization timestamp */
+    uint32_t checksum;                   /**< Data integrity checksum */
+} genius_snn_serialized_t;
+
+/**
+ * @brief Send heartbeat signal
+ * @param bridge Bridge handle
+ * @return 0 on success, -1 on failure
+ */
+int genius_snn_send_heartbeat(genius_snn_bridge_t* bridge);
+
+/**
+ * @brief Get last heartbeat timestamp
+ * @param bridge Bridge handle
+ * @return Last heartbeat timestamp in microseconds, 0 on error
+ */
+uint64_t genius_snn_get_last_heartbeat(const genius_snn_bridge_t* bridge);
+
+/**
+ * @brief Check if heartbeat is stale
+ * @param bridge Bridge handle
+ * @param timeout_ms Timeout threshold in milliseconds
+ * @return true if stale (timeout exceeded), false otherwise
+ */
+bool genius_snn_is_heartbeat_stale(
+    const genius_snn_bridge_t* bridge,
+    uint32_t timeout_ms
+);
+
+/**
+ * @brief Serialize bridge state for persistence
+ * @param bridge Bridge handle
+ * @param serialized Output serialized state
+ * @return 0 on success, -1 on failure
+ */
+int genius_snn_serialize_state(
+    genius_snn_bridge_t* bridge,
+    genius_snn_serialized_t* serialized
+);
+
+/**
+ * @brief Deserialize and restore bridge state
+ * @param bridge Bridge handle
+ * @param serialized Serialized state to restore
+ * @return 0 on success, -1 on failure
+ */
+int genius_snn_deserialize_state(
+    genius_snn_bridge_t* bridge,
+    const genius_snn_serialized_t* serialized
+);
+
+/**
+ * @brief Compute checksum for state verification
+ * @param serialized Serialized state
+ * @return Computed checksum
+ */
+uint32_t genius_snn_compute_checksum(const genius_snn_serialized_t* serialized);
+
+/**
+ * @brief Verify serialized state integrity
+ * @param serialized Serialized state to verify
+ * @return true if checksum matches, false otherwise
+ */
+bool genius_snn_verify_checksum(const genius_snn_serialized_t* serialized);
+
+//=============================================================================
+// KG Wiring Integration
+//=============================================================================
+
+/* Forward declaration */
+struct kg_module_wiring;
+
+/**
+ * @brief Create KG wiring descriptor for this bridge
+ *
+ * Creates a module wiring descriptor that enables brain self-awareness
+ * of this bridge's topology, connections, inputs/outputs, and weights.
+ *
+ * @return Wiring descriptor or NULL on failure (caller owns memory)
+ */
+struct kg_module_wiring* genius_snn_create_kg_wiring(void);
+
+/**
+ * @brief Get KG wiring from bridge instance
+ * @param bridge Bridge handle
+ * @return Wiring descriptor or NULL if not initialized
+ */
+struct kg_module_wiring* genius_snn_get_kg_wiring(genius_snn_bridge_t* bridge);
 
 #ifdef __cplusplus
 }

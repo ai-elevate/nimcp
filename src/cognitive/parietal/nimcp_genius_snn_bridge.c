@@ -34,6 +34,9 @@ struct genius_snn_bridge {
     uint64_t current_time_us;
     bool bio_async_connected;
 
+    /* Heartbeat tracking (Phase 8) */
+    uint64_t last_heartbeat_us;
+
     /* Dimension state */
     genius_dim_state_t dim_states[GENIUS_SNN_MAX_DIMENSIONS];
 
@@ -60,6 +63,9 @@ struct genius_snn_bridge {
 
     /* Statistics */
     genius_snn_stats_t stats;
+
+    /* KG Wiring */
+    struct kg_module_wiring* kg_wiring;
 };
 
 //=============================================================================
@@ -208,6 +214,9 @@ genius_snn_bridge_t* genius_snn_create(const genius_snn_config_t* config) {
     memset(&bridge->last_insight, 0, sizeof(genius_insight_output_t));
     memset(&bridge->stats, 0, sizeof(genius_snn_stats_t));
 
+    /* Initialize KG wiring */
+    bridge->kg_wiring = genius_snn_create_kg_wiring();
+
     return bridge;
 }
 
@@ -218,6 +227,9 @@ void genius_snn_destroy(genius_snn_bridge_t* bridge) {
     if (bridge->output_buffer) nimcp_free(bridge->output_buffer);
     if (bridge->mode_buffer) nimcp_free(bridge->mode_buffer);
     if (bridge->prev_state) nimcp_free(bridge->prev_state);
+
+    /* KG wiring not yet implemented */
+    bridge->kg_wiring = NULL;
 
     bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
@@ -639,4 +651,135 @@ bool genius_snn_is_bio_async_connected(genius_snn_bridge_t* bridge) {
     bool connected = bridge->bio_async_connected;
     nimcp_mutex_unlock(bridge->base.mutex);
     return connected;
+}
+
+//=============================================================================
+// Heartbeat and State Serialization (Phase 8)
+//=============================================================================
+
+int genius_snn_send_heartbeat(genius_snn_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "genius_snn_send_heartbeat: bridge is NULL");
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->base.mutex);
+    bridge->last_heartbeat_us = nimcp_time_get_us();
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+uint64_t genius_snn_get_last_heartbeat(const genius_snn_bridge_t* bridge) {
+    if (!bridge) return 0;
+
+    nimcp_mutex_lock((nimcp_mutex_t*)bridge->base.mutex);
+    uint64_t last_hb = bridge->last_heartbeat_us;
+    nimcp_mutex_unlock((nimcp_mutex_t*)bridge->base.mutex);
+    return last_hb;
+}
+
+bool genius_snn_is_heartbeat_stale(const genius_snn_bridge_t* bridge,
+                                    uint32_t timeout_ms) {
+    if (!bridge) return true;
+
+    uint64_t last_hb = genius_snn_get_last_heartbeat(bridge);
+    if (last_hb == 0) return true;
+
+    uint64_t now_us = nimcp_time_get_us();
+    uint64_t elapsed_us = now_us - last_hb;
+    uint64_t timeout_us = (uint64_t)timeout_ms * 1000;
+
+    return elapsed_us > timeout_us;
+}
+
+int genius_snn_serialize_state(genius_snn_bridge_t* bridge,
+                                genius_snn_serialized_t* serialized) {
+    if (!bridge || !serialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "genius_snn_serialize_state: bridge or serialized is NULL");
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    memset(serialized, 0, sizeof(*serialized));
+    serialized->version = 1;
+    serialized->num_dimensions = bridge->config.num_dimensions;
+    serialized->timestamp_us = nimcp_time_get_us();
+
+    /* Capture bridge state */
+    genius_snn_get_state(bridge, &serialized->state);
+
+    /* Copy statistics */
+    memcpy(&serialized->stats, &bridge->stats, sizeof(genius_snn_stats_t));
+
+    /* Compute checksum */
+    serialized->checksum = genius_snn_compute_checksum(serialized);
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+int genius_snn_deserialize_state(genius_snn_bridge_t* bridge,
+                                  const genius_snn_serialized_t* serialized) {
+    if (!bridge || !serialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "genius_snn_deserialize_state: bridge or serialized is NULL");
+        return -1;
+    }
+
+    if (!genius_snn_verify_checksum(serialized)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_snn_deserialize_state: checksum verification failed");
+        return -1;
+    }
+
+    nimcp_mutex_lock(bridge->base.mutex);
+
+    /* Restore state */
+    bridge->state = serialized->state.state;
+
+    /* Restore statistics */
+    memcpy(&bridge->stats, &serialized->stats, sizeof(genius_snn_stats_t));
+
+    nimcp_mutex_unlock(bridge->base.mutex);
+    return 0;
+}
+
+uint32_t genius_snn_compute_checksum(const genius_snn_serialized_t* serialized) {
+    if (!serialized) return 0;
+
+    /* FNV-1a hash over relevant fields */
+    uint32_t hash = 2166136261u;
+    const uint8_t* data = (const uint8_t*)serialized;
+    size_t len = offsetof(genius_snn_serialized_t, checksum);
+
+    for (size_t i = 0; i < len; i++) {
+        hash ^= data[i];
+        hash *= 16777619u;
+    }
+
+    return hash;
+}
+
+bool genius_snn_verify_checksum(const genius_snn_serialized_t* serialized) {
+    if (!serialized) return false;
+
+    uint32_t computed = genius_snn_compute_checksum(serialized);
+    return computed == serialized->checksum;
+}
+
+//=============================================================================
+// KG Wiring Integration
+//=============================================================================
+
+struct kg_module_wiring* genius_snn_create_kg_wiring(void) {
+    /* TODO: Implement when kg_module_wiring API is fully defined */
+    return NULL;
+}
+
+struct kg_module_wiring* genius_snn_get_kg_wiring(genius_snn_bridge_t* bridge) {
+    if (!bridge) return NULL;
+    return bridge->kg_wiring;
 }
