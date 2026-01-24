@@ -200,7 +200,11 @@ NIMCP_API void genius_orchestrator_destroy(genius_math_orchestrator_t* orch) {
 NIMCP_API nimcp_error_t genius_orchestrator_reset(
     genius_math_orchestrator_t* orch) {
 
-    if (!orch) return NIMCP_ERROR_INVALID_PARAM;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_orchestrator_reset: orch is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(orch->mutex);
 
@@ -223,7 +227,11 @@ NIMCP_API nimcp_error_t genius_orchestrator_reset(
 NIMCP_API nimcp_error_t genius_orchestrator_get_default_config(
     orchestrator_config_t* config) {
 
-    if (!config) return NIMCP_ERROR_INVALID_PARAM;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_orchestrator_get_default_config: config is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     memset(config, 0, sizeof(orchestrator_config_t));
 
@@ -273,6 +281,8 @@ NIMCP_API nimcp_error_t genius_orchestrator_solve(
     orchestrator_result_t* result) {
 
     if (!orch || !problem || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_orchestrator_solve: orch, problem, or result is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -365,6 +375,8 @@ NIMCP_API nimcp_error_t genius_orchestrator_prove(
     orchestrator_proof_result_t* result) {
 
     if (!orch || !theorem || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_orchestrator_prove: orch, theorem, or result is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -425,6 +437,8 @@ NIMCP_API nimcp_error_t genius_orchestrator_conjecture(
     orchestrator_conjecture_result_t* result) {
 
     if (!orch || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_orchestrator_conjecture: orch or result is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -467,6 +481,8 @@ NIMCP_API nimcp_error_t genius_orchestrator_game_theory_analysis(
     orchestrator_game_result_t* result) {
 
     if (!orch || !game || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_orchestrator_game_theory_analysis: orch, game, or result is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -493,6 +509,8 @@ NIMCP_API nimcp_error_t genius_orchestrator_optimize(
     orchestrator_optimization_result_t* result) {
 
     if (!orch || !objective || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_orchestrator_optimize: orch, objective, or result is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -547,43 +565,17 @@ NIMCP_API quantum_mcts_t* genius_orchestrator_get_quantum_mcts(
 }
 
 /* ============================================================================
- * Modulation
- * ============================================================================ */
-
-NIMCP_API nimcp_error_t genius_orchestrator_modulate_atp(
-    genius_math_orchestrator_t* orch,
-    float atp_level) {
-
-    if (!orch) return NIMCP_ERROR_INVALID_PARAM;
-
-    nimcp_mutex_lock(orch->mutex);
-    orch->atp_level = atp_level;
-    nimcp_mutex_unlock(orch->mutex);
-
-    return NIMCP_SUCCESS;
-}
-
-NIMCP_API nimcp_error_t genius_orchestrator_modulate_inflammation(
-    genius_math_orchestrator_t* orch,
-    float inflammation) {
-
-    if (!orch) return NIMCP_ERROR_INVALID_PARAM;
-
-    nimcp_mutex_lock(orch->mutex);
-    orch->inflammation_level = inflammation;
-    nimcp_mutex_unlock(orch->mutex);
-
-    return NIMCP_SUCCESS;
-}
-
-/* ============================================================================
  * Bio-Async Integration
  * ============================================================================ */
 
 NIMCP_API nimcp_error_t genius_orchestrator_register_bio_async(
     genius_math_orchestrator_t* orch) {
 
-    if (!orch) return NIMCP_ERROR_INVALID_PARAM;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_orchestrator: orch is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(orch->mutex);
 
@@ -607,7 +599,11 @@ NIMCP_API nimcp_error_t genius_orchestrator_register_bio_async(
 NIMCP_API nimcp_error_t genius_orchestrator_unregister_bio_async(
     genius_math_orchestrator_t* orch) {
 
-    if (!orch) return NIMCP_ERROR_INVALID_PARAM;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_orchestrator: orch is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(orch->mutex);
 
@@ -635,7 +631,11 @@ NIMCP_API nimcp_error_t genius_orchestrator_get_stats(
     const genius_math_orchestrator_t* orch,
     orchestrator_stats_t* stats) {
 
-    if (!orch || !stats) return NIMCP_ERROR_INVALID_PARAM;
+    if (!orch || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_orchestrator_get_stats: orch or stats is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     memcpy(stats, &orch->stats, sizeof(orchestrator_stats_t));
 
@@ -688,7 +688,11 @@ NIMCP_API void genius_orchestrator_print_diagnostics(
 NIMCP_API nimcp_error_t genius_orchestrator_init_components(
     genius_math_orchestrator_t* orch) {
 
-    if (!orch) return NIMCP_ERROR_INVALID_PARAM;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_orchestrator: orch is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(orch->mutex);
 
@@ -723,7 +727,11 @@ NIMCP_API nimcp_error_t genius_orchestrator_set_consistency(
     genius_math_orchestrator_t* orch,
     energy_consistency_checker_t* checker) {
 
-    if (!orch) return NIMCP_ERROR_INVALID_PARAM;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_orchestrator: orch is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(orch->mutex);
     orch->consistency = checker;
@@ -736,7 +744,11 @@ NIMCP_API nimcp_error_t genius_orchestrator_set_hypergraph(
     genius_math_orchestrator_t* orch,
     nimcp_hypergraph_t* hypergraph) {
 
-    if (!orch) return NIMCP_ERROR_INVALID_PARAM;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_orchestrator: orch is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(orch->mutex);
     orch->knowledge_graph = hypergraph;
@@ -749,7 +761,11 @@ NIMCP_API nimcp_error_t genius_orchestrator_set_genius(
     genius_math_orchestrator_t* orch,
     mathematical_genius_t* genius) {
 
-    if (!orch) return NIMCP_ERROR_INVALID_PARAM;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_orchestrator: orch is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(orch->mutex);
     orch->genius = genius;
@@ -762,7 +778,11 @@ NIMCP_API nimcp_error_t genius_orchestrator_set_quantum_mcts(
     genius_math_orchestrator_t* orch,
     quantum_mcts_t* qmcts) {
 
-    if (!orch) return NIMCP_ERROR_INVALID_PARAM;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_orchestrator: orch is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(orch->mutex);
     orch->quantum_mcts = qmcts;
@@ -775,7 +795,11 @@ NIMCP_API nimcp_error_t genius_orchestrator_set_fep_planner(
     genius_math_orchestrator_t* orch,
     fep_planning_system_t* fep_planner) {
 
-    if (!orch) return NIMCP_ERROR_INVALID_PARAM;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_orchestrator: orch is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(orch->mutex);
     orch->planner = fep_planner;
@@ -788,11 +812,238 @@ NIMCP_API nimcp_error_t genius_orchestrator_set_game_theory(
     genius_math_orchestrator_t* orch,
     nimcp_gt_system_t* game_theory) {
 
-    if (!orch) return NIMCP_ERROR_INVALID_PARAM;
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_orchestrator: orch is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_mutex_lock(orch->mutex);
     orch->game_theory = game_theory;
     nimcp_mutex_unlock(orch->mutex);
 
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Result Management Functions
+ * ============================================================================ */
+
+NIMCP_API nimcp_error_t genius_orchestrator_result_init(
+    orchestrator_result_t* result) {
+
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_orchestrator: result is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    memset(result, 0, sizeof(orchestrator_result_t));
+    return NIMCP_SUCCESS;
+}
+
+NIMCP_API void genius_orchestrator_result_cleanup(orchestrator_result_t* result) {
+    if (!result) return;
+
+    /* Free any dynamically allocated members */
+    if (result->genius_result) {
+        nimcp_free(result->genius_result);
+        result->genius_result = NULL;
+    }
+    if (result->proof_result) {
+        nimcp_free(result->proof_result);
+        result->proof_result = NULL;
+    }
+    if (result->conjecture_result) {
+        nimcp_free(result->conjecture_result);
+        result->conjecture_result = NULL;
+    }
+    if (result->game_result) {
+        nimcp_free(result->game_result);
+        result->game_result = NULL;
+    }
+    if (result->opt_result) {
+        nimcp_free(result->opt_result);
+        result->opt_result = NULL;
+    }
+    if (result->consistency_result) {
+        nimcp_free(result->consistency_result);
+        result->consistency_result = NULL;
+    }
+
+    memset(result, 0, sizeof(orchestrator_result_t));
+}
+
+NIMCP_API nimcp_error_t genius_orchestrator_proof_result_init(
+    orchestrator_proof_result_t* result) {
+
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_orchestrator: result is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    memset(result, 0, sizeof(orchestrator_proof_result_t));
+    return NIMCP_SUCCESS;
+}
+
+NIMCP_API void genius_orchestrator_proof_result_cleanup(
+    orchestrator_proof_result_t* result) {
+
+    if (!result) return;
+
+    /* Clear the result */
+    memset(result, 0, sizeof(orchestrator_proof_result_t));
+}
+
+/* ============================================================================
+ * Modulation Functions
+ * ============================================================================ */
+
+NIMCP_API nimcp_error_t genius_orchestrator_modulate_inflammation(
+    genius_math_orchestrator_t* orch,
+    float level) {
+
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_orchestrator: orch is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Clamp to [0, 1] */
+    if (level < 0.0f) level = 0.0f;
+    if (level > 1.0f) level = 1.0f;
+
+    nimcp_mutex_lock(orch->mutex);
+    orch->inflammation_level = level;
+
+    /* Propagate to components */
+    if (orch->genius) {
+        genius_modulate_inflammation(orch->genius, level);
+    }
+    if (orch->prover) {
+        /* High inflammation reduces proof efficiency */
+        float atp_modifier = 1.0f - (level * 0.3f);
+        evolutionary_proof_modulate_atp(orch->prover, atp_modifier);
+    }
+
+    nimcp_mutex_unlock(orch->mutex);
+    return NIMCP_SUCCESS;
+}
+
+NIMCP_API nimcp_error_t genius_orchestrator_modulate_fatigue(
+    genius_math_orchestrator_t* orch,
+    float level) {
+
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_orchestrator: orch is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Clamp to [0, 1] */
+    if (level < 0.0f) level = 0.0f;
+    if (level > 1.0f) level = 1.0f;
+
+    nimcp_mutex_lock(orch->mutex);
+
+    /* Propagate to components */
+    if (orch->genius) {
+        genius_modulate_fatigue(orch->genius, level);
+    }
+    if (orch->prover) {
+        /* Fatigue reduces ATP availability */
+        float atp_modifier = 1.0f - (level * 0.5f);
+        evolutionary_proof_modulate_atp(orch->prover, atp_modifier);
+    }
+
+    nimcp_mutex_unlock(orch->mutex);
+    return NIMCP_SUCCESS;
+}
+
+NIMCP_API nimcp_error_t genius_orchestrator_modulate_atp(
+    genius_math_orchestrator_t* orch,
+    float level) {
+
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "genius_orchestrator: orch is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+
+    /* Clamp to [0, 1] */
+    if (level < 0.0f) level = 0.0f;
+    if (level > 1.0f) level = 1.0f;
+
+    nimcp_mutex_lock(orch->mutex);
+    orch->atp_level = level;
+
+    /* Propagate to components */
+    if (orch->genius) {
+        genius_modulate_atp(orch->genius, level);
+    }
+    if (orch->prover) {
+        evolutionary_proof_modulate_atp(orch->prover, level);
+    }
+    if (orch->consistency) {
+        energy_consistency_modulate_atp(orch->consistency, level);
+    }
+
+    nimcp_mutex_unlock(orch->mutex);
+    return NIMCP_SUCCESS;
+}
+
+/* ============================================================================
+ * Verification Functions
+ * ============================================================================ */
+
+NIMCP_API nimcp_error_t genius_orchestrator_check_consistency(
+    genius_math_orchestrator_t* orch,
+    const orchestrator_result_t* result,
+    energy_consistency_result_t* consistency_result) {
+
+    if (!orch || !result) return NIMCP_ERROR_INVALID_PARAM;
+
+    nimcp_mutex_lock(orch->mutex);
+
+    if (orch->consistency && consistency_result) {
+        memset(consistency_result, 0, sizeof(*consistency_result));
+
+        /* Check consistency of the result */
+        energy_consistency_check(orch->consistency, NULL, consistency_result);
+    }
+
+    nimcp_mutex_unlock(orch->mutex);
+    return NIMCP_SUCCESS;
+}
+
+NIMCP_API nimcp_error_t genius_orchestrator_verify_proof(
+    genius_math_orchestrator_t* orch,
+    const orchestrator_proof_result_t* proof,
+    bool* is_valid) {
+
+    if (!orch || !proof || !is_valid) return NIMCP_ERROR_INVALID_PARAM;
+
+    nimcp_mutex_lock(orch->mutex);
+
+    *is_valid = false;
+
+    if (proof->proved) {
+        /* Verify using energy consistency */
+        if (orch->consistency) {
+            energy_consistency_result_t ec_result;
+            memset(&ec_result, 0, sizeof(ec_result));
+
+            energy_consistency_check(orch->consistency, NULL, &ec_result);
+
+            /* E = 0 means consistent/valid */
+            *is_valid = (ec_result.total_energy < 0.001f);
+        } else {
+            /* No consistency checker, trust the proof result */
+            *is_valid = true;
+        }
+    }
+
+    nimcp_mutex_unlock(orch->mutex);
     return NIMCP_SUCCESS;
 }

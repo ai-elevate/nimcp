@@ -482,12 +482,14 @@ NIMCP_API nimcp_error_t genius_orchestrator_check_consistency(
  * @brief Verify a proof trace
  *
  * @param orch The orchestrator
- * @param proof Proof trace to verify
- * @return NIMCP_OK if valid
+ * @param proof Proof result to verify
+ * @param is_valid Output: true if proof is valid
+ * @return NIMCP_OK on success
  */
 NIMCP_API nimcp_error_t genius_orchestrator_verify_proof(
     genius_math_orchestrator_t* orch,
-    const proof_trace_t* proof);
+    const orchestrator_proof_result_t* proof,
+    bool* is_valid);
 
 /* ============================================================================
  * Modulation
