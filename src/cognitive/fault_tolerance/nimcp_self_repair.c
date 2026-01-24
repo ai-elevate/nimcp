@@ -66,6 +66,11 @@ struct self_repair_coordinator {
     /* Bio-async communication */
     bio_module_context_t bio_ctx;
 
+    /* Health agent integration (Phase 4) */
+    struct health_agent* health_agent;              /**< Connected health agent */
+    self_repair_direct_failure_cb_t failure_cb;     /**< Failure notification callback */
+    void* failure_cb_data;                          /**< Failure callback user data */
+
     /* State */
     bool ready;
 };
@@ -1202,4 +1207,110 @@ uint32_t self_repair_process_messages(self_repair_coordinator_t* coordinator, ui
         return 0;
     }
     return bio_router_process_inbox(coordinator->bio_ctx, max_messages);
+}
+
+//=============================================================================
+// Health Agent Integration (Phase 4)
+//=============================================================================
+
+/**
+ * @brief Connect self-repair coordinator to health agent
+ */
+int self_repair_connect_health_agent(
+    self_repair_coordinator_t* coordinator,
+    struct health_agent* agent
+) {
+    if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "self_repair_connect_health_agent: coordinator is NULL");
+        return -1;
+    }
+
+    nimcp_mutex_lock(coordinator->mutex);
+    coordinator->health_agent = agent;
+    nimcp_mutex_unlock(coordinator->mutex);
+
+    return 0;
+}
+
+/**
+ * @brief Set failure notification callback
+ */
+int self_repair_set_failure_callback(
+    self_repair_coordinator_t* coordinator,
+    self_repair_direct_failure_cb_t callback,
+    void* user_data
+) {
+    if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "self_repair_set_failure_callback: coordinator is NULL");
+        return -1;
+    }
+
+    nimcp_mutex_lock(coordinator->mutex);
+    coordinator->failure_cb = callback;
+    coordinator->failure_cb_data = user_data;
+    nimcp_mutex_unlock(coordinator->mutex);
+
+    return 0;
+}
+
+/**
+ * @brief Notify health agent of repair failure
+ */
+int self_repair_notify_health_agent_failure(
+    self_repair_coordinator_t* coordinator,
+    uint64_t repair_id,
+    repair_status_t status,
+    const char* error_message
+) {
+    if (!coordinator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "self_repair_notify_health_agent_failure: coordinator is NULL");
+        return -1;
+    }
+
+    nimcp_mutex_lock(coordinator->mutex);
+
+    /* Call failure callback if registered */
+    if (coordinator->failure_cb) {
+        coordinator->failure_cb(repair_id, status, error_message,
+                               coordinator->failure_cb_data);
+    }
+
+    /* Send bio-async message if health agent connected */
+    if (coordinator->health_agent && coordinator->bio_ctx) {
+        struct {
+            bio_message_header_t header;
+            uint64_t repair_id;
+            uint32_t status;
+            char error_message[256];
+        } msg = {0};
+
+        msg.header.type = BIO_MSG_REPAIR_HEALTH_FAILURE;
+        msg.header.source_module = BIO_MODULE_SELF_REPAIR;
+        msg.header.target_module = BIO_MODULE_HEALTH_SELF_REPAIR_BRIDGE;
+        msg.header.payload_size = sizeof(msg) - sizeof(bio_message_header_t);
+        msg.repair_id = repair_id;
+        msg.status = status;
+        if (error_message) {
+            strncpy(msg.error_message, error_message, sizeof(msg.error_message) - 1);
+        }
+
+        bio_router_send(coordinator->bio_ctx, BIO_MODULE_HEALTH_SELF_REPAIR_BRIDGE,
+                       &msg, sizeof(msg));
+    }
+
+    nimcp_mutex_unlock(coordinator->mutex);
+    return 0;
+}
+
+/**
+ * @brief Check if health agent is connected
+ */
+bool self_repair_has_health_agent(const self_repair_coordinator_t* coordinator) {
+    if (!coordinator) {
+        return false;
+    }
+    return coordinator->health_agent != NULL;
 }

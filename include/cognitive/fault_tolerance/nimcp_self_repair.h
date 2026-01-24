@@ -767,6 +767,88 @@ uint32_t self_repair_process_messages(
     uint32_t max_messages
 );
 
+//=============================================================================
+// Health Agent Integration (Phase 4)
+//=============================================================================
+
+/* Forward declaration */
+struct health_agent;
+
+/**
+ * @brief Callback for repair failure notification (direct callback)
+ *
+ * Called when a repair fails to allow health agent integration.
+ * Note: Uses different signature from self_repair_health_notify.h callback.
+ */
+typedef void (*self_repair_direct_failure_cb_t)(
+    uint64_t repair_id,
+    repair_status_t status,
+    const char* error_message,
+    void* user_data
+);
+
+/**
+ * @brief Connect self-repair coordinator to health agent
+ *
+ * WHAT: Link self-repair system with health agent for failure escalation
+ * WHY:  Enable health agent to track repair failures and escalate
+ * HOW:  Store health agent reference for notifications
+ *
+ * @param coordinator Coordinator handle
+ * @param agent Health agent to connect (can be NULL to disconnect)
+ * @return 0 on success, -1 on error
+ */
+int self_repair_connect_health_agent(
+    self_repair_coordinator_t* coordinator,
+    struct health_agent* agent
+);
+
+/**
+ * @brief Set failure notification callback
+ *
+ * WHAT: Register callback for repair failures
+ * WHY:  Allow external systems to react to repair failures
+ * HOW:  Store callback for invocation on failure
+ *
+ * @param coordinator Coordinator handle
+ * @param callback Failure callback function
+ * @param user_data User data to pass to callback
+ * @return 0 on success, -1 on error
+ */
+int self_repair_set_failure_callback(
+    self_repair_coordinator_t* coordinator,
+    self_repair_direct_failure_cb_t callback,
+    void* user_data
+);
+
+/**
+ * @brief Notify health agent of repair failure
+ *
+ * WHAT: Send failure notification to connected health agent
+ * WHY:  Escalate failed repairs for monitoring/alerting
+ * HOW:  Send message to health agent with failure details
+ *
+ * @param coordinator Coordinator handle
+ * @param repair_id Failed repair ID
+ * @param status Failure status code
+ * @param error_message Descriptive error message
+ * @return 0 on success, -1 on error
+ */
+int self_repair_notify_health_agent_failure(
+    self_repair_coordinator_t* coordinator,
+    uint64_t repair_id,
+    repair_status_t status,
+    const char* error_message
+);
+
+/**
+ * @brief Check if health agent is connected
+ *
+ * @param coordinator Coordinator handle
+ * @return true if health agent is connected
+ */
+bool self_repair_has_health_agent(const self_repair_coordinator_t* coordinator);
+
 #ifdef __cplusplus
 }
 #endif
