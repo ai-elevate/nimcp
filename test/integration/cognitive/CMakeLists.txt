@@ -239,3 +239,6 @@ add_subdirectory(world_model)
 
 # Phase 8 Health Cognitive Integration Tests
 add_subdirectory(health)
+
+# Neuro-Symbolic Mathematics Integration Tests (Mathesis-Inspired)
+add_subdirectory(neuro_symbolic)

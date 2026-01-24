@@ -1924,3 +1924,13 @@ add_subdirectory(omni)
 # ============================================================================
 
 add_subdirectory(health)
+
+# ============================================================================
+# Neuro-Symbolic Mathematics Tests (Mathesis-Inspired)
+# ============================================================================
+# WHAT: Unit tests for genius-level mathematics system
+# WHY:  Validate energy consistency, hypergraph, quantum MCTS, orchestrator
+# HOW:  Test all APIs: lifecycle, operations, integration with other modules
+# ============================================================================
+
+add_subdirectory(neuro_symbolic)

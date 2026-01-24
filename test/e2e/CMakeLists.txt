@@ -2880,6 +2880,13 @@ add_e2e_test(e2e_test_health_agent_pipeline
 )
 set_tests_properties(e2e_test_health_agent_pipeline PROPERTIES TIMEOUT 300)
 
+# Neuro-Symbolic Mathematics Pipeline E2E Test (Mathesis-inspired)
+add_e2e_test(e2e_test_neuro_symbolic_pipeline
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_framework.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_neuro_symbolic_pipeline.cpp
+)
+set_tests_properties(e2e_test_neuro_symbolic_pipeline PROPERTIES TIMEOUT 180)
+
 # Include Plasticity E2E test subdirectory
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/plasticity/CMakeLists.txt)
     message(STATUS "Adding Plasticity E2E tests...")

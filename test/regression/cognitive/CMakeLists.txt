@@ -252,3 +252,8 @@ gtest_discover_tests(regression_cognitive_world_model
         LABELS "regression;cognitive;world_model;omni;multimodal"
         TIMEOUT 300
 )
+
+# ============================================================================
+# Neuro-Symbolic Mathematics Regression Tests
+# ============================================================================
+add_subdirectory(neuro_symbolic)
