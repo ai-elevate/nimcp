@@ -98,7 +98,11 @@ static bool connect_prefrontal_to_bio_async(brain_t brain) {
 
 bool nimcp_brain_factory_init_prefrontal_subsystem(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_prefrontal_subsystem: brain is NULL");
+
+            return false;
     }
 
     /* Check if already initialized */
@@ -183,7 +187,11 @@ bool nimcp_brain_factory_init_prefrontal_subsystem(brain_t brain) {
 
 bool nimcp_brain_factory_init_prefrontal_substrate_bridge(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_prefrontal_substrate_bridge: brain is NULL");
+
+            return false;
     }
 
     /* Check if already initialized */
@@ -222,7 +230,11 @@ bool nimcp_brain_factory_init_prefrontal_substrate_bridge(brain_t brain) {
 
 bool nimcp_brain_factory_init_prefrontal_thalamic_bridge(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_prefrontal_thalamic_bridge: brain is NULL");
+
+            return false;
     }
 
     /* Check if already initialized */
@@ -262,7 +274,11 @@ bool nimcp_brain_factory_init_prefrontal_thalamic_bridge(brain_t brain) {
 
 bool nimcp_brain_factory_init_prefrontal_quantum_bridge(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_prefrontal_quantum_bridge: brain is NULL");
+
+            return false;
     }
 
     /* Check if already initialized */

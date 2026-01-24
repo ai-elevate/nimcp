@@ -71,6 +71,8 @@ training_module_fep_bridge_t* training_module_fep_create(
 ) {
     if (!training_module) {
         NIMCP_LOGGING_ERROR("training_module_fep_create: NULL training module");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "training_module is NULL");
+
         return NULL;
     }
 
@@ -79,6 +81,8 @@ training_module_fep_bridge_t* training_module_fep_create(
         nimcp_malloc(sizeof(training_module_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("training_module_fep_create: Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

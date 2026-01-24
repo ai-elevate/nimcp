@@ -114,7 +114,11 @@ static bool connect_substrate_bridge(brain_t brain) {
 
 bool nimcp_brain_factory_init_wernicke_subsystem(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_wernicke_subsystem: brain is NULL");
+
+            return false;
     }
 
     /* Check if already initialized */
@@ -196,7 +200,11 @@ bool nimcp_brain_factory_init_wernicke_subsystem(brain_t brain) {
 
 bool nimcp_brain_factory_init_wernicke_substrate_bridge(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_wernicke_substrate_bridge: brain is NULL");
+
+            return false;
     }
 
     /* Check if already initialized */
@@ -236,7 +244,11 @@ bool nimcp_brain_factory_init_wernicke_substrate_bridge(brain_t brain) {
 
 bool nimcp_brain_factory_init_wernicke_quantum_bridge(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_wernicke_quantum_bridge: brain is NULL");
+
+            return false;
     }
 
     /* Check if already initialized */
@@ -281,7 +293,11 @@ bool nimcp_brain_factory_init_wernicke_quantum_bridge(brain_t brain) {
 
 bool nimcp_brain_factory_init_wernicke_broca_bridge(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_wernicke_broca_bridge: brain is NULL");
+
+            return false;
     }
 
     /* Check if already initialized */
@@ -319,7 +335,11 @@ bool nimcp_brain_factory_init_wernicke_broca_bridge(brain_t brain) {
 
 bool nimcp_brain_factory_init_wernicke_omni_bridge(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_wernicke_omni_bridge: brain is NULL");
+
+            return false;
     }
 
     /* Check if already initialized */
@@ -369,7 +389,11 @@ bool nimcp_brain_factory_init_wernicke_omni_bridge(brain_t brain) {
 
 bool nimcp_brain_factory_init_wernicke_gpu_bridge(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_wernicke_gpu_bridge: brain is NULL");
+
+            return false;
     }
 
     /* Check if already initialized */
@@ -532,7 +556,11 @@ bool nimcp_brain_factory_connect_wernicke_to_bio_async(brain_t brain) {
 
 bool nimcp_brain_factory_init_wernicke_immune_bridge(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_wernicke_immune_bridge: brain is NULL");
+
+            return false;
     }
 
     /* Check if already initialized */
@@ -573,7 +601,11 @@ bool nimcp_brain_factory_init_wernicke_immune_bridge(brain_t brain) {
 
 bool nimcp_brain_factory_init_wernicke_nlp_bridge(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_wernicke_nlp_bridge: brain is NULL");
+
+            return false;
     }
 
     /* Check if already initialized */

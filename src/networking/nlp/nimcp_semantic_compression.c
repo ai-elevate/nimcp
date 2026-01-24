@@ -272,6 +272,8 @@ semantic_compressor_t* semantic_compressor_create(
     semantic_compressor_t* comp = nimcp_calloc(1, sizeof(semantic_compressor_t));
     if (!comp) {
         LOG_ERROR("Failed to allocate compressor");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "comp is NULL");
+
         return NULL;
     }
 

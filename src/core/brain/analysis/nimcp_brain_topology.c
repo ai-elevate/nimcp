@@ -71,6 +71,8 @@ static NimcpGraph* brain_build_topology_graph(brain_t brain) {
     NimcpGraph* graph = nimcp_graph_create();
     if (!graph) {
         NIMCP_LOGGING_ERROR("brain_build_topology_graph: failed to create graph");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph is NULL");
+
         return NULL;
     }
 
@@ -432,6 +434,8 @@ NIMCP_EXPORT void* brain_get_network_analyzer(brain_t brain) {
     // Guard: NULL check
     if (!brain) {
         NIMCP_LOGGING_ERROR("brain_get_network_analyzer: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return NULL;
     }
 
@@ -451,6 +455,8 @@ NIMCP_EXPORT void* brain_get_network_analyzer(brain_t brain) {
         // Guard: Creation failure
         if (!analyzer) {
             NIMCP_LOGGING_ERROR("brain_get_network_analyzer: failed to create analyzer");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analyzer is NULL");
+
             return NULL;
         }
 

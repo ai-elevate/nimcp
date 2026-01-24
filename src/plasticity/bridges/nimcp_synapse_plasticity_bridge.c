@@ -120,7 +120,13 @@ static int synapse_plasticity_wiring_handler_callback(
 
 int synapse_plasticity_default_config(synapse_plasticity_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -168,6 +174,8 @@ synapse_plasticity_bridge_t* synapse_plasticity_create(
     synapse_plasticity_bridge_t* bridge = nimcp_malloc(sizeof(synapse_plasticity_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate synapse plasticity bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

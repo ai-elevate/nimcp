@@ -48,6 +48,8 @@ hetero_immune_bridge_t* hetero_immune_bridge_create(
 {
     if (!hetero_system) {
         NIMCP_LOGGING_ERROR("Heterosynaptic system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_system is NULL");
+
         return NULL;
     }
 
@@ -62,6 +64,8 @@ hetero_immune_bridge_t* hetero_immune_bridge_create(
     hetero_immune_bridge_t* bridge = nimcp_malloc(sizeof(hetero_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate hetero-immune bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

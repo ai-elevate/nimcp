@@ -277,6 +277,8 @@ emotion_attention_system_t* emotion_attention_create(
     emotion_attention_system_t* system = calloc(1, sizeof(emotion_attention_system_t));
     if (!system) {
         EA_LOG_ERROR("Failed to allocate emotion-attention system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
 
@@ -666,6 +668,8 @@ static nimcp_pos_encoder_t* create_temporal_encoder(uint32_t max_seq, uint32_t d
     nimcp_pos_encoder_t* encoder = nimcp_pos_encoder_create(&config);
     if (!encoder) {
         EA_LOG_ERROR("Failed to create temporal encoder");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "encoder is NULL");
+
         return NULL;
     }
 
@@ -708,6 +712,8 @@ static nimcp_pos_encoder_t* create_priority_encoder(uint32_t max_seq, uint32_t d
     nimcp_pos_encoder_t* encoder = nimcp_pos_encoder_create(&config);
     if (!encoder) {
         EA_LOG_ERROR("Failed to create priority encoder");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "encoder is NULL");
+
         return NULL;
     }
 

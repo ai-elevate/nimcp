@@ -472,6 +472,8 @@ pink_noise_generator_t pink_noise_create(const pink_noise_config_t* config) {
     // Guard: NULL config
     if (!config) {
         set_error("Configuration is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
@@ -487,6 +489,8 @@ pink_noise_generator_t pink_noise_create(const pink_noise_config_t* config) {
     // Guard: Allocation failed
     if (!gen) {
         set_error("Failed to allocate generator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gen is NULL");
+
         return NULL;
     }
 
@@ -1032,6 +1036,9 @@ pink_noise_generator_t pink_noise_load(FILE* file) {
 
     if (!file) {
         set_error("Invalid file handle");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "file is NULL");
+
+
         return NULL;
     }
 

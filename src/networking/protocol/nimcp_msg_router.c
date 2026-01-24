@@ -126,6 +126,8 @@ nimcp_msg_router_t* nimcp_msg_router_create(
     if (!router) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(nimcp_msg_router_t),
                           "Failed to allocate message router");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router is NULL");
+
         return NULL;
     }
 
@@ -174,7 +176,13 @@ void nimcp_msg_router_destroy(nimcp_msg_router_t* router) {
 }
 
 int nimcp_msg_router_reset(nimcp_msg_router_t* router) {
-    if (!router) return -1;
+    if (!router) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router is NULL");
+
+        return -1;
+
+    }
 
     /* Clear queue */
     nimcp_msg_router_clear_queue(router);
@@ -269,7 +277,13 @@ int nimcp_msg_router_unregister(
     nimcp_msg_router_t* router,
     nimcp_msg_type_t msg_type
 ) {
-    if (!router) return -1;
+    if (!router) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "router is NULL");
+
+        return -1;
+
+    }
 
     for (uint32_t i = 0; i < router->handler_count; i++) {
         if (router->handlers[i].msg_type == msg_type) {

@@ -142,7 +142,13 @@ int oligodendrocytes_fep_get_stats(const oligodendrocytes_fep_bridge_t* bridge,
 }
 
 int oligodendrocytes_fep_connect_bio_async(oligodendrocytes_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {

@@ -469,7 +469,11 @@ bool eligibility_is_in_burst(
 ) {
     // Guard: NULL checks
     if (!phasic_tonic || !config) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "eligibility_is_in_burst: invalid parameters");
+
+            return false;
     }
 
     // DETECTION STRATEGY 1: Direct burst state flag (preferred)
@@ -621,7 +625,11 @@ int eligibility_consolidate_batch(
 ) {
     // Guard: NULL checks and bounds
     if (!synapses || !traces || !config || num_synapses <= 0) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "eligibility_consolidate_batch: invalid parameters");
+
+            return 0;
     }
 
     // OPTIMIZATION: Check burst state once (not per synapse)
@@ -694,7 +702,11 @@ bool eligibility_is_significant(
 ) {
     // Guard: NULL checks
     if (!trace || !config) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "eligibility_is_significant: invalid parameters");
+
+            return false;
     }
 
     // WHAT: Compare trace to threshold

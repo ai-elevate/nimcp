@@ -310,11 +310,16 @@ tom_substrate_bridge_t* tom_substrate_bridge_create(
     /* Guard: validate required pointers */
     if (!tom) {
         NIMCP_LOGGING_ERROR("Cannot create ToM substrate bridge: NULL ToM module");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tom is NULL");
+
         return NULL;
     }
 
     if (!substrate) {
         NIMCP_LOGGING_ERROR("Cannot create ToM substrate bridge: NULL substrate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
+
+
         return NULL;
     }
 
@@ -324,6 +329,8 @@ tom_substrate_bridge_t* tom_substrate_bridge_create(
     );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate ToM substrate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

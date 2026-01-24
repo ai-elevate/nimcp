@@ -59,6 +59,8 @@
 uint32_t knowledge_fractal_find_anchor_neuron(const fractal_cognitive_cache_t *cache,
                                               float concept_importance) {
     if (!cache || !cache->valid) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "knowledge_fractal_find_anchor_neuron: invalid cache");
         return UINT32_MAX;
     }
 
@@ -125,6 +127,8 @@ uint32_t knowledge_fractal_get_related(neural_network_t network,
                                        uint32_t *related_out,
                                        uint32_t max_related) {
     if (!network || !cache || !cache->valid || !related_out || max_related == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "knowledge_fractal_get_related: invalid parameters");
         return 0;
     }
 

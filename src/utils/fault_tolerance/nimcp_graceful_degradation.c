@@ -339,6 +339,8 @@ gd_context_t* gd_create(const gd_config_t* config) {
     /* Validate input */
     if (!config) {
         LOG_ERROR("GD", "NULL configuration provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
@@ -346,6 +348,8 @@ gd_context_t* gd_create(const gd_config_t* config) {
     gd_context_t* ctx = (gd_context_t*)nimcp_malloc(sizeof(gd_context_t));
     if (!ctx) {
         LOG_ERROR("GD", "Failed to allocate context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 

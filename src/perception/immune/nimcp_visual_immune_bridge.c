@@ -621,7 +621,15 @@ int visual_immune_get_inflammation_state(
 }
 
 bool visual_immune_is_sick_behavior(const visual_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "visual_immune_is_sick_behavior: bridge is NULL");
+
+            return false;
+
+        }
     return bridge->sickness_effects.sickness_behavior_level >= 0.3f;
 }
 
@@ -720,6 +728,14 @@ int visual_immune_disconnect_bio_async(visual_immune_bridge_t* bridge) {
  * @brief Check if bio-async is connected
  */
 bool visual_immune_is_bio_async_connected(const visual_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "visual_immune_is_bio_async_connected: bridge is NULL");
+
+            return false;
+
+        }
     return bridge->base.bio_async_enabled;
 }

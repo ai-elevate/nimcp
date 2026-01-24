@@ -90,6 +90,8 @@ hilbert_transform_t* hilbert_create(const hilbert_config_t* config) {
 
     hilbert_transform_t* ht = (hilbert_transform_t*)nimcp_calloc(1, sizeof(hilbert_transform_t));
     if (ht == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ht is NULL");
+
         return NULL;
     }
 
@@ -411,6 +413,8 @@ hilbert_result_t* hilbert_result_create(uint32_t n) {
 
     hilbert_result_t* result = (hilbert_result_t*)nimcp_calloc(1, sizeof(hilbert_result_t));
     if (result == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
         return NULL;
     }
 
@@ -457,6 +461,8 @@ hilbert_result_t* hilbert_compute_full(hilbert_transform_t* ht,
 
     hilbert_result_t* result = hilbert_result_create(n);
     if (result == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
         return NULL;
     }
 

@@ -30,7 +30,13 @@ static const char* physics_version_string = "1.0.0";
 //=============================================================================
 
 int physics_init_default_config(physics_init_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->default_hh_population_size = 100;
     config->default_temperature = 37.0f;  /* Celsius */

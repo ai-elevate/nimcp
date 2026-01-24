@@ -463,7 +463,11 @@ bool nimcp_queue_mpmc_is_full(struct nimcp_queue* queue) {
 
 size_t nimcp_queue_mpmc_get_size(struct nimcp_queue* queue) {
     if (!queue || !queue->impl_data) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "nimcp_queue_mpmc_get_size: invalid parameters");
+
+            return 0;
     }
 
     mpmc_impl_t* impl = (mpmc_impl_t*)queue->impl_data;

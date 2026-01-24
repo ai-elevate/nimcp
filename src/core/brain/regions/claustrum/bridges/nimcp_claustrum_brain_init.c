@@ -26,7 +26,13 @@ static const char* claustrum_version_string = "1.0.0";
 //=============================================================================
 
 int claustrum_init_default_config(claustrum_init_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->enable_binding = true;
     config->enable_synchronization = true;
@@ -51,7 +57,13 @@ int claustrum_init_default_config(claustrum_init_config_t* config) {
 //=============================================================================
 
 int claustrum_brain_init_register(brain_t brain) {
-    if (!brain) return -1;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return -1;
+
+    }
 
     claustrum_init_config_t config;
     claustrum_init_default_config(&config);
@@ -142,7 +154,13 @@ int claustrum_brain_init_create(
 }
 
 int claustrum_brain_init_destroy(brain_t brain) {
-    if (!brain) return -1;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return -1;
+
+    }
 
     /* Cleanup would happen here - destroy in reverse order */
     /* For now, this is a placeholder as brain manages its own subsystems */

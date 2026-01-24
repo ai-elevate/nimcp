@@ -174,6 +174,9 @@ neural_logic_network_t create_default_neural_logic(uint32_t brain_size) {
 
     if (!network) {
         LOG_ERROR("create_default_neural_logic: failed to create network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+
+
         return NULL;
     }
 
@@ -207,6 +210,9 @@ neural_logic_network_t create_neural_logic_with_config(
 
     if (!network) {
         LOG_ERROR("create_neural_logic_with_config: failed to create network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+
+
         return NULL;
     }
 

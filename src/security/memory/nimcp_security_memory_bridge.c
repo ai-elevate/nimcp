@@ -414,6 +414,8 @@ security_mem_bridge_t* security_memory_bridge_create(const security_mem_config_t
     security_mem_bridge_t* bridge = nimcp_malloc(sizeof(security_mem_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate security-memory bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     memset(bridge, 0, sizeof(security_mem_bridge_t));

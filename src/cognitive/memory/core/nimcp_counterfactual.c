@@ -434,6 +434,8 @@ counterfactual_system_t counterfactual_create(
         (struct counterfactual_system_struct*)calloc(1, sizeof(*system));
     if (!system) {
         set_error("Failed to allocate counterfactual system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
 

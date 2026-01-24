@@ -99,12 +99,16 @@ hypo_broca_bridge_t* hypo_broca_bridge_create(
 {
     if (!drives) {
         nimcp_log(LOG_LEVEL_ERROR, "hypo_broca_bridge_create: drives is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "drives is NULL");
+
         return NULL;
     }
 
     hypo_broca_bridge_t* bridge = nimcp_calloc(1, sizeof(hypo_broca_bridge_t));
     if (!bridge) {
         nimcp_log(LOG_LEVEL_ERROR, "hypo_broca_bridge_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -170,7 +174,13 @@ int hypo_broca_bridge_update_stress(
 }
 
 int hypo_broca_bridge_set_arousal(hypo_broca_bridge_t* bridge, float arousal) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->arousal = clamp_01(arousal);
     return 0;

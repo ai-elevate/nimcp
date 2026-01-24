@@ -152,10 +152,14 @@ neuron_substrate_bridge_t* neuron_substrate_bridge_create(
     /* Guard: require neuron model and substrate */
     if (!neuron_model) {
         NIMCP_LOGGING_ERROR("Cannot create bridge without neuron model");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuron_model is NULL");
+
         return NULL;
     }
     if (!substrate) {
         NIMCP_LOGGING_ERROR("Cannot create bridge without substrate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
+
         return NULL;
     }
 
@@ -163,6 +167,8 @@ neuron_substrate_bridge_t* neuron_substrate_bridge_create(
         nimcp_calloc(1, sizeof(neuron_substrate_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Bridge allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

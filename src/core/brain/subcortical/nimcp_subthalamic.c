@@ -44,12 +44,16 @@ void subthalamic_default_config(subthalamic_config_t* config) {
 subthalamic_nucleus_t* subthalamic_create(const subthalamic_config_t* config) {
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config for subthalamic nucleus");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
     subthalamic_nucleus_t* stn = nimcp_malloc(sizeof(subthalamic_nucleus_t));
     if (!stn) {
         NIMCP_LOGGING_ERROR("Failed to allocate subthalamic nucleus");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stn is NULL");
+
         return NULL;
     }
     memset(stn, 0, sizeof(subthalamic_nucleus_t));
@@ -153,7 +157,13 @@ void subthalamic_destroy(subthalamic_nucleus_t* stn) {
 }
 
 int subthalamic_reset(subthalamic_nucleus_t* stn) {
-    if (!stn) return -1;
+    if (!stn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stn is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(stn->mutex);
 
@@ -256,7 +266,13 @@ int subthalamic_set_gpe_input(subthalamic_nucleus_t* stn, const float* input) {
 }
 
 int subthalamic_emergency_stop(subthalamic_nucleus_t* stn, float urgency) {
-    if (!stn) return -1;
+    if (!stn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stn is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(stn->mutex);
 
@@ -296,7 +312,13 @@ int subthalamic_emergency_stop(subthalamic_nucleus_t* stn, float urgency) {
 //=============================================================================
 
 int subthalamic_process(subthalamic_nucleus_t* stn) {
-    if (!stn) return -1;
+    if (!stn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stn is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(stn->mutex);
 
@@ -375,7 +397,13 @@ float subthalamic_get_global_output(const subthalamic_nucleus_t* stn) {
 }
 
 int subthalamic_step(subthalamic_nucleus_t* stn, float dt) {
-    if (!stn) return -1;
+    if (!stn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stn is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(stn->mutex);
 

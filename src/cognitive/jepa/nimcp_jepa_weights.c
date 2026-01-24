@@ -169,18 +169,24 @@ static int read_tensor_data(FILE* fp, jepa_tensor_desc_t* tensor) {
 jepa_weights_t* jepa_weights_open(const char* path) {
     if (!path) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " NULL path");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "path is NULL");
+
         return NULL;
     }
 
     FILE* fp = fopen(path, "rb");
     if (!fp) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to open: %s", path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fp is NULL");
+
         return NULL;
     }
 
     jepa_weights_t* weights = nimcp_malloc(sizeof(jepa_weights_t));
     if (!weights) {
         fclose(fp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "weights is NULL");
+
         return NULL;
     }
     memset(weights, 0, sizeof(jepa_weights_t));

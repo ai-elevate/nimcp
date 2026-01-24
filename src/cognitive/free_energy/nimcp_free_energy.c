@@ -232,7 +232,13 @@ static int init_level(
     uint32_t prediction_dim,
     float initial_precision
 ) {
-    if (!level) return -1;
+    if (!level) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "level is NULL");
+
+        return -1;
+
+    }
 
     memset(level, 0, sizeof(fep_hierarchy_level_t));
     level->level_id = level_id;
@@ -306,7 +312,13 @@ static void free_level(fep_hierarchy_level_t* level) {
  * ============================================================================ */
 
 int fep_default_config(fep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->num_levels = 2;  /* Default 2-level hierarchy */
     config->level_dims = NULL;  /* Will use defaults */
@@ -344,6 +356,8 @@ fep_system_t* fep_create(
     fep_system_t* fep = (fep_system_t*)nimcp_calloc(1, sizeof(fep_system_t));
     if (!fep) {
         NIMCP_LOGGING_ERROR("FEP allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep is NULL");
+
         return NULL;
     }
 
@@ -488,7 +502,13 @@ void fep_destroy(fep_system_t* fep) {
 }
 
 int fep_reset(fep_system_t* fep) {
-    if (!fep) return -1;
+    if (!fep) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(fep->mutex);
 
@@ -613,7 +633,13 @@ int fep_compute_prediction_error(
  * ============================================================================ */
 
 int fep_update_beliefs(fep_system_t* fep) {
-    if (!fep) return -1;
+    if (!fep) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep is NULL");
+
+        return -1;
+
+    }
 
     float lr = fep->config.belief_learning_rate;
 
@@ -641,7 +667,13 @@ int fep_update_beliefs(fep_system_t* fep) {
 }
 
 int fep_update_precision(fep_system_t* fep) {
-    if (!fep) return -1;
+    if (!fep) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep is NULL");
+
+        return -1;
+
+    }
 
     float lr = fep->config.precision_learning_rate;
 
@@ -679,7 +711,13 @@ int fep_update_precision(fep_system_t* fep) {
 }
 
 int fep_propagate_hierarchy(fep_system_t* fep) {
-    if (!fep) return -1;
+    if (!fep) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fep is NULL");
+
+        return -1;
+
+    }
 
     /* Bottom level: compare with observations */
     fep_hierarchy_level_t* level0 = &fep->levels[0];

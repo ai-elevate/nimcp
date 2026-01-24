@@ -126,7 +126,11 @@
 bool nimcp_brain_factory_init_symbolic_logic_subsystem(brain_t brain)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_symbolic_logic_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Check if already initialized
@@ -169,7 +173,11 @@ bool nimcp_brain_factory_init_symbolic_logic_subsystem(brain_t brain)
 bool nimcp_brain_factory_init_symbolic_reasoning_subsystem(brain_t brain)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_symbolic_reasoning_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Check if already initialized
@@ -218,7 +226,11 @@ bool nimcp_brain_factory_init_symbolic_reasoning_subsystem(brain_t brain)
 bool nimcp_brain_factory_init_epistemic_subsystem(brain_t brain)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_epistemic_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Check if already initialized
@@ -261,7 +273,11 @@ bool nimcp_brain_factory_init_epistemic_subsystem(brain_t brain)
 bool nimcp_brain_factory_init_working_memory_subsystem(brain_t brain)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_working_memory_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Check if already initialized
@@ -415,7 +431,11 @@ bool nimcp_brain_factory_init_working_memory_subsystem(brain_t brain)
 bool nimcp_brain_factory_init_executive_subsystem(brain_t brain)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_executive_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Check if already initialized
@@ -455,7 +475,11 @@ bool nimcp_brain_factory_init_executive_subsystem(brain_t brain)
 bool nimcp_brain_factory_init_theory_of_mind_subsystem(brain_t brain)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_theory_of_mind_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Check if already initialized
@@ -495,7 +519,11 @@ bool nimcp_brain_factory_init_theory_of_mind_subsystem(brain_t brain)
 bool nimcp_brain_factory_init_natural_explanations_subsystem(brain_t brain)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_natural_explanations_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Check if already initialized
@@ -545,7 +573,11 @@ bool nimcp_brain_factory_init_natural_explanations_subsystem(brain_t brain)
 bool nimcp_brain_factory_init_meta_learning_subsystem(brain_t brain)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_meta_learning_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Check if already initialized
@@ -594,7 +626,11 @@ bool nimcp_brain_factory_init_meta_learning_subsystem(brain_t brain)
 bool nimcp_brain_factory_init_mental_health_subsystem(brain_t brain)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_mental_health_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Check if already initialized
@@ -634,7 +670,11 @@ bool nimcp_brain_factory_init_mental_health_subsystem(brain_t brain)
 bool nimcp_brain_factory_init_predictive_subsystem(brain_t brain)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_predictive_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Check if already initialized
@@ -671,7 +711,11 @@ bool nimcp_brain_factory_init_predictive_subsystem(brain_t brain)
 bool nimcp_brain_factory_init_mirror_neurons(brain_t brain)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_mirror_neurons: brain is NULL");
+
+            return false;
     }
 
     // Don't re-initialize

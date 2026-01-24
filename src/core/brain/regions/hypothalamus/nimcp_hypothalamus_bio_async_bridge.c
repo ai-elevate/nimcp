@@ -147,7 +147,13 @@ static uint32_t count_subscribers_for_type(
  * ============================================================================ */
 
 int hypo_bio_async_default_config(hypo_bio_async_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     memset(config, 0, sizeof(hypo_bio_async_config_t));
 
@@ -188,6 +194,8 @@ hypo_bio_async_bridge_t* hypo_bio_async_bridge_create(
     hypo_bio_async_bridge_t* bridge = nimcp_malloc(sizeof(hypo_bio_async_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate hypothalamus bio-async bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -307,7 +315,13 @@ int hypo_bio_async_connect(
 }
 
 int hypo_bio_async_disconnect(hypo_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     if (bridge->module_ctx) {
         bio_router_unregister_module(bridge->module_ctx);
@@ -352,7 +366,13 @@ int hypo_bio_async_update(
     hypo_bio_async_bridge_t* bridge,
     uint32_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     uint64_t now_us = get_time_us();
     (void)delta_ms;  /* Use actual time for accuracy */
@@ -777,7 +797,13 @@ int hypo_bio_async_subscribe_module(
     uint32_t module_id,
     uint32_t msg_types
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     BRIDGE_LOCK(bridge);
 
@@ -818,7 +844,13 @@ int hypo_bio_async_unsubscribe_module(
     hypo_bio_async_bridge_t* bridge,
     uint32_t module_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     BRIDGE_LOCK(bridge);
 
@@ -840,7 +872,13 @@ int hypo_bio_async_update_subscription(
     uint32_t module_id,
     uint32_t msg_types
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     BRIDGE_LOCK(bridge);
 
@@ -878,7 +916,13 @@ int hypo_bio_async_get_stats(
 }
 
 int hypo_bio_async_reset_stats(hypo_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     BRIDGE_LOCK(bridge);
     memset(&bridge->stats, 0, sizeof(hypo_bio_async_stats_t));

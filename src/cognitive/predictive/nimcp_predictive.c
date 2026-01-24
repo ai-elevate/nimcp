@@ -194,6 +194,8 @@ predictive_network_t predictive_create(const predictive_config_t* config)
         set_error("Failed to allocate predictive_network_s");
         LOG_ERROR("Failed to allocate predictive_network_s (%zu bytes)",
                  sizeof(struct predictive_network_s));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "net is NULL");
+
         return NULL;
     }
 
@@ -256,6 +258,8 @@ predictive_network_t predictive_create(const predictive_config_t* config)
         if (!layer) {
             set_error("Failed to allocate layer %u", i);
             predictive_destroy(net);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "layer is NULL");
+
             return NULL;
         }
 

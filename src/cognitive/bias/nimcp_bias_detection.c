@@ -96,6 +96,8 @@ bias_detection_system_t* bias_system_create(uint32_t max_others_tracked) {
     bias_detection_system_t* system = (bias_detection_system_t*)nimcp_calloc(1, sizeof(bias_detection_system_t));
     if (!system) {
         LOG_ERROR("Failed to allocate bias detection system structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
 
@@ -397,7 +399,10 @@ statistical_disparity_t* bias_analyze_disparity(bias_detection_system_t* system,
 
     if (!disparity) {
         if (system->disparity_count >= BIAS_MAX_TRACKED_GROUPS) {
-            return NULL;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "disparity is NULL");
+
+
+        return NULL;
         }
         disparity = &system->disparities[system->disparity_count++];
         disparity->group_a = *group_a;

@@ -62,7 +62,13 @@ static float get_forgetting_mult_for_level(brain_inflammation_level_t level)
 
 int swarm_memory_immune_default_config(swarm_memory_immune_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->enable_cytokine_effects = true;
     config->enable_inflammation_effects = true;
@@ -87,6 +93,8 @@ swarm_memory_immune_bridge_t* swarm_memory_immune_create(
         (swarm_memory_immune_bridge_t*)nimcp_malloc(sizeof(swarm_memory_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate swarm memory immune bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -187,7 +195,13 @@ int swarm_memory_immune_apply_inflammation_effects(swarm_memory_immune_bridge_t*
 
 int swarm_memory_immune_trigger_stress_from_load(swarm_memory_immune_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_load_stress) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -204,7 +218,13 @@ int swarm_memory_immune_trigger_stress_from_load(swarm_memory_immune_bridge_t* b
 
 int swarm_memory_immune_activate_cleanup(swarm_memory_immune_bridge_t* bridge, uint32_t corruptions)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_corruption_cleanup) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -222,7 +242,13 @@ int swarm_memory_immune_activate_cleanup(swarm_memory_immune_bridge_t* bridge, u
 
 int swarm_memory_immune_update(swarm_memory_immune_bridge_t* bridge, uint64_t delta_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     (void)delta_ms;
 
     swarm_memory_immune_apply_cytokine_effects(bridge);

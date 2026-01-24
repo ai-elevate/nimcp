@@ -84,7 +84,13 @@ static uint32_t op_to_privilege(rsc_security_op_t op) {
 //=============================================================================
 
 int rsc_security_default_config(rsc_security_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->module_id = RSC_MODULE_ID;
     config->privilege_level = RSC_PRIVILEGE_LEVEL;
@@ -105,7 +111,13 @@ int rsc_security_register(
     const rsc_security_config_t* config,
     rsc_security_state_t* state
 ) {
-    if (!bbb) return -1;
+    if (!bbb) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb is NULL");
+
+        return -1;
+
+    }
 
     /* Use defaults if no config */
     rsc_security_config_t local_config;
@@ -154,7 +166,13 @@ int rsc_security_unregister(
     bbb_system_t bbb,
     rsc_security_state_t* state
 ) {
-    if (!state) return -1;
+    if (!state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
+        return -1;
+
+    }
 
     /* Unregister memory region if registered */
     if (state->memory_region_id != 0 && bbb) {
@@ -265,7 +283,13 @@ int rsc_security_grant_capability(
     bbb_system_t bbb,
     uint64_t capability
 ) {
-    if (!bbb) return -1;
+    if (!bbb) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb is NULL");
+
+        return -1;
+
+    }
 
     if (!bbb_grant_capability(bbb, RSC_MODULE_ID, capability)) {
         NIMCP_LOG_WARN(RSC_SECURITY_MODULE_NAME,
@@ -281,7 +305,13 @@ int rsc_security_revoke_capability(
     bbb_system_t bbb,
     uint64_t capability
 ) {
-    if (!bbb) return -1;
+    if (!bbb) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb is NULL");
+
+        return -1;
+
+    }
 
     if (!bbb_revoke_capability(bbb, RSC_MODULE_ID, capability)) {
         NIMCP_LOG_WARN(RSC_SECURITY_MODULE_NAME,

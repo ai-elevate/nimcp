@@ -267,7 +267,13 @@ static void update_sts_state_unlocked(mirror_visual_bridge_t* bridge) {
  * ============================================================================ */
 
 int mirror_visual_bridge_default_config(mirror_visual_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     memset(config, 0, sizeof(mirror_visual_config_t));
 
@@ -309,6 +315,8 @@ mirror_visual_bridge_t* mirror_visual_bridge_create(
     mirror_visual_bridge_t* bridge = nimcp_calloc(1, sizeof(mirror_visual_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate mirror-visual bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -364,7 +372,13 @@ void mirror_visual_bridge_destroy(mirror_visual_bridge_t* bridge) {
 }
 
 int mirror_visual_bridge_reset(mirror_visual_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -390,8 +404,20 @@ int mirror_visual_bridge_connect_mirror_neurons(
     mirror_visual_bridge_t* bridge,
     mirror_neurons_t mirror_neurons
 ) {
-    if (!bridge) return -1;
-    if (!mirror_neurons) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
+    if (!mirror_neurons) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mirror_neurons is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->mirror_neurons = mirror_neurons;
@@ -408,8 +434,20 @@ int mirror_visual_bridge_connect_visual_cortex(
     mirror_visual_bridge_t* bridge,
     visual_cortex_t* visual_cortex
 ) {
-    if (!bridge) return -1;
-    if (!visual_cortex) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
+    if (!visual_cortex) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "visual_cortex is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->visual_cortex = visual_cortex;
@@ -628,7 +666,13 @@ int mirror_visual_apply_action_prediction(
     uint32_t predicted_action_id,
     float prediction_confidence
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -648,7 +692,13 @@ int mirror_visual_boost_face_attention(
     mirror_visual_bridge_t* bridge,
     float empathy_level
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -678,7 +728,13 @@ int mirror_visual_boost_face_attention(
  * ============================================================================ */
 
 int mirror_visual_update_sts(mirror_visual_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     update_sts_state_unlocked(bridge);
@@ -714,7 +770,13 @@ int mirror_visual_bridge_update(
     mirror_visual_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     (void)delta_ms;  /* Used for time-dependent effects */
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -850,12 +912,24 @@ int mirror_visual_bridge_get_stats(
  * ============================================================================ */
 
 int mirror_visual_bridge_connect_bio_async(mirror_visual_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     return bridge_base_connect_bio_async(&bridge->base);
 }
 
 int mirror_visual_bridge_disconnect_bio_async(mirror_visual_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     return bridge_base_disconnect_bio_async(&bridge->base);
 }
 

@@ -525,7 +525,11 @@ int enhanced_wellbeing_get_eudaimonic(
 {
     // Guard: NULL inputs
     if (!system || !eudaimonic) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "enhanced_wellbeing_get_eudaimonic: invalid parameters");
+
+            return -1;
     }
 
     // Thread safety
@@ -552,7 +556,11 @@ bool enhanced_wellbeing_is_flourishing(
 {
     // Guard: NULL system
     if (!system) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "enhanced_wellbeing_is_flourishing: system is NULL");
+
+            return false;
     }
 
     // Thread safety
@@ -580,7 +588,11 @@ bool enhanced_wellbeing_is_languishing(
 {
     // Guard: NULL system
     if (!system) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "enhanced_wellbeing_is_languishing: system is NULL");
+
+            return false;
     }
 
     // Thread safety

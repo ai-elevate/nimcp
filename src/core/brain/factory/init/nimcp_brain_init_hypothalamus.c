@@ -90,7 +90,11 @@ static void apply_autonomic_config(hypothalamus_config_t* hypo_cfg,
 
 bool nimcp_brain_factory_init_hypothalamus_subsystem(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_hypothalamus_subsystem: brain is NULL");
+
+            return false;
     }
 
     /* Check if already initialized */
@@ -173,7 +177,11 @@ bool nimcp_brain_factory_init_hypothalamus_subsystem(brain_t brain) {
 
 bool nimcp_brain_factory_init_hypothalamus_limbic_bridge(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_hypothalamus_limbic_bridge: brain is NULL");
+
+            return false;
     }
 
     /* Need hypothalamus adapter first */
@@ -201,7 +209,11 @@ bool nimcp_brain_factory_init_hypothalamus_limbic_bridge(brain_t brain) {
 
 bool nimcp_brain_factory_init_hypothalamus_brainstem_bridge(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_hypothalamus_brainstem_bridge: brain is NULL");
+
+            return false;
     }
 
     /* Need hypothalamus adapter first */
@@ -230,7 +242,11 @@ bool nimcp_brain_factory_init_hypothalamus_brainstem_bridge(brain_t brain) {
 
 bool nimcp_brain_factory_init_hypothalamus_pituitary_bridge(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_hypothalamus_pituitary_bridge: brain is NULL");
+
+            return false;
     }
 
     /* Need hypothalamus adapter first */
@@ -257,7 +273,11 @@ bool nimcp_brain_factory_init_hypothalamus_pituitary_bridge(brain_t brain) {
 
 bool nimcp_brain_factory_init_hypothalamus_quantum_bridge(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_hypothalamus_quantum_bridge: brain is NULL");
+
+            return false;
     }
 
     /* Check if already initialized */

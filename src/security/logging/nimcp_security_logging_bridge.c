@@ -200,7 +200,13 @@ static int ring_buffer_push(log_entry_ring_buffer_t* rb,
     if (!rb || !entry || !rb->entries) return -1;
 
     if (rb->count >= rb->capacity) {
-        if (!overwrite_on_full) return -1;
+        if (!overwrite_on_full) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "overwrite_on_full is NULL");
+
+            return -1;
+
+        }
         /* Overwrite oldest: advance tail */
         rb->tail = (rb->tail + 1) % rb->capacity;
         rb->count--;
@@ -337,7 +343,13 @@ int security_log_entry_init(
     security_log_severity_t severity,
     const char* message
 ) {
-    if (!entry) return -1;
+    if (!entry) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+
+        return -1;
+
+    }
 
     memset(entry, 0, sizeof(security_log_entry_t));
 
@@ -406,7 +418,13 @@ void security_logging_bridge_print_summary(const security_logging_bridge_t* brid
  * ============================================================================ */
 
 int security_logging_default_config(security_logging_bridge_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     memset(config, 0, sizeof(security_logging_bridge_config_t));
 
@@ -473,6 +491,8 @@ security_logging_bridge_t* security_logging_bridge_create(
     security_logging_bridge_t* bridge = (security_logging_bridge_t*)nimcp_malloc(total_size);
     if (!bridge) {
         LOG_MODULE_ERROR(SECURITY_LOGGING_MODULE_NAME, "Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     memset(bridge, 0, total_size);
@@ -572,7 +592,13 @@ void security_logging_bridge_destroy(security_logging_bridge_t* bridge) {
 }
 
 int security_logging_bridge_reset(security_logging_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     BRIDGE_LOCK(bridge);
 
@@ -618,7 +644,13 @@ int security_logging_connect_bbb(
     security_logging_bridge_t* bridge,
     bbb_system_t bbb
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     BRIDGE_LOCK(bridge);
     bridge->bbb_system = bbb;
@@ -632,7 +664,13 @@ int security_logging_connect_anomaly_detector(
     security_logging_bridge_t* bridge,
     nimcp_anomaly_detector_t detector
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     BRIDGE_LOCK(bridge);
     bridge->anomaly_detector = detector;
@@ -646,7 +684,13 @@ int security_logging_connect_rate_limiter(
     security_logging_bridge_t* bridge,
     nimcp_rate_limiter_t limiter
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     BRIDGE_LOCK(bridge);
     bridge->rate_limiter = limiter;
@@ -660,7 +704,13 @@ int security_logging_connect_encrypted_audit(
     security_logging_bridge_t* bridge,
     nimcp_encrypted_audit_t audit
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     BRIDGE_LOCK(bridge);
     bridge->config.encrypted_audit = audit;
@@ -675,7 +725,13 @@ int security_logging_connect_nimcp_logger(
     security_logging_bridge_t* bridge,
     nimcp_logger_t logger
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     BRIDGE_LOCK(bridge);
     bridge->config.nimcp_logger = logger;
@@ -687,7 +743,13 @@ int security_logging_connect_nimcp_logger(
 }
 
 int security_logging_disconnect_all(security_logging_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     BRIDGE_LOCK(bridge);
 
@@ -907,7 +969,13 @@ int security_logging_log_access(
     const char* object,
     const char* message
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->state.logging_enabled) return 0;
 
     security_log_entry_t entry;
@@ -939,7 +1007,13 @@ int security_logging_log_policy(
     const char* target,
     const char* message
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->state.logging_enabled) return 0;
 
     security_log_entry_t entry;
@@ -971,7 +1045,13 @@ int security_logging_log_bbb(
     bbb_action_t action,
     const char* details
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->state.logging_enabled) return 0;
 
     char message[SECURITY_LOG_MAX_MESSAGE_LEN];
@@ -1015,7 +1095,13 @@ int security_logging_log_anomaly(
     const void* input,
     const char* message
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->state.logging_enabled) return 0;
 
     security_log_severity_t severity = SECURITY_LOG_SEV_INFO;
@@ -1053,7 +1139,13 @@ int security_logging_log_rate_limit(
     bool allowed,
     const nimcp_client_stats_t* stats
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->state.logging_enabled) return 0;
 
     char message[SECURITY_LOG_MAX_MESSAGE_LEN];
@@ -1095,7 +1187,13 @@ int security_logging_log_crypto(
     const char* key_id,
     const char* message
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->state.logging_enabled) return 0;
 
     char msg[SECURITY_LOG_MAX_MESSAGE_LEN];
@@ -1215,7 +1313,13 @@ int security_logging_register_pattern_callback(
     security_pattern_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     BRIDGE_LOCK(bridge);
 
@@ -1232,7 +1336,13 @@ int security_logging_register_pattern_callback(
  * ============================================================================ */
 
 int security_logging_analyze_patterns(security_logging_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.pattern_analysis.enabled) return 0;
 
     BRIDGE_LOCK(bridge);
@@ -1426,7 +1536,13 @@ int security_logging_get_patterns(
 }
 
 int security_logging_clear_patterns(security_logging_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     BRIDGE_LOCK(bridge);
 
@@ -1726,7 +1842,13 @@ int security_logging_entry_to_json(
 }
 
 int security_logging_rotate(security_logging_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     BRIDGE_LOCK(bridge);
 
@@ -1762,7 +1884,13 @@ int security_logging_rotate(security_logging_bridge_t* bridge) {
 }
 
 int security_logging_flush(security_logging_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     BRIDGE_LOCK(bridge);
 
@@ -1796,7 +1924,13 @@ int security_logging_get_stats(
 }
 
 int security_logging_reset_stats(security_logging_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     BRIDGE_LOCK(bridge);
 
@@ -1826,7 +1960,13 @@ int security_logging_get_effects(
     security_to_logging_effects_t* security_effects,
     logging_to_security_effects_t* logging_effects
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     BRIDGE_LOCK((security_logging_bridge_t*)bridge);
 
@@ -1846,7 +1986,13 @@ int security_logging_get_effects(
  * ============================================================================ */
 
 int security_logging_update(security_logging_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->state.active) return 0;
 
     uint64_t current_time = current_time_ms();
@@ -1865,7 +2011,13 @@ int security_logging_update(security_logging_bridge_t* bridge) {
 }
 
 int security_logging_apply_modulation(security_logging_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Feed detected patterns to anomaly detector */
     if (bridge->config.pattern_analysis.feed_to_anomaly_detector &&
@@ -1892,12 +2044,24 @@ int security_logging_apply_modulation(security_logging_bridge_t* bridge) {
  * ============================================================================ */
 
 int security_logging_connect_bio_async(security_logging_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     return bridge_base_connect_bio_async(&bridge->base);
 }
 
 int security_logging_disconnect_bio_async(security_logging_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     return bridge_base_disconnect_bio_async(&bridge->base);
 }
 

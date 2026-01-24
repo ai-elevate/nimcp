@@ -122,7 +122,11 @@ bool emotion_recognize_text_simple(
 {
     // Guard: NULL checks
     if (!text || !emotion_name || !confidence || !valence || !arousal) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "emotion_recognize_text_simple: invalid parameters");
+
+            return false;
     }
 
     // Initialize outputs

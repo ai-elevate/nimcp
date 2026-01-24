@@ -46,7 +46,13 @@ void glio_pink_noise_destroy(glio_pink_noise_bridge_t* bridge) {
 }
 
 int glio_pink_noise_connect(glio_pink_noise_bridge_t* bridge, void* astro_state) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->astrocyte_state = astro_state;
     bridge->astro_connected = (astro_state != NULL);
     return 0;
@@ -85,7 +91,13 @@ float glio_pink_noise_get_calcium_wave(const glio_pink_noise_bridge_t* bridge) {
 }
 
 int glio_pink_noise_reset(glio_pink_noise_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->glu_noise = bridge->atp_noise = bridge->dser_noise = bridge->ca_noise = 0.0f;
     bridge->noisy_glutamate_release = 0.5f;
     bridge->noisy_atp_release = 0.3f;

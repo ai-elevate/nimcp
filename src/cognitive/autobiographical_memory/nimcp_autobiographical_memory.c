@@ -230,6 +230,8 @@ autobiographical_memory_t autobio_create(uint32_t capacity)
     if (!system) {
         LOG_ERROR("Failed to allocate autobiographical memory system (%zu bytes)",
                  sizeof(struct autobiographical_memory_system));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
 

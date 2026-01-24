@@ -385,6 +385,8 @@ event_queue_t event_queue_create(const event_queue_config_t* config) {
     event_queue_t queue = nimcp_calloc(1, sizeof(struct event_queue_struct));
     if (!queue) {
         set_error("Failed to allocate queue");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "queue is NULL");
+
         return NULL;
     }
 

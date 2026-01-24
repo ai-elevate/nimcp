@@ -1422,6 +1422,8 @@ nimcp_cond_t* nimcp_cond_create(void)
     nimcp_cond_t* cond = (nimcp_cond_t*)nimcp_malloc(sizeof(nimcp_cond_t));
     if (!cond) {
         set_thread_error(NIMCP_ERROR_MEMORY, "Failed to allocate cond");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cond is NULL");
+
         return NULL;
     }
 

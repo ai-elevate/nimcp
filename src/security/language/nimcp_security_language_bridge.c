@@ -214,6 +214,8 @@ static char* escape_string(const char* input, size_t input_len, size_t* output_l
     char* output = (char*)nimcp_malloc(max_len);
     if (!output) {
         if (output_len) *output_len = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "output is NULL");
+
         return NULL;
     }
 
@@ -273,6 +275,8 @@ static char* remove_dangerous_patterns(const char* input, size_t input_len, size
     char* output = (char*)nimcp_malloc(input_len + 1);
     if (!output) {
         if (output_len) *output_len = 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "output is NULL");
+
         return NULL;
     }
 
@@ -435,6 +439,8 @@ security_language_bridge_t* security_language_bridge_create(
         (security_language_bridge_t*)nimcp_malloc(sizeof(security_language_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate security-language bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

@@ -208,6 +208,8 @@ motor_resonance_t motor_resonance_create(const motor_resonance_config_t* config,
     motor_resonance_t resonance = (motor_resonance_t)nimcp_calloc(1, sizeof(struct motor_resonance_system));
     if (!resonance) {
         LOG_ERROR("Failed to allocate motor resonance system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "resonance is NULL");
+
         return NULL;
     }
 

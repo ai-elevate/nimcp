@@ -117,7 +117,13 @@ static brain_inflammation_level_t get_max_inflammation_level(
  * ============================================================================ */
 
 int autobio_immune_default_config(autobio_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* All features enabled by default */
     config->enable_cytokine_encoding_modulation = true;
@@ -159,6 +165,8 @@ autobio_immune_bridge_t* autobio_immune_bridge_create(
         nimcp_malloc(sizeof(autobio_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("autobio_immune_bridge", "Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -227,7 +235,13 @@ void autobio_immune_bridge_destroy(autobio_immune_bridge_t* bridge) {
 
 int autobio_immune_apply_cytokine_encoding_effects(autobio_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_cytokine_encoding_modulation) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -279,7 +293,13 @@ int autobio_immune_apply_inflammation_consolidation_effects(
     autobio_immune_bridge_t* bridge
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_inflammation_consolidation_impairment) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -424,7 +444,13 @@ int autobio_immune_close_sickness_landmark(
     uint64_t landmark_id
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->autobio_memory) return -1;
     if (landmark_id == 0) return -1;
 
@@ -531,7 +557,13 @@ int autobio_immune_ruminate_on_negative_memory(
     uint64_t memory_id
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_rumination_tracking) return 0;
     if (!bridge->autobio_memory) return -1;
 
@@ -619,7 +651,13 @@ int autobio_immune_bridge_update(
     uint64_t delta_ms
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -741,7 +779,13 @@ float autobio_immune_get_memory_decline_rate(const autobio_immune_bridge_t* brid
  * @brief Connect bridge to bio-async router
  */
 int autobiographical_immune_connect_bio_async(autobio_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -766,7 +810,13 @@ int autobiographical_immune_connect_bio_async(autobio_immune_bridge_t* bridge) {
  * @brief Disconnect from bio-async router
  */
 int autobiographical_immune_disconnect_bio_async(autobio_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

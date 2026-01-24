@@ -174,7 +174,11 @@ bool nimcp_state_machine_set_entry_callback(
     nimcp_state_callback_t callback
 ) {
     if (!sm || state >= NIMCP_STATE_COUNT) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "nimcp_state_machine_set_entry_callback: invalid parameters");
+
+            return false;
     }
     sm->on_entry[state] = callback;
     return true;
@@ -186,7 +190,11 @@ bool nimcp_state_machine_set_exit_callback(
     nimcp_state_callback_t callback
 ) {
     if (!sm || state >= NIMCP_STATE_COUNT) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "nimcp_state_machine_set_exit_callback: invalid parameters");
+
+            return false;
     }
     sm->on_exit[state] = callback;
     return true;
@@ -197,7 +205,11 @@ bool nimcp_state_machine_set_guard(
     nimcp_state_guard_t guard
 ) {
     if (!sm) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_state_machine_set_guard: sm is NULL");
+
+            return false;
     }
     sm->guard = guard;
     return true;
@@ -252,7 +264,11 @@ const nimcp_state_transition_t* nimcp_state_machine_get_history(
 
 uint64_t nimcp_state_machine_get_current_state_duration(const nimcp_state_machine_t* sm) {
     if (!sm) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_state_machine_get_current_state_duration: sm is NULL");
+
+            return 0;
     }
 
     time_t now = time(NULL);
@@ -268,7 +284,11 @@ uint64_t nimcp_state_machine_get_total_state_duration(
     nimcp_brain_state_t state
 ) {
     if (!sm || state >= NIMCP_STATE_COUNT) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "nimcp_state_machine_get_total_state_duration: invalid parameters");
+
+            return 0;
     }
 
     uint64_t total = sm->state_durations[state];
@@ -287,7 +307,11 @@ bool nimcp_state_machine_get_statistics(
     uint32_t* failures
 ) {
     if (!sm || !attempts || !failures) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "nimcp_state_machine_get_statistics: invalid parameters");
+
+            return false;
     }
 
     *attempts = sm->transition_attempts;

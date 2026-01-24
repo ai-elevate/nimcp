@@ -160,7 +160,11 @@ int bridge_base_disconnect_b(bridge_base_t* base) {
 
 bool bridge_base_is_connected(const bridge_base_t* base) {
     if (!base) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "bridge_base_is_connected: base is NULL");
+
+            return false;
     }
     return base->bridge_active;
 }
@@ -221,7 +225,11 @@ int bridge_base_disconnect_bio_async(bridge_base_t* base) {
 
 bool bridge_base_is_bio_async_connected(const bridge_base_t* base) {
     if (!base) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "bridge_base_is_bio_async_connected: base is NULL");
+
+            return false;
     }
     return base->bio_async_enabled;
 }

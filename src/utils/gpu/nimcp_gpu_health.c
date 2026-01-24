@@ -216,6 +216,8 @@ gpu_health_monitor_t* gpu_health_monitor_create(const gpu_health_config_t* confi
     gpu_health_monitor_t* monitor = calloc(1, sizeof(gpu_health_monitor_t));
     if (!monitor) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to allocate GPU health monitor");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitor is NULL");
+
         return NULL;
     }
 
@@ -910,7 +912,13 @@ int gpu_tensor_validate(
 #ifdef NIMCP_CUDA_ENABLED
     /* Allocate host buffer and copy from device */
     void* host_buffer = malloc(num_elements * element_size);
-    if (!host_buffer) return -1;
+    if (!host_buffer) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "host_buffer is NULL");
+
+        return -1;
+
+    }
 
     cudaError_t err = cudaMemcpy(host_buffer, device_ptr,
                                   num_elements * element_size,
@@ -959,7 +967,13 @@ int gpu_tensor_sanitize(
 #ifdef NIMCP_CUDA_ENABLED
     /* Allocate host buffer and copy from device */
     void* host_buffer = malloc(num_elements * element_size);
-    if (!host_buffer) return -1;
+    if (!host_buffer) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "host_buffer is NULL");
+
+        return -1;
+
+    }
 
     cudaError_t err = cudaMemcpy(host_buffer, device_ptr,
                                   num_elements * element_size,
@@ -1269,6 +1283,8 @@ gpu_memory_pool_t* gpu_memory_pool_create(
     gpu_memory_pool_t* pool = calloc(1, sizeof(gpu_memory_pool_t));
     if (!pool) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to allocate GPU memory pool");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool is NULL");
+
         return NULL;
     }
 
@@ -1335,6 +1351,8 @@ void* gpu_memory_pool_alloc(gpu_memory_pool_t* pool, size_t size) {
     ptr = malloc(size);
     if (!ptr) {
         pool->stats.alloc_failures++;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ptr is NULL");
+
         return NULL;
     }
 #endif

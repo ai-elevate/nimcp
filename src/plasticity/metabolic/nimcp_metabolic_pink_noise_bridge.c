@@ -217,6 +217,8 @@ metabolic_pink_noise_bridge_t* metabolic_pink_noise_create(
     metabolic_pink_noise_bridge_t* bridge = nimcp_malloc(sizeof(metabolic_pink_noise_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate bridge structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

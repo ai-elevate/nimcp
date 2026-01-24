@@ -238,6 +238,8 @@ harm_classifier_t* harm_classifier_create(const harm_classifier_config_t* config
     harm_classifier_t* classifier = (harm_classifier_t*)nimcp_calloc(1, sizeof(harm_classifier_t));
     if (!classifier) {
         NIMCP_LOGGING_ERROR("Failed to allocate harm classifier");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "classifier is NULL");
+
         return NULL;
     }
 
@@ -395,9 +397,27 @@ int harm_classifier_classify_with_context(
     harm_classification_t* result
 ) {
     /* Guard clauses */
-    if (!classifier) return -1;
-    if (!action_description) return -1;
-    if (!result) return -1;
+    if (!classifier) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "classifier is NULL");
+
+        return -1;
+
+    }
+    if (!action_description) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "action_description is NULL");
+
+        return -1;
+
+    }
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return -1;
+
+    }
 
     /* If no context, fall back to basic classification */
     if (!context_description || !classifier->config.enable_context_analysis) {
@@ -435,7 +455,13 @@ int harm_classifier_set_severity_weight(
     float weight
 ) {
     /* Guard clauses */
-    if (!classifier) return -1;
+    if (!classifier) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "classifier is NULL");
+
+        return -1;
+
+    }
     if (harm_type >= HARM_TYPE_COUNT) return -1;
     if (weight < 0.0f || weight > 2.0f) return -1;
 
@@ -465,7 +491,13 @@ int harm_classifier_set_threshold(
     float threshold
 ) {
     /* Guard clauses */
-    if (!classifier) return -1;
+    if (!classifier) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "classifier is NULL");
+
+        return -1;
+
+    }
     if (threshold < 0.0f || threshold > 1.0f) return -1;
 
     nimcp_platform_mutex_lock(classifier->mutex);
@@ -493,8 +525,20 @@ int harm_classifier_get_stats(
     harm_classifier_stats_t* stats
 ) {
     /* Guard clauses */
-    if (!classifier) return -1;
-    if (!stats) return -1;
+    if (!classifier) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "classifier is NULL");
+
+        return -1;
+
+    }
+    if (!stats) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats is NULL");
+
+        return -1;
+
+    }
 
     /* Copy stats (thread-safe read) */
     nimcp_platform_mutex_lock((nimcp_platform_mutex_t*)classifier->mutex);
@@ -506,7 +550,13 @@ int harm_classifier_get_stats(
 
 int harm_classifier_reset_stats(harm_classifier_t* classifier) {
     /* Guard clause */
-    if (!classifier) return -1;
+    if (!classifier) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "classifier is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(classifier->mutex);
     memset(&classifier->stats, 0, sizeof(harm_classifier_stats_t));
@@ -523,7 +573,13 @@ int harm_classifier_reset_stats(harm_classifier_t* classifier) {
 
 int harm_classifier_connect_bio_async(harm_classifier_t* classifier) {
     /* Guard clause */
-    if (!classifier) return -1;
+    if (!classifier) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "classifier is NULL");
+
+        return -1;
+
+    }
 
     /* Already connected? */
     if (classifier->bio_async_enabled) {
@@ -551,7 +607,13 @@ int harm_classifier_connect_bio_async(harm_classifier_t* classifier) {
 
 int harm_classifier_disconnect_bio_async(harm_classifier_t* classifier) {
     /* Guard clause */
-    if (!classifier) return -1;
+    if (!classifier) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "classifier is NULL");
+
+        return -1;
+
+    }
 
     /* Not connected? */
     if (!classifier->bio_async_enabled) {

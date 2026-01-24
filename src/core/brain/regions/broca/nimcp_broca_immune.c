@@ -125,7 +125,13 @@ static void create_error_signature(
 
 int broca_immune_default_config(broca_immune_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     memset(config, 0, sizeof(broca_immune_config_t));
 
@@ -167,6 +173,8 @@ broca_immune_bridge_t* broca_immune_bridge_create(
         sizeof(broca_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("broca_immune_bridge_create: Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -224,7 +232,13 @@ void broca_immune_bridge_destroy(broca_immune_bridge_t* bridge)
 
 int broca_immune_bridge_start(broca_immune_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->running = true;
     bridge->last_update_time_ms = 0;
@@ -237,7 +251,13 @@ int broca_immune_bridge_start(broca_immune_bridge_t* bridge)
 
 int broca_immune_bridge_stop(broca_immune_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->running = false;
 
@@ -522,7 +542,13 @@ int broca_immune_analyze_error_patterns(
     float* syntactic_damage,
     float* motor_damage)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Initialize outputs */
     if (phonological_damage) *phonological_damage = 0.0f;
@@ -703,7 +729,13 @@ int broca_immune_set_aphasia_callback(
     broca_immune_aphasia_onset_cb_t callback,
     void* user_data)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     /* Callback registration not implemented yet */
     return 0;
 }
@@ -713,7 +745,13 @@ int broca_immune_set_error_callback(
     broca_immune_error_cb_t callback,
     void* user_data)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     /* Callback registration not implemented yet */
     return 0;
 }
@@ -723,7 +761,13 @@ int broca_immune_set_impairment_callback(
     broca_immune_impairment_cb_t callback,
     void* user_data)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     /* Callback registration not implemented yet */
     return 0;
 }
@@ -733,7 +777,13 @@ int broca_immune_set_recovery_callback(
     broca_immune_recovery_cb_t callback,
     void* user_data)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     /* Callback registration not implemented yet */
     return 0;
 }

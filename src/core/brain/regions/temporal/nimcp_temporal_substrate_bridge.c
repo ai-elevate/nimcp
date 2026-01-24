@@ -70,6 +70,8 @@ temporal_substrate_bridge_t* temporal_substrate_bridge_create(
         1, sizeof(temporal_substrate_bridge_t));
     if (!bridge) {
         LOG_ERROR("[%s] Failed to allocate bridge", LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -104,7 +106,13 @@ void temporal_substrate_bridge_destroy(temporal_substrate_bridge_t* bridge) {
  *===========================================================================*/
 
 int temporal_substrate_bridge_update(temporal_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Get current substrate state */
     float atp_level = 1.0f;
@@ -201,7 +209,13 @@ int temporal_substrate_bridge_get_effects(
 }
 
 int temporal_substrate_bridge_apply_effects(temporal_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* TODO: Apply effects to temporal adapter */
     /* This would modulate recognition thresholds, retrieval speeds, etc. */

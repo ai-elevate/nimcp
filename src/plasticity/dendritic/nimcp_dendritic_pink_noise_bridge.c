@@ -96,6 +96,8 @@ dendritic_pink_noise_bridge_t* dendritic_pink_noise_bridge_create(
     /* Guard: Validate inputs */
     if (!dendritic_tree) {
         NIMCP_LOGGING_ERROR("Null dendritic tree");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_tree is NULL");
+
         return NULL;
     }
 
@@ -104,6 +106,8 @@ dendritic_pink_noise_bridge_t* dendritic_pink_noise_bridge_create(
         nimcp_malloc(sizeof(dendritic_pink_noise_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     memset(bridge, 0, sizeof(dendritic_pink_noise_bridge_t));

@@ -131,6 +131,8 @@ occipital_collective_bridge_t* occipital_collective_create(
     occipital_collective_bridge_t* bridge = nimcp_calloc(1, sizeof(*bridge));
     if (!bridge) {
         LOG_ERROR("Failed to allocate occipital-collective bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -203,7 +205,13 @@ void occipital_collective_destroy(occipital_collective_bridge_t* bridge) {
 }
 
 int occipital_collective_reset(occipital_collective_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -586,7 +594,13 @@ int occipital_collective_update(
     occipital_collective_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -702,7 +716,13 @@ int occipital_collective_follow_attention(
     occipital_collective_bridge_t* bridge,
     uint32_t target_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -734,7 +754,13 @@ int occipital_collective_release_attention(
     occipital_collective_bridge_t* bridge,
     uint32_t target_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -867,7 +893,13 @@ int occipital_collective_merge_features(
     occipital_collective_bridge_t* bridge,
     float tolerance
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_feature_merge) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1060,7 +1092,13 @@ void occipital_collective_reset_stats(occipital_collective_bridge_t* bridge) {
 //=============================================================================
 
 int occipital_collective_connect_bio_async(occipital_collective_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1137,7 +1175,13 @@ int occipital_collective_connect_bio_async(occipital_collective_bridge_t* bridge
 }
 
 int occipital_collective_disconnect_bio_async(occipital_collective_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 

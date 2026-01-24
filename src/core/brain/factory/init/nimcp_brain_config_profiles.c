@@ -611,7 +611,11 @@ brain_config_t brain_config_builder_disable(brain_config_t config, const char* f
 bool brain_config_is_feature_enabled(const brain_config_t* config, const char* feature)
 {
     if (!config || !feature) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_config_is_feature_enabled: invalid parameters");
+
+            return false;
     }
 
     for (size_t i = 0; FEATURE_MAP[i].name != NULL; i++) {
@@ -628,7 +632,11 @@ uint32_t brain_config_get_enabled_features(const brain_config_t* config,
                                             char* buffer, size_t buffer_size)
 {
     if (!config || !buffer || buffer_size == 0) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_config_get_enabled_features: invalid parameters");
+
+            return 0;
     }
 
     buffer[0] = '\0';

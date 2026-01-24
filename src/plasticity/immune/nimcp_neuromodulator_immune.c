@@ -78,7 +78,13 @@ static neuromod_imbalance_type_t classify_imbalance(
  * ============================================================================ */
 
 int neuromod_immune_default_config(neuromod_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* Biological baselines (µM) */
     config->dopamine_baseline = 0.00005f;        /* 50 nM */
@@ -122,6 +128,8 @@ neuromod_immune_system_t* neuromod_immune_create(const neuromod_immune_config_t*
     if (!system) {
         LOG_MODULE_ERROR(NEUROMOD_IMMUNE_MODULE_NAME,
                   "Failed to allocate neuromod-immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
 
@@ -295,7 +303,16 @@ int neuromod_immune_apply_cytokine_effect(
      * HOW:  Modulate enzyme activity and precursor availability
      */
 
-    if (!system) return -1;
+    if (!system) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+
+        return -1;
+
+
+    }
     if (concentration < 0.0f || concentration > 1.0f) return -1;
 
     pthread_mutex_lock((pthread_mutex_t*)system->mutex);
@@ -380,7 +397,16 @@ int neuromod_immune_apply_proinflammatory_effect(
      * HOW:  Suppress synthesis, reduce precursor availability
      */
 
-    if (!system) return -1;
+    if (!system) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+
+        return -1;
+
+
+    }
     if (severity < 0.0f || severity > 1.0f) return -1;
 
     pthread_mutex_lock((pthread_mutex_t*)system->mutex);
@@ -427,7 +453,16 @@ int neuromod_immune_apply_antiinflammatory_effect(
      * HOW:  Restore enzyme activity and synthesis rates
      */
 
-    if (!system) return -1;
+    if (!system) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+
+        return -1;
+
+
+    }
     if (il10_concentration < 0.0f || il10_concentration > 1.0f) return -1;
 
     pthread_mutex_lock((pthread_mutex_t*)system->mutex);
@@ -683,7 +718,16 @@ int neuromod_immune_update(
      * HOW:  Query immune system, apply effects, detect imbalances
      */
 
-    if (!system) return -1;
+    if (!system) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+
+        return -1;
+
+
+    }
     if (!system->running) system->running = true;
 
     float dt_sec = delta_ms / 1000.0f;

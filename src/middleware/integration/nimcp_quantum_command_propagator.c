@@ -277,6 +277,8 @@ quantum_command_propagator_t* quantum_command_propagator_create_custom(
     quantum_command_propagator_t* qcp = nimcp_calloc(1, sizeof(quantum_command_propagator_t));
     if (!qcp) {
         LOG_ERROR("quantum_command_propagator_create_custom: Failed to allocate propagator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qcp is NULL");
+
         return NULL;
     }
 
@@ -291,6 +293,8 @@ quantum_command_propagator_t* quantum_command_propagator_create_custom(
     if (!adaptive_net) {
         LOG_ERROR("quantum_command_propagator_create_custom: Failed to get adaptive network");
         nimcp_free(qcp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_net is NULL");
+
         return NULL;
     }
 

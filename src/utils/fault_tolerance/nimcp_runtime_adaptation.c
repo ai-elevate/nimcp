@@ -113,12 +113,16 @@ static void record_adaptation(
 runtime_adaptation_context_t runtime_adaptation_create(brain_t brain) {
     if (!brain) {
         LOG_ERROR("Cannot create runtime adaptation: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return NULL;
     }
 
     runtime_adaptation_context_t ctx = nimcp_calloc(1, sizeof(struct runtime_adaptation_context_internal));
     if (!ctx) {
         LOG_ERROR("Failed to allocate runtime adaptation context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 

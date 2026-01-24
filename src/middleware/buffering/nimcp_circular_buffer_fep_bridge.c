@@ -27,7 +27,13 @@
 int circular_buffer_fep_bridge_default_config(
     circular_buffer_fep_config_t* config
 ) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->enable_horizon_adjustment = true;
     config->enable_precision_windowing = true;
@@ -54,6 +60,8 @@ circular_buffer_fep_bridge_t* circular_buffer_fep_bridge_create(
         nimcp_malloc(sizeof(circular_buffer_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate buffer-FEP bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -155,7 +163,13 @@ int circular_buffer_fep_bridge_connect_fep(
 int circular_buffer_fep_bridge_disconnect(
     circular_buffer_fep_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->buffer = NULL;
@@ -232,7 +246,13 @@ int circular_buffer_fep_prime_sequence(
     circular_buffer_fep_bridge_t* bridge,
     float expected_fill_rate
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->effects.primed_for_sequence = true;
@@ -341,7 +361,13 @@ int circular_buffer_fep_bridge_update(
     circular_buffer_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->buffer || !bridge->fep_system) return 0;
 
     circular_buffer_fep_report_patterns(bridge);
@@ -401,7 +427,13 @@ int circular_buffer_fep_bridge_get_stats(
 int circular_buffer_fep_bridge_connect_bio_async(
     circular_buffer_fep_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {

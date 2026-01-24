@@ -318,17 +318,35 @@ nimcp_layer_error_t nimcp_layer_registry_get_layer_connections(nimcp_layer_regis
 }
 
 int nimcp_layer_registry_get_layer_count(nimcp_layer_registry_t registry) {
-    if (!registry) return -1;
+    if (!registry) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "registry is NULL");
+
+        return -1;
+
+    }
     return (int)registry->layers_registered;
 }
 
 int nimcp_layer_registry_get_total_module_count(nimcp_layer_registry_t registry) {
-    if (!registry) return -1;
+    if (!registry) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "registry is NULL");
+
+        return -1;
+
+    }
     return (int)registry->total_modules_registered;
 }
 
 int nimcp_layer_registry_get_connection_count(nimcp_layer_registry_t registry) {
-    if (!registry) return -1;
+    if (!registry) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "registry is NULL");
+
+        return -1;
+
+    }
     int count = 0;
     for (uint32_t i = 0; i < registry->connection_count; i++) {
         if (registry->connections[i].active) count++;

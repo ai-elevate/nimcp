@@ -311,6 +311,8 @@ nimcp_ct_context_t nimcp_ct_create(void)
     nimcp_ct_context_t ctx = (nimcp_ct_context_t)nimcp_calloc(1, sizeof(struct nimcp_ct_context));
     if (!ctx) {
         LOG_ERROR("Failed to allocate constant-time context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 

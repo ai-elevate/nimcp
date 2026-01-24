@@ -99,6 +99,8 @@ nimcp_mutex_t* nimcp_mutex_create(const mutex_attr_t* attr)
     nimcp_mutex_t* mutex = (nimcp_mutex_t*)nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!mutex) {
         set_thread_error(NIMCP_ERROR_MEMORY, "Failed to allocate mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mutex is NULL");
+
         return NULL;
     }
 

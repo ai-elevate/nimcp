@@ -50,7 +50,13 @@ static float get_quorum_factor_for_level(brain_inflammation_level_t level)
 
 int swarm_quorum_immune_default_config(swarm_quorum_immune_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->enable_cytokine_effects = true;
     config->enable_inflammation_effects = true;
@@ -75,6 +81,8 @@ swarm_quorum_immune_bridge_t* swarm_quorum_immune_bridge_create(
         (swarm_quorum_immune_bridge_t*)nimcp_malloc(sizeof(swarm_quorum_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate swarm quorum immune bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -176,7 +184,13 @@ int swarm_quorum_immune_apply_inflammation_effects(swarm_quorum_immune_bridge_t*
 
 int swarm_quorum_immune_trigger_from_failure(swarm_quorum_immune_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_failure_stress) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -194,7 +208,13 @@ int swarm_quorum_immune_trigger_from_failure(swarm_quorum_immune_bridge_t* bridg
 
 int swarm_quorum_immune_boost_from_success(swarm_quorum_immune_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_success_boost) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -212,7 +232,13 @@ int swarm_quorum_immune_boost_from_success(swarm_quorum_immune_bridge_t* bridge)
 
 int swarm_quorum_immune_bridge_update(swarm_quorum_immune_bridge_t* bridge, uint64_t delta_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     (void)delta_ms;
 
     swarm_quorum_immune_apply_cytokine_effects(bridge);

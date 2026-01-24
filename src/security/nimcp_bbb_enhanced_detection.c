@@ -129,7 +129,15 @@ bool bbb_validate_file_path(bbb_system_t system, const char* path,
                             bbb_validation_result_t* result)
 {
     /* Guard: NULL result */
-    if (!result) return false;
+    if (!result) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "bbb_validate_file_path: result is NULL");
+
+            return false;
+
+        }
 
     /* Initialize result */
     memset(result, 0, sizeof(*result));
@@ -228,7 +236,15 @@ bool bbb_validate_command(bbb_system_t system, const char* input,
                           bbb_validation_result_t* result)
 {
     /* Guard: NULL result */
-    if (!result) return false;
+    if (!result) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "bbb_validate_command: result is NULL");
+
+            return false;
+
+        }
 
     /* Initialize result */
     memset(result, 0, sizeof(*result));
@@ -326,7 +342,11 @@ bool bbb_enhanced_detection_get_stats(
     nimcp_shell_detector_stats_t* shell_stats)
 {
     if (!g_detectors_initialized) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "bbb_enhanced_detection_get_stats: g_detectors_initialized is NULL");
+
+            return false;
     }
 
     if (path_stats && g_path_validator) {
@@ -352,7 +372,11 @@ bool bbb_enhanced_detection_get_stats(
 bool bbb_enhanced_detection_reset_stats(void)
 {
     if (!g_detectors_initialized) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "bbb_enhanced_detection_reset_stats: g_detectors_initialized is NULL");
+
+            return false;
     }
 
     if (g_path_validator) {

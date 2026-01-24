@@ -401,6 +401,8 @@ cross_modal_routing_graph_t* brain_get_cross_modal_graph(brain_t brain)
 {
     if (!brain) {
         set_error("Invalid brain handle");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return NULL;
     }
 

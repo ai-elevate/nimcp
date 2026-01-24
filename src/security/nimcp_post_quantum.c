@@ -140,6 +140,8 @@ nimcp_pq_context_t nimcp_pq_context_create(const nimcp_pq_config_t* config) {
     nimcp_pq_context_t ctx = (nimcp_pq_context_t)calloc(1, sizeof(struct nimcp_pq_context));
     if (!ctx) {
         LOG_ERROR("nimcp_pq_context_create: Memory allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 

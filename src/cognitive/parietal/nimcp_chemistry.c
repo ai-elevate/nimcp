@@ -202,6 +202,8 @@ chemistry_t* chemistry_create_custom(const chemistry_config_t* config) {
     chemistry_t* chem = calloc(1, sizeof(chemistry_t));
     if (!chem) {
         set_chemistry_error("Failed to allocate chemistry struct");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chem is NULL");
+
         return NULL;
     }
 
@@ -822,7 +824,13 @@ float chemistry_grams_to_moles(float grams, float molar_mass) {
  * ============================================================================ */
 
 int chemistry_set_inflammation(chemistry_t* chem, float level) {
-    if (!chem) return -1;
+    if (!chem) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chem is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(chem->lock);
     chem->inflammation_level = clamp01(level);
@@ -832,7 +840,13 @@ int chemistry_set_inflammation(chemistry_t* chem, float level) {
 }
 
 int chemistry_set_sleep_deprivation(chemistry_t* chem, float level) {
-    if (!chem) return -1;
+    if (!chem) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "chem is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(chem->lock);
     chem->sleep_deprivation_level = clamp01(level);

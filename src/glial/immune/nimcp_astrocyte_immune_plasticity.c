@@ -307,6 +307,8 @@ astro_plasticity_bridge_t* astro_plasticity_bridge_create(
     astro_plasticity_bridge_t* bridge = nimcp_malloc(sizeof(astro_plasticity_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("astro_plasticity_bridge_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     memset(bridge, 0, sizeof(astro_plasticity_bridge_t));

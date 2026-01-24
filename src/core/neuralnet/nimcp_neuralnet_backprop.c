@@ -129,12 +129,16 @@ static float activation_function(float z, activation_type_t type) {
 backprop_ctx_t* backprop_create(neural_network_t network) {
     if (!network) {
         LOG_ERROR("Cannot create backprop context: NULL network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+
         return NULL;
     }
 
     backprop_ctx_t* ctx = nimcp_malloc(sizeof(backprop_ctx_t));
     if (!ctx) {
         LOG_ERROR("Failed to allocate backprop context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
     memset(ctx, 0, sizeof(backprop_ctx_t));

@@ -93,11 +93,16 @@ consolidation_pink_noise_bridge_t* consolidation_pink_noise_create(
     // Guard clause: Validate required inputs
     if (!consolidation_system) {
         NIMCP_LOGGING_ERROR("Null consolidation system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "consolidation_system is NULL");
+
         return NULL;
     }
 
     if (!pink_noise_bridge) {
         NIMCP_LOGGING_ERROR("Null pink noise bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_bridge is NULL");
+
+
         return NULL;
     }
 
@@ -106,6 +111,8 @@ consolidation_pink_noise_bridge_t* consolidation_pink_noise_create(
         (consolidation_pink_noise_bridge_t*)nimcp_malloc(sizeof(consolidation_pink_noise_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

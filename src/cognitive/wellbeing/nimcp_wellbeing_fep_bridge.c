@@ -44,6 +44,8 @@ wellbeing_fep_bridge_t* wellbeing_fep_bridge_create(const wellbeing_fep_config_t
     wellbeing_fep_bridge_t* bridge = nimcp_malloc(sizeof(wellbeing_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate wellbeing FEP bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     memset(bridge, 0, sizeof(wellbeing_fep_bridge_t));

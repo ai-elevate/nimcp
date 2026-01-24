@@ -55,7 +55,11 @@
 bool sensory_input_validate(const sensory_input_t* input)
 {
     if (!input) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "sensory_input_validate: input is NULL");
+
+            return false;
     }
 
     bool has_visual = (input->visual_data != NULL &&

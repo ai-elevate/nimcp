@@ -91,7 +91,13 @@ static size_t create_damp_epitope(
  * ============================================================================ */
 
 int substrate_immune_default_config(substrate_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* All features enabled */
     config->enable_fever_response = true;
@@ -121,6 +127,8 @@ substrate_immune_bridge_t* substrate_immune_bridge_create(
     /* Guard: require substrate */
     if (!substrate) {
         NIMCP_LOGGING_ERROR("Cannot create bridge without substrate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
+
         return NULL;
     }
 
@@ -128,6 +136,8 @@ substrate_immune_bridge_t* substrate_immune_bridge_create(
         nimcp_calloc(1, sizeof(substrate_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Bridge allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -181,7 +191,13 @@ void substrate_immune_bridge_destroy(substrate_immune_bridge_t* bridge) {
  * ============================================================================ */
 
 int substrate_immune_connect_bio_async(substrate_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -203,7 +219,13 @@ int substrate_immune_connect_bio_async(substrate_immune_bridge_t* bridge) {
 }
 
 int substrate_immune_disconnect_bio_async(substrate_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {
@@ -564,7 +586,13 @@ int substrate_immune_bridge_update(
     substrate_immune_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     (void)delta_ms;  /* Used for timing if needed */
 

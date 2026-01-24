@@ -114,6 +114,8 @@ static kdtree_node_t* build_recursive(kdtree_build_point_t* points,
     if (!node) {
         LOG_ERROR("KDTREE", "Failed to allocate kdtree node");
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(kdtree_node_t), "Failed to allocate kdtree node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
         return NULL;
     }
 

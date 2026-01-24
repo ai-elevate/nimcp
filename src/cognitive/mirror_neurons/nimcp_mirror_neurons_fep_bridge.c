@@ -32,7 +32,13 @@ static inline float clamp_f(float value, float min, float max) {
  * ============================================================================ */
 
 int mirror_neurons_fep_bridge_default_config(mirror_neurons_fep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->precision_gain_factor = 1.0f;
     config->min_mirror_gain = FEP_PRECISION_MIRROR_GAIN_MIN;
@@ -63,6 +69,8 @@ mirror_neurons_fep_bridge_t* mirror_neurons_fep_bridge_create(
         1, sizeof(mirror_neurons_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate mirror neurons-FEP bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -122,7 +130,13 @@ int mirror_neurons_fep_bridge_connect_fep(
     mirror_neurons_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     /* Allow NULL fep to disconnect/reset FEP connection */
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -379,7 +393,13 @@ int mirror_neurons_fep_bridge_update(
     mirror_neurons_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* FEP → Mirror Neurons */
     mirror_neurons_fep_apply_precision_modulation(bridge);
@@ -428,7 +448,13 @@ int mirror_neurons_fep_bridge_get_stats(
 int mirror_neurons_fep_bridge_connect_bio_async(
     mirror_neurons_fep_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -451,7 +477,13 @@ int mirror_neurons_fep_bridge_connect_bio_async(
 int mirror_neurons_fep_bridge_disconnect_bio_async(
     mirror_neurons_fep_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

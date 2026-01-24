@@ -94,6 +94,8 @@ bg_enhanced_t* bg_enhanced_create(const bg_enhanced_config_t* config) {
     bg_enhanced_t* bge = nimcp_calloc(1, sizeof(bg_enhanced_t));
     if (!bge) {
         NIMCP_LOGGING_ERROR("Failed to allocate enhanced BG");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge is NULL");
+
         return NULL;
     }
 
@@ -220,7 +222,13 @@ void bg_enhanced_destroy(bg_enhanced_t* bge) {
 }
 
 int bg_enhanced_reset(bg_enhanced_t* bge) {
-    if (!bge) return -1;
+    if (!bge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bge->mutex);
 
@@ -462,7 +470,13 @@ int bg_enhanced_get_option_action(bg_enhanced_t* bge, uint32_t state, uint32_t* 
  * ============================================================================ */
 
 int bg_enhanced_process_reward(bg_enhanced_t* bge, float reward, float predicted_reward) {
-    if (!bge) return -1;
+    if (!bge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bge->mutex);
 
@@ -641,7 +655,13 @@ bgod_behavior_type_t bg_enhanced_test_behavior(bg_enhanced_t* bge, uint32_t acti
  * ============================================================================ */
 
 int bg_enhanced_step(bg_enhanced_t* bge, float dt_ms) {
-    if (!bge) return -1;
+    if (!bge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bge->mutex);
 

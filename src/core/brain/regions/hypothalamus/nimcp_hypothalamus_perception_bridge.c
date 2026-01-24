@@ -217,12 +217,16 @@ hypo_perception_bridge_t* hypo_perception_bridge_create(
 {
     if (!drives) {
         nimcp_log(LOG_LEVEL_ERROR, "hypo_perception_bridge_create: drives is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "drives is NULL");
+
         return NULL;
     }
 
     hypo_perception_bridge_t* bridge = nimcp_calloc(1, sizeof(hypo_perception_bridge_t));
     if (!bridge) {
         nimcp_log(LOG_LEVEL_ERROR, "hypo_perception_bridge_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -546,7 +550,13 @@ int hypo_perception_bridge_set_arousal(
     hypo_perception_bridge_t* bridge,
     float arousal)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->external_arousal = clamp_01(arousal);
     return 0;
@@ -668,7 +678,13 @@ int hypo_perception_bridge_set_interoceptive_accuracy(
     hypo_perception_bridge_t* bridge,
     float accuracy)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->interoceptive_accuracy = clamp_01(accuracy);
     bridge->interoceptive.global_interoceptive_accuracy = bridge->interoceptive_accuracy;
@@ -869,7 +885,13 @@ int hypo_perception_bridge_set_stress_for_pain(
     float stress_level,
     bool is_chronic)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->pain_modulation_enabled) return 0;
 
     float clamped_stress = clamp_01(stress_level);
@@ -945,7 +967,13 @@ int hypo_perception_bridge_release_endorphins(
     hypo_perception_bridge_t* bridge,
     float amount)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     float new_level = bridge->pain.endorphin_level + clamp_01(amount);
     bridge->pain.endorphin_level = clamp_01(new_level);
@@ -1086,7 +1114,13 @@ int hypo_perception_bridge_set_core_temperature(
     hypo_perception_bridge_t* bridge,
     float temperature)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->thermal.core_temperature = clamp_01(temperature);
 
@@ -1122,7 +1156,13 @@ int hypo_perception_bridge_set_ambient_temperature(
     hypo_perception_bridge_t* bridge,
     float temperature)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->thermal.ambient_temperature = clamp_01(temperature);
     bridge->thermal.timestamp_us = nimcp_time_get_us();
@@ -1175,7 +1215,13 @@ int hypo_perception_bridge_get_stats(
 }
 
 int hypo_perception_bridge_reset_stats(hypo_perception_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return 0;
@@ -1226,7 +1272,13 @@ void hypo_perception_bridge_print_summary(const hypo_perception_bridge_t* bridge
 }
 
 int hypo_perception_bridge_reset(hypo_perception_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Reset modulation */
     bridge->modulation.global_gain = 1.0f;
@@ -1308,7 +1360,13 @@ int hypo_perception_bridge_update(
     hypo_perception_bridge_t* bridge,
     uint64_t delta_us)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     (void)delta_us;  /* May use for time-based decay in future */
 

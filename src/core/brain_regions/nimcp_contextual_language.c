@@ -263,6 +263,8 @@ contextual_language_t contextual_language_create(
     contextual_language_t cl = (contextual_language_t)nimcp_malloc(sizeof(contextual_language_struct));
     if (!cl) {
         set_error("Failed to allocate contextual language structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cl is NULL");
+
         return NULL;
     }
     memset(cl, 0, sizeof(contextual_language_struct));
@@ -670,7 +672,13 @@ int contextual_get_default_state(
     context_state_t* state
 ) {
     // Guard clause
-    if (!state) return -1;
+    if (!state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
+        return -1;
+
+    }
 
     state->current_context = context;
 

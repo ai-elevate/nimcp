@@ -284,6 +284,8 @@ NimcpSwarmMorphogenesis* nimcp_swarm_morphogenesis_create(
     NimcpSwarmMorphogenesis* morph = nimcp_malloc(sizeof(NimcpSwarmMorphogenesis));
     if (!morph) {
         LOG_ERROR("Failed to allocate morphogenesis system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "morph is NULL");
+
         return NULL;
     }
 

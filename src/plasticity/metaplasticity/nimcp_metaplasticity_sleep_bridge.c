@@ -89,6 +89,8 @@ metaplasticity_sleep_bridge_t* metaplasticity_sleep_bridge_create(
         (metaplasticity_sleep_bridge_t*)nimcp_malloc(sizeof(metaplasticity_sleep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate sleep bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

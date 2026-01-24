@@ -135,10 +135,14 @@ microglia_immune_bridge_t* microglia_immune_bridge_create(
     /* Guard: validate critical parameters */
     if (!immune_system) {
         NIMCP_LOGGING_ERROR("microglia_immune_bridge_create: NULL immune_system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_system is NULL");
+
         return NULL;
     }
     if (!microglia_network) {
         NIMCP_LOGGING_ERROR("microglia_immune_bridge_create: NULL microglia_network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "microglia_network is NULL");
+
         return NULL;
     }
 
@@ -147,6 +151,8 @@ microglia_immune_bridge_t* microglia_immune_bridge_create(
         nimcp_malloc(sizeof(microglia_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("microglia_immune_bridge_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

@@ -288,6 +288,9 @@ occipital_cognitive_bridge_t* occipital_cognitive_bridge_create(
 
     if (!occipital) {
         LOG_ERROR(COG_BRIDGE_LOG_MODULE, "NULL occipital adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital is NULL");
+
+
         return NULL;
     }
 
@@ -295,6 +298,8 @@ occipital_cognitive_bridge_t* occipital_cognitive_bridge_create(
         (occipital_cognitive_bridge_t*)nimcp_malloc(sizeof(*bridge));
     if (!bridge) {
         LOG_ERROR(COG_BRIDGE_LOG_MODULE, "Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -335,7 +340,13 @@ void occipital_cognitive_bridge_destroy(occipital_cognitive_bridge_t* bridge) {
 }
 
 int occipital_cognitive_bridge_reset(occipital_cognitive_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Clear queues */
     bridge->event_queue_head = 0;
@@ -370,7 +381,16 @@ int occipital_cognitive_connect_module(
     cognitive_module_type_t type,
     void* module_handle) {
 
-    if (!bridge) return -1;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return -1;
+
+
+    }
     if (type >= COG_MODULE_COUNT) return -1;
 
     bridge->modules[type].handle = module_handle;
@@ -386,7 +406,16 @@ int occipital_cognitive_disconnect_module(
     occipital_cognitive_bridge_t* bridge,
     cognitive_module_type_t type) {
 
-    if (!bridge) return -1;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return -1;
+
+
+    }
     if (type >= COG_MODULE_COUNT) return -1;
 
     bridge->modules[type].handle = NULL;
@@ -401,7 +430,16 @@ int occipital_cognitive_bridge_register_bio_async(
     occipital_cognitive_bridge_t* bridge,
     struct bio_router_struct* router) {
 
-    if (!bridge) return -1;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return -1;
+
+
+    }
 
     bridge->router = router;
 
@@ -416,7 +454,16 @@ int occipital_cognitive_connect_substrate(
     occipital_cognitive_bridge_t* bridge,
     neural_substrate_t* substrate) {
 
-    if (!bridge) return -1;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return -1;
+
+
+    }
 
     bridge->substrate = substrate;
 
@@ -516,7 +563,13 @@ int occipital_cognitive_apply_modulation(
  *===========================================================================*/
 
 int occipital_cognitive_bridge_update(occipital_cognitive_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     uint64_t now = get_time_us();
 
@@ -566,7 +619,13 @@ int occipital_cognitive_bridge_update(occipital_cognitive_bridge_t* bridge) {
 }
 
 int occipital_cognitive_bridge_process(occipital_cognitive_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* In a full implementation, this would:
        1. Query occipital adapter for current visual features
@@ -623,7 +682,16 @@ int occipital_cognitive_send_emotion_cue(
     uint32_t expression_id,
     float confidence) {
 
-    if (!bridge) return -1;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return -1;
+
+
+    }
 
     visual_cognitive_event_t event = {
         .target = COG_MODULE_EMOTION,
@@ -643,7 +711,16 @@ int occipital_cognitive_report_salience(
     float salience,
     uint32_t feature_type) {
 
-    if (!bridge) return -1;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return -1;
+
+
+    }
 
     visual_cognitive_event_t event = {
         .target = COG_MODULE_SALIENCE,
@@ -694,7 +771,16 @@ int occipital_cognitive_report_novelty(
     const float* features,
     uint32_t feature_count) {
 
-    if (!bridge) return -1;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return -1;
+
+
+    }
 
     visual_cognitive_event_t event = {
         .target = COG_MODULE_CURIOSITY,

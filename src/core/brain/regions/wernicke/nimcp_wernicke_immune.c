@@ -99,7 +99,13 @@ static void free_error_history(wernicke_error_history_t* history) {
  * ============================================================================ */
 
 int wernicke_immune_default_config(wernicke_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     memset(config, 0, sizeof(wernicke_immune_config_t));
 
@@ -137,12 +143,16 @@ wernicke_immune_bridge_t* wernicke_immune_bridge_create(
 {
     if (!immune_system) {
         LOG_ERROR(LOG_MODULE, "Immune system required");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_system is NULL");
+
         return NULL;
     }
 
     wernicke_immune_bridge_t* bridge = nimcp_calloc(1, sizeof(wernicke_immune_bridge_t));
     if (!bridge) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -193,7 +203,13 @@ void wernicke_immune_bridge_destroy(wernicke_immune_bridge_t* bridge) {
 }
 
 int wernicke_immune_bridge_start(wernicke_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->running) return 0;
 
     bridge->running = true;
@@ -204,7 +220,13 @@ int wernicke_immune_bridge_start(wernicke_immune_bridge_t* bridge) {
 }
 
 int wernicke_immune_bridge_stop(wernicke_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->running) return 0;
 
     bridge->running = false;
@@ -363,7 +385,13 @@ int wernicke_immune_report_comp_error(
     const char* actual,
     float severity)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     wernicke_error_history_t* history = &bridge->error_history;
 
@@ -411,7 +439,13 @@ int wernicke_immune_analyze_error_patterns(
     float* semantic_damage,
     float* syntactic_damage)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     wernicke_error_history_t* history = &bridge->error_history;
     uint64_t now = nimcp_time_get_ms();
@@ -494,7 +528,13 @@ int wernicke_immune_bridge_update(
     wernicke_immune_bridge_t* bridge,
     uint64_t current_time_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->running) return 0;
 
     /* Update inflammation state duration */
@@ -599,7 +639,13 @@ int wernicke_immune_set_aphasia_callback(
     wernicke_immune_aphasia_onset_cb_t callback,
     void* user_data)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     /* Store callback - implementation would add callback storage to struct */
     (void)callback;
     (void)user_data;
@@ -611,7 +657,13 @@ int wernicke_immune_set_error_callback(
     wernicke_immune_error_cb_t callback,
     void* user_data)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     (void)callback;
     (void)user_data;
     return 0;
@@ -622,7 +674,13 @@ int wernicke_immune_set_impairment_callback(
     wernicke_immune_impairment_cb_t callback,
     void* user_data)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     (void)callback;
     (void)user_data;
     return 0;
@@ -633,7 +691,13 @@ int wernicke_immune_set_recovery_callback(
     wernicke_immune_recovery_cb_t callback,
     void* user_data)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     (void)callback;
     (void)user_data;
     return 0;

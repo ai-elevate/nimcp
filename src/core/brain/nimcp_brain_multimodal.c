@@ -165,7 +165,11 @@ bool apply_attention_to_features(brain_t brain)
 {
     // GUARD CLAUSE: Brain must exist
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "apply_attention_to_features: brain is NULL");
+
+            return false;
     }
 
     // GUARD CLAUSE: Skip if attention not enabled or not available
@@ -221,7 +225,11 @@ bool process_brain_regions(brain_t brain)
 {
     // GUARD CLAUSE: Brain must exist
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "process_brain_regions: brain is NULL");
+
+            return false;
     }
 
     // GUARD CLAUSE: Skip if brain_regions not enabled or not available
@@ -374,7 +382,13 @@ static bool integrate_multimodal_features(
     );
 
     if (!integrate_success) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+
+                "if: integrate_success is NULL");
+
+
+            return false;
     }
 
     // Get attention weights for transparency
@@ -405,7 +419,11 @@ static uint32_t process_neural_network(
 {
     // Validate input buffer
     if (!input_buffer || input_size == 0) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "process_neural_network: invalid parameters");
+
+            return 0;
     }
 
     // Allocate network output buffer
@@ -628,7 +646,15 @@ static bool consolidation_strengthen(
     float emotional_valence)
 {
     // GUARD: Validate inputs
-    if (!brain) return false;
+    if (!brain) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "consolidation_strengthen: brain is NULL");
+
+            return false;
+
+        }
     if (!brain->network) return false;
 
     // GUARD: Skip if consolidation disabled

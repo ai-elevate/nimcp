@@ -306,6 +306,8 @@ pr_quat_pink_state_t* pr_quat_pink_create(
     /* Guard: Allocation failed */
     if (!state) {
         set_error("Failed to allocate quaternionic pink noise state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
         return NULL;
     }
 
@@ -622,6 +624,8 @@ pr_fractal_timing_t* pr_fractal_timing_create_ex(
     /* Guard: Allocation failed */
     if (!timing) {
         set_error("Failed to allocate fractal timing generator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "timing is NULL");
+
         return NULL;
     }
 
@@ -810,6 +814,8 @@ pr_pink_buffer_t* pr_pink_buffer_create_ex(
     /* Guard: Allocation failed */
     if (!buffer) {
         set_error("Failed to allocate buffer structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer is NULL");
+
         return NULL;
     }
 
@@ -824,6 +830,8 @@ pr_pink_buffer_t* pr_pink_buffer_create_ex(
     if (!samples) {
         set_error("Failed to allocate sample buffer");
         nimcp_free(buffer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "samples is NULL");
+
         return NULL;
     }
 
@@ -839,6 +847,8 @@ pr_pink_buffer_t* pr_pink_buffer_create_ex(
         set_error("Failed to create temporary generator");
         nimcp_free(samples);
         nimcp_free(buffer);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gen is NULL");
+
         return NULL;
     }
 
@@ -866,6 +876,8 @@ pr_pink_buffer_t* pr_pink_buffer_create_ex(
             set_error("Failed to create COW manager");
             nimcp_free(samples);
             nimcp_free(buffer);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cow_mgr is NULL");
+
             return NULL;
         }
     }
@@ -920,6 +932,8 @@ pr_pink_buffer_t* pr_pink_buffer_clone(const pr_pink_buffer_t* buffer) {
     /* Guard: Allocation failed */
     if (!clone) {
         set_error("Failed to allocate clone buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+
         return NULL;
     }
 

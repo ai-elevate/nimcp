@@ -633,7 +633,11 @@ void resonance_result_print(const resonance_result_t* result) {
 
 size_t resonance_explain(const resonance_result_t* result, char* buf, size_t size) {
     if (!result || !buf || size == 0) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "resonance_explain: invalid parameters");
+
+            return 0;
     }
 
     const char* strength_total;

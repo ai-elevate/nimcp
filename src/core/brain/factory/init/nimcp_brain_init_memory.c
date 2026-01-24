@@ -118,7 +118,11 @@
 bool nimcp_brain_factory_init_consolidation_subsystem(brain_t brain)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_consolidation_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Check if already initialized
@@ -175,7 +179,11 @@ bool nimcp_brain_factory_init_curiosity_subsystem(brain_t brain)
 {
     // Guard: NULL check
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_curiosity_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Guard: Check if already initialized
@@ -231,7 +239,11 @@ bool nimcp_brain_factory_init_salience_subsystem(brain_t brain)
 {
     // Guard: NULL check
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_salience_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Guard: Check if already initialized
@@ -276,7 +288,11 @@ bool nimcp_brain_factory_init_autobiographical_memory_subsystem(brain_t brain)
 {
     // Guard: NULL check
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_autobiographical_memory_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Guard: Check if already initialized
@@ -314,7 +330,11 @@ bool nimcp_brain_factory_init_autobiographical_memory_subsystem(brain_t brain)
 bool nimcp_brain_factory_init_global_workspace_subsystem(brain_t brain)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_global_workspace_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Check if already initialized

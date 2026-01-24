@@ -48,7 +48,13 @@ nimcp_ht_release_config_t nimcp_ht_release_default_config(void) {
 
 int nimcp_ht_release_init(nimcp_ht_release_system_t* system,
                           const nimcp_ht_release_config_t* config) {
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
 
     memset(system, 0, sizeof(nimcp_ht_release_system_t));
 
@@ -97,13 +103,25 @@ int nimcp_ht_release_init(nimcp_ht_release_system_t* system,
 }
 
 int nimcp_ht_release_shutdown(nimcp_ht_release_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
     system->initialized = false;
     return 0;
 }
 
 int nimcp_ht_release_reset(nimcp_ht_release_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
 
     nimcp_ht_release_config_t config = system->config;
     return nimcp_ht_release_init(system, &config);

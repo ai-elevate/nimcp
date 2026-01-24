@@ -142,7 +142,13 @@ static float compute_flourishing_level(const wellbeing_immune_bridge_t* bridge) 
  * ============================================================================ */
 
 int wellbeing_immune_default_config(wellbeing_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* All features enabled by default */
     config->enable_cytokine_wellbeing_modulation = true;
@@ -173,6 +179,8 @@ wellbeing_immune_bridge_t* wellbeing_immune_bridge_create(
     if (!immune_system) {
         LOG_MODULE_ERROR("wellbeing_immune_bridge",
                   "Cannot create bridge without immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_system is NULL");
+
         return NULL;
     }
 
@@ -181,6 +189,8 @@ wellbeing_immune_bridge_t* wellbeing_immune_bridge_create(
         nimcp_malloc(sizeof(wellbeing_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("wellbeing_immune_bridge", "Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -238,7 +248,13 @@ void wellbeing_immune_bridge_destroy(wellbeing_immune_bridge_t* bridge) {
 
 int wellbeing_immune_apply_cytokine_effects(wellbeing_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_cytokine_wellbeing_modulation) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -285,7 +301,13 @@ int wellbeing_immune_apply_cytokine_effects(wellbeing_immune_bridge_t* bridge) {
 
 int wellbeing_immune_apply_inflammation_effects(wellbeing_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_inflammation_distress) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -391,7 +413,13 @@ distress_severity_t wellbeing_immune_inflammation_to_severity(
 
 int wellbeing_immune_trigger_from_distress(wellbeing_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_wellbeing_immune_trigger) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -450,7 +478,13 @@ int wellbeing_immune_trigger_from_distress(wellbeing_immune_bridge_t* bridge) {
 
 int wellbeing_immune_boost_from_positive_wellbeing(wellbeing_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_positive_immune_boost) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -501,7 +535,13 @@ int wellbeing_immune_boost_memory_formation(
     uint32_t b_cell_id
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_flourishing_memory_boost) return 0;
     if (!bridge->immune_system) return -1;
     if (!bridge->positive_boost.is_flourishing) return 0; /* Only boost when flourishing */
@@ -532,7 +572,13 @@ int wellbeing_immune_bridge_update(
     uint64_t delta_ms
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Immune → Wellbeing */
     wellbeing_immune_apply_cytokine_effects(bridge);
@@ -625,7 +671,13 @@ int wellbeing_immune_get_stats(
     uint32_t* wellbeing_triggered_out,
     uint32_t* positive_boosts_out
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     if (total_updates_out) *total_updates_out = bridge->total_updates;
     if (cytokine_modulations_out) *cytokine_modulations_out = bridge->cytokine_modulations;
@@ -645,7 +697,13 @@ int wellbeing_immune_get_stats(
  * @brief Connect bridge to bio-async router
  */
 int wellbeing_immune_connect_bio_async(wellbeing_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -670,7 +728,13 @@ int wellbeing_immune_connect_bio_async(wellbeing_immune_bridge_t* bridge) {
  * @brief Disconnect from bio-async router
  */
 int wellbeing_immune_disconnect_bio_async(wellbeing_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

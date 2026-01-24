@@ -126,7 +126,13 @@ static void apply_learning_update(rn_learning_state_t* learn, float error,
  *===========================================================================*/
 
 int rn_default_config(rn_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -186,6 +192,8 @@ nimcp_red_nucleus_t* rn_create(const rn_config_t* config) {
         1, sizeof(nimcp_red_nucleus_t));
     if (!rn) {
         NIMCP_LOG_ERROR(RN_LOG_TAG, "Failed to allocate Red Nucleus");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
         return NULL;
     }
 
@@ -276,7 +284,13 @@ void rn_destroy(nimcp_red_nucleus_t* rn) {
 }
 
 int rn_init(nimcp_red_nucleus_t* rn) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(rn->mutex);
 
@@ -325,7 +339,13 @@ int rn_init(nimcp_red_nucleus_t* rn) {
 }
 
 int rn_reset(nimcp_red_nucleus_t* rn) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
     return rn_init(rn);
 }
 
@@ -600,7 +620,13 @@ int rn_process_error(nimcp_red_nucleus_t* rn, const rn_motor_error_t* error) {
 
 int rn_report_error(nimcp_red_nucleus_t* rn, rn_effector_t effector,
                     rn_error_type_t error_type, float error_magnitude) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
 
     rn_motor_error_t error = {
         .type = error_type,
@@ -631,7 +657,13 @@ float rn_get_skill_level(const nimcp_red_nucleus_t* rn, rn_effector_t effector) 
 }
 
 int rn_set_learning_modulation(nimcp_red_nucleus_t* rn, float modulation) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(rn->mutex);
     rn->global_learning_modulation = clamp_float(modulation, 0.0f, 2.0f);
@@ -751,7 +783,13 @@ int rn_get_thalamic_output(const nimcp_red_nucleus_t* rn,
 
 int rn_cerebellum_connect(nimcp_red_nucleus_t* rn,
                           struct cerebellum_adapter* cerebellum) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
 
     rn->cerebellum = cerebellum;
     NIMCP_LOG_INFO(RN_LOG_TAG, "Connected to cerebellum");
@@ -762,7 +800,13 @@ int rn_cerebellum_connect(nimcp_red_nucleus_t* rn,
 int rn_process_cerebellar_error(nimcp_red_nucleus_t* rn,
                                 float error_magnitude,
                                 rn_error_type_t error_type) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
 
     /* Generate olivary output based on cerebellar error */
     nimcp_mutex_lock(rn->mutex);
@@ -852,7 +896,13 @@ int rn_kg_register(nimcp_red_nucleus_t* rn, struct nimcp_brain_kg* kg,
 }
 
 int rn_kg_unregister(nimcp_red_nucleus_t* rn) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(rn->mutex);
 
@@ -897,7 +947,13 @@ int rn_bio_async_connect(nimcp_red_nucleus_t* rn,
 }
 
 int rn_bio_async_disconnect(nimcp_red_nucleus_t* rn) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(rn->mutex);
 
@@ -938,7 +994,13 @@ int rn_bio_async_subscribe(nimcp_red_nucleus_t* rn, uint32_t subscription_mask) 
 
 int rn_immune_connect(nimcp_red_nucleus_t* rn,
                       struct nimcp_immune_system* immune) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
     rn->immune = immune;
     NIMCP_LOG_DEBUG(RN_LOG_TAG, "Connected to immune system");
     return 0;
@@ -946,7 +1008,13 @@ int rn_immune_connect(nimcp_red_nucleus_t* rn,
 
 int rn_security_connect(nimcp_red_nucleus_t* rn,
                         struct nimcp_security_context* security) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
     rn->security = security;
     NIMCP_LOG_DEBUG(RN_LOG_TAG, "Connected to security context");
     return 0;
@@ -954,7 +1022,13 @@ int rn_security_connect(nimcp_red_nucleus_t* rn,
 
 int rn_snn_connect(nimcp_red_nucleus_t* rn, struct nimcp_snn_network* snn,
                    struct nimcp_plasticity_engine* plasticity) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
     rn->snn = snn;
     rn->plasticity = plasticity;
     NIMCP_LOG_DEBUG(RN_LOG_TAG, "Connected to SNN/plasticity");
@@ -963,14 +1037,26 @@ int rn_snn_connect(nimcp_red_nucleus_t* rn, struct nimcp_snn_network* snn,
 
 int rn_hypothalamus_connect(nimcp_red_nucleus_t* rn,
                             struct nimcp_hypothalamus* hypo) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
     rn->hypothalamus = hypo;
     NIMCP_LOG_DEBUG(RN_LOG_TAG, "Connected to hypothalamus");
     return 0;
 }
 
 int rn_thalamus_connect(nimcp_red_nucleus_t* rn, struct nimcp_thalamus* thalamus) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
     rn->thalamus = thalamus;
     NIMCP_LOG_DEBUG(RN_LOG_TAG, "Connected to thalamus");
     return 0;
@@ -978,7 +1064,13 @@ int rn_thalamus_connect(nimcp_red_nucleus_t* rn, struct nimcp_thalamus* thalamus
 
 int rn_cognitive_connect(nimcp_red_nucleus_t* rn,
                          struct nimcp_cognitive_hub* hub) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
     rn->cognitive_hub = hub;
     NIMCP_LOG_DEBUG(RN_LOG_TAG, "Connected to cognitive hub");
     return 0;
@@ -986,7 +1078,13 @@ int rn_cognitive_connect(nimcp_red_nucleus_t* rn,
 
 int rn_training_connect(nimcp_red_nucleus_t* rn,
                         struct nimcp_training_context* training) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
     rn->training = training;
     NIMCP_LOG_DEBUG(RN_LOG_TAG, "Connected to training system");
     return 0;
@@ -994,7 +1092,13 @@ int rn_training_connect(nimcp_red_nucleus_t* rn,
 
 int rn_perception_connect(nimcp_red_nucleus_t* rn,
                           struct nimcp_perception_system* perception) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
     rn->perception = perception;
     NIMCP_LOG_DEBUG(RN_LOG_TAG, "Connected to perception system");
     return 0;
@@ -1002,7 +1106,13 @@ int rn_perception_connect(nimcp_red_nucleus_t* rn,
 
 int rn_symbolic_connect(nimcp_red_nucleus_t* rn,
                         struct nimcp_symbolic_engine* symbolic) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
     rn->symbolic = symbolic;
     NIMCP_LOG_DEBUG(RN_LOG_TAG, "Connected to symbolic engine");
     return 0;
@@ -1010,7 +1120,13 @@ int rn_symbolic_connect(nimcp_red_nucleus_t* rn,
 
 int rn_swarm_connect(nimcp_red_nucleus_t* rn,
                      struct nimcp_swarm_context* swarm) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
     rn->swarm = swarm;
     NIMCP_LOG_DEBUG(RN_LOG_TAG, "Connected to swarm system");
     return 0;
@@ -1018,7 +1134,13 @@ int rn_swarm_connect(nimcp_red_nucleus_t* rn,
 
 int rn_dragonfly_connect(nimcp_red_nucleus_t* rn,
                          struct nimcp_dragonfly_context* dragonfly) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
     rn->dragonfly = dragonfly;
     NIMCP_LOG_DEBUG(RN_LOG_TAG, "Connected to dragonfly system");
     return 0;
@@ -1026,21 +1148,39 @@ int rn_dragonfly_connect(nimcp_red_nucleus_t* rn,
 
 int rn_portia_connect(nimcp_red_nucleus_t* rn,
                       struct nimcp_portia_context* portia) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
     rn->portia = portia;
     NIMCP_LOG_DEBUG(RN_LOG_TAG, "Connected to portia system");
     return 0;
 }
 
 int rn_qmc_connect(nimcp_red_nucleus_t* rn, struct nimcp_qmc_context* qmc) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
     rn->qmc = qmc;
     NIMCP_LOG_DEBUG(RN_LOG_TAG, "Connected to QMC system");
     return 0;
 }
 
 int rn_omni_connect(nimcp_red_nucleus_t* rn, struct nimcp_omni_predictor* omni) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
     rn->omni = omni;
     NIMCP_LOG_DEBUG(RN_LOG_TAG, "Connected to omnidirectional predictor");
     return 0;
@@ -1048,7 +1188,13 @@ int rn_omni_connect(nimcp_red_nucleus_t* rn, struct nimcp_omni_predictor* omni) 
 
 int rn_substrate_connect(nimcp_red_nucleus_t* rn,
                          struct nimcp_neural_substrate* substrate) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
     rn->substrate = substrate;
     NIMCP_LOG_DEBUG(RN_LOG_TAG, "Connected to neural substrate");
     return 0;
@@ -1179,7 +1325,13 @@ float rn_get_subdivision_activity(const nimcp_red_nucleus_t* rn,
 }
 
 int rn_clear_commands(nimcp_red_nucleus_t* rn) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(rn->mutex);
 
@@ -1193,7 +1345,13 @@ int rn_clear_commands(nimcp_red_nucleus_t* rn) {
 }
 
 int rn_abort_command(nimcp_red_nucleus_t* rn) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(rn->mutex);
 

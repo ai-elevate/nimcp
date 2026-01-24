@@ -283,6 +283,8 @@ portia_deception_t portia_deception_init(
     if (!deception) {
         LOG_ERROR("Failed to allocate deception system");
         deception_set_error("Memory allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deception is NULL");
+
         return NULL;
     }
 

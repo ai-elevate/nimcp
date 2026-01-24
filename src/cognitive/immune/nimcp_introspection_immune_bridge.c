@@ -118,7 +118,13 @@ static brain_inflammation_level_t get_max_inflammation_level(
  * ============================================================================ */
 
 int introspection_immune_default_config(introspection_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* All features enabled by default */
     config->enable_cytokine_introspection_modulation = true;
@@ -156,6 +162,8 @@ introspection_immune_bridge_t* introspection_immune_bridge_create(
         nimcp_malloc(sizeof(introspection_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("introspection_immune_bridge", "Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -218,7 +226,13 @@ void introspection_immune_bridge_destroy(introspection_immune_bridge_t* bridge) 
 
 int introspection_immune_apply_cytokine_effects(introspection_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_cytokine_introspection_modulation) return 0;
     if (!bridge->immune_system || !bridge->introspection_context) return -1;
 
@@ -271,7 +285,13 @@ int introspection_immune_apply_cytokine_effects(introspection_immune_bridge_t* b
 
 int introspection_immune_apply_inflammation_effects(introspection_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_inflammation_phi_reduction) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -352,7 +372,13 @@ float introspection_immune_compute_uncertainty_increase(
 
 int introspection_immune_detect_sickness(introspection_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_sickness_detection) return 0;
     if (!bridge->introspection_context) return -1;
 
@@ -413,7 +439,13 @@ int introspection_immune_detect_sickness(introspection_immune_bridge_t* bridge) 
 
 int introspection_immune_correlate_patterns(introspection_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_pattern_immune_correlation) return 0;
     if (!bridge->introspection_context || !bridge->immune_system) return -1;
 
@@ -440,7 +472,13 @@ int introspection_immune_bridge_update(
     introspection_immune_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Apply immune → introspection effects */
     introspection_immune_apply_cytokine_effects(bridge);
@@ -498,7 +536,13 @@ float introspection_immune_get_accuracy_loss(const introspection_immune_bridge_t
 }
 
 int introspection_immune_set_baseline(introspection_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->introspection_context) return -1;
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
@@ -518,7 +562,13 @@ int introspection_immune_set_baseline(introspection_immune_bridge_t* bridge) {
 }
 
 int introspection_immune_reset_sickness_detection(introspection_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -542,7 +592,13 @@ int introspection_immune_reset_sickness_detection(introspection_immune_bridge_t*
  * @brief Connect bridge to bio-async router
  */
 int introspection_immune_connect_bio_async(introspection_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -567,7 +623,13 @@ int introspection_immune_connect_bio_async(introspection_immune_bridge_t* bridge
  * @brief Disconnect from bio-async router
  */
 int introspection_immune_disconnect_bio_async(introspection_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

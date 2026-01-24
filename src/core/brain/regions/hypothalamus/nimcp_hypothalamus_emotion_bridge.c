@@ -83,12 +83,16 @@ hypo_emotion_bridge_t* hypo_emotion_bridge_create(
 {
     if (!drives) {
         nimcp_log(LOG_LEVEL_ERROR, "hypo_emotion_bridge_create: drives is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "drives is NULL");
+
         return NULL;
     }
 
     hypo_emotion_bridge_t* bridge = nimcp_calloc(1, sizeof(hypo_emotion_bridge_t));
     if (!bridge) {
         nimcp_log(LOG_LEVEL_ERROR, "hypo_emotion_bridge_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -152,7 +156,13 @@ int hypo_emotion_bridge_update_emotion(
 }
 
 int hypo_emotion_bridge_process_hpa_response(hypo_emotion_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     const hypo_emotion_input_t* emo = &bridge->emotion_input;
     const hypo_emotion_config_t* cfg = &bridge->config;

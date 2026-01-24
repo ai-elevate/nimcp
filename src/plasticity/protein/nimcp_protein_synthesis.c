@@ -67,7 +67,13 @@ static int find_tag_index(
     const protein_synthesis_system_t system,
     uint32_t synapse_id
 ) {
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
 
     for (uint32_t i = 0; i < system->num_tags; i++) {
         if (system->tags[i].synapse_id == synapse_id) {
@@ -176,6 +182,9 @@ protein_synthesis_system_t protein_synthesis_create(
 
     if (!system) {
         NIMCP_LOGGING_ERROR("Failed to allocate protein synthesis system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+
         return NULL;
     }
 

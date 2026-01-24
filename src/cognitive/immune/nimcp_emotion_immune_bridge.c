@@ -93,7 +93,13 @@ static brain_inflammation_level_t get_max_inflammation_level(
  * ============================================================================ */
 
 int emotion_immune_default_config(emotion_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* All features enabled by default */
     config->enable_cytokine_emotion_modulation = true;
@@ -133,6 +139,8 @@ emotion_immune_bridge_t* emotion_immune_bridge_create(
         nimcp_malloc(sizeof(emotion_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("emotion_immune_bridge", "Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -192,7 +200,13 @@ void emotion_immune_bridge_destroy(emotion_immune_bridge_t* bridge) {
 
 int emotion_immune_apply_cytokine_effects(emotion_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_cytokine_emotion_modulation) return 0;
     if (!bridge->immune_system || !bridge->emotion_system) return -1;
 
@@ -254,7 +268,13 @@ int emotion_immune_apply_cytokine_effects(emotion_immune_bridge_t* bridge) {
 
 int emotion_immune_apply_inflammation_effects(emotion_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_inflammation_anhedonia) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -308,7 +328,13 @@ float emotion_immune_compute_anhedonia(const emotion_immune_bridge_t* bridge) {
 
 int emotion_immune_trigger_from_stress(emotion_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_emotion_immune_trigger) return 0;
     if (!bridge->emotion_system || !bridge->immune_system) return -1;
 
@@ -353,7 +379,13 @@ int emotion_immune_trigger_from_stress(emotion_immune_bridge_t* bridge) {
 
 int emotion_immune_amplify_grief_inflammation(emotion_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_grief_inflammation_coupling) return 0;
     if (!bridge->grief_system || !bridge->immune_system) return -1;
 
@@ -384,7 +416,13 @@ int emotion_immune_amplify_grief_inflammation(emotion_immune_bridge_t* bridge) {
 
 int emotion_immune_boost_from_positive_affect(emotion_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_positive_immune_boost) return 0;
     if (!bridge->joy_system || !bridge->immune_system) return -1;
 
@@ -439,7 +477,13 @@ int emotion_immune_bridge_update(
     emotion_immune_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Apply all bidirectional effects */
 
@@ -512,7 +556,13 @@ float emotion_immune_get_anhedonia_severity(const emotion_immune_bridge_t* bridg
  * HOW:  Register with bio_router using BIO_MODULE_IMMUNE_EMOTION
  */
 int emotion_immune_connect_bio_async(emotion_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -541,7 +591,13 @@ int emotion_immune_connect_bio_async(emotion_immune_bridge_t* bridge) {
  * HOW:  Unregister from bio_router
  */
 int emotion_immune_disconnect_bio_async(emotion_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

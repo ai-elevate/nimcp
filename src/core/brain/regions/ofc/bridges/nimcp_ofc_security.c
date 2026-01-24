@@ -92,7 +92,13 @@ static uint32_t op_to_privilege(ofc_security_op_t op) {
 //=============================================================================
 
 int ofc_security_default_config(ofc_security_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->enable_bbb = true;
     config->enable_immune = true;
@@ -114,7 +120,13 @@ int ofc_security_register(
     const ofc_security_config_t* config,
     ofc_security_state_t* state
 ) {
-    if (!bbb) return -1;
+    if (!bbb) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb is NULL");
+
+        return -1;
+
+    }
 
     ofc_security_config_t local_config;
     if (!config) {
@@ -159,7 +171,13 @@ int ofc_security_unregister(
     bbb_system_t bbb,
     ofc_security_state_t* state
 ) {
-    if (!state) return -1;
+    if (!state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
+        return -1;
+
+    }
 
     /* Unregister memory region if registered */
     if (state->memory_region_id != 0 && bbb) {
@@ -246,7 +264,13 @@ int ofc_security_set_admin_token(
     ofc_security_state_t* state,
     uint64_t token
 ) {
-    if (!state) return -1;
+    if (!state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
+        return -1;
+
+    }
 
     state->admin_token = token;
     state->kg_validation_enabled = (token != 0);

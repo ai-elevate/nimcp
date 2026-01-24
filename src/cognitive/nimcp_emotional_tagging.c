@@ -255,7 +255,11 @@ emotional_tag_t emotional_tag_from_cognitive_state(
 bool emotional_tag_is_valid(const emotional_tag_t* tag) {
     /* Guard clause: Validate input */
     if (!tag) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "emotional_tag_is_valid: tag is NULL");
+
+            return false;
     }
 
     /* WHAT: Check ranges for valence, arousal, intensity

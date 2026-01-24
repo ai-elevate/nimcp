@@ -309,12 +309,16 @@ trained_immunity_t* trained_immunity_create(
 ) {
     if (!immune_system) {
         NIMCP_LOGGING_ERROR("Null immune system pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_system is NULL");
+
         return NULL;
     }
 
     trained_immunity_t* system = (trained_immunity_t*)nimcp_calloc(1, sizeof(trained_immunity_t));
     if (!system) {
         NIMCP_LOGGING_ERROR("Failed to allocate trained immunity system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
 
@@ -394,7 +398,13 @@ int trained_immunity_train(
     training_stimulus_t stimulus_type,
     float intensity
 ) {
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
     if (stimulus_type >= TRAINED_STIMULUS_COUNT) return -1;
     if (intensity <= 0.0f || intensity > 1.0f) return -1;  /* Reject zero intensity */
 
@@ -492,7 +502,13 @@ int trained_immunity_decay(
     trained_immunity_t* system,
     uint64_t current_time
 ) {
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(system->mutex);
 

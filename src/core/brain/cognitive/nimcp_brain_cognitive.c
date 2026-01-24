@@ -63,7 +63,11 @@ extern void set_error(const char* format, ...);
 bool init_working_memory_subsystem(brain_t brain)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "init_working_memory_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Check if already initialized
@@ -212,7 +216,11 @@ bool init_working_memory_subsystem(brain_t brain)
 bool init_theory_of_mind_subsystem(brain_t brain)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "init_theory_of_mind_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Check if already initialized
@@ -241,7 +249,11 @@ bool init_theory_of_mind_subsystem(brain_t brain)
 bool init_mirror_neurons(brain_t brain)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "init_mirror_neurons: brain is NULL");
+
+            return false;
     }
 
     // Don't re-initialize
@@ -308,7 +320,11 @@ bool init_curiosity_subsystem(brain_t brain)
 {
     // Guard: NULL check
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "init_curiosity_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Guard: Check if already initialized
@@ -343,7 +359,11 @@ bool init_salience_subsystem(brain_t brain)
 {
     // Guard: NULL check
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "init_salience_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Guard: Check if already initialized
@@ -375,7 +395,11 @@ bool init_introspection_subsystem(brain_t brain)
 {
     // Guard: NULL check
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "init_introspection_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Guard: Check if already initialized
@@ -411,7 +435,11 @@ bool init_ethics_engine_subsystem(brain_t brain)
 {
     // Guard: NULL check
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "init_ethics_engine_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Check if ethics is disabled via config
@@ -457,7 +485,11 @@ bool init_empathy_network_subsystem(brain_t brain)
 {
     // Guard: NULL check
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "init_empathy_network_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Empathy network requires ethics to be enabled (it's part of ethical reasoning)
@@ -496,7 +528,11 @@ bool init_empathetic_response_subsystem(brain_t brain)
 {
     // Guard: NULL check
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "init_empathetic_response_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Guard: Check if already initialized
@@ -532,7 +568,11 @@ bool init_autobiographical_memory_subsystem(brain_t brain)
 {
     // Guard: NULL check
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "init_autobiographical_memory_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Guard: Check if already initialized
@@ -558,7 +598,11 @@ bool init_self_model_subsystem(brain_t brain)
 {
     // Guard: NULL check
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "init_self_model_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Guard: Check if already initialized
@@ -595,7 +639,11 @@ bool init_self_model_subsystem(brain_t brain)
 bool init_global_workspace_subsystem(brain_t brain)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "init_global_workspace_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Check if already initialized

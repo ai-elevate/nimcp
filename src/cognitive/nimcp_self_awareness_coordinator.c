@@ -222,6 +222,8 @@ self_awareness_coordinator_t* sac_create(
     self_awareness_coordinator_t* coord = nimcp_malloc(sizeof(self_awareness_coordinator_t));
     if (!coord) {
         NIMCP_LOGGING_ERROR("Failed to allocate self-awareness coordinator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "coord is NULL");
+
         return NULL;
     }
     memset(coord, 0, sizeof(self_awareness_coordinator_t));

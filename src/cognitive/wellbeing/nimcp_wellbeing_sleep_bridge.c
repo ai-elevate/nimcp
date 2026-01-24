@@ -66,6 +66,8 @@ sleep_wellbeing_bridge_t* sleep_wellbeing_bridge_create(
 {
     if (!sleep_system) {
         NIMCP_LOGGING_ERROR("sleep_wellbeing_bridge_create: NULL sleep_system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_system is NULL");
+
         return NULL;
     }
 
@@ -73,6 +75,8 @@ sleep_wellbeing_bridge_t* sleep_wellbeing_bridge_create(
         (sleep_wellbeing_bridge_t*)nimcp_malloc(sizeof(sleep_wellbeing_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("sleep_wellbeing_bridge_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

@@ -205,6 +205,8 @@ command_compliance_system_t* command_compliance_create(
     /* Guard: harm prevention required */
     if (!harm_prevention) {
         NIMCP_LOGGING_ERROR("Harm prevention system required for command compliance");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "harm_prevention is NULL");
+
         return NULL;
     }
 
@@ -213,6 +215,8 @@ command_compliance_system_t* command_compliance_create(
         sizeof(command_compliance_system_t));
     if (!system) {
         NIMCP_LOGGING_ERROR("Failed to allocate command compliance system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
 

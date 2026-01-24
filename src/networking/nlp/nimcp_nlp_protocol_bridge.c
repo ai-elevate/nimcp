@@ -92,12 +92,16 @@ typedef struct nlp_protocol_bridge_struct {
 nlp_protocol_bridge_t* nlp_bridge_create(nlp_node_t node) {
     if (!node) {
         NIMCP_LOGGING_ERROR("nlp_bridge", "NULL node provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
         return NULL;
     }
 
     nlp_protocol_bridge_t* bridge = nimcp_calloc(1, sizeof(nlp_protocol_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("nlp_bridge", "Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -180,7 +184,13 @@ int nlp_bridge_define_context(nlp_protocol_bridge_t* bridge,
                               uint8_t slot,
                               const uint8_t* primitives,
                               size_t count) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     return nlang_context_define(&bridge->context, slot, primitives, count);
 }
 
@@ -448,7 +458,13 @@ int nlp_bridge_send_move_to(nlp_protocol_bridge_t* bridge,
                             uint64_t peer_id,
                             int16_t lat_m, int16_t lon_m,
                             bool urgent) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nlang_expression_t expr;
     nlang_template_move_to(&expr, lat_m, lon_m,
@@ -466,7 +482,13 @@ int nlp_bridge_send_move_to(nlp_protocol_bridge_t* bridge,
 int nlp_bridge_send_threat_report(nlp_protocol_bridge_t* bridge,
                                   int16_t lat_m, int16_t lon_m,
                                   uint8_t threat_type) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nlang_expression_t expr;
     nlang_template_threat_report(&expr, lat_m, lon_m, threat_type);
@@ -481,7 +503,13 @@ int nlp_bridge_send_threat_report(nlp_protocol_bridge_t* bridge,
 int nlp_bridge_send_victim_report(nlp_protocol_bridge_t* bridge,
                                   int16_t lat_m, int16_t lon_m,
                                   uint8_t triage, uint8_t count) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nlang_expression_t expr;
     nlang_template_victim_report(&expr, lat_m, lon_m, triage, count);
@@ -496,7 +524,13 @@ int nlp_bridge_send_victim_report(nlp_protocol_bridge_t* bridge,
 int nlp_bridge_send_status_query(nlp_protocol_bridge_t* bridge,
                                  uint64_t peer_id,
                                  nlang_query_t query_type) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nlang_expression_t expr;
     nlang_template_status_query(&expr, query_type);
@@ -510,7 +544,13 @@ int nlp_bridge_send_status_query(nlp_protocol_bridge_t* bridge,
 int nlp_bridge_send_ack(nlp_protocol_bridge_t* bridge,
                         uint64_t peer_id,
                         bool success) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nlang_expression_t expr;
     nlang_template_acknowledge(&expr, success,
@@ -524,7 +564,13 @@ int nlp_bridge_send_ack(nlp_protocol_bridge_t* bridge,
  */
 int nlp_bridge_send_help_request(nlp_protocol_bridge_t* bridge,
                                  bool desperate) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nlang_expression_t expr;
     nlang_template_help_request(&expr,
@@ -548,7 +594,13 @@ int nlp_bridge_send_help_request(nlp_protocol_bridge_t* bridge,
  * @return 0 on success
  */
 int nlp_bridge_sync_context(nlp_protocol_bridge_t* bridge, uint64_t peer_id) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     uint8_t ctx_buf[256];
     int ctx_len = nlang_context_serialize(&bridge->context, ctx_buf, sizeof(ctx_buf));

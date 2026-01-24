@@ -515,7 +515,15 @@ NIMCP_EXPORT bool bbb_register_subject(bbb_system_t system,
 
     /* Guard: Null subject */
     if (!subject)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "bbb_register_subject: subject is NULL");
+
+            return false;
+
+        }
 
     /* Guard: Invalid subject ID */
     if (subject->id == BBB_INVALID_ID)
@@ -572,7 +580,15 @@ NIMCP_EXPORT bool bbb_register_object(bbb_system_t system,
 
     /* Guard: Null object */
     if (!object)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "bbb_register_object: object is NULL");
+
+            return false;
+
+        }
 
     /* Guard: Invalid object ID */
     if (object->id == BBB_INVALID_ID)

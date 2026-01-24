@@ -107,10 +107,14 @@ astro_network_bridge_t* astro_network_bridge_create(
     /* Guard: validate critical parameters */
     if (!immune_system) {
         NIMCP_LOGGING_ERROR("astro_network_bridge_create: NULL immune_system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_system is NULL");
+
         return NULL;
     }
     if (!astrocyte_network) {
         NIMCP_LOGGING_ERROR("astro_network_bridge_create: NULL astrocyte_network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_network is NULL");
+
         return NULL;
     }
 
@@ -119,6 +123,8 @@ astro_network_bridge_t* astro_network_bridge_create(
         nimcp_malloc(sizeof(astro_network_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("astro_network_bridge_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

@@ -112,7 +112,11 @@ static bool connect_thalamic_bridge(brain_t brain) {
 
 bool nimcp_brain_factory_init_parietal_cortex_subsystem(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_parietal_cortex_subsystem: brain is NULL");
+
+            return false;
     }
 
     /* Check if already initialized */
@@ -200,7 +204,11 @@ bool nimcp_brain_factory_init_parietal_cortex_subsystem(brain_t brain) {
 
 bool nimcp_brain_factory_init_parietal_cortex_substrate_bridge(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_parietal_cortex_substrate_bridge: brain is NULL");
+
+            return false;
     }
 
     /* Check if already initialized */
@@ -233,7 +241,11 @@ bool nimcp_brain_factory_init_parietal_cortex_substrate_bridge(brain_t brain) {
 
 bool nimcp_brain_factory_init_parietal_cortex_thalamic_bridge(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_parietal_cortex_thalamic_bridge: brain is NULL");
+
+            return false;
     }
 
     /* Check if already initialized */
@@ -266,7 +278,11 @@ bool nimcp_brain_factory_init_parietal_cortex_thalamic_bridge(brain_t brain) {
 
 bool nimcp_brain_factory_init_parietal_cortex_quantum_bridge(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_parietal_cortex_quantum_bridge: brain is NULL");
+
+            return false;
     }
 
     /* Check if already initialized */
@@ -476,21 +492,33 @@ bool nimcp_brain_factory_connect_parietal_to_immune(brain_t brain) {
 
 parietal_adapter_t* brain_get_parietal_cortex(brain_t brain) {
     if (!brain || !brain->parietal_cortex_enabled) {
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_get_parietal_cortex: invalid parameters");
+
+            return NULL;
     }
     return brain->parietal_cortex;
 }
 
 parietal_quantum_bridge_t* brain_get_parietal_cortex_quantum_bridge(brain_t brain) {
     if (!brain || !brain->parietal_cortex_enabled) {
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_get_parietal_cortex_quantum_bridge: invalid parameters");
+
+            return NULL;
     }
     return brain->parietal_cortex_quantum_bridge;
 }
 
 int brain_step_parietal_cortex(brain_t brain, uint64_t delta_t) {
     if (!brain || !brain->parietal_cortex_enabled || !brain->parietal_cortex) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_step_parietal_cortex: invalid parameters");
+
+            return -1;
     }
 
     /* Process integration */
@@ -513,7 +541,11 @@ int brain_step_parietal_cortex(brain_t brain, uint64_t delta_t) {
 
 int brain_update_parietal_cortex_from_immune(brain_t brain) {
     if (!brain || !brain->parietal_cortex_enabled || !brain->parietal_cortex) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_update_parietal_cortex_from_immune: invalid parameters");
+
+            return -1;
     }
 
     if (!brain->immune_enabled || !brain->immune_system) {
@@ -531,7 +563,11 @@ int brain_update_parietal_cortex_from_immune(brain_t brain) {
 
 int brain_update_parietal_cortex_from_sleep(brain_t brain) {
     if (!brain || !brain->parietal_cortex_enabled || !brain->parietal_cortex) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_update_parietal_cortex_from_sleep: invalid parameters");
+
+            return -1;
     }
 
     if (!brain->medulla_enabled) {

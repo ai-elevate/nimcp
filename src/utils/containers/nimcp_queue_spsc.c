@@ -369,7 +369,11 @@ bool nimcp_queue_spsc_is_full(struct nimcp_queue* queue) {
 
 size_t nimcp_queue_spsc_get_size(struct nimcp_queue* queue) {
     if (!queue || !queue->impl_data) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "nimcp_queue_spsc_get_size: invalid parameters");
+
+            return 0;
     }
 
     spsc_impl_t* impl = (spsc_impl_t*)queue->impl_data;

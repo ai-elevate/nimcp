@@ -495,6 +495,8 @@ nlp_node_t nlp_node_create(const nlp_config_t* config) {
     nlp_node_t node = (nlp_node_t)nimcp_calloc(1, sizeof(struct nlp_node_struct));
     if (!node) {
         NIMCP_LOGGING_ERROR(NLP_MODULE_NAME, "Failed to allocate node");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node is NULL");
+
         return NULL;
     }
 

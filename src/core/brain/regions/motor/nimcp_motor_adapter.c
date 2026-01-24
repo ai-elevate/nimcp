@@ -393,6 +393,8 @@ motor_adapter_t* motor_create(const motor_config_t* config) {
     motor_adapter_t* adapter = (motor_adapter_t*)nimcp_calloc(1, sizeof(motor_adapter_t));
     if (!adapter) {
         LOG_ERROR("[%s] Failed to allocate adapter memory", MOTOR_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
         return NULL;
     }
 
@@ -1571,6 +1573,9 @@ nimcp_bio_future_t motor_request_movement_async(
 
     if (!promise) {
         LOG_ERROR("[%s] Failed to send movement request", MOTOR_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "promise is NULL");
+
+
         return NULL;
     }
 

@@ -114,6 +114,8 @@ oscillations_pink_noise_bridge_t* oscillations_pink_noise_bridge_create(
     /* Guard: NULL analyzer */
     if (!oscillation_analyzer) {
         NIMCP_LOGGING_ERROR("NULL oscillation analyzer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "oscillation_analyzer is NULL");
+
         return NULL;
     }
 
@@ -134,6 +136,8 @@ oscillations_pink_noise_bridge_t* oscillations_pink_noise_bridge_create(
         (oscillations_pink_noise_bridge_t*)nimcp_malloc(sizeof(oscillations_pink_noise_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     memset(bridge, 0, sizeof(oscillations_pink_noise_bridge_t));

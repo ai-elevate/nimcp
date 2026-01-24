@@ -312,6 +312,8 @@ pr_omni_bridge_t* pr_omni_bridge_create(const pr_omni_bridge_config_t* config) {
     pr_omni_bridge_t* bridge = (pr_omni_bridge_t*)calloc(1, sizeof(pr_omni_bridge_t));
     if (!bridge) {
         set_error("Failed to allocate bridge structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

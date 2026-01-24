@@ -77,6 +77,9 @@ bool knowledge_init_hyperbolic_embedding(knowledge_item_t *item, uint32_t dim,
                                          float hierarchical_level,
                                          const knowledge_item_t *parent) {
     if (!item || dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "knowledge_init_hyperbolic_embedding: invalid parameters (item=%p, dim=%u)",
+            (void*)item, dim);
         return false;
     }
 
@@ -96,6 +99,8 @@ bool knowledge_init_hyperbolic_embedding(knowledge_item_t *item, uint32_t dim,
     // Allocate coordinates
     float *coords = (float*)nimcp_malloc(dim * sizeof(float));
     if (!coords) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "knowledge_init_hyperbolic_embedding: failed to allocate coordinates");
         return false;
     }
 
@@ -139,6 +144,8 @@ bool knowledge_init_hyperbolic_embedding(knowledge_item_t *item, uint32_t dim,
     nimcp_free(coords);
 
     if (!item->hyperbolic_embedding) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "knowledge_init_hyperbolic_embedding: failed to create Poincaré point");
         return false;
     }
 
@@ -158,16 +165,24 @@ float knowledge_hyperbolic_distance(const knowledge_item_t *item1,
                                     const knowledge_item_t *item2) {
     // Validate inputs
     if (!item1 || !item2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "knowledge_hyperbolic_distance: NULL item (item1=%p, item2=%p)",
+            (void*)item1, (void*)item2);
         return -1.0F;
     }
 
     // Check both have hyperbolic embeddings
     if (!item1->hyperbolic_embedding || !item2->hyperbolic_embedding) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "knowledge_hyperbolic_distance: missing hyperbolic embedding");
         return -1.0F;
     }
 
     // Check dimensions match
     if (item1->hyperbolic_embedding->dim != item2->hyperbolic_embedding->dim) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "knowledge_hyperbolic_distance: dimension mismatch (%u vs %u)",
+            item1->hyperbolic_embedding->dim, item2->hyperbolic_embedding->dim);
         return -1.0F;
     }
 
@@ -185,11 +200,15 @@ uint32_t knowledge_hyperbolic_knn(knowledge_system_t system,
                                   knowledge_item_t **neighbors_out,
                                   float *distances_out) {
     if (!system || !query_item || k == 0 || !neighbors_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "knowledge_hyperbolic_knn: invalid parameters");
         return 0;
     }
 
     // Check query has hyperbolic embedding
     if (!query_item->hyperbolic_embedding) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "knowledge_hyperbolic_knn: query item has no hyperbolic embedding");
         return 0;
     }
 
@@ -206,6 +225,8 @@ uint32_t knowledge_hyperbolic_knn(knowledge_system_t system,
     // Allocate candidates array
     knn_candidate_t *candidates = (knn_candidate_t*)nimcp_malloc(num_items * sizeof(knn_candidate_t));
     if (!candidates) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "knowledge_hyperbolic_knn: failed to allocate candidates array");
         nimcp_free(all_items);
         return 0;
     }
@@ -261,11 +282,15 @@ bool knowledge_hyperbolic_sgd_step(knowledge_item_t *item,
                                    const float *euclidean_gradient,
                                    float learning_rate) {
     if (!item || !euclidean_gradient) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "knowledge_hyperbolic_sgd_step: NULL parameter");
         return false;
     }
 
     // Check item has hyperbolic embedding
     if (!item->hyperbolic_embedding) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "knowledge_hyperbolic_sgd_step: item has no hyperbolic embedding");
         return false;
     }
 
@@ -281,6 +306,8 @@ float knowledge_learn_hyperbolic_embeddings(knowledge_system_t system,
                                             uint32_t num_epochs,
                                             float learning_rate) {
     if (!system || num_epochs == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "knowledge_learn_hyperbolic_embeddings: invalid parameters");
         return -1.0F;
     }
 
@@ -289,6 +316,8 @@ float knowledge_learn_hyperbolic_embeddings(knowledge_system_t system,
     uint32_t num_items = knowledge_get_all_ordered_by_confidence(system, &all_items);
 
     if (num_items < 2 || !all_items) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "knowledge_learn_hyperbolic_embeddings: need at least 2 items");
         return -1.0F;
     }
 
@@ -320,6 +349,8 @@ float knowledge_learn_hyperbolic_embeddings(knowledge_system_t system,
     // Allocate gradient buffer
     float *gradient = (float*)nimcp_malloc(dim * sizeof(float));
     if (!gradient) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "knowledge_learn_hyperbolic_embeddings: failed to allocate gradient");
         return -1.0F;
     }
 
@@ -425,11 +456,15 @@ float knowledge_learn_hyperbolic_embeddings(knowledge_system_t system,
 
 bool knowledge_euclidean_to_hyperbolic(knowledge_item_t *item, uint32_t target_dim) {
     if (!item || target_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "knowledge_euclidean_to_hyperbolic: invalid parameters");
         return false;
     }
 
     // Check item has Euclidean embedding
     if (!item->euclidean_embedding || item->embedding_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "knowledge_euclidean_to_hyperbolic: item has no Euclidean embedding");
         return false;
     }
 
@@ -443,6 +478,8 @@ bool knowledge_euclidean_to_hyperbolic(knowledge_item_t *item, uint32_t target_d
     // Allocate hyperbolic coordinates
     float *hyp_coords = (float*)nimcp_malloc(target_dim * sizeof(float));
     if (!hyp_coords) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "knowledge_euclidean_to_hyperbolic: failed to allocate coords");
         return false;
     }
 
@@ -479,6 +516,8 @@ bool knowledge_euclidean_to_hyperbolic(knowledge_item_t *item, uint32_t target_d
     nimcp_free(hyp_coords);
 
     if (!item->hyperbolic_embedding) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "knowledge_euclidean_to_hyperbolic: failed to create hyperbolic point");
         return false;
     }
 
@@ -497,6 +536,8 @@ uint32_t knowledge_get_hierarchical_path(knowledge_system_t system,
                                          knowledge_item_t **path_out,
                                          uint32_t max_depth) {
     if (!system || !concept_name || !path_out || max_depth == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "knowledge_get_hierarchical_path: invalid parameters");
         return 0;
     }
 

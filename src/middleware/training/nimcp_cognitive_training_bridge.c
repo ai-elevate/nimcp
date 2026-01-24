@@ -562,6 +562,8 @@ cognitive_training_bridge_t* cognitive_training_create(
     );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

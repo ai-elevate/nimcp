@@ -190,6 +190,8 @@ emotion_tensor_bridge_t* emotion_tensor_bridge_create(
     /* Guard: validate tensor */
     if (!tensor) {
         BRIDGE_LOG_ERROR("NULL tensor system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tensor is NULL");
+
         return NULL;
     }
 
@@ -197,6 +199,8 @@ emotion_tensor_bridge_t* emotion_tensor_bridge_create(
     emotion_tensor_bridge_t* bridge = calloc(1, sizeof(emotion_tensor_bridge_t));
     if (!bridge) {
         BRIDGE_LOG_ERROR("Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

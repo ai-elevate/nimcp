@@ -26,7 +26,11 @@
 
 bool fractal_cognitive_init(neural_network_t network, fractal_cognitive_cache_t *cache) {
     if (!network || !cache) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "fractal_cognitive_init: invalid parameters");
+
+            return false;
     }
 
     memset(cache, 0, sizeof(fractal_cognitive_cache_t));
@@ -118,7 +122,11 @@ void fractal_cognitive_free(fractal_cognitive_cache_t *cache) {
 
 bool fractal_cognitive_refresh(neural_network_t network, fractal_cognitive_cache_t *cache) {
     if (!cache) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "fractal_cognitive_refresh: cache is NULL");
+
+            return false;
     }
 
     // Free old cache
@@ -134,7 +142,11 @@ bool fractal_cognitive_refresh(neural_network_t network, fractal_cognitive_cache
 
 bool fractal_is_hub_neuron(const fractal_cognitive_cache_t *cache, uint32_t neuron_index) {
     if (!cache || !cache->valid || !cache->hub_indices) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "fractal_is_hub_neuron: invalid parameters");
+
+            return false;
     }
 
     // Binary search (assuming hub_indices is sorted)
@@ -193,7 +205,11 @@ uint32_t fractal_get_central_neighbors(neural_network_t network,
                                         uint32_t k,
                                         uint32_t *central_out) {
     if (!network || !cache || !cache->valid || !central_out || k == 0) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "fractal_get_central_neighbors: invalid parameters");
+
+            return 0;
     }
 
     // Simplified: Return k most central neurons from entire network
@@ -207,7 +223,11 @@ uint32_t fractal_get_central_neighbors(neural_network_t network,
     uint32_t N = cache->stats.num_neurons;
     scored_neuron_t *scored = (scored_neuron_t*)nimcp_malloc(N * sizeof(scored_neuron_t));
     if (!scored) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "if: scored is NULL");
+
+            return 0;
     }
 
     // Score all neurons
@@ -290,7 +310,11 @@ bool fractal_get_neurons_at_level(const fractal_cognitive_cache_t *cache,
                                    uint32_t **neurons_out,
                                    uint32_t *count_out) {
     if (!cache || !cache->valid || !neurons_out || !count_out) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "fractal_get_neurons_at_level: invalid parameters");
+
+            return false;
     }
 
     uint32_t N = cache->stats.num_neurons;

@@ -542,6 +542,8 @@ portia_fusion_ctx_t* portia_fusion_init(
     // Validate input
     if (!config) {
         LOG_ERROR("Invalid config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
@@ -562,6 +564,8 @@ portia_fusion_ctx_t* portia_fusion_init(
     portia_fusion_ctx_t* ctx = nimcp_calloc(1, sizeof(portia_fusion_ctx_t));
     if (!ctx) {
         LOG_ERROR("Failed to allocate fusion context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 

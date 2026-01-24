@@ -259,7 +259,13 @@ static float compute_inflammation_penalty(const reasoning_immune_bridge_t* bridg
  * ============================================================================ */
 
 int reasoning_immune_default_config(reasoning_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* All features enabled by default */
     config->enable_cytokine_reasoning_modulation = true;
@@ -304,6 +310,8 @@ reasoning_immune_bridge_t* reasoning_immune_bridge_create(
         nimcp_malloc(sizeof(reasoning_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("reasoning_immune_bridge", "Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -376,7 +384,13 @@ void reasoning_immune_bridge_destroy(reasoning_immune_bridge_t* bridge) {
  * ============================================================================ */
 
 int reasoning_immune_apply_cytokine_effects(reasoning_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     pthread_mutex_lock(bridge->base.mutex);
 
@@ -421,7 +435,13 @@ int reasoning_immune_apply_cytokine_effects(reasoning_immune_bridge_t* bridge) {
 }
 
 int reasoning_immune_apply_inflammation_effects(reasoning_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     pthread_mutex_lock(bridge->base.mutex);
 
@@ -480,7 +500,13 @@ int reasoning_immune_report_contradiction(
     reasoning_immune_bridge_t* bridge,
     const char* contradiction_description
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_contradiction_immune_alert) return 0;
 
     pthread_mutex_lock(bridge->base.mutex);
@@ -514,7 +540,13 @@ int reasoning_immune_report_proof_failure(
     reasoning_immune_bridge_t* bridge,
     const char* goal_description
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_reasoning_failure_immune_trigger) return 0;
 
     pthread_mutex_lock(bridge->base.mutex);
@@ -575,7 +607,13 @@ int reasoning_immune_report_unification_error(
     reasoning_immune_bridge_t* bridge,
     const char* error_description
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_reasoning_failure_immune_trigger) return 0;
 
     pthread_mutex_lock(bridge->base.mutex);
@@ -608,7 +646,13 @@ int reasoning_immune_report_unification_error(
 }
 
 int reasoning_immune_clear_failure_tracking(reasoning_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     pthread_mutex_lock(bridge->base.mutex);
 
@@ -723,7 +767,13 @@ int reasoning_immune_get_stats(
 }
 
 int reasoning_immune_reset_stats(reasoning_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     pthread_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(reasoning_immune_stats_t));
@@ -754,6 +804,9 @@ reasoning_immune_bridge_t* reasoning_connect_immune(
 
     if (!bridge) {
         LOG_MODULE_ERROR("reasoning_connect_immune", "Bridge creation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
         return NULL;
     }
 

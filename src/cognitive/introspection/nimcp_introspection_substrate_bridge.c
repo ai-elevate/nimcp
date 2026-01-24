@@ -198,11 +198,16 @@ introspection_substrate_bridge_t* introspection_substrate_bridge_create(
     /* Guard: validate component pointers */
     if (!substrate) {
         NIMCP_LOGGING_ERROR("Cannot create bridge: NULL substrate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
+
         return NULL;
     }
 
     if (!introspection) {
         NIMCP_LOGGING_ERROR("Cannot create bridge: NULL introspection module");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "introspection is NULL");
+
+
         return NULL;
     }
 
@@ -211,6 +216,8 @@ introspection_substrate_bridge_t* introspection_substrate_bridge_create(
         (introspection_substrate_bridge_t*)nimcp_malloc(sizeof(introspection_substrate_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate introspection substrate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

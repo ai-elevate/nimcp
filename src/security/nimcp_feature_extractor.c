@@ -177,7 +177,11 @@ static void analyze_char_classes(const uint8_t* data, size_t len,
 
 uint32_t nimcp_detect_nesting_depth(const uint8_t* data, size_t len) {
     if (!data || len == 0) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "nimcp_detect_nesting_depth: invalid parameters");
+
+            return 0;
     }
 
     uint32_t max_depth = 0;

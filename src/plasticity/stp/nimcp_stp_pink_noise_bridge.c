@@ -119,7 +119,9 @@ stp_pink_noise_bridge_t* stp_pink_noise_create(const stp_pink_noise_config_t* co
     stp_pink_noise_config_t default_cfg;
     if (!config) {
         if (stp_pink_noise_default_config(&default_cfg) != 0) {
-            return NULL;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return NULL;
         }
         config = &default_cfg;
     }

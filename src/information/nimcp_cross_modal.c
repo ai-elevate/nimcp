@@ -452,6 +452,8 @@ cross_modal_routing_graph_t* cross_modal_create_routing_graph(
         nimcp_log_error("cross_modal_create_routing_graph: NULL modality_names");
         NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
                     "cross_modal_create_routing_graph: NULL modality_names");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "modality_names is NULL");
+
         return NULL;
     }
 
@@ -471,6 +473,8 @@ cross_modal_routing_graph_t* cross_modal_create_routing_graph(
         nimcp_log_error("cross_modal_create_routing_graph: malloc failed");
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(cross_modal_routing_graph_t),
                           "cross_modal_create_routing_graph: Failed to allocate graph");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph is NULL");
+
         return NULL;
     }
 

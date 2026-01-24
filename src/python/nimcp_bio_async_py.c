@@ -176,6 +176,8 @@ static PyObject* BioPromise_get_future(BioPromiseObject* self, PyObject* Py_UNUS
     /* Create Python wrapper - note: the C future is owned by the promise */
     PyObject* future_obj = PyObject_CallObject((PyObject*)&BioFutureType, NULL);
     if (future_obj == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "future_obj is NULL");
+
         return NULL;
     }
 

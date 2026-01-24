@@ -67,6 +67,8 @@ static PyObject* BrainAntigen_FromC(const brain_antigen_t* antigen)
 {
     BrainAntigenObject* obj = PyObject_New(BrainAntigenObject, &BrainAntigenType);
     if (obj == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "obj is NULL");
+
         return NULL;
     }
 
@@ -151,6 +153,8 @@ static PyObject* BrainImmuneStats_FromC(const brain_immune_stats_t* stats)
 {
     BrainImmuneStatsObject* obj = PyObject_New(BrainImmuneStatsObject, &BrainImmuneStatsType);
     if (obj == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "obj is NULL");
+
         return NULL;
     }
 

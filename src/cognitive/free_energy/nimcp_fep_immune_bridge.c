@@ -66,7 +66,13 @@ static float get_inflammation_lr_factor(brain_inflammation_level_t level) {
  * ============================================================================ */
 
 int fep_immune_bridge_default_config(fep_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->prediction_error_threshold = FEP_IMMUNE_PE_THRESHOLD_MEDIUM;
     config->inflammation_precision_factor = 0.3f;
@@ -90,6 +96,8 @@ fep_immune_bridge_t* fep_immune_bridge_create(const fep_immune_config_t* config)
         1, sizeof(fep_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate FEP-immune bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -148,7 +156,13 @@ int fep_immune_bridge_connect_fep(
     fep_immune_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     /* Allow NULL fep to disconnect/reset FEP connection */
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -174,7 +188,13 @@ int fep_immune_bridge_connect_immune(
 }
 
 int fep_immune_bridge_disconnect(fep_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -192,7 +212,13 @@ int fep_immune_report_prediction_failure(
     fep_immune_bridge_t* bridge,
     float magnitude
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_pe_immune_activation) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -251,7 +277,13 @@ int fep_immune_report_model_violation(
 }
 
 int fep_immune_transfer_belief_to_memory(fep_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_immune_memory_transfer) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -281,7 +313,13 @@ int fep_immune_transfer_belief_to_memory(fep_immune_bridge_t* bridge) {
 }
 
 int fep_immune_convergence_il10_release(fep_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_convergence_il10) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -398,7 +436,13 @@ int fep_immune_get_learning_modifier(
 }
 
 int fep_immune_update_cytokine_effects(fep_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -458,7 +502,13 @@ int fep_immune_bridge_update(
     fep_immune_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -639,7 +689,13 @@ brain_inflammation_level_t fep_immune_get_inflammation_level(
  * ============================================================================ */
 
 int fep_immune_bridge_connect_bio_async(fep_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -660,7 +716,13 @@ int fep_immune_bridge_connect_bio_async(fep_immune_bridge_t* bridge) {
 }
 
 int fep_immune_bridge_disconnect_bio_async(fep_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

@@ -212,6 +212,8 @@ cortical_surround_t* cortical_surround_create(const surround_config_t* config) {
     cortical_surround_t* surround = nimcp_malloc(sizeof(cortical_surround_t));
     if (!surround) {
         NIMCP_LOGGING_ERROR("Failed to allocate surround module");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "surround is NULL");
+
         return NULL;
     }
 

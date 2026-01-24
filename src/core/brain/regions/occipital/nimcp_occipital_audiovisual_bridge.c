@@ -430,6 +430,9 @@ occipital_audiovisual_bridge_t* occipital_av_bridge_create(
 
     if (!occipital) {
         LOG_ERROR(AV_BRIDGE_LOG_MODULE, "NULL occipital adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital is NULL");
+
+
         return NULL;
     }
 
@@ -437,6 +440,8 @@ occipital_audiovisual_bridge_t* occipital_av_bridge_create(
         (occipital_audiovisual_bridge_t*)nimcp_malloc(sizeof(*bridge));
     if (!bridge) {
         LOG_ERROR(AV_BRIDGE_LOG_MODULE, "Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -476,7 +481,13 @@ void occipital_av_bridge_destroy(occipital_audiovisual_bridge_t* bridge) {
 }
 
 int occipital_av_bridge_reset(occipital_audiovisual_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Reset lip state */
     memset(&bridge->lip_state, 0, sizeof(bridge->lip_state));
@@ -517,7 +528,16 @@ int occipital_av_connect_audio_cortex(
     occipital_audiovisual_bridge_t* bridge,
     audio_cortex_t* audio) {
 
-    if (!bridge) return -1;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return -1;
+
+
+    }
 
     bridge->audio_cortex = audio;
 
@@ -530,7 +550,16 @@ int occipital_av_connect_broca(
     occipital_audiovisual_bridge_t* bridge,
     broca_adapter_t* broca) {
 
-    if (!bridge) return -1;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return -1;
+
+
+    }
 
     bridge->broca = broca;
 
@@ -543,7 +572,16 @@ int occipital_av_connect_speech_cortex(
     occipital_audiovisual_bridge_t* bridge,
     speech_cortex_t* speech) {
 
-    if (!bridge) return -1;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return -1;
+
+
+    }
 
     bridge->speech_cortex = speech;
 
@@ -556,7 +594,16 @@ int occipital_av_bridge_register_bio_async(
     occipital_audiovisual_bridge_t* bridge,
     struct bio_router_struct* router) {
 
-    if (!bridge) return -1;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return -1;
+
+
+    }
 
     bridge->router = router;
 
@@ -624,7 +671,13 @@ int occipital_av_process_observation(
 }
 
 int occipital_av_bridge_update(occipital_audiovisual_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     uint64_t now = get_time_us();
     float dt_ms = (float)(now - bridge->last_update_us) / 1000.0f;
@@ -731,7 +784,13 @@ int occipital_av_bridge_get_effects(
 }
 
 int occipital_av_bridge_apply_effects(occipital_audiovisual_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Effects are applied via bio-async messages */
     /* The connected modules receive updates through message handlers */
@@ -749,7 +808,16 @@ int occipital_av_predict_audio_timing(
     uint32_t* predicted_phoneme_id,
     float* confidence) {
 
-    if (!bridge) return -1;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return -1;
+
+
+    }
     if (!bridge->config.enable_temporal_prediction) return -1;
 
     /* Use lip velocity to predict timing */
@@ -799,7 +867,16 @@ int occipital_av_report_audio_event(
     float actual_onset_ms,
     uint32_t actual_phoneme_id) {
 
-    if (!bridge) return -1;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return -1;
+
+
+    }
 
     uint64_t now = get_time_us();
 

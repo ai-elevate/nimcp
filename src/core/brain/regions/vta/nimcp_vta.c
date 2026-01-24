@@ -615,7 +615,11 @@ nimcp_vta_error_t nimcp_vta_add_projection(
 
 nimcp_vta_projection_t* nimcp_vta_get_projection(nimcp_vta_system_t* vta, uint32_t id) {
     if (!vta || !vta->initialized || id >= vta->num_projections) {
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "nimcp_vta_get_projection: invalid parameters");
+
+            return NULL;
     }
     return &vta->projections[id];
 }
@@ -625,7 +629,11 @@ nimcp_vta_projection_t* nimcp_vta_get_projection_by_target(
     nimcp_vta_target_t target
 ) {
     if (!vta || !vta->initialized) {
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "nimcp_vta_get_projection_by_target: invalid parameters");
+
+            return NULL;
     }
 
     for (uint32_t i = 0; i < vta->num_projections; i++) {

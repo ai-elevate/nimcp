@@ -157,7 +157,11 @@ static float compute_graph_laplacian(
 astrocyte_calcium_system_t* astrocyte_calcium_system_create(astrocyte_network_t* network)
 {
     if (!network || network->num_astrocytes == 0) {
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "astrocyte_calcium_system_create: invalid parameters");
+
+            return NULL;
     }
 
     astrocyte_calcium_system_t* system = (astrocyte_calcium_system_t*) nimcp_malloc(
@@ -478,7 +482,11 @@ bool astrocyte_calcium_system_should_release_gliotransmitter(
     uint32_t astrocyte_id)
 {
     if (!system || astrocyte_id >= system->num_astrocytes) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "astrocyte_calcium_system_should_release_gliotransmitter: invalid parameters");
+
+            return false;
     }
 
     nimcp_spinlock_lock(&system->lock);

@@ -112,7 +112,15 @@ static bool handle_violation(
     void* call_site)
 {
     if (!cfi)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "handle_violation: cfi is NULL");
+
+            return false;
+
+        }
 
     // Update statistics
     cfi->stats.violations_detected++;

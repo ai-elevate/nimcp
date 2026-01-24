@@ -111,7 +111,13 @@ static void update_stdp_windows(physics_snn_bridge_t* bridge) {
 //=============================================================================
 
 int physics_snn_default_config(physics_snn_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->encoding = PHYSICS_SNN_ENCODE_PRECISE;
     config->spike_threshold_mv = 0.0f;
@@ -368,7 +374,13 @@ int physics_snn_process_stdp(
     physics_snn_stdp_event_t* events,
     uint32_t max_events
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     int update_count = 0;
     uint32_t event_idx = 0;
@@ -414,7 +426,13 @@ int physics_snn_set_temperature(
     physics_snn_bridge_t* bridge,
     float temperature_k
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->temperature_k = temperature_k;
     update_stdp_windows(bridge);
     return 0;
@@ -424,7 +442,13 @@ int physics_snn_set_atp(
     physics_snn_bridge_t* bridge,
     float atp_level
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->atp_level = (atp_level < 0.0f) ? 0.0f :
                         (atp_level > 1.0f) ? 1.0f : atp_level;
     return 0;
@@ -470,7 +494,13 @@ int physics_snn_convert_eligibility(
     physics_snn_bridge_t* bridge,
     float coherence
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     int converted = 0;
 
@@ -499,7 +529,13 @@ int physics_snn_decay_eligibility(
     physics_snn_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     float decay = expf(-dt_ms / bridge->config.eligibility_decay_ms);
 
@@ -561,7 +597,13 @@ int physics_snn_update(
     physics_snn_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->sim_time_ms += dt_ms;
 
@@ -579,7 +621,13 @@ int physics_snn_update(
 }
 
 int physics_snn_reset(physics_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->spike_head = 0;
     bridge->spike_count = 0;
@@ -617,7 +665,13 @@ int physics_snn_get_stdp_windows(
     float* ltp_window_ms,
     float* ltd_window_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     if (ltp_window_ms) *ltp_window_ms = bridge->current_ltp_window;
     if (ltd_window_ms) *ltd_window_ms = bridge->current_ltd_window;

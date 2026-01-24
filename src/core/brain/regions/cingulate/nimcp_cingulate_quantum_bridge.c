@@ -200,6 +200,8 @@ cingulate_quantum_bridge_t* cingulate_quantum_bridge_create(
         1, sizeof(cingulate_quantum_bridge_t));
     if (!bridge) {
         LOG_ERROR("[%s] Failed to allocate bridge memory", CING_QUANTUM_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

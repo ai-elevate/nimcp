@@ -113,6 +113,8 @@ subscriber_manager_t subscriber_manager_create(void) {
     subscriber_manager_t manager = nimcp_calloc(1, sizeof(struct subscriber_manager_struct));
     if (!manager) {
         set_error("Failed to allocate manager");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+
         return NULL;
     }
 

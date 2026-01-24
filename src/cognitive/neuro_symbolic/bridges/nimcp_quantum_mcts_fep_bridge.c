@@ -5,6 +5,7 @@
 
 #include "cognitive/neuro_symbolic/bridges/nimcp_quantum_mcts_fep_bridge.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <math.h>
 #include <string.h>
 

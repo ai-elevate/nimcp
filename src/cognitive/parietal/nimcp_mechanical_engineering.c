@@ -60,6 +60,8 @@ mechanical_eng_t* mechanical_eng_create_custom(const me_config_t* config) {
     mechanical_eng_t* me = calloc(1, sizeof(mechanical_eng_t));
     if (!me) {
         set_error("Failed to allocate mechanical_eng");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me is NULL");
+
         return NULL;
     }
     me->config = config ? *config : mechanical_eng_default_config();
@@ -77,7 +79,13 @@ void mechanical_eng_destroy(mechanical_eng_t* me) {
  * ============================================================================ */
 
 int mechanical_eng_get_material(me_material_type_t type, me_material_t* material) {
-    if (!material) return -1;
+    if (!material) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "material is NULL");
+
+        return -1;
+
+    }
     memset(material, 0, sizeof(*material));
     material->type = type;
 
@@ -118,7 +126,13 @@ int mechanical_eng_create_material(
     float yield_strength,
     me_material_t* material
 ) {
-    if (!material) return -1;
+    if (!material) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "material is NULL");
+
+        return -1;
+
+    }
     memset(material, 0, sizeof(*material));
     material->type = ME_MATERIAL_CUSTOM;
     if (name) {
@@ -408,13 +422,25 @@ float mechanical_eng_stress_concentration(
  * ============================================================================ */
 
 int mechanical_eng_set_inflammation(mechanical_eng_t* me, float level) {
-    if (!me) return -1;
+    if (!me) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me is NULL");
+
+        return -1;
+
+    }
     me->inflammation_level = level < 0.0f ? 0.0f : (level > 1.0f ? 1.0f : level);
     return 0;
 }
 
 int mechanical_eng_set_fatigue(mechanical_eng_t* me, float level) {
-    if (!me) return -1;
+    if (!me) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "me is NULL");
+
+        return -1;
+
+    }
     me->fatigue_level = level < 0.0f ? 0.0f : (level > 1.0f ? 1.0f : level);
     return 0;
 }

@@ -235,7 +235,11 @@ bool self_model_get(self_model_system_t system, self_model_t* model)
 
     // Guard: NULL checks
     if (!system || !model) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "if: invalid parameters");
+
+            return false;
     }
 
     nimcp_mutex_lock(&system->mutex);
@@ -255,7 +259,11 @@ bool self_model_add_belief(self_model_system_t system, const self_belief_t* beli
 {
     // Guard: NULL checks
     if (!system || !belief) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "self_model_add_belief: invalid parameters");
+
+            return false;
     }
 
     nimcp_mutex_lock(&system->mutex);
@@ -288,7 +296,11 @@ bool self_model_update_belief(self_model_system_t system,
 {
     // Guard: NULL checks
     if (!system || !belief_content) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "self_model_update_belief: invalid parameters");
+
+            return false;
     }
 
     nimcp_mutex_lock(&system->mutex);
@@ -315,7 +327,11 @@ bool self_model_update_capability(self_model_system_t system,
 {
     // Guard: NULL checks
     if (!system || !capability) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "self_model_update_capability: invalid parameters");
+
+            return false;
     }
 
     nimcp_mutex_lock(&system->mutex);
@@ -352,7 +368,11 @@ bool self_model_record_performance(self_model_system_t system,
 {
     // Guard: NULL checks
     if (!system || !capability_name) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "self_model_record_performance: invalid parameters");
+
+            return false;
     }
 
     nimcp_mutex_lock(&system->mutex);
@@ -402,7 +422,11 @@ bool self_model_update_state(self_model_system_t system,
 {
     // Guard: NULL checks
     if (!system || !state) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "self_model_update_state: invalid parameters");
+
+            return false;
     }
 
     nimcp_mutex_lock(&system->mutex);
@@ -420,7 +444,11 @@ bool self_model_set_boundary(self_model_system_t system,
 {
     // Guard: NULL checks
     if (!system || !boundary) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "self_model_set_boundary: invalid parameters");
+
+            return false;
     }
 
     nimcp_mutex_lock(&system->mutex);
@@ -451,7 +479,11 @@ bool self_model_is_part_of_self(self_model_system_t system, uint32_t entity_id)
 {
     // Guard: NULL check
     if (!system) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "self_model_is_part_of_self: system is NULL");
+
+            return false;
     }
 
     nimcp_mutex_lock(&system->mutex);
@@ -476,7 +508,11 @@ bool self_model_generate_summary(self_model_system_t system,
 {
     // Guard: NULL checks
     if (!system || !summary || summary_len == 0) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "self_model_generate_summary: invalid parameters");
+
+            return false;
     }
 
     nimcp_mutex_lock(&system->mutex);
@@ -542,7 +578,11 @@ bool self_model_check_coherence(self_model_system_t system,
 {
     // Guard: NULL checks
     if (!system || !incoherence_score) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "self_model_check_coherence: invalid parameters");
+
+            return false;
     }
 
     nimcp_mutex_lock(&system->mutex);
@@ -584,7 +624,11 @@ bool self_model_reflect(self_model_system_t system,
 {
     // Guard: NULL check
     if (!system) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "self_model_reflect: system is NULL");
+
+            return false;
     }
 
     nimcp_mutex_lock(&system->mutex);
@@ -612,7 +656,11 @@ bool self_model_set_personality(self_model_system_t system,
 {
     // Guard: NULL check
     if (!system) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "self_model_set_personality: system is NULL");
+
+            return false;
     }
 
     nimcp_mutex_lock(&system->mutex);
@@ -633,7 +681,11 @@ bool self_model_set_personality(self_model_system_t system,
 bool self_model_connect_internal_kg(self_model_system_t system, brain_t brain)
 {
     if (!system) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "self_model_connect_internal_kg: system is NULL");
+
+            return false;
     }
 
     nimcp_mutex_lock(&system->mutex);
@@ -682,7 +734,11 @@ void self_model_disconnect_internal_kg(self_model_system_t system)
 bool self_model_update_topology_awareness(self_model_system_t system)
 {
     if (!system) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "self_model_update_topology_awareness: system is NULL");
+
+            return false;
     }
 
     nimcp_mutex_lock(&system->mutex);
@@ -763,7 +819,11 @@ int self_model_get_boundary_from_kg(
 uint32_t self_model_discover_capabilities_from_kg(self_model_system_t system)
 {
     if (!system) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "self_model_discover_capabilities_from_kg: system is NULL");
+
+            return 0;
     }
 
     nimcp_mutex_lock(&system->mutex);

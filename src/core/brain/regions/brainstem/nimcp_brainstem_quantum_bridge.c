@@ -226,6 +226,9 @@ brainstem_quantum_bridge_t* brainstem_quantum_bridge_create(
 
     if (!adapter) {
         LOG_ERROR("[%s] NULL adapter provided", BRAINSTEM_QUANTUM_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+
         return NULL;
     }
 
@@ -234,6 +237,8 @@ brainstem_quantum_bridge_t* brainstem_quantum_bridge_create(
     brainstem_quantum_bridge_t* bridge = nimcp_calloc(1, sizeof(brainstem_quantum_bridge_t));
     if (!bridge) {
         LOG_ERROR("[%s] Failed to allocate bridge memory", BRAINSTEM_QUANTUM_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

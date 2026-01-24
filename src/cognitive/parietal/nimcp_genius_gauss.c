@@ -16,6 +16,7 @@
 #include "utils/time/nimcp_time.h"
 #include <math.h>
 #include <string.h>
+#include "utils/exception/nimcp_exception_macros.h"
 
 /* ============================================================================
  * Gauss Mode Analysis Implementation

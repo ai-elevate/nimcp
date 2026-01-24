@@ -445,6 +445,8 @@ config_hash_table_t config_hash_create(size_t initial_capacity) {
     unified_mem_manager_t mem_manager = unified_mem_create(&mem_config);
     if (!mem_manager) {
         LOG_ERROR("Failed to create unified memory manager");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mem_manager is NULL");
+
         return NULL;
     }
 
@@ -456,6 +458,8 @@ config_hash_table_t config_hash_create(size_t initial_capacity) {
     if (!table_handle) {
         LOG_ERROR("Failed to allocate config hash table structure");
         unified_mem_destroy(mem_manager);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "table_handle is NULL");
+
         return NULL;
     }
 
@@ -479,6 +483,8 @@ config_hash_table_t config_hash_create(size_t initial_capacity) {
         LOG_ERROR("Failed to allocate buckets array");
         unified_mem_free(table_handle);
         unified_mem_destroy(mem_manager);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buckets_handle is NULL");
+
         return NULL;
     }
 
@@ -834,6 +840,8 @@ void config_hash_iterate(
 config_hash_table_t config_hash_snapshot(config_hash_table_t table) {
     if (!table) {
         LOG_ERROR("Invalid table for snapshot");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "table is NULL");
+
         return NULL;
     }
 
@@ -848,6 +856,8 @@ config_hash_table_t config_hash_snapshot(config_hash_table_t table) {
     config_hash_table_t new_table = config_hash_create(table->capacity);
     if (!new_table) {
         nimcp_platform_rwlock_unlock(&table->lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_table is NULL");
+
         return NULL;
     }
 

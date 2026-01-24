@@ -284,7 +284,11 @@ uint32_t nimcp_barrier_get_waiting(const nimcp_barrier_t* barrier)
 {
     // Validate barrier
     if (!barrier) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_barrier_get_waiting: barrier is NULL");
+
+            return 0;
     }
 
     // Lock mutex (need to cast away const for lock)
@@ -361,7 +365,11 @@ nimcp_result_t nimcp_barrier_reset(nimcp_barrier_t* barrier, uint32_t count)
 uint64_t nimcp_barrier_get_total_waits(const nimcp_barrier_t* barrier)
 {
     if (!barrier) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_barrier_get_total_waits: barrier is NULL");
+
+            return 0;
     }
 
     nimcp_barrier_t* b = (nimcp_barrier_t*)barrier;
@@ -385,7 +393,11 @@ uint64_t nimcp_barrier_get_total_waits(const nimcp_barrier_t* barrier)
 uint64_t nimcp_barrier_get_total_cycles(const nimcp_barrier_t* barrier)
 {
     if (!barrier) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_barrier_get_total_cycles: barrier is NULL");
+
+            return 0;
     }
 
     nimcp_barrier_t* b = (nimcp_barrier_t*)barrier;

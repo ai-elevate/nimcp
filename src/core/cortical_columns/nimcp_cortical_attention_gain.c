@@ -136,6 +136,8 @@ cortical_attention_gain_t* cortical_attention_create(
      */
     if (!hypercolumn) {
         NIMCP_LOGGING_ERROR("cortical_attention_create: NULL hypercolumn");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypercolumn is NULL");
+
         return NULL;
     }
 
@@ -147,6 +149,8 @@ cortical_attention_gain_t* cortical_attention_create(
         (cortical_attention_gain_t*)nimcp_calloc(1, sizeof(cortical_attention_gain_t));
     if (!attention) {
         NIMCP_LOGGING_ERROR("cortical_attention_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention is NULL");
+
         return NULL;
     }
 
@@ -286,7 +290,13 @@ int cortical_attention_set_mode(
     /* WHAT: Validate input
      * WHY:  Guard clause
      */
-    if (!attention) return -1;
+    if (!attention) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention is NULL");
+
+        return -1;
+
+    }
 
     /* WHAT: Lock mutex
      * WHY:  Thread safety
@@ -329,7 +339,13 @@ int cortical_attention_set_spotlight(
     /* WHAT: Validate input
      * WHY:  Guard clause
      */
-    if (!attention) return -1;
+    if (!attention) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention is NULL");
+
+        return -1;
+
+    }
     if (radius <= 0.0f || intensity < 0.0f || intensity > 1.0f) {
         NIMCP_LOGGING_ERROR("Invalid spotlight parameters");
         return -1;
@@ -367,7 +383,13 @@ int cortical_attention_set_feature_target(
     /* WHAT: Validate input
      * WHY:  Guard clause
      */
-    if (!attention) return -1;
+    if (!attention) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention is NULL");
+
+        return -1;
+
+    }
 
     /* WHAT: Lock mutex
      * WHY:  Thread safety
@@ -401,7 +423,13 @@ int cortical_attention_add_spotlight(
     /* WHAT: Validate input
      * WHY:  Guard clause
      */
-    if (!attention) return -1;
+    if (!attention) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention is NULL");
+
+        return -1;
+
+    }
     if (radius <= 0.0f || intensity < 0.0f || intensity > 1.0f) {
         return -1;
     }
@@ -454,7 +482,13 @@ int cortical_attention_clear_spotlights(cortical_attention_gain_t* attention) {
     /* WHAT: Validate input
      * WHY:  Guard clause
      */
-    if (!attention) return -1;
+    if (!attention) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention is NULL");
+
+        return -1;
+
+    }
 
     /* WHAT: Lock mutex
      * WHY:  Thread safety
@@ -490,7 +524,13 @@ int cortical_attention_update_gains(cortical_attention_gain_t* attention) {
     /* WHAT: Validate input
      * WHY:  Guard clause
      */
-    if (!attention) return -1;
+    if (!attention) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention is NULL");
+
+        return -1;
+
+    }
 
     /* WHAT: Lock mutex
      * WHY:  Thread safety during update
@@ -748,7 +788,13 @@ int cortical_attention_disconnect_fep(cortical_attention_gain_t* attention) {
     /* WHAT: Validate input
      * WHY:  Guard clause
      */
-    if (!attention) return -1;
+    if (!attention) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention is NULL");
+
+        return -1;
+
+    }
 
     /* WHAT: Clear FEP system
      * WHY:  Disable coupling
@@ -786,7 +832,13 @@ int cortical_attention_update_from_precision(
     /* WHAT: Validate input
      * WHY:  Guard clause
      */
-    if (!attention) return -1;
+    if (!attention) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention is NULL");
+
+        return -1;
+
+    }
 
     /* WHAT: Update current precision
      * WHY:  Store for gain computation
@@ -878,7 +930,13 @@ int cortical_attention_connect_bio_async(cortical_attention_gain_t* attention) {
     /* WHAT: Validate input
      * WHY:  Guard clause
      */
-    if (!attention) return -1;
+    if (!attention) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention is NULL");
+
+        return -1;
+
+    }
 
     /* WHAT: Check if already connected
      * WHY:  Avoid double registration
@@ -913,7 +971,13 @@ int cortical_attention_disconnect_bio_async(cortical_attention_gain_t* attention
     /* WHAT: Validate input
      * WHY:  Guard clause
      */
-    if (!attention) return -1;
+    if (!attention) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention is NULL");
+
+        return -1;
+
+    }
 
     /* WHAT: Check if connected
      * WHY:  Only disconnect if connected

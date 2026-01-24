@@ -98,6 +98,8 @@ static PyObject* HealthAgentStats_FromC(const health_agent_stats_t* stats)
 {
     HealthAgentStatsObject* obj = PyObject_New(HealthAgentStatsObject, &HealthAgentStatsType);
     if (obj == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "obj is NULL");
+
         return NULL;
     }
 
@@ -754,6 +756,8 @@ static PyObject* HealthAgent_use_engram_recall(HealthAgentObject* self, PyObject
     uint64_t* recalled_ids = (uint64_t*)malloc(max_recalls * sizeof(uint64_t));
     if (!recalled_ids) {
         PyErr_SetString(PyExc_MemoryError, "Failed to allocate recall buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recalled_ids is NULL");
+
         return NULL;
     }
 

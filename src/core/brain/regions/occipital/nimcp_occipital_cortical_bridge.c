@@ -395,6 +395,9 @@ occipital_cortical_bridge_t* occipital_cortical_bridge_create(
 
     if (!occipital) {
         LOG_ERROR(CORTICAL_BRIDGE_LOG_MODULE, "NULL occipital adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "occipital is NULL");
+
+
         return NULL;
     }
 
@@ -402,6 +405,8 @@ occipital_cortical_bridge_t* occipital_cortical_bridge_create(
         (occipital_cortical_bridge_t*)nimcp_malloc(sizeof(*bridge));
     if (!bridge) {
         LOG_ERROR(CORTICAL_BRIDGE_LOG_MODULE, "Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -454,7 +459,13 @@ void occipital_cortical_bridge_destroy(occipital_cortical_bridge_t* bridge) {
 }
 
 int occipital_cortical_bridge_reset(occipital_cortical_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Reset all column activities */
     for (uint32_t h = 0; h < bridge->num_hypercolumns; h++) {
@@ -488,7 +499,16 @@ int occipital_cortical_connect_hypercolumns(
     occipital_cortical_bridge_t* bridge,
     orientation_hypercolumn_t* hypercolumns) {
 
-    if (!bridge) return -1;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return -1;
+
+
+    }
 
     bridge->hypercolumns_external = hypercolumns;
 
@@ -501,7 +521,16 @@ int occipital_cortical_connect_topographic_map(
     occipital_cortical_bridge_t* bridge,
     topographic_map_t* map) {
 
-    if (!bridge) return -1;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return -1;
+
+
+    }
 
     bridge->topographic_map = map;
 
@@ -514,7 +543,16 @@ int occipital_cortical_connect_immune(
     occipital_cortical_bridge_t* bridge,
     cortical_immune_system_t* immune) {
 
-    if (!bridge) return -1;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return -1;
+
+
+    }
 
     bridge->immune_system = immune;
 
@@ -527,7 +565,16 @@ int occipital_cortical_bridge_register_bio_async(
     occipital_cortical_bridge_t* bridge,
     struct bio_router_struct* router) {
 
-    if (!bridge) return -1;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return -1;
+
+
+    }
 
     bridge->router = router;
 
@@ -564,7 +611,13 @@ int occipital_cortical_map_visual_to_cortical(
 }
 
 int occipital_cortical_bridge_process(occipital_cortical_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Get visual features from occipital adapter */
     /* In a full implementation, this would query the adapter for edge/orientation data */
@@ -640,7 +693,13 @@ int occipital_cortical_bridge_process(occipital_cortical_bridge_t* bridge) {
 }
 
 int occipital_cortical_bridge_update(occipital_cortical_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     uint64_t now = get_time_us();
 

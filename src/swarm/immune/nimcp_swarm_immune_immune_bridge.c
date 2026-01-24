@@ -51,7 +51,13 @@ static float get_detection_factor_for_level(brain_inflammation_level_t level)
 
 int swarm_immune_immune_default_config(swarm_immune_immune_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->enable_brain_to_swarm = true;
     config->enable_swarm_to_brain = true;
@@ -76,6 +82,8 @@ swarm_immune_immune_bridge_t* swarm_immune_immune_bridge_create(
         (swarm_immune_immune_bridge_t*)nimcp_malloc(sizeof(swarm_immune_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate swarm immune-immune bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -198,7 +206,13 @@ int swarm_immune_immune_present_swarm_threat(swarm_immune_immune_bridge_t* bridg
 
 int swarm_immune_immune_coordinate_response(swarm_immune_immune_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_coordinated_response) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -225,7 +239,13 @@ int swarm_immune_immune_coordinate_response(swarm_immune_immune_bridge_t* bridge
 
 int swarm_immune_immune_bridge_update(swarm_immune_immune_bridge_t* bridge, uint64_t delta_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     (void)delta_ms;
 
     swarm_immune_immune_apply_brain_effects(bridge);

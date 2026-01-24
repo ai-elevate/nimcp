@@ -174,7 +174,13 @@ static memory_immune_state_t determine_state(
 
 int memory_immune_default_config(memory_immune_config_t* config) {
     /* Guard: null check */
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* Working memory modulation */
     config->enable_wm_capacity_modulation = true;
@@ -222,6 +228,8 @@ memory_immune_integration_t* memory_immune_integration_create(
     if (!immune_system) {
         NIMCP_LOGGING_ERROR(MEMORY_IMMUNE_MODULE_NAME,
                        "Cannot create integration: immune_system is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_system is NULL");
+
         return NULL;
     }
 
@@ -231,6 +239,8 @@ memory_immune_integration_t* memory_immune_integration_create(
     if (!integration) {
         NIMCP_LOGGING_ERROR(MEMORY_IMMUNE_MODULE_NAME,
                        "Failed to allocate integration structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "integration is NULL");
+
         return NULL;
     }
 
@@ -321,7 +331,13 @@ void memory_immune_integration_destroy(memory_immune_integration_t* integration)
 
 int memory_immune_integration_start(memory_immune_integration_t* integration) {
     /* Guard: null check */
-    if (!integration) return -1;
+    if (!integration) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "integration is NULL");
+
+        return -1;
+
+    }
 
     /* Guard: already running */
     if (integration->running) {
@@ -347,7 +363,13 @@ int memory_immune_integration_start(memory_immune_integration_t* integration) {
 
 int memory_immune_integration_stop(memory_immune_integration_t* integration) {
     /* Guard: null check */
-    if (!integration) return -1;
+    if (!integration) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "integration is NULL");
+
+        return -1;
+
+    }
 
     /* Guard: not running */
     if (!integration->running) {
@@ -711,7 +733,13 @@ int memory_immune_reactivate_linked_pattern(
     uint32_t immune_cell_id
 ) {
     /* Guard: null check */
-    if (!integration) return -1;
+    if (!integration) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "integration is NULL");
+
+        return -1;
+
+    }
 
     /* Lock mutex */
     pthread_mutex_lock((pthread_mutex_t*)integration->mutex);
@@ -911,7 +939,13 @@ int memory_immune_set_wm_capacity_callback(
     void* user_data
 ) {
     /* Guard: null check */
-    if (!integration) return -1;
+    if (!integration) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "integration is NULL");
+
+        return -1;
+
+    }
 
     integration->on_wm_capacity_change = callback;
     integration->callback_user_data = user_data;
@@ -924,7 +958,13 @@ int memory_immune_set_encoding_callback(
     void* user_data
 ) {
     /* Guard: null check */
-    if (!integration) return -1;
+    if (!integration) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "integration is NULL");
+
+        return -1;
+
+    }
 
     integration->on_encoding_change = callback;
     integration->callback_user_data = user_data;
@@ -937,7 +977,13 @@ int memory_immune_set_memory_formed_callback(
     void* user_data
 ) {
     /* Guard: null check */
-    if (!integration) return -1;
+    if (!integration) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "integration is NULL");
+
+        return -1;
+
+    }
 
     integration->on_memory_formed = callback;
     integration->callback_user_data = user_data;
@@ -950,7 +996,13 @@ int memory_immune_set_state_change_callback(
     void* user_data
 ) {
     /* Guard: null check */
-    if (!integration) return -1;
+    if (!integration) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "integration is NULL");
+
+        return -1;
+
+    }
 
     integration->on_state_change = callback;
     integration->callback_user_data = user_data;
@@ -1092,7 +1144,13 @@ int memory_immune_check_threat_memory_in_engrams(
         integration->immune_system,
         antigen_id
     );
-    if (!antigen) return -1;
+    if (!antigen) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "antigen is NULL");
+
+        return -1;
+
+    }
 
     /* Search engrams for matching pattern */
     engram_system_t* engram_sys = integration->engram_system;
@@ -1135,11 +1193,23 @@ int memory_immune_trigger_from_engram_recall(
         integration->engram_system,
         engram_id
     );
-    if (!engram) return -1;
+    if (!engram) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engram is NULL");
+
+        return -1;
+
+    }
 
     /* Check if engram is threat-related (emotional/fearful) */
     bool is_threat_related = (engram->memory_type == MEMORY_TYPE_EMOTIONAL);
-    if (!is_threat_related) return -1;
+    if (!is_threat_related) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "is_threat_related is NULL");
+
+        return -1;
+
+    }
 
     /* Boost immune activation - simulate learned immune enhancement */
     LOG_INFO(MEMORY_IMMUNE_MODULE_NAME,
@@ -1183,7 +1253,13 @@ int memory_immune_create_semantic_immune_concept(
 ) {
     /* Guard: null checks */
     if (!integration || !integration->semantic_memory) return -1;
-    if (!concept_id) return -1;
+    if (!concept_id) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "concept_id is NULL");
+
+        return -1;
+
+    }
 
     /* Extract features from immune cell receptor pattern */
     float features[32];  /* Standard semantic feature dimension */

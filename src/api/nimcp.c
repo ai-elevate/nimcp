@@ -482,6 +482,8 @@ nimcp_brain_t nimcp_brain_load(const char* filepath) {
     nimcp_brain_t handle = (nimcp_brain_t)nimcp_malloc(sizeof(struct nimcp_brain_handle));
     if (!handle) {
         set_error("Failed to allocate brain handle");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle is NULL");
+
         return NULL;
     }
 
@@ -532,6 +534,8 @@ nimcp_brain_t nimcp_brain_snapshot_restore(
 {
     if (!name) {
         set_error("Snapshot name is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "name is NULL");
+
         return NULL;
     }
 
@@ -543,6 +547,9 @@ nimcp_brain_t nimcp_brain_snapshot_restore(
 
     if (!restored_brain) {
         set_error("Failed to restore from snapshot");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "restored_brain is NULL");
+
+
         return NULL;
     }
 
@@ -551,6 +558,8 @@ nimcp_brain_t nimcp_brain_snapshot_restore(
     if (!handle) {
         set_error("Failed to allocate brain handle");
         brain_destroy(restored_brain);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle is NULL");
+
         return NULL;
     }
 
@@ -608,6 +617,8 @@ nimcp_status_t nimcp_brain_snapshot_delete(
 nimcp_brain_t nimcp_brain_create_from_config(const char* config_filepath) {
     if (!config_filepath) {
         set_error("Config filepath is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config_filepath is NULL");
+
         return NULL;
     }
 
@@ -629,6 +640,9 @@ nimcp_brain_t nimcp_brain_create_from_config(const char* config_filepath) {
 
     if (!brain) {
         set_error("Failed to create brain from config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+
         return NULL;
     }
 
@@ -823,6 +837,8 @@ nimcp_brain_t nimcp_brain_clone_cow(nimcp_brain_t original) {
     // Guard: Validate parameters
     if (!original) {
         set_error("NULL brain provided to nimcp_brain_clone_cow");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "original is NULL");
+
         return NULL;
     }
 
@@ -835,6 +851,8 @@ nimcp_brain_t nimcp_brain_clone_cow(nimcp_brain_t original) {
     nimcp_brain_t clone_handle = (nimcp_brain_t)nimcp_malloc(sizeof(struct nimcp_brain_handle));
     if (!clone_handle) {
         set_error("Failed to allocate brain handle for COW clone");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone_handle is NULL");
+
         return NULL;
     }
 
@@ -875,6 +893,8 @@ nimcp_brain_snapshot_t nimcp_brain_snapshot_cow(nimcp_brain_t brain) {
     // Guard: Validate parameters
     if (!brain) {
         set_error("NULL brain provided to nimcp_brain_snapshot_cow");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return NULL;
     }
 
@@ -888,6 +908,8 @@ nimcp_brain_snapshot_t nimcp_brain_snapshot_cow(nimcp_brain_t brain) {
         (nimcp_brain_snapshot_t)nimcp_malloc(sizeof(struct nimcp_brain_snapshot_handle));
     if (!snapshot) {
         set_error("Failed to allocate snapshot handle");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snapshot is NULL");
+
         return NULL;
     }
 
@@ -909,6 +931,9 @@ nimcp_brain_snapshot_t nimcp_brain_snapshot_cow(nimcp_brain_t brain) {
     if (!snapshot_brain) {
         set_error("Failed to create COW clone for snapshot");
         nimcp_free(snapshot);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snapshot_brain is NULL");
+
+
         return NULL;
     }
 
@@ -1063,6 +1088,8 @@ const float* nimcp_brain_working_memory_get(
     working_memory_t* wm = brain_get_working_memory(brain->internal_brain);
     if (!wm) {
         set_error("Working memory not enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm is NULL");
+
         return NULL;
     }
 
@@ -1070,6 +1097,8 @@ const float* nimcp_brain_working_memory_get(
     const float* item = working_memory_get(wm, index, size_out);
     if (!item) {
         set_error("Invalid index or empty working memory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "item is NULL");
+
         return NULL;
     }
 
@@ -1329,6 +1358,8 @@ nimcp_network_t nimcp_network_create(
     nimcp_network_t handle = (nimcp_network_t)nimcp_malloc(sizeof(struct nimcp_network_handle));
     if (!handle) {
         set_error("Failed to allocate network handle");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle is NULL");
+
         return NULL;
     }
 
@@ -1409,6 +1440,8 @@ nimcp_ethics_t nimcp_ethics_create(void) {
     nimcp_ethics_t handle = (nimcp_ethics_t)nimcp_malloc(sizeof(struct nimcp_ethics_handle));
     if (!handle) {
         set_error("Failed to allocate ethics handle");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle is NULL");
+
         return NULL;
     }
 
@@ -1487,6 +1520,8 @@ nimcp_knowledge_t nimcp_knowledge_create(void) {
     nimcp_knowledge_t handle = (nimcp_knowledge_t)nimcp_malloc(sizeof(struct nimcp_knowledge_handle));
     if (!handle) {
         set_error("Failed to allocate knowledge handle");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle is NULL");
+
         return NULL;
     }
 

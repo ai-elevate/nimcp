@@ -143,6 +143,9 @@ symbolic_logic_t* create_default_symbolic_logic(reasoning_size_t size)
     if (!engine) {
         set_error("Failed to create symbolic logic engine");
         NIMCP_LOGGING_ERROR("create_default_symbolic_logic: creation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
+
         return NULL;
     }
 
@@ -154,6 +157,8 @@ symbolic_logic_t* create_symbolic_logic_with_config(const logic_config_t* config
 {
     if (!config) {
         set_error("Configuration is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
@@ -162,6 +167,9 @@ symbolic_logic_t* create_symbolic_logic_with_config(const logic_config_t* config
     if (!engine) {
         set_error("Failed to create symbolic logic engine");
         NIMCP_LOGGING_ERROR("create_symbolic_logic_with_config: creation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
+
         return NULL;
     }
 
@@ -180,6 +188,9 @@ symbolic_logic_t* create_forward_chaining_engine(reasoning_size_t size)
     if (!engine) {
         set_error("Failed to create forward chaining engine");
         NIMCP_LOGGING_ERROR("create_forward_chaining_engine: creation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
+
         return NULL;
     }
 
@@ -198,6 +209,9 @@ symbolic_logic_t* create_backward_chaining_engine(reasoning_size_t size)
     if (!engine) {
         set_error("Failed to create backward chaining engine");
         NIMCP_LOGGING_ERROR("create_backward_chaining_engine: creation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
+
         return NULL;
     }
 

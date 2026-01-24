@@ -364,7 +364,9 @@ cognitive_meta_controller_t* meta_controller_create(
     meta_controller_config_t default_config;
     if (!config) {
         if (meta_controller_default_config(&default_config) != NIMCP_SUCCESS) {
-            return NULL;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return NULL;
         }
         config = &default_config;
     }
@@ -381,6 +383,9 @@ cognitive_meta_controller_t* meta_controller_create(
 
     if (!controller) {
         NIMCP_LOGGING_ERROR("Failed to allocate controller");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "controller is NULL");
+
+
         return NULL;
     }
 

@@ -46,7 +46,13 @@ static const char* MSG_TYPE_NAMES[] = {
 //=============================================================================
 
 int surface_geometry_bridge_default_config(surface_geometry_bridge_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     memset(config, 0, sizeof(*config));
 

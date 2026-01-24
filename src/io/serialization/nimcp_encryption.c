@@ -108,7 +108,11 @@ static bool derive_key_from_password(
 )
 {
     if (!password || !salt || !key || password_len == 0) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "derive_key_from_password: invalid parameters");
+
+            return false;
     }
 
     // Derive key using Argon2id
@@ -140,7 +144,11 @@ bool nimcp_encrypt_with_password(
 {
     // Validate inputs
     if (!plaintext || !password || !ciphertext || !ciphertext_len) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "nimcp_encrypt_with_password: invalid parameters");
+
+            return false;
     }
 
     if (plaintext_len == 0 || password_len == 0) {
@@ -219,7 +227,11 @@ bool nimcp_decrypt_with_password(
 {
     // Validate inputs
     if (!ciphertext || !password || !plaintext || !plaintext_len) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "nimcp_decrypt_with_password: invalid parameters");
+
+            return false;
     }
 
     if (password_len == 0) {

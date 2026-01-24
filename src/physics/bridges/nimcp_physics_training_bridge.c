@@ -32,7 +32,13 @@ struct physics_train_bridge_struct {
 //=============================================================================
 
 int physics_train_default_config(physics_train_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->enable_metabolic_gating = true;
     config->atp_threshold = PHYSICS_TRAIN_ATP_THRESHOLD;
@@ -92,7 +98,13 @@ int physics_train_connect_physics(
     nimcp_thermodynamic_state_t* thermo,
     nimcp_hh_population_t* hh_pop
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->thermo = thermo;
     bridge->hh_pop = hh_pop;
@@ -193,7 +205,13 @@ bool physics_train_is_plasticity_enabled(const physics_train_bridge_t* bridge) {
 }
 
 int physics_train_update(physics_train_bridge_t* bridge, float dt) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     (void)dt;  /* Time-based updates not needed currently */
 

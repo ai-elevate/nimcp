@@ -311,12 +311,16 @@ ce_config_t ce_default_config(void) {
 ce_context_t* ce_create(const ce_config_t* config) {
     if (!config) {
         LOG_ERROR("CE", "NULL configuration provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
     ce_context_t* ctx = (ce_context_t*)nimcp_malloc(sizeof(ce_context_t));
     if (!ctx) {
         LOG_ERROR("CE", "Failed to allocate context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 

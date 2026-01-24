@@ -84,6 +84,8 @@ neural_logic_network_t brain_detach_neural_logic(brain_t brain) {
 
     // Guard: NULL brain (NULL-safe)
     if (brain == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return NULL;
     }
 
@@ -117,6 +119,8 @@ neural_logic_network_t brain_get_neural_logic(brain_t brain) {
 
     // Guard: NULL brain (NULL-safe)
     if (brain == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return NULL;
     }
 

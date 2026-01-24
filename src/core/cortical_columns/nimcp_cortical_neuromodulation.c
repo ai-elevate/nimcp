@@ -128,6 +128,8 @@ cortical_neuromod_system_t* cortical_neuromod_create(
     /* Guard clause */
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
@@ -136,6 +138,8 @@ cortical_neuromod_system_t* cortical_neuromod_create(
         (cortical_neuromod_system_t*)nimcp_calloc(1, sizeof(cortical_neuromod_system_t));
     if (!system) {
         NIMCP_LOGGING_ERROR("Failed to allocate neuromod system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
 
@@ -243,7 +247,13 @@ int cortical_neuromod_set_level(
     float level
 ) {
     /* Guard clauses */
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
     if (type >= CORTICAL_NEUROMOD_COUNT) return -1;
 
     nimcp_platform_mutex_lock(system->mutex);
@@ -366,7 +376,13 @@ int cortical_neuromod_set_column_da(
     float level
 ) {
     /* Guard clauses */
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
     if (!system->state.per_column_da) return -1;
     if (column_index >= system->state.num_columns) return -1;
 
@@ -400,7 +416,13 @@ int cortical_neuromod_update(
     float dt_ms
 ) {
     /* Guard clauses */
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
     if (dt_ms < 0.0f) return -1;
 
     nimcp_platform_mutex_lock(system->mutex);
@@ -433,7 +455,13 @@ int cortical_neuromod_update(
 
 int cortical_neuromod_compute_effects(cortical_neuromod_system_t* system) {
     /* Guard clause */
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
 
     /* Note: Caller should hold mutex */
 
@@ -634,7 +662,13 @@ int cortical_neuromod_get_stats(
 
 int cortical_neuromod_reset(cortical_neuromod_system_t* system) {
     /* Guard clause */
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -676,7 +710,13 @@ int cortical_neuromod_reset(cortical_neuromod_system_t* system) {
 
 int cortical_neuromod_connect_bio_async(cortical_neuromod_system_t* system) {
     /* Guard clause */
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -708,7 +748,13 @@ int cortical_neuromod_connect_bio_async(cortical_neuromod_system_t* system) {
 
 int cortical_neuromod_disconnect_bio_async(cortical_neuromod_system_t* system) {
     /* Guard clause */
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -757,7 +803,13 @@ int cortical_neuromod_connect_global_system(
 
 int cortical_neuromod_sync_with_global(cortical_neuromod_system_t* system) {
     /* Guard clause */
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 

@@ -64,7 +64,11 @@
  */
 bool nimcp_brain_factory_init_dragonfly_subsystem(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_dragonfly_subsystem: brain is NULL");
+
+            return false;
     }
 
     /* Initialize dragonfly fields to defaults */
@@ -182,7 +186,11 @@ bool nimcp_brain_factory_init_dragonfly_subsystem(brain_t brain) {
  */
 dragonfly_system_t* brain_get_dragonfly(brain_t brain) {
     if (!brain || !brain->dragonfly_enabled) {
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_get_dragonfly: invalid parameters");
+
+            return NULL;
     }
     return brain->dragonfly;
 }
@@ -203,7 +211,11 @@ dragonfly_system_t* brain_get_dragonfly(brain_t brain) {
 int brain_dragonfly_detect(brain_t brain, const float position[3],
                            float size, float contrast) {
     if (!brain || !brain->dragonfly_enabled || !brain->dragonfly) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_dragonfly_detect: invalid parameters");
+
+            return -1;
     }
 
     /* Create detection structure */
@@ -234,7 +246,11 @@ int brain_dragonfly_get_command(brain_t brain, float* heading_rad,
                                 float* pitch_rad, float velocity[3],
                                 float* urgency) {
     if (!brain || !brain->dragonfly_enabled || !brain->dragonfly) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_dragonfly_get_command: invalid parameters");
+
+            return -1;
     }
 
     dragonfly_motor_cmd_t cmd;
@@ -266,7 +282,11 @@ int brain_dragonfly_get_command(brain_t brain, float* heading_rad,
  */
 int brain_step_dragonfly(brain_t brain, uint64_t delta_t) {
     if (!brain || !brain->dragonfly_enabled || !brain->dragonfly) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_step_dragonfly: invalid parameters");
+
+            return -1;
     }
 
     float dt_seconds = (float)delta_t / 1000000.0f;
@@ -297,7 +317,11 @@ int brain_step_dragonfly(brain_t brain, uint64_t delta_t) {
  */
 int brain_dragonfly_get_mode(brain_t brain) {
     if (!brain || !brain->dragonfly_enabled || !brain->dragonfly) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_dragonfly_get_mode: invalid parameters");
+
+            return -1;
     }
 
     return (int)dragonfly_get_mode(brain->dragonfly);
@@ -311,7 +335,11 @@ int brain_dragonfly_get_mode(brain_t brain) {
  */
 int brain_dragonfly_abort(brain_t brain) {
     if (!brain || !brain->dragonfly_enabled || !brain->dragonfly) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_dragonfly_abort: invalid parameters");
+
+            return -1;
     }
 
     return dragonfly_abort_pursuit(brain->dragonfly);
@@ -329,7 +357,11 @@ int brain_dragonfly_abort(brain_t brain) {
  */
 dragonfly_medulla_bridge_t brain_get_dragonfly_medulla_bridge(brain_t brain) {
     if (!brain || !brain->dragonfly_enabled) {
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_get_dragonfly_medulla_bridge: invalid parameters");
+
+            return NULL;
     }
     return brain->dragonfly_medulla_bridge;
 }
@@ -347,7 +379,11 @@ dragonfly_medulla_bridge_t brain_get_dragonfly_medulla_bridge(brain_t brain) {
 int brain_dragonfly_get_modulation(brain_t brain,
                                    dragonfly_medulla_modulation_t* modulation) {
     if (!brain || !modulation) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_dragonfly_get_modulation: invalid parameters");
+
+            return -1;
     }
 
     if (!brain->dragonfly_medulla_bridge) {
@@ -377,7 +413,11 @@ int brain_dragonfly_get_modulation(brain_t brain,
  */
 bool brain_dragonfly_hunting_allowed(brain_t brain) {
     if (!brain || !brain->dragonfly_enabled) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_dragonfly_hunting_allowed: invalid parameters");
+
+            return false;
     }
 
     if (!brain->dragonfly_medulla_bridge) {

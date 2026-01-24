@@ -225,6 +225,8 @@ parietal_quantum_bridge_t* parietal_region_quantum_bridge_create(
         1, sizeof(parietal_quantum_bridge_t));
     if (!bridge) {
         LOG_ERROR("[%s] Failed to allocate bridge", PARIETAL_Q_LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -310,7 +312,13 @@ void parietal_region_quantum_bridge_set_enabled(parietal_quantum_bridge_t* bridg
 }
 
 int parietal_region_quantum_bridge_reset(parietal_quantum_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->spatial_state_count = 0;
     bridge->attention_state_count = 0;
@@ -799,7 +807,16 @@ int parietal_quantum_walk_step(
     parietal_quantum_bridge_t* bridge,
     uint32_t steps) {
 
-    if (!bridge) return -1;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return -1;
+
+
+    }
     if (!bridge->walk_initialized) return -1;
 
     LOG_DEBUG("[%s] Quantum walk step, %u steps", PARIETAL_Q_LOG_MODULE, steps);

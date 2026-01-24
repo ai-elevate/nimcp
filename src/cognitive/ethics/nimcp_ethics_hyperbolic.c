@@ -129,7 +129,11 @@ uint32_t ethics_find_relevant_principles_hyperbolic(knowledge_system_t system,
                                                     knowledge_item_t **principles_out,
                                                     float *weights_out) {
     if (!system || !situation || k == 0 || !principles_out) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "ethics_find_relevant_principles_hyperbolic: invalid parameters");
+
+            return 0;
     }
 
     // Find k-NN in hyperbolic space
@@ -258,7 +262,11 @@ bool ethics_map_situation_to_hyperbolic(knowledge_system_t system,
                                        const char *situation_description,
                                        knowledge_item_t *item) {
     if (!system || !situation_description || !item) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "ethics_map_situation_to_hyperbolic: invalid parameters");
+
+            return false;
     }
 
     // For now, use simple heuristic:

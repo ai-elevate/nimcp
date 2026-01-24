@@ -228,6 +228,8 @@ executive_safety_bridge_t* executive_safety_bridge_create_custom(
     executive_safety_bridge_t* bridge = nimcp_malloc(sizeof(executive_safety_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate executive_safety_bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     memset(bridge, 0, sizeof(executive_safety_bridge_t));

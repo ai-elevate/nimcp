@@ -52,7 +52,13 @@ static const char* SEVERITY_NAMES[] = {
 //=============================================================================
 
 int surface_immune_default_config(surface_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -796,7 +802,13 @@ static int activate_b_cell_unlocked(
     uint32_t antigen_id
 ) {
     surface_antigen_t* ag = find_antigen(bridge, antigen_id);
-    if (!ag) return -1;
+    if (!ag) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ag is NULL");
+
+        return -1;
+
+    }
 
     /* In full implementation, this would activate a B cell in the immune system */
     bridge->stats.b_cells_activated++;

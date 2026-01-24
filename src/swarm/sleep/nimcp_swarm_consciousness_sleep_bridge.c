@@ -55,7 +55,13 @@ static void swarm_consciousness_on_sleep_state_change(sleep_state_t new_state, v
 
 int swarm_consciousness_sleep_default_config(swarm_consciousness_sleep_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->enable_phi_modulation = true;
     config->enable_integration_modulation = true;
@@ -78,6 +84,8 @@ swarm_consciousness_sleep_bridge_t swarm_consciousness_sleep_bridge_create(
         (swarm_consciousness_sleep_bridge_t)nimcp_malloc(sizeof(struct swarm_consciousness_sleep_bridge_struct));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate swarm consciousness sleep bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -130,7 +138,13 @@ void swarm_consciousness_sleep_bridge_destroy(swarm_consciousness_sleep_bridge_t
 
 int swarm_consciousness_sleep_update(swarm_consciousness_sleep_bridge_t bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     if (bridge->sleep_system) {
@@ -230,7 +244,13 @@ int swarm_consciousness_sleep_connect_consciousness(
     swarm_consciousness_sleep_bridge_t bridge,
     struct swarm_consciousness_ctx* consciousness_ctx)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->consciousness_ctx = consciousness_ctx;
@@ -272,7 +292,13 @@ int swarm_consciousness_sleep_on_consciousness_change(
     uint32_t consciousness_state,
     float collective_phi)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 

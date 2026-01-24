@@ -606,6 +606,8 @@ homeostatic_controller_t homeostatic_controller_create(
     homeostatic_controller_t ctrl = nimcp_calloc(1, sizeof(struct homeostatic_controller_struct));
     if (!ctrl) {
         NIMCP_LOGGING_ERROR("Failed to allocate homeostatic controller");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctrl is NULL");
+
         return NULL;
     }
 

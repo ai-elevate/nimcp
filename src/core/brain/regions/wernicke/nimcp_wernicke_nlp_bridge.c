@@ -271,7 +271,13 @@ static int perform_syntactic_parsing(
  * ============================================================================ */
 
 int wernicke_nlp_default_config(wernicke_nlp_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     memset(config, 0, sizeof(wernicke_nlp_config_t));
 
@@ -315,12 +321,16 @@ wernicke_nlp_bridge_t* wernicke_nlp_bridge_create(
     /* Wernicke adapter is required */
     if (!wernicke) {
         LOG_ERROR(LOG_MODULE, "Cannot create NLP bridge: wernicke adapter is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wernicke is NULL");
+
         return NULL;
     }
 
     wernicke_nlp_bridge_t* bridge = nimcp_calloc(1, sizeof(wernicke_nlp_bridge_t));
     if (!bridge) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate NLP bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -367,7 +377,13 @@ int wernicke_nlp_connect_speech_cortex(
     wernicke_nlp_bridge_t* bridge,
     speech_cortex_t* speech_cortex)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_speech_cortex) return 0;
 
     bridge->speech_cortex = speech_cortex;
@@ -384,7 +400,13 @@ int wernicke_nlp_connect_nlp_network(
     wernicke_nlp_bridge_t* bridge,
     nlp_network_t nlp_network)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_nlp_network) return 0;
 
     bridge->nlp_network = nlp_network;
@@ -401,7 +423,13 @@ int wernicke_nlp_connect_semantic_memory(
     wernicke_nlp_bridge_t* bridge,
     semantic_memory_system_t* semantic_memory)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_semantic_memory) return 0;
 
     bridge->semantic_memory = semantic_memory;
@@ -418,7 +446,13 @@ int wernicke_nlp_connect_multimodal(
     wernicke_nlp_bridge_t* bridge,
     multimodal_nlp_bridge_t* multimodal)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_multimodal) return 0;
 
     bridge->multimodal = multimodal;
@@ -435,7 +469,13 @@ int wernicke_nlp_connect_knowledge_graph(
     wernicke_nlp_bridge_t* bridge,
     brain_kg_t* kg)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_knowledge_graph) return 0;
 
     bridge->knowledge_graph = kg;
@@ -452,7 +492,13 @@ int wernicke_nlp_connect_working_memory(
     wernicke_nlp_bridge_t* bridge,
     working_memory_t* wm)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_working_memory) return 0;
 
     bridge->working_memory = wm;
@@ -466,7 +512,13 @@ int wernicke_nlp_connect_working_memory(
 }
 
 int wernicke_nlp_connect_bio_async(wernicke_nlp_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_bio_async) return 0;
 
     /* Would register with bio_router here */
@@ -669,7 +721,13 @@ int wernicke_nlp_activate_concept(
     uint32_t concept_id,
     float activation)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Activate concept and spread */
     int activated = 1;  /* At least the target */
@@ -746,7 +804,13 @@ int wernicke_nlp_bridge_update(
     wernicke_nlp_bridge_t* bridge,
     uint64_t current_time_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->last_update_ms = current_time_ms;
 

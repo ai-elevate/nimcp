@@ -175,6 +175,8 @@ portia_learning_state_t* portia_learning_init(const portia_learning_config_t* co
         1, sizeof(portia_learning_state_t));
     if (!state) {
         LOG_ERROR("Failed to allocate learning state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
         return NULL;
     }
 

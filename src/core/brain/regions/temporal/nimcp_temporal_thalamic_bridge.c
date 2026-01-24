@@ -71,6 +71,8 @@ temporal_thalamic_bridge_t* temporal_thalamic_bridge_create(
         1, sizeof(temporal_thalamic_bridge_t));
     if (!bridge) {
         LOG_ERROR("[%s] Failed to allocate bridge", LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -112,7 +114,13 @@ void temporal_thalamic_bridge_destroy(temporal_thalamic_bridge_t* bridge) {
 }
 
 int temporal_thalamic_bridge_reset(temporal_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->state.mgn_gain = 1.0f;
     bridge->state.pulvinar_attention = 0.5f;
@@ -265,7 +273,13 @@ int temporal_thalamic_set_attention(
     temporal_thalamic_nucleus_t nucleus,
     float attention
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     attention = fmaxf(0.0f, fminf(1.0f, attention));
 

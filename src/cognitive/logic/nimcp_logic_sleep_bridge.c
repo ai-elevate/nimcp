@@ -106,7 +106,13 @@ static void logic_on_sleep_state_change(sleep_state_t new_state, void* user_data
 int logic_sleep_default_config(logic_sleep_config_t* config)
 {
     /* Guard clause */
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* Feature enables */
     config->enable_inference_modulation = true;
@@ -134,6 +140,8 @@ logic_sleep_bridge_t* logic_sleep_bridge_create(
     /* Guard clauses */
     if (!sleep_system) {
         NIMCP_LOGGING_ERROR("Cannot create logic-sleep bridge: NULL sleep system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_system is NULL");
+
         return NULL;
     }
 
@@ -142,6 +150,8 @@ logic_sleep_bridge_t* logic_sleep_bridge_create(
         (logic_sleep_bridge_t*)nimcp_malloc(sizeof(logic_sleep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate logic-sleep bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -246,7 +256,13 @@ void logic_sleep_bridge_destroy(logic_sleep_bridge_t* bridge)
 int logic_sleep_update(logic_sleep_bridge_t* bridge)
 {
     /* Guard clause */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -473,7 +489,13 @@ float logic_sleep_consistency_for_state(sleep_state_t state)
 int logic_sleep_connect_bio_async(logic_sleep_bridge_t* bridge)
 {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;  /* Already connected */
 
     /* Register with bio-async router */
@@ -503,7 +525,13 @@ int logic_sleep_connect_bio_async(logic_sleep_bridge_t* bridge)
 int logic_sleep_disconnect_bio_async(logic_sleep_bridge_t* bridge)
 {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;  /* Not connected */
 
     /* Unregister from bio-async router */

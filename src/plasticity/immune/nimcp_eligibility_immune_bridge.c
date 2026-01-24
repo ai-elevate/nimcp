@@ -109,7 +109,13 @@ static float inflammation_to_lr_factor(brain_inflammation_level_t level) {
  * ============================================================================ */
 
 int eligibility_immune_default_config(eligibility_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* All features enabled by default */
     config->enable_cytokine_trace_modulation = true;
@@ -146,6 +152,8 @@ eligibility_immune_bridge_t* eligibility_immune_bridge_create(
         nimcp_malloc(sizeof(eligibility_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("eligibility_immune_bridge", "Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -206,7 +214,13 @@ void eligibility_immune_bridge_destroy(eligibility_immune_bridge_t* bridge) {
 
 int eligibility_immune_apply_cytokine_effects(eligibility_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_cytokine_trace_modulation) return 0;
     if (!bridge->immune_system || !bridge->eligibility_config) return -1;
 
@@ -261,7 +275,13 @@ int eligibility_immune_apply_cytokine_effects(eligibility_immune_bridge_t* bridg
 
 int eligibility_immune_apply_inflammation_effects(eligibility_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_inflammation_impairment) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -321,7 +341,13 @@ float eligibility_immune_get_lr_factor(const eligibility_immune_bridge_t* bridge
 
 int eligibility_immune_restore_baseline(eligibility_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->eligibility_config) return -1;
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
@@ -359,7 +385,13 @@ int eligibility_immune_detect_learning_failure(
     float reward
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_learning_failure_detection) return 0;
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
@@ -405,7 +437,13 @@ int eligibility_immune_monitor_consolidation(
     bool burst_occurred
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_consolidation_monitoring) return 0;
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
@@ -441,7 +479,13 @@ int eligibility_immune_monitor_consolidation(
 
 int eligibility_immune_trigger_from_learning_stress(eligibility_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->immune_system) return -1;
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
@@ -497,7 +541,13 @@ int eligibility_immune_bridge_update(
     uint32_t num_active_traces,
     bool burst_occurred
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Immune → Eligibility */
     eligibility_immune_apply_cytokine_effects(bridge);
@@ -568,7 +618,13 @@ bool eligibility_immune_is_trace_impaired(const eligibility_immune_bridge_t* bri
  * @brief Connect bridge to bio-async router
  */
 int eligibility_immune_connect_bio_async(eligibility_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -593,7 +649,13 @@ int eligibility_immune_connect_bio_async(eligibility_immune_bridge_t* bridge) {
  * @brief Disconnect from bio-async router
  */
 int eligibility_immune_disconnect_bio_async(eligibility_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

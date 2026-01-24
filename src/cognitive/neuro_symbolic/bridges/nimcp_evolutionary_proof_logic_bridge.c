@@ -5,6 +5,7 @@
 
 #include "cognitive/neuro_symbolic/bridges/nimcp_evolutionary_proof_logic_bridge.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 NIMCP_API evoproof_logic_bridge_t* evoproof_logic_bridge_create(void) {

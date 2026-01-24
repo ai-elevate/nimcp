@@ -385,6 +385,8 @@ nimcp_emotional_tagger_t* nimcp_emotional_tagger_create(void) {
     nimcp_emotional_tagger_t* tagger = nimcp_calloc(1, sizeof(nimcp_emotional_tagger_t));
     if (!tagger) {
         LOG_ERROR("Failed to allocate emotional tagger");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tagger is NULL");
+
         return NULL;
     }
 

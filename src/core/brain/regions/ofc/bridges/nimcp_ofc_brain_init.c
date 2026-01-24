@@ -53,7 +53,13 @@ static const char* ofc_version_string = "1.0.0";
 //=============================================================================
 
 int ofc_init_default_config(ofc_init_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->learning_rate = 0.1f;
     config->discount_rate = 0.95f;
@@ -75,7 +81,13 @@ int ofc_init_default_config(ofc_init_config_t* config) {
 //=============================================================================
 
 int ofc_brain_init_register(brain_t brain) {
-    if (!brain) return -1;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return -1;
+
+    }
 
     ofc_init_config_t config;
     ofc_init_default_config(&config);
@@ -135,6 +147,8 @@ nimcp_ofc_t* ofc_brain_init_create(
         NIMCP_LOG_ERROR(OFC_INIT_MODULE_NAME, "Failed to create OFC instance");
         local_result.error_count++;
         if (result) *result = local_result;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc is NULL");
+
         return NULL;
     }
 
@@ -187,7 +201,13 @@ nimcp_ofc_t* ofc_brain_init_create(
 }
 
 int ofc_brain_init_destroy(nimcp_ofc_t* ofc) {
-    if (!ofc) return -1;
+    if (!ofc) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ofc is NULL");
+
+        return -1;
+
+    }
 
     /* Unregister from KG if registered */
     if (ofc_kg_unregister(ofc) < 0) {

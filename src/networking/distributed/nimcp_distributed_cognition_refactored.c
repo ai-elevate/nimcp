@@ -290,6 +290,8 @@ static nimcp_future_t enqueue_message_async(distrib_cognition_t dc,
     nimcp_promise_t promise = nimcp_promise_create(sizeof(bool));
     if (!promise) {
         LOG_MODULE_ERROR(MODULE_NAME, "Failed to create promise for async send");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "promise is NULL");
+
         return NULL;
     }
 
@@ -297,6 +299,8 @@ static nimcp_future_t enqueue_message_async(distrib_cognition_t dc,
     if (!future) {
         LOG_MODULE_ERROR(MODULE_NAME, "Failed to get future from promise");
         nimcp_promise_destroy(promise);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "future is NULL");
+
         return NULL;
     }
 
@@ -306,6 +310,8 @@ static nimcp_future_t enqueue_message_async(distrib_cognition_t dc,
         LOG_MODULE_ERROR(MODULE_NAME, "Failed to allocate queue entry");
         nimcp_future_destroy(future);
         nimcp_promise_destroy(promise);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+
         return NULL;
     }
 
@@ -466,6 +472,8 @@ distrib_cognition_t distrib_cognition_create(const distrib_cognition_config_t* c
     // Validate inputs
     if (!p2p_node) {
         LOG_MODULE_ERROR(MODULE_NAME, "NULL p2p_node provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "p2p_node is NULL");
+
         return NULL;
     }
 
@@ -473,6 +481,8 @@ distrib_cognition_t distrib_cognition_create(const distrib_cognition_config_t* c
     distrib_cognition_t dc = nimcp_calloc(1, sizeof(struct distrib_cognition_struct));
     if (!dc) {
         LOG_MODULE_ERROR(MODULE_NAME, "Failed to allocate distrib_cognition structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dc is NULL");
+
         return NULL;
     }
 
@@ -539,6 +549,9 @@ nimcp_future_t distrib_cognition_broadcast_neuromod_async(distrib_cognition_t dc
 
     if (!dc) {
         LOG_MODULE_ERROR(MODULE_NAME, "NULL coordinator handle");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dc is NULL");
+
+
         return NULL;
     }
 

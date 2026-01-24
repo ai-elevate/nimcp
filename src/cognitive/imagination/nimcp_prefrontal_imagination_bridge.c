@@ -24,7 +24,13 @@
  * ============================================================================ */
 
 int prefrontal_imagination_default_config(prefrontal_imagination_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->goal_relevance_threshold = PFC_IMAG_DEFAULT_GOAL_RELEVANCE;
     config->goal_constraint_weight = 0.6f;
@@ -52,7 +58,13 @@ int prefrontal_imagination_default_config(prefrontal_imagination_config_t* confi
 }
 
 int prefrontal_imagination_validate_config(const prefrontal_imagination_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     if (config->goal_relevance_threshold < 0.0f || config->goal_relevance_threshold > 1.0f) {
         return -1;
@@ -96,6 +108,8 @@ prefrontal_imagination_bridge_t* prefrontal_imagination_bridge_create(
         1, sizeof(prefrontal_imagination_bridge_t));
     if (!bridge) {
         LOG_ERROR("Failed to allocate prefrontal-imagination bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -189,7 +203,13 @@ void prefrontal_imagination_bridge_destroy(prefrontal_imagination_bridge_t* brid
 }
 
 int prefrontal_imagination_reset(prefrontal_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -238,7 +258,13 @@ int prefrontal_imagination_connect_prefrontal(
     prefrontal_imagination_bridge_t* bridge,
     struct prefrontal_adapter* prefrontal)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -259,7 +285,13 @@ int prefrontal_imagination_connect_imagination(
     prefrontal_imagination_bridge_t* bridge,
     struct imagination_engine* imagination)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -303,7 +335,13 @@ int prefrontal_imagination_update(
     prefrontal_imagination_bridge_t* bridge,
     float delta_time_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bridge_active) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -393,7 +431,13 @@ int prefrontal_imagination_compute_imag_effects(
 }
 
 int prefrontal_imagination_apply_effects(prefrontal_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Apply PFC effects to imagination */
     if (bridge->imagination && bridge->pfc_to_imag.options_requested) {
@@ -434,7 +478,13 @@ int prefrontal_imagination_set_mode(
     prefrontal_imagination_bridge_t* bridge,
     pfc_imagination_mode_t mode)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -462,7 +512,13 @@ int prefrontal_imagination_set_inhibition(
     prefrontal_imagination_bridge_t* bridge,
     float strength)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (strength < 0.0f || strength > 1.0f) return -1;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -477,7 +533,13 @@ int prefrontal_imagination_update_goals(
     const uint32_t* goal_ids,
     uint32_t num_goals)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (num_goals > PFC_IMAG_MAX_TRACKED_GOALS) {
         num_goals = PFC_IMAG_MAX_TRACKED_GOALS;
     }
@@ -504,7 +566,13 @@ int prefrontal_imagination_request_options(
     uint32_t goal_id,
     uint32_t num_options)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bridge_active) return -1;
     if (num_options == 0 || num_options > PFC_IMAG_MAX_OPTIONS) {
         num_options = bridge->config.default_num_options;
@@ -561,7 +629,13 @@ int prefrontal_imagination_get_best_option(
     uint32_t* scenario_id,
     float* value)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->imag_to_pfc.num_options_generated == 0) return -1;
 
     uint32_t best_idx = bridge->imag_to_pfc.best_option_idx;
@@ -583,7 +657,13 @@ int prefrontal_imagination_update_wm_context(
     prefrontal_imagination_bridge_t* bridge,
     const nimcp_tensor_t* wm_context)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_wm_context) return -1;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -608,7 +688,13 @@ int prefrontal_imagination_get_wm_suggestion(
     nimcp_tensor_t** content,
     float* priority)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->imag_to_pfc.wm_update_suggested) return -1;
 
     if (content) {
@@ -624,7 +710,13 @@ int prefrontal_imagination_get_wm_suggestion(
 int prefrontal_imagination_accept_wm_update(
     prefrontal_imagination_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->imag_to_pfc.wm_update_suggested) return -1;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -660,7 +752,13 @@ int prefrontal_imagination_get_stats(
 }
 
 int prefrontal_imagination_reset_stats(prefrontal_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -696,7 +794,13 @@ int prefrontal_imagination_get_imag_effects(
 int prefrontal_imagination_connect_bio_async(
     prefrontal_imagination_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     int result = bridge_base_connect_bio_async(&bridge->base);
@@ -710,7 +814,13 @@ int prefrontal_imagination_connect_bio_async(
 int prefrontal_imagination_disconnect_bio_async(
     prefrontal_imagination_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     int result = bridge_base_disconnect_bio_async(&bridge->base);
@@ -731,7 +841,13 @@ bool prefrontal_imagination_is_bio_async_connected(
 int prefrontal_imagination_process_messages(
     prefrontal_imagination_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     /* Process pending bio-async messages */

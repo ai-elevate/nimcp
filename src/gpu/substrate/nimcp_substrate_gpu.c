@@ -121,12 +121,16 @@ substrate_gpu_context_t* substrate_gpu_create(
 {
     if (!gpu_ctx) {
         LOG_ERROR("NULL GPU context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gpu_ctx is NULL");
+
         return NULL;
     }
 
     substrate_gpu_context_t* ctx = nimcp_calloc(1, sizeof(substrate_gpu_context_t));
     if (!ctx) {
         LOG_ERROR("Failed to allocate substrate GPU context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 
@@ -844,7 +848,13 @@ int substrate_gpu_full_step(
     const nimcp_gpu_tensor_t* neural_activity,
     float dt)
 {
-    if (!ctx) return -1;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return -1;
+
+    }
 
     // Process each subsystem in order
     if (ctx->axon.n_axons > 0) {

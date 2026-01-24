@@ -37,7 +37,13 @@ static inline float normalize_weight(float w1, float w2, float w3, float target)
  * ============================================================================ */
 
 int mirror_omni_bridge_default_config(mirror_omni_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* Mirror -> World Model coupling */
     config->state_coupling_rate = MIRROR_OMNI_STATE_COUPLING_RATE;
@@ -75,6 +81,8 @@ mirror_omni_bridge_t* mirror_omni_bridge_create(
         1, sizeof(mirror_omni_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate mirror-omni bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -169,7 +177,13 @@ void mirror_omni_bridge_destroy(mirror_omni_bridge_t* bridge) {
 }
 
 int mirror_omni_bridge_reset(mirror_omni_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -216,7 +230,13 @@ int mirror_omni_bridge_connect_mirror(
     mirror_omni_bridge_t* bridge,
     mirror_neurons_t mirror
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     /* Allow NULL to disconnect */
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -236,7 +256,13 @@ int mirror_omni_bridge_connect_world_model(
     mirror_omni_bridge_t* bridge,
     omni_world_model_t* world_model
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     /* Allow NULL to disconnect */
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -256,7 +282,13 @@ int mirror_omni_bridge_connect_active_inference(
     mirror_omni_bridge_t* bridge,
     omni_active_inference_t* active_inference
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     /* Allow NULL to disconnect */
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -802,7 +834,13 @@ int mirror_omni_validate_motor_sequence(
 int mirror_omni_omni_inference(
     mirror_omni_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_omnidirectional) return 0;
 
     /* Run all inference directions */
@@ -842,7 +880,13 @@ int mirror_omni_forward_inference(
     mirror_omni_bridge_t* bridge,
     uint32_t agent_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -873,7 +917,13 @@ int mirror_omni_backward_inference(
     mirror_omni_bridge_t* bridge,
     uint32_t agent_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -905,7 +955,13 @@ int mirror_omni_backward_inference(
 int mirror_omni_lateral_inference(
     mirror_omni_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -942,7 +998,13 @@ int mirror_omni_set_direction_weights(
     float backward_weight,
     float lateral_weight
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -966,7 +1028,13 @@ int mirror_omni_bridge_update(
     mirror_omni_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Mirror -> World Model */
     if (bridge->state.mirror_connected && bridge->state.world_model_connected) {
@@ -1033,7 +1101,13 @@ int mirror_omni_bridge_get_stats(
 int mirror_omni_bridge_reset_stats(
     mirror_omni_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(mirror_omni_stats_t));
@@ -1049,7 +1123,13 @@ int mirror_omni_bridge_reset_stats(
 int mirror_omni_bridge_connect_bio_async(
     mirror_omni_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -1072,7 +1152,13 @@ int mirror_omni_bridge_connect_bio_async(
 int mirror_omni_bridge_disconnect_bio_async(
     mirror_omni_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

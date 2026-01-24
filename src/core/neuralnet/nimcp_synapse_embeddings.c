@@ -51,7 +51,11 @@
 
 bool synapse_init_embedding(synapse_t *synapse, uint16_t dim) {
     if (!synapse || dim == 0) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "synapse_init_embedding: invalid parameters");
+
+            return false;
     }
 
     // Free existing embedding if present
@@ -126,7 +130,11 @@ float synapse_semantic_similarity(const synapse_t *syn1, const synapse_t *syn2) 
 
 bool synapse_update_embedding(synapse_t *synapse, const float *target_embedding, float learning_rate) {
     if (!synapse || !target_embedding) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "synapse_update_embedding: invalid parameters");
+
+            return false;
     }
 
     // Check synapse has embedding

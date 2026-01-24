@@ -158,12 +158,16 @@ static void update_pattern(
 brain_recovery_context_t brain_recovery_init(brain_t brain) {
     if (!brain) {
         LOG_ERROR("Cannot initialize brain recovery: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return NULL;
     }
 
     brain_recovery_context_t ctx = nimcp_calloc(1, sizeof(struct brain_recovery_context_internal));
     if (!ctx) {
         LOG_ERROR("Failed to allocate brain recovery context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 
@@ -235,6 +239,8 @@ brain_recovery_decision_t* brain_recovery_select_strategy(
     brain_recovery_decision_t* decision = nimcp_calloc(1, sizeof(brain_recovery_decision_t));
     if (!decision) {
         LOG_ERROR("Failed to allocate brain decision");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "decision is NULL");
+
         return NULL;
     }
 
@@ -637,6 +643,8 @@ brain_recovery_context_t brain_recovery_load(
     FILE* f = fopen(filepath, "rb");
     if (!f) {
         LOG_ERROR("Failed to open file for reading: %s", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "f is NULL");
+
         return NULL;
     }
 
@@ -651,6 +659,8 @@ brain_recovery_context_t brain_recovery_load(
     brain_recovery_context_t ctx = brain_recovery_init(brain);
     if (!ctx) {
         fclose(f);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 

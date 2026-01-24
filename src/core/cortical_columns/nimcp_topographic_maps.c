@@ -192,6 +192,8 @@ topographic_map_t* topographic_map_create(const topographic_map_config_t* config
     /* Guard: Validate input */
     if (!config) {
         TOPO_LOG_ERROR("[TopographicMaps] NULL configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
@@ -204,6 +206,8 @@ topographic_map_t* topographic_map_create(const topographic_map_config_t* config
     topographic_map_t* map = (topographic_map_t*)nimcp_malloc(sizeof(topographic_map_t));
     if (!map) {
         TOPO_LOG_ERROR("[TopographicMaps] Failed to allocate map");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "map is NULL");
+
         return NULL;
     }
 

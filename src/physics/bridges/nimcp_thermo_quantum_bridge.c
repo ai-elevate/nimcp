@@ -122,7 +122,13 @@ static float thermo_state_energy(
 //=============================================================================
 
 int thermo_qmc_partition_default_config(thermo_partition_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     memset(config, 0, sizeof(*config));
     config->temperature = THERMO_QMC_DEFAULT_TEMP;
@@ -135,7 +141,13 @@ int thermo_qmc_partition_default_config(thermo_partition_config_t* config) {
 }
 
 int thermo_qmc_landauer_default_config(thermo_landauer_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -157,7 +169,13 @@ int thermo_qmc_landauer_default_config(thermo_landauer_config_t* config) {
 }
 
 int thermo_qmc_atp_default_config(thermo_atp_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     memset(config, 0, sizeof(*config));
     config->target_efficiency = 0.3f;      // 30% target efficiency
@@ -171,7 +189,13 @@ int thermo_qmc_atp_default_config(thermo_atp_config_t* config) {
 }
 
 int thermo_qmc_entropy_default_config(thermo_entropy_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     memset(config, 0, sizeof(*config));
     config->time_window_ms = 100.0f;
@@ -399,7 +423,13 @@ int thermo_qmc_landauer_efficiency(
 }
 
 int thermo_qmc_landauer_limit(float temperature, float* energy_per_bit) {
-    if (!energy_per_bit) return -1;
+    if (!energy_per_bit) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "energy_per_bit is NULL");
+
+        return -1;
+
+    }
 
     *energy_per_bit = (float)compute_landauer_limit((double)temperature);
     return 0;

@@ -128,6 +128,8 @@ kg_module_wiring_t* kg_module_wiring_create(const char* name, const char* type) 
         WIRING_LOG_ERROR("create: allocation failed for module '%s'", name);
         NIMCP_THROW_KG_WIRING(NIMCP_ERROR_KG_WIRING_CREATE, name, "create",
                               "Memory allocation failed for wiring descriptor");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wiring is NULL");
+
         return NULL;
     }
 

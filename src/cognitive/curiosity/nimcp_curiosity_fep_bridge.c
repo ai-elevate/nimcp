@@ -74,7 +74,13 @@ static uint64_t get_time_ms(void) {
  * HOW:  Initialize all config fields with standard values
  */
 int curiosity_fep_bridge_default_config(curiosity_fep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->epistemic_value_weight = 1.0f;
     config->uncertainty_sensitivity = 0.5f;
@@ -99,6 +105,8 @@ curiosity_fep_bridge_t* curiosity_fep_bridge_create(const curiosity_fep_config_t
         1, sizeof(curiosity_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate curiosity-FEP bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -165,7 +173,13 @@ int curiosity_fep_bridge_connect_fep(
     curiosity_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     /* Allow NULL fep to disconnect/reset FEP connection */
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -207,7 +221,13 @@ int curiosity_fep_bridge_connect_curiosity(
  * BIOLOGY: Dopaminergic VTA neurons signal prediction errors → exploration drive
  */
 int curiosity_fep_compute_epistemic_value(curiosity_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_epistemic_curiosity) return 0;
     if (!bridge->fep_system) return -1;
 
@@ -251,7 +271,13 @@ int curiosity_fep_compute_epistemic_value(curiosity_fep_bridge_t* bridge) {
  * BIOLOGY: Anterior cingulate cortex monitors conflict/uncertainty → question generation
  */
 int curiosity_fep_detect_knowledge_gaps(curiosity_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_knowledge_gap_detection) return 0;
     if (!bridge->fep_system) return -1;
 
@@ -307,7 +333,13 @@ int curiosity_fep_detect_knowledge_gaps(curiosity_fep_bridge_t* bridge) {
  * BIOLOGY: Locus coeruleus noradrenergic boost for novelty → exploration
  */
 int curiosity_fep_trigger_exploration(curiosity_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_exploration_feedback) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -352,7 +384,13 @@ int curiosity_fep_trigger_exploration(curiosity_fep_bridge_t* bridge) {
  * BIOLOGY: Hippocampal consolidation of exploratory experiences → model updates
  */
 int curiosity_fep_update_model_from_learning(curiosity_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_learning_updates) return 0;
     if (!bridge->curiosity_engine || !bridge->fep_system) return -1;
 
@@ -407,7 +445,13 @@ int curiosity_fep_update_model_from_learning(curiosity_fep_bridge_t* bridge) {
  * HOW:  Compute epistemic value, detect gaps, trigger exploration, update model
  */
 int curiosity_fep_bridge_update(curiosity_fep_bridge_t* bridge, uint64_t delta_ms) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* FEP → Curiosity direction */
     if (curiosity_fep_compute_epistemic_value(bridge) != 0) {
@@ -484,7 +528,13 @@ int curiosity_fep_bridge_get_stats(
  * HOW:  Register as BIO_MODULE_CURIOSITY_FEP_BRIDGE
  */
 int curiosity_fep_bridge_connect_bio_async(curiosity_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -511,7 +561,13 @@ int curiosity_fep_bridge_connect_bio_async(curiosity_fep_bridge_t* bridge) {
  * HOW:  Unregister module context
  */
 int curiosity_fep_bridge_disconnect_bio_async(curiosity_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

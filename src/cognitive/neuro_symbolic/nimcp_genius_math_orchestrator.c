@@ -88,6 +88,8 @@ NIMCP_API genius_math_orchestrator_t* genius_orchestrator_create(
         sizeof(genius_math_orchestrator_t));
     if (!orch) {
         NIMCP_LOG_ERROR("Failed to allocate genius math orchestrator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orch is NULL");
+
         return NULL;
     }
 

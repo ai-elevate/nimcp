@@ -441,6 +441,9 @@ theta_gamma_manager_t theta_gamma_create(const theta_gamma_config_t* config) {
 
     if (!mgr) {
         set_error("Failed to allocate theta-gamma manager");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mgr is NULL");
+
+
         return NULL;
     }
 

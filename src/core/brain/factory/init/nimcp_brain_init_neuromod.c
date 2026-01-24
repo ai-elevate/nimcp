@@ -112,7 +112,11 @@
 bool nimcp_brain_factory_init_neuromodulator_system(brain_t brain)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_neuromodulator_system: brain is NULL");
+
+            return false;
     }
 
     // Check if already initialized
@@ -205,7 +209,11 @@ bool nimcp_brain_factory_init_neuromodulator_system(brain_t brain)
 bool nimcp_brain_factory_init_spatial_neuromod_system(brain_t brain)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_spatial_neuromod_system: brain is NULL");
+
+            return false;
     }
 
     // Check if already initialized
@@ -298,7 +306,11 @@ bool nimcp_brain_factory_init_attention_subsystem(brain_t brain)
     // WHY:  Prevent null pointer dereference
     // HOW:  Check brain pointer before use
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_attention_subsystem: brain is NULL");
+
+            return false;
     }
 
     // WHAT: Check if already initialized
@@ -382,7 +394,11 @@ bool nimcp_brain_factory_init_brain_regions_subsystem(brain_t brain)
     // WHY:  Prevent null pointer dereference
     // HOW:  Check brain pointer before use
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_brain_regions_subsystem: brain is NULL");
+
+            return false;
     }
 
     // WHAT: Check if already initialized
@@ -530,7 +546,11 @@ bool nimcp_brain_factory_init_neuromod_nuclei(brain_t brain)
     // WHAT: Guard clause - validate input
     // WHY:  Prevent null pointer dereference
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_neuromod_nuclei: brain is NULL");
+
+            return false;
     }
 
     // WHAT: Check if any Phase 4 nuclei are enabled

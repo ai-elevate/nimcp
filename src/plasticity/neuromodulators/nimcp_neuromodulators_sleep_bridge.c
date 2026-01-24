@@ -138,11 +138,16 @@ neuromod_sleep_bridge_t neuromod_sleep_bridge_create(
 {
     if (!neuromod_system) {
         NIMCP_LOGGING_ERROR("neuromod_sleep_bridge_create: NULL neuromod_system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_system is NULL");
+
         return NULL;
     }
 
     if (!sleep_system) {
         NIMCP_LOGGING_ERROR("neuromod_sleep_bridge_create: NULL sleep_system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_system is NULL");
+
+
         return NULL;
     }
 
@@ -151,6 +156,8 @@ neuromod_sleep_bridge_t neuromod_sleep_bridge_create(
             sizeof(struct neuromod_sleep_bridge_struct));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("neuromod_sleep_bridge_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

@@ -186,7 +186,16 @@ int health_emotion_compute_thresholds(
 ) {
     (void)agent;  /* May use agent for baseline thresholds */
 
-    if (!thresholds) return -1;
+    if (!thresholds) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thresholds is NULL");
+
+
+        return -1;
+
+
+    }
 
     /* Get default factors if not provided */
     threshold_adjustment_factors_t local_factors;
@@ -272,7 +281,13 @@ int health_emotion_get_state(
     const emotional_system_t* emotion_system,
     health_emotion_state_t* state
 ) {
-    if (!state) return -1;
+    if (!state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
+        return -1;
+
+    }
 
     memset(state, 0, sizeof(health_emotion_state_t));
 
@@ -339,7 +354,16 @@ int health_emotion_report_event(
 ) {
     (void)agent;  /* May be used for context */
 
-    if (!emotion_system) return -1;
+    if (!emotion_system) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_system is NULL");
+
+
+        return -1;
+
+
+    }
 
     if (event_type >= HEALTH_EMOTION_EVENT_COUNT) return -1;
     if (severity < 0.0f || severity > 1.0f) severity = 0.5f;
@@ -414,7 +438,13 @@ int health_emotion_adjust_recovery(
     health_recovery_action_t proposed_action,
     health_recovery_action_t* adjusted_action
 ) {
-    if (!adjusted_action) return -1;
+    if (!adjusted_action) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adjusted_action is NULL");
+
+        return -1;
+
+    }
 
     *adjusted_action = proposed_action;
 
@@ -488,7 +518,13 @@ int health_agent_intervene_shadow(
     nimcp_health_agent_t* agent,
     health_shadow_pattern_t pattern
 ) {
-    if (!agent) return -1;
+    if (!agent) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "agent is NULL");
+
+        return -1;
+
+    }
     if (pattern == HEALTH_SHADOW_NONE || pattern >= HEALTH_SHADOW_COUNT) return 0;
 
     shadow_intervention_type_t intervention = health_shadow_get_intervention(pattern);
@@ -518,7 +554,13 @@ int health_emotion_update_unified_state(
     const emotion_immune_bridge_t* emotion_immune_bridge,
     immune_emotion_health_state_t* state
 ) {
-    if (!state) return -1;
+    if (!state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
+        return -1;
+
+    }
 
     memset(state, 0, sizeof(immune_emotion_health_state_t));
 
@@ -623,7 +665,13 @@ int health_emotion_get_holistic_recommendation(
     health_recovery_action_t base_recommendation,
     health_recovery_action_t* adjusted_recommendation
 ) {
-    if (!adjusted_recommendation) return -1;
+    if (!adjusted_recommendation) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adjusted_recommendation is NULL");
+
+        return -1;
+
+    }
 
     *adjusted_recommendation = base_recommendation;
 
@@ -669,7 +717,13 @@ int health_emotion_get_stats(
     const nimcp_health_agent_t* agent,
     health_emotion_stats_t* stats
 ) {
-    if (!stats) return -1;
+    if (!stats) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats is NULL");
+
+        return -1;
+
+    }
 
     memset(stats, 0, sizeof(health_emotion_stats_t));
 

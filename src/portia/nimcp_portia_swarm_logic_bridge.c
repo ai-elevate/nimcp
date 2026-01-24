@@ -103,6 +103,8 @@ portia_swarm_logic_bridge_t* portia_swarm_logic_create(
         nimcp_malloc(sizeof(portia_swarm_logic_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

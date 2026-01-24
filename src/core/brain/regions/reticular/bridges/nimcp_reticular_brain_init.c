@@ -27,7 +27,13 @@ static const char* reticular_version_string = "1.0.0";
 //=============================================================================
 
 int reticular_init_default_config(reticular_init_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->initial_arousal = 0.5f;
     config->default_temperature = 37.0f;
@@ -49,7 +55,13 @@ int reticular_init_default_config(reticular_init_config_t* config) {
 //=============================================================================
 
 int reticular_brain_init_register(brain_t brain) {
-    if (!brain) return -1;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return -1;
+
+    }
 
     reticular_init_config_t config;
     if (reticular_init_default_config(&config) < 0) {
@@ -108,6 +120,8 @@ nimcp_reticular_t* reticular_brain_init_create(
         NIMCP_LOG_ERROR(RETICULAR_INIT_MODULE_NAME,
             "Failed to create reticular formation instance");
         if (result) *result = local_result;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
         return NULL;
     }
 
@@ -170,7 +184,13 @@ nimcp_reticular_t* reticular_brain_init_create(
 }
 
 int reticular_brain_init_destroy(nimcp_reticular_t* reticular) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
 
     reticular_destroy(reticular);
 

@@ -111,7 +111,13 @@ static void compute_inflammation_effects(
  * ============================================================================ */
 
 int pattern_db_immune_default_config(pattern_db_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     memset(config, 0, sizeof(pattern_db_immune_config_t));
 
@@ -160,6 +166,8 @@ pattern_db_immune_bridge_t* pattern_db_immune_create(
         nimcp_malloc(sizeof(pattern_db_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate pattern DB immune bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -227,7 +235,13 @@ void pattern_db_immune_destroy(pattern_db_immune_bridge_t* bridge) {
  * ============================================================================ */
 
 int pattern_db_immune_update(pattern_db_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -250,7 +264,13 @@ int pattern_db_immune_update(pattern_db_immune_bridge_t* bridge) {
 }
 
 int pattern_db_immune_apply_modulation(pattern_db_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -266,7 +286,13 @@ int pattern_db_immune_apply_modulation(pattern_db_immune_bridge_t* bridge) {
 }
 
 int pattern_db_immune_sync_memory_to_patterns(pattern_db_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_memory_cell_pattern_sync) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -332,7 +358,13 @@ int pattern_db_immune_refine_from_affinity(
     uint32_t antibody_id,
     float affinity_score
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_affinity_based_refinement) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -369,7 +401,13 @@ uint32_t pattern_db_immune_prune_unused(pattern_db_immune_bridge_t* bridge) {
  * ============================================================================ */
 
 int pattern_db_immune_connect_bio_async(pattern_db_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {

@@ -98,7 +98,13 @@ static uint32_t op_to_privilege(pag_security_op_t op) {
 //=============================================================================
 
 int pag_security_default_config(pag_security_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->bbb = NULL;
     config->admin_token = 0;
@@ -116,7 +122,13 @@ int pag_security_register(
     bbb_system_t bbb,
     pag_security_state_t* state
 ) {
-    if (!bbb) return -1;
+    if (!bbb) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb is NULL");
+
+        return -1;
+
+    }
 
     pag_security_state_t local_state;
     memset(&local_state, 0, sizeof(local_state));
@@ -152,7 +164,13 @@ int pag_security_unregister(
     bbb_system_t bbb,
     pag_security_state_t* state
 ) {
-    if (!state) return -1;
+    if (!state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
+        return -1;
+
+    }
 
     /* Unregister memory region if registered */
     if (state->memory_region_id != 0 && bbb) {
@@ -266,7 +284,13 @@ int pag_security_grant_capability(
     bbb_system_t bbb,
     uint64_t capability
 ) {
-    if (!bbb) return -1;
+    if (!bbb) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb is NULL");
+
+        return -1;
+
+    }
 
     if (!bbb_grant_capability(bbb, PAG_MODULE_ID, capability)) {
         NIMCP_LOG_WARN(PAG_SECURITY_MODULE_NAME,
@@ -282,7 +306,13 @@ int pag_security_revoke_capability(
     bbb_system_t bbb,
     uint64_t capability
 ) {
-    if (!bbb) return -1;
+    if (!bbb) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb is NULL");
+
+        return -1;
+
+    }
 
     if (!bbb_revoke_capability(bbb, PAG_MODULE_ID, capability)) {
         NIMCP_LOG_WARN(PAG_SECURITY_MODULE_NAME,

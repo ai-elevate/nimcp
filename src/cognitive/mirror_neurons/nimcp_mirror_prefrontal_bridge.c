@@ -249,7 +249,13 @@ static void handle_bio_message(
  *===========================================================================*/
 
 int mirror_prefrontal_default_config(mirror_prefrontal_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     memset(config, 0, sizeof(mirror_prefrontal_config_t));
 
@@ -291,6 +297,8 @@ mirror_prefrontal_bridge_t mirror_prefrontal_bridge_create(
     mirror_prefrontal_bridge_t bridge = nimcp_calloc(1, sizeof(struct mirror_prefrontal_bridge_struct));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Mirror-PFC bridge: Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -375,7 +383,13 @@ void mirror_prefrontal_bridge_destroy(mirror_prefrontal_bridge_t bridge) {
 }
 
 int mirror_prefrontal_bridge_reset(mirror_prefrontal_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -462,7 +476,13 @@ int mirror_prefrontal_set_inhibition(
     mirror_prefrontal_bridge_t bridge,
     float level
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->current_inhibition = level < 0.0f ? 0.0f : (level > 1.0f ? 1.0f : level);
@@ -480,7 +500,13 @@ int mirror_prefrontal_set_imitation_mode(
     mirror_prefrontal_bridge_t bridge,
     imitation_mode_t mode
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->imitation_mode = mode;
@@ -508,7 +534,13 @@ int mirror_prefrontal_set_social_context(
     mirror_prefrontal_bridge_t bridge,
     social_context_type_t context
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -653,7 +685,13 @@ uint32_t mirror_prefrontal_get_sequence_count(
 }
 
 int mirror_prefrontal_clear_sequences(mirror_prefrontal_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->sequences) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -677,7 +715,13 @@ int mirror_prefrontal_set_active_goal(
     mirror_prefrontal_bridge_t bridge,
     uint32_t goal_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->active_goal_id = goal_id;
@@ -709,7 +753,13 @@ int mirror_prefrontal_notify_goal_inference(
     uint32_t inferred_goal_id,
     float confidence
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -750,7 +800,13 @@ int mirror_prefrontal_update(
     mirror_prefrontal_bridge_t bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -830,7 +886,13 @@ int mirror_prefrontal_get_effects(
  *===========================================================================*/
 
 int mirror_prefrontal_connect_bio_async(mirror_prefrontal_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->bio_async_enabled) return 0; /* Already connected */
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -856,7 +918,13 @@ int mirror_prefrontal_connect_bio_async(mirror_prefrontal_bridge_t bridge) {
 }
 
 int mirror_prefrontal_disconnect_bio_async(mirror_prefrontal_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->bio_async_enabled) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -912,7 +980,13 @@ int mirror_prefrontal_get_stats(
 }
 
 int mirror_prefrontal_reset_stats(mirror_prefrontal_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(mirror_prefrontal_stats_t));

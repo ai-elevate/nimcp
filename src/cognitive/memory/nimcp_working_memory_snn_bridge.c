@@ -115,6 +115,8 @@ wm_snn_bridge_t* wm_snn_create(const wm_snn_config_t* config) {
     wm_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(wm_snn_bridge_t));
     if (!bridge) {
         NIMCP_LOG_ERROR(LOG_MODULE, "Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -273,7 +275,13 @@ void wm_snn_destroy(wm_snn_bridge_t* bridge) {
 }
 
 int wm_snn_reset(wm_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -407,7 +415,13 @@ int wm_snn_clear_slot(wm_snn_bridge_t* bridge, uint32_t slot) {
 //=============================================================================
 
 int wm_snn_simulate(wm_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -439,7 +453,13 @@ int wm_snn_simulate(wm_snn_bridge_t* bridge, float duration_ms) {
 }
 
 int wm_snn_step(wm_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     return wm_snn_simulate(bridge, bridge->config.dt_ms);
 }
 
@@ -545,7 +565,13 @@ int wm_snn_get_most_active_slot(
     wm_snn_bridge_t* bridge,
     float* confidence)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -639,7 +665,13 @@ int wm_snn_get_stats(wm_snn_bridge_t* bridge, wm_snn_stats_t* stats) {
 }
 
 int wm_snn_reset_stats(wm_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(wm_snn_stats_t));
@@ -687,7 +719,13 @@ int wm_snn_register_spike_callback(
     wm_snn_spike_callback_t callback,
     void* user_data)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->spike_callback = callback;
@@ -702,7 +740,13 @@ int wm_snn_register_encoding_callback(
     wm_snn_encoding_callback_t callback,
     void* user_data)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->encoding_callback = callback;
@@ -717,7 +761,13 @@ int wm_snn_register_retrieval_callback(
     wm_snn_retrieval_callback_t callback,
     void* user_data)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->retrieval_callback = callback;
@@ -732,7 +782,13 @@ int wm_snn_register_retrieval_callback(
 //=============================================================================
 
 int wm_snn_bio_async_connect(wm_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_bio_async) return -1;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -743,7 +799,13 @@ int wm_snn_bio_async_connect(wm_snn_bridge_t* bridge) {
 }
 
 int wm_snn_bio_async_disconnect(wm_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;

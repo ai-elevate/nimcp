@@ -159,6 +159,8 @@ config_snapshot_t config_create_snapshot(void) {
         nimcp_calloc(1, sizeof(config_snapshot_internal_t));
     if (!snap) {
         LOG_ERROR("config_create_snapshot: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snap is NULL");
+
         return NULL;
     }
 
@@ -263,6 +265,8 @@ uint64_t config_snapshot_get_timestamp(config_snapshot_t snap) {
 config_snapshot_t config_clone_snapshot(config_snapshot_t snap) {
     if (!snap) {
         LOG_ERROR("config_clone_snapshot: NULL snapshot");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snap is NULL");
+
         return NULL;
     }
 
@@ -276,6 +280,8 @@ config_snapshot_t config_clone_snapshot(config_snapshot_t snap) {
         nimcp_calloc(1, sizeof(config_snapshot_internal_t));
     if (!clone) {
         LOG_ERROR("config_clone_snapshot: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "clone is NULL");
+
         return NULL;
     }
 

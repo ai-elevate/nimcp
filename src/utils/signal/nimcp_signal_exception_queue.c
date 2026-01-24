@@ -122,7 +122,11 @@ bool signal_exception_queue_is_initialized(void)
 bool signal_exception_queue_enqueue(int sig, const signal_crash_context_t* ctx)
 {
     if (!g_initialized || !g_signal_queue || !ctx) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "signal_exception_queue_enqueue: invalid parameters");
+
+            return false;
     }
 
     /* Prepare the entry */
@@ -146,7 +150,11 @@ bool signal_exception_queue_enqueue(int sig, const signal_crash_context_t* ctx)
 bool signal_exception_queue_dequeue(signal_exception_entry_t* out)
 {
     if (!g_initialized || !g_signal_queue || !out) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "signal_exception_queue_dequeue: invalid parameters");
+
+            return false;
     }
 
     /* Use try_dequeue (non-blocking, lock-free for SPSC) */
@@ -162,7 +170,11 @@ bool signal_exception_queue_dequeue(signal_exception_entry_t* out)
 size_t signal_exception_queue_pending_count(void)
 {
     if (!g_initialized || !g_signal_queue) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "signal_exception_queue_pending_count: invalid parameters");
+
+            return 0;
     }
     return nimcp_queue_get_size(g_signal_queue);
 }
@@ -208,7 +220,11 @@ void signal_exception_queue_reset_stats(void)
 size_t signal_exception_queue_process(size_t max_count)
 {
     if (!g_initialized || !g_signal_queue) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "signal_exception_queue_process: invalid parameters");
+
+            return 0;
     }
 
     size_t processed = 0;

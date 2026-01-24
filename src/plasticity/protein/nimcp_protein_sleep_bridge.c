@@ -109,6 +109,9 @@ protein_sleep_bridge_t protein_sleep_bridge_create(
 
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate protein sleep bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
         return NULL;
     }
 

@@ -276,7 +276,15 @@ static bool detect_shellcode(const void* data, size_t size)
  */
 static bool detect_dangerous_format_specifier(const char* str)
 {
-    if (!str) return false;
+    if (!str) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "detect_dangerous_format_specifier: str is NULL");
+
+            return false;
+
+        }
 
     const int DANGEROUS_WIDTH_THRESHOLD = 10000;
 
@@ -366,7 +374,15 @@ bool bbb_validate_input(bbb_system_t system, const void* data,
                         size_t size, bbb_validation_result_t* result)
 {
     /* Guard: NULL parameters */
-    if (!result) return false;
+    if (!result) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "bbb_validate_input: result is NULL");
+
+            return false;
+
+        }
 
     /* Initialize result to valid */
     memset(result, 0, sizeof(bbb_validation_result_t));
@@ -450,7 +466,15 @@ bool bbb_validate_string(bbb_system_t system, const char* str,
                          bbb_validation_result_t* result)
 {
     /* Guard: NULL result */
-    if (!result) return false;
+    if (!result) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "bbb_validate_string: result is NULL");
+
+            return false;
+
+        }
 
     /* Initialize result */
     memset(result, 0, sizeof(bbb_validation_result_t));
@@ -569,7 +593,15 @@ bool bbb_validate_integer(bbb_system_t system, int64_t value,
                           bbb_validation_result_t* result)
 {
     /* Guard: NULL result */
-    if (!result) return false;
+    if (!result) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "bbb_validate_integer: result is NULL");
+
+            return false;
+
+        }
 
     /* Initialize result */
     memset(result, 0, sizeof(bbb_validation_result_t));
@@ -684,7 +716,11 @@ ssize_t bbb_sanitize_string(bbb_system_t system, const char* input,
 {
     /* Guard: Invalid parameters */
     if (!input || !output || output_size == 0) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "bbb_sanitize_string: invalid parameters");
+
+            return -1;
     }
 
     (void)system;  /* Available for future configuration */

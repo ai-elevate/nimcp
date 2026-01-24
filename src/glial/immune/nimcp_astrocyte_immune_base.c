@@ -80,7 +80,15 @@ astrocyte_phenotype_t astro_immune_get_phenotype(const astrocyte_immune_base_t* 
 }
 
 bool astro_immune_has_astrogliosis(const astrocyte_immune_base_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "astro_immune_has_astrogliosis: bridge is NULL");
+
+            return false;
+
+        }
     return bridge->cytokine_state.is_astrogliosis ||
            bridge->inflammation.glial_scar_forming;
 }
@@ -172,7 +180,15 @@ int astro_immune_disconnect_bio_async(astrocyte_immune_base_t* bridge) {
 }
 
 bool astro_immune_is_bio_async_connected(const astrocyte_immune_base_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "astro_immune_is_bio_async_connected: bridge is NULL");
+
+            return false;
+
+        }
     return bridge->infra.bio_async_enabled;
 }
 

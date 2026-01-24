@@ -788,6 +788,8 @@ consolidation_handle_t brain_start_background_consolidation(brain_t brain,
                                                             const consolidation_config_t* config)
 {
     if (brain == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return NULL;
     }
 
@@ -795,6 +797,8 @@ consolidation_handle_t brain_start_background_consolidation(brain_t brain,
     consolidation_handle_t handle =
         (consolidation_handle_t) nimcp_calloc(1, sizeof(struct consolidation_handle_struct));
     if (handle == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle is NULL");
+
         return NULL;
     }
 

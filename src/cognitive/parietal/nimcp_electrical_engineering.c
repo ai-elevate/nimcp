@@ -59,6 +59,8 @@ electrical_eng_t* electrical_eng_create_custom(const ee_config_t* config) {
     electrical_eng_t* ee = calloc(1, sizeof(electrical_eng_t));
     if (!ee) {
         set_error("Failed to allocate electrical_eng");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ee is NULL");
+
         return NULL;
     }
     ee->config = config ? *config : electrical_eng_default_config();
@@ -79,6 +81,8 @@ ee_circuit_t* electrical_eng_create_circuit(const char* name) {
     ee_circuit_t* circuit = calloc(1, sizeof(ee_circuit_t));
     if (!circuit) {
         set_error("Failed to allocate circuit");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circuit is NULL");
+
         return NULL;
     }
     if (name) {
@@ -402,13 +406,25 @@ void electrical_eng_free_power_result(ee_power_result_t* result) {
  * ============================================================================ */
 
 int electrical_eng_set_inflammation(electrical_eng_t* ee, float level) {
-    if (!ee) return -1;
+    if (!ee) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ee is NULL");
+
+        return -1;
+
+    }
     ee->inflammation_level = level < 0.0f ? 0.0f : (level > 1.0f ? 1.0f : level);
     return 0;
 }
 
 int electrical_eng_set_fatigue(electrical_eng_t* ee, float level) {
-    if (!ee) return -1;
+    if (!ee) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ee is NULL");
+
+        return -1;
+
+    }
     ee->fatigue_level = level < 0.0f ? 0.0f : (level > 1.0f ? 1.0f : level);
     return 0;
 }

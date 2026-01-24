@@ -84,7 +84,13 @@ static int initialize_trf_weights(
 )
 {
     // Guard clauses
-    if (!trf) return -1;
+    if (!trf) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "trf is NULL");
+
+        return -1;
+
+    }
     if (num_bins == 0) return -1;
     if (bin_width_ms <= 0.0f) return -1;
     if (tau <= 0.0f) return -1;
@@ -241,6 +247,8 @@ cortical_temporal_system_t* cortical_temporal_create(
     // Guard clauses
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
     if (config->num_columns == 0) {
@@ -259,6 +267,8 @@ cortical_temporal_system_t* cortical_temporal_create(
     );
     if (!system) {
         NIMCP_LOGGING_ERROR("Failed to allocate temporal system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
 
@@ -402,7 +412,13 @@ int cortical_temporal_set_layer_timescale(
 {
     // Guard clauses
     if (!validate_system(system)) return -1;
-    if (!timescale) return -1;
+    if (!timescale) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "timescale is NULL");
+
+        return -1;
+
+    }
     if (layer >= CORTICAL_TEMPORAL_NUM_LAYERS) return -1;
     if (timescale->tau <= 0.0f) return -1;
 
@@ -620,6 +636,8 @@ sequence_detector_t* cortical_temporal_create_sequence_detector(
     // Guard clauses
     if (!sequence_template) {
         NIMCP_LOGGING_ERROR("NULL sequence template");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sequence_template is NULL");
+
         return NULL;
     }
     if (sequence_length == 0) {
@@ -638,6 +656,8 @@ sequence_detector_t* cortical_temporal_create_sequence_detector(
     );
     if (!detector) {
         NIMCP_LOGGING_ERROR("Failed to allocate sequence detector");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "detector is NULL");
+
         return NULL;
     }
 
@@ -772,7 +792,13 @@ int cortical_temporal_get_stats(
 {
     // Guard clauses
     if (!validate_system(system)) return -1;
-    if (!stats) return -1;
+    if (!stats) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats is NULL");
+
+        return -1;
+
+    }
 
     const temporal_state_t* state = &system->state;
     const temporal_config_t* config = &system->config;

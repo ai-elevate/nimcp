@@ -161,6 +161,8 @@ lockfree_metrics_buffer_t* lockfree_metrics_create(
         (lockfree_metrics_buffer_t*)nimcp_calloc(1, sizeof(lockfree_metrics_buffer_t));
     if (!buffer) {
         nimcp_log(LOG_LEVEL_ERROR, "Failed to allocate metrics buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "buffer is NULL");
+
         return NULL;
     }
 

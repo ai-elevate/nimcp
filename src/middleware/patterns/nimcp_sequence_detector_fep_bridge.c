@@ -24,7 +24,13 @@ static inline float clamp_f(float value, float min, float max) {
 int sequence_detector_fep_bridge_default_config(
     sequence_detector_fep_config_t* config
 ) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
     config->enable_prediction_priming = true;
     config->enable_precision_tolerance = true;
     config->enable_sequence_pe = true;
@@ -41,6 +47,8 @@ sequence_detector_fep_bridge_t* sequence_detector_fep_bridge_create(
         nimcp_calloc(1, sizeof(sequence_detector_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate sequence-FEP bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -109,7 +117,13 @@ int sequence_detector_fep_bridge_connect_fep(
 int sequence_detector_fep_bridge_disconnect(
     sequence_detector_fep_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->sequence_detector = NULL;
     bridge->fep_system = NULL;
@@ -122,7 +136,13 @@ int sequence_detector_fep_prime_expected_sequence(
     sequence_detector_fep_bridge_t* bridge,
     uint32_t template_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_prediction_priming) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -139,7 +159,13 @@ int sequence_detector_fep_adjust_tolerance(
     sequence_detector_fep_bridge_t* bridge,
     float precision
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_precision_tolerance) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -189,7 +215,13 @@ int sequence_detector_fep_report_violation(
     sequence_detector_fep_bridge_t* bridge,
     uint32_t expected_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_sequence_pe) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -240,7 +272,13 @@ int sequence_detector_fep_bridge_update(
     sequence_detector_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     return 0;
 }
 
@@ -269,7 +307,13 @@ int sequence_detector_fep_bridge_get_stats(
 int sequence_detector_fep_bridge_connect_bio_async(
     sequence_detector_fep_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -293,7 +337,13 @@ int sequence_detector_fep_bridge_connect_bio_async(
 int sequence_detector_fep_bridge_disconnect_bio_async(
     sequence_detector_fep_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     bio_router_unregister_module(bridge->base.bio_ctx);

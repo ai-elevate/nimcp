@@ -633,7 +633,11 @@ int enhanced_wellbeing_describe_resource_distress(
 {
     // Guard: Null pointer checks
     if (!metrics || !buffer || buffer_size == 0) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "enhanced_wellbeing_describe_resource_distress: invalid parameters");
+
+            return 0;
     }
 
     // Guard: Collection must have succeeded

@@ -32,7 +32,13 @@
  * ============================================================================ */
 
 int hippocampus_imagination_default_config(hippocampus_imagination_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->relevance_threshold = HIPP_IMAG_DEFAULT_RELEVANCE_THRESHOLD;
     config->max_memories_per_request = 4;
@@ -55,7 +61,13 @@ int hippocampus_imagination_default_config(hippocampus_imagination_config_t* con
 }
 
 int hippocampus_imagination_validate_config(const hippocampus_imagination_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     if (config->relevance_threshold < 0.0f || config->relevance_threshold > 1.0f) {
         return -1;
@@ -94,6 +106,8 @@ hippocampus_imagination_bridge_t* hippocampus_imagination_bridge_create(
         1, sizeof(hippocampus_imagination_bridge_t));
     if (!bridge) {
         NIMCP_LOG_ERROR("Failed to allocate hippocampus-imagination bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -177,7 +191,13 @@ void hippocampus_imagination_bridge_destroy(hippocampus_imagination_bridge_t* br
 }
 
 int hippocampus_imagination_reset(hippocampus_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -207,7 +227,13 @@ int hippocampus_imagination_connect_hippocampus(
     hippocampus_imagination_bridge_t* bridge,
     struct hippocampus_adapter* hippocampus)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -228,7 +254,13 @@ int hippocampus_imagination_connect_imagination(
     hippocampus_imagination_bridge_t* bridge,
     struct imagination_engine* imagination)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -272,7 +304,13 @@ int hippocampus_imagination_update(
     hippocampus_imagination_bridge_t* bridge,
     float delta_time_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bridge_active) return 0;  /* Nothing to do */
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -348,7 +386,13 @@ int hippocampus_imagination_compute_imag_effects(
 }
 
 int hippocampus_imagination_apply_effects(hippocampus_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Apply hippocampus effects to imagination */
     if (bridge->imagination && bridge->hipp_to_imag.num_retrieved_memories > 0) {
@@ -537,7 +581,13 @@ int hippocampus_imagination_get_stats(
 }
 
 int hippocampus_imagination_reset_stats(hippocampus_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -560,7 +610,13 @@ uint32_t hippocampus_imagination_get_active_scenario_count(
 int hippocampus_imagination_connect_bio_async(
     hippocampus_imagination_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;  /* Already connected */
 
     /* Use bridge base helper if available */
@@ -575,7 +631,13 @@ int hippocampus_imagination_connect_bio_async(
 int hippocampus_imagination_disconnect_bio_async(
     hippocampus_imagination_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;  /* Already disconnected */
 
     int result = bridge_base_disconnect_bio_async(&bridge->base);
@@ -596,7 +658,13 @@ bool hippocampus_imagination_is_bio_async_connected(
 int hippocampus_imagination_process_messages(
     hippocampus_imagination_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     /* Process pending bio-async messages */

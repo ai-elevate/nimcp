@@ -31,6 +31,8 @@ personality_fep_bridge_t* personality_fep_bridge_create(const personality_fep_co
     personality_fep_bridge_t* bridge = nimcp_malloc(sizeof(personality_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate personality FEP bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     memset(bridge, 0, sizeof(personality_fep_bridge_t));

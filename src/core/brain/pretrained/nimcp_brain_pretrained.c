@@ -266,6 +266,8 @@ brain_t brain_create_pretrained(const char* model_id, brain_task_t task)
 {
     if (!model_id) {
         fprintf(stderr, "NIMCP Error: model_id is NULL\n");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "model_id is NULL");
+
         return NULL;
     }
 
@@ -290,6 +292,8 @@ brain_t brain_create_pretrained(const char* model_id, brain_task_t task)
     brain_t brain = brain_load(filepath);
     if (!brain) {
         fprintf(stderr, "NIMCP Error: Failed to load model from %s\n", filepath);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return NULL;
     }
 

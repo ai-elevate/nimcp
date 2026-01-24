@@ -159,6 +159,8 @@ scientific_reasoning_t* scientific_reasoning_create_custom(
     scientific_reasoning_t* sr = calloc(1, sizeof(scientific_reasoning_t));
     if (!sr) {
         set_scientific_error("Failed to allocate scientific reasoning");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sr is NULL");
+
         return NULL;
     }
 
@@ -601,6 +603,8 @@ causal_graph_t* scientific_create_causal_graph(
     causal_graph_t* graph = calloc(1, sizeof(causal_graph_t));
     if (!graph) {
         set_scientific_error("Failed to allocate causal graph");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph is NULL");
+
         return NULL;
     }
 
@@ -875,7 +879,13 @@ uint32_t scientific_required_sample_size(
  * ============================================================================ */
 
 int scientific_set_inflammation(scientific_reasoning_t* sr, float level) {
-    if (!sr) return -1;
+    if (!sr) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sr is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(sr->lock);
     sr->inflammation_level = clamp01(level);
@@ -885,7 +895,13 @@ int scientific_set_inflammation(scientific_reasoning_t* sr, float level) {
 }
 
 int scientific_set_sleep_deprivation(scientific_reasoning_t* sr, float level) {
-    if (!sr) return -1;
+    if (!sr) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sr is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(sr->lock);
     sr->sleep_deprivation_level = clamp01(level);

@@ -91,6 +91,8 @@ fep_sleep_system_t* fep_sleep_create(const fep_sleep_config_t* config) {
         1, sizeof(fep_sleep_system_t));
     if (!sys) {
         NIMCP_LOGGING_ERROR("Failed to allocate sleep system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
         return NULL;
     }
 
@@ -158,7 +160,13 @@ void fep_sleep_destroy(fep_sleep_system_t* sys) {
  * ============================================================================ */
 
 int fep_sleep_set_stage(fep_sleep_system_t* sys, fep_sleep_stage_t stage) {
-    if (!sys) return -1;
+    if (!sys) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(sys->mutex);
 
@@ -210,7 +218,13 @@ fep_sleep_stage_t fep_sleep_get_stage(const fep_sleep_system_t* sys) {
 }
 
 int fep_sleep_update(fep_sleep_system_t* sys, uint64_t delta_ms) {
-    if (!sys) return -1;
+    if (!sys) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(sys->mutex);
 
@@ -537,7 +551,13 @@ int fep_sleep_connect(fep_sleep_system_t* sleep, fep_system_t* fep) {
  * ============================================================================ */
 
 int fep_sleep_connect_bio_async(fep_sleep_system_t* sys) {
-    if (!sys) return -1;
+    if (!sys) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
+        return -1;
+
+    }
     if (sys->bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -558,7 +578,13 @@ int fep_sleep_connect_bio_async(fep_sleep_system_t* sys) {
 }
 
 int fep_sleep_disconnect_bio_async(fep_sleep_system_t* sys) {
-    if (!sys) return -1;
+    if (!sys) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
+        return -1;
+
+    }
     if (!sys->bio_async_enabled) return 0;
 
     if (sys->bio_ctx) {
@@ -578,7 +604,13 @@ bool fep_sleep_is_bio_async_connected(const fep_sleep_system_t* sys) {
  * ============================================================================ */
 
 int fep_sleep_on_prediction_error(fep_sleep_system_t* sys, float prediction_error) {
-    if (!sys) return -1;
+    if (!sys) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(sys->mutex);
 
@@ -614,7 +646,13 @@ int fep_sleep_on_prediction_error(fep_sleep_system_t* sys, float prediction_erro
 }
 
 int fep_sleep_on_uncertainty(fep_sleep_system_t* sys, float uncertainty) {
-    if (!sys) return -1;
+    if (!sys) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(sys->mutex);
 
@@ -643,7 +681,13 @@ int fep_sleep_on_uncertainty(fep_sleep_system_t* sys, float uncertainty) {
 }
 
 int fep_sleep_on_convergence(fep_sleep_system_t* sys, bool converged, float convergence_quality) {
-    if (!sys) return -1;
+    if (!sys) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(sys->mutex);
 
@@ -693,7 +737,13 @@ bool fep_sleep_is_sleep_recommended(const fep_sleep_system_t* sys) {
 }
 
 int fep_sleep_reset_pressure(fep_sleep_system_t* sys) {
-    if (!sys) return -1;
+    if (!sys) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(sys->mutex);
 
@@ -706,7 +756,13 @@ int fep_sleep_reset_pressure(fep_sleep_system_t* sys) {
 }
 
 int fep_sleep_update_pressure(fep_sleep_system_t* sys, uint64_t delta_ms) {
-    if (!sys) return -1;
+    if (!sys) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(sys->mutex);
 

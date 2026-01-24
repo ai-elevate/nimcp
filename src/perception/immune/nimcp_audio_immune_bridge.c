@@ -630,7 +630,15 @@ int audio_immune_get_inflammation_state(
 }
 
 bool audio_immune_is_impaired(const audio_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "audio_immune_is_impaired: bridge is NULL");
+
+            return false;
+
+        }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -726,6 +734,14 @@ int audio_immune_disconnect_bio_async(audio_immune_bridge_t* bridge) {
  * @brief Check if bio-async is connected
  */
 bool audio_immune_is_bio_async_connected(const audio_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "audio_immune_is_bio_async_connected: bridge is NULL");
+
+            return false;
+
+        }
     return bridge->base.bio_async_enabled;
 }

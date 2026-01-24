@@ -174,7 +174,11 @@ size_t serialize_append_entries(
     size_t buffer_size
 ) {
     if (!req || !buffer) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "serialize_append_entries: invalid parameters");
+
+            return 0;
     }
 
     size_t needed = sizeof(nimcp_rpc_type_t) + sizeof(nimcp_append_entries_t) +
@@ -212,7 +216,11 @@ bool deserialize_append_entries(
     size_t entry_size
 ) {
     if (!buffer || !req) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "deserialize_append_entries: invalid parameters");
+
+            return false;
     }
 
     if (buffer_size < sizeof(nimcp_rpc_type_t) + sizeof(nimcp_append_entries_t)) {
@@ -225,7 +233,11 @@ bool deserialize_append_entries(
 
     if (req->entry_count > 0) {
         if (!entries || req->entry_count > max_entries) {
-            return false;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                    "if: invalid parameters");
+
+                return false;
         }
 
         size_t entries_size = req->entry_count * entry_size;

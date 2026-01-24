@@ -121,7 +121,13 @@ static inline float ms_to_hours(uint64_t ms) {
  * ============================================================================ */
 
 int sleep_immune_default_config(sleep_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* All features enabled by default */
     config->enable_cytokine_sleep_modulation = true;
@@ -159,6 +165,8 @@ sleep_immune_bridge_t* sleep_immune_bridge_create(
         nimcp_malloc(sizeof(sleep_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("sleep_immune_bridge", "Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -216,7 +224,13 @@ void sleep_immune_bridge_destroy(sleep_immune_bridge_t* bridge) {
 
 int sleep_immune_apply_cytokine_effects(sleep_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_cytokine_sleep_modulation) return 0;
     if (!bridge->immune_system || !bridge->sleep_system) return -1;
 
@@ -266,7 +280,13 @@ int sleep_immune_apply_cytokine_effects(sleep_immune_bridge_t* bridge) {
 
 int sleep_immune_apply_inflammation_effects(sleep_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_inflammation_sleep_disruption) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -332,7 +352,13 @@ bool sleep_immune_is_sleep_fragmented(const sleep_immune_bridge_t* bridge) {
 
 int sleep_immune_enhance_during_deep_sleep(sleep_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_sleep_immune_enhancement) return 0;
     if (!bridge->sleep_system || !bridge->immune_system) return -1;
 
@@ -366,7 +392,13 @@ int sleep_immune_enhance_during_deep_sleep(sleep_immune_bridge_t* bridge) {
 
 int sleep_immune_consolidate_memory_during_rem(sleep_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_rem_memory_consolidation) return 0;
     if (!bridge->sleep_system || !bridge->immune_system) return -1;
 
@@ -404,7 +436,13 @@ int sleep_immune_consolidate_memory_during_rem(sleep_immune_bridge_t* bridge) {
 
 int sleep_immune_suppress_from_deprivation(sleep_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_sleep_deprivation_tracking) return 0;
     if (!bridge->sleep_system || !bridge->immune_system) return -1;
 
@@ -453,7 +491,13 @@ int sleep_immune_suppress_from_deprivation(sleep_immune_bridge_t* bridge) {
 
 int sleep_immune_inflame_from_chronic_loss(sleep_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_sleep_deprivation_tracking) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -497,7 +541,13 @@ int sleep_immune_bridge_update(
     sleep_immune_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Apply all bidirectional effects */
 
@@ -608,7 +658,13 @@ float sleep_immune_get_suppression_level(const sleep_immune_bridge_t* bridge) {
  * @brief Connect bridge to bio-async router
  */
 int sleep_immune_connect_bio_async(sleep_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -633,7 +689,13 @@ int sleep_immune_connect_bio_async(sleep_immune_bridge_t* bridge) {
  * @brief Disconnect from bio-async router
  */
 int sleep_immune_disconnect_bio_async(sleep_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

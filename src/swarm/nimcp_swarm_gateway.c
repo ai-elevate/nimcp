@@ -451,6 +451,8 @@ swarm_gateway_t* swarm_gateway_create(brain_t server_brain,
     swarm_gateway_t* gateway = nimcp_calloc(1, sizeof(swarm_gateway_t));
     if (!gateway) {
         LOG_ERROR("Failed to allocate gateway");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gateway is NULL");
+
         return NULL;
     }
 

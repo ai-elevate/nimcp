@@ -60,6 +60,8 @@ civil_eng_t* civil_eng_create_custom(const ce_config_t* config) {
     civil_eng_t* ce = calloc(1, sizeof(civil_eng_t));
     if (!ce) {
         set_error("Failed to allocate civil_eng");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce is NULL");
+
         return NULL;
     }
     ce->config = config ? *config : civil_eng_default_config();
@@ -77,7 +79,13 @@ void civil_eng_destroy(civil_eng_t* ce) {
  * ============================================================================ */
 
 int civil_eng_get_material(ce_material_type_t type, ce_material_t* material) {
-    if (!material) return -1;
+    if (!material) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "material is NULL");
+
+        return -1;
+
+    }
     memset(material, 0, sizeof(*material));
     material->type = type;
 
@@ -118,7 +126,13 @@ int civil_eng_get_material(ce_material_type_t type, ce_material_t* material) {
 }
 
 int civil_eng_create_concrete(float fc_mpa, ce_material_t* material) {
-    if (!material) return -1;
+    if (!material) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "material is NULL");
+
+        return -1;
+
+    }
     memset(material, 0, sizeof(*material));
     material->type = CE_MATERIAL_CONCRETE;
     snprintf(material->name, sizeof(material->name), "Concrete f'c=%.0fMPa", fc_mpa);
@@ -134,7 +148,13 @@ int civil_eng_create_concrete(float fc_mpa, ce_material_t* material) {
 }
 
 int civil_eng_create_steel(float fy_mpa, ce_material_t* material) {
-    if (!material) return -1;
+    if (!material) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "material is NULL");
+
+        return -1;
+
+    }
     memset(material, 0, sizeof(*material));
     material->type = CE_MATERIAL_STEEL;
     snprintf(material->name, sizeof(material->name), "Steel fy=%.0fMPa", fy_mpa);
@@ -423,13 +443,25 @@ void civil_eng_free_hydraulic_result(ce_hydraulic_result_t* result) {
  * ============================================================================ */
 
 int civil_eng_set_inflammation(civil_eng_t* ce, float level) {
-    if (!ce) return -1;
+    if (!ce) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce is NULL");
+
+        return -1;
+
+    }
     ce->inflammation_level = level < 0.0f ? 0.0f : (level > 1.0f ? 1.0f : level);
     return 0;
 }
 
 int civil_eng_set_fatigue(civil_eng_t* ce, float level) {
-    if (!ce) return -1;
+    if (!ce) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ce is NULL");
+
+        return -1;
+
+    }
     ce->fatigue_level = level < 0.0f ? 0.0f : (level > 1.0f ? 1.0f : level);
     return 0;
 }

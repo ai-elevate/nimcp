@@ -655,7 +655,13 @@ int treg_set_activation_callback(
     treg_activation_cb_t callback,
     void* user_data)
 {
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
 
     system->on_activation = callback;
     system->callback_user_data = user_data;
@@ -667,7 +673,13 @@ int treg_set_checkpoint_callback(
     treg_checkpoint_cb_t callback,
     void* user_data)
 {
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
 
     system->on_checkpoint = callback;
     system->callback_user_data = user_data;
@@ -679,7 +691,13 @@ int treg_set_cytokine_callback(
     treg_cytokine_cb_t callback,
     void* user_data)
 {
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
 
     system->on_cytokine = callback;
     system->callback_user_data = user_data;

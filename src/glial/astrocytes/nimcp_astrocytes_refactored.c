@@ -185,6 +185,8 @@ astrocyte_t* astrocyte_create(uint32_t id, astrocyte_type_t type,
     if (!g_astrocyte_module_initialized) {
         LOG_MODULE_ERROR(ASTROCYTE_MODULE_NAME,
             "Cannot create astrocyte: module not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "g_astrocyte_module_initialized is NULL");
+
         return NULL;
     }
 
@@ -197,6 +199,8 @@ astrocyte_t* astrocyte_create(uint32_t id, astrocyte_type_t type,
     if (!astro) {
         LOG_MODULE_ERROR(ASTROCYTE_MODULE_NAME,
             "Failed to allocate astrocyte id=%u: out of memory", id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astro is NULL");
+
         return NULL;
     }
 
@@ -572,6 +576,8 @@ astrocyte_network_t* astrocyte_network_create(uint32_t capacity) {
     if (!network) {
         LOG_MODULE_ERROR(ASTROCYTE_MODULE_NAME,
             "Failed to allocate astrocyte network");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+
         return NULL;
     }
 
@@ -711,6 +717,8 @@ astrocyte_calcium_system_t* astrocyte_calcium_system_create(astrocyte_network_t*
     if (!network) {
         LOG_MODULE_ERROR(ASTROCYTE_MODULE_NAME,
             "Cannot create calcium system: network is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "network is NULL");
+
         return NULL;
     }
 
@@ -723,6 +731,8 @@ astrocyte_calcium_system_t* astrocyte_calcium_system_create(astrocyte_network_t*
     if (!sys) {
         LOG_MODULE_ERROR(ASTROCYTE_MODULE_NAME,
             "Failed to allocate calcium system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
         return NULL;
     }
 

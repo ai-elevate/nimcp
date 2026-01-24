@@ -127,7 +127,13 @@ static void update_peak(capacity_manager_t* cm) {
 int capacity_manager_create(capacity_manager_t** cm,
                             const capacity_config_t* config,
                             const char* module_name) {
-    if (!cm) return -1;
+    if (!cm) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cm is NULL");
+
+        return -1;
+
+    }
 
     *cm = (capacity_manager_t*)calloc(1, sizeof(capacity_manager_t));
     if (!*cm) {
@@ -147,7 +153,13 @@ int capacity_manager_create(capacity_manager_t** cm,
 int capacity_manager_init(capacity_manager_t* cm,
                           const capacity_config_t* config,
                           const char* module_name) {
-    if (!cm) return -1;
+    if (!cm) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cm is NULL");
+
+        return -1;
+
+    }
 
     memset(cm, 0, sizeof(*cm));
 

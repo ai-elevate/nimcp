@@ -41,7 +41,13 @@ static inline float safe_divide(float num, float denom, float default_val) {
 int oscillations_fep_bridge_default_config(
     oscillations_fep_config_t* config
 ) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* Enable all coupling mechanisms */
     config->enable_pe_gamma_coupling = true;
@@ -73,6 +79,8 @@ oscillations_fep_bridge_t* oscillations_fep_bridge_create(
         nimcp_calloc(1, sizeof(oscillations_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate oscillations-FEP bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -152,7 +160,13 @@ int oscillations_fep_bridge_connect_oscillations(
 int oscillations_fep_bridge_disconnect(
     oscillations_fep_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -451,7 +465,13 @@ int oscillations_fep_bridge_update(
     oscillations_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     (void)delta_ms; /* Unused for now */
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -539,7 +559,13 @@ int oscillations_fep_bridge_get_stats(
 int oscillations_fep_bridge_connect_bio_async(
     oscillations_fep_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -562,7 +588,13 @@ int oscillations_fep_bridge_connect_bio_async(
 int oscillations_fep_bridge_disconnect_bio_async(
     oscillations_fep_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

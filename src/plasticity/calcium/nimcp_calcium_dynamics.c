@@ -248,6 +248,8 @@ calcium_dynamics_t calcium_create(const calcium_config_t* config) {
         (struct calcium_dynamics_struct*)nimcp_malloc(sizeof(struct calcium_dynamics_struct));
     if (!calcium) {
         NIMCP_LOGGING_ERROR("Failed to allocate calcium dynamics");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium is NULL");
+
         return NULL;
     }
 
@@ -405,7 +407,13 @@ int calcium_trigger_nmda_influx(
     float nmda_activation,
     float postsynaptic_voltage_mv
 ) {
-    if (!calcium) return -1;
+    if (!calcium) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium is NULL");
+
+        return -1;
+
+    }
 
     nmda_activation = clamp_f(nmda_activation, 0.0f, 1.0f);
 
@@ -430,7 +438,13 @@ int calcium_trigger_nmda_influx(
 }
 
 int calcium_set_concentration(calcium_dynamics_t calcium, float concentration) {
-    if (!calcium) return -1;
+    if (!calcium) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(calcium->mutex);
 
@@ -459,7 +473,13 @@ int calcium_set_concentration(calcium_dynamics_t calcium, float concentration) {
 }
 
 int calcium_reset(calcium_dynamics_t calcium) {
-    if (!calcium) return -1;
+    if (!calcium) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(calcium->mutex);
 
@@ -630,7 +650,13 @@ int calcium_unregister_threshold_callback(
  * ============================================================================ */
 
 int calcium_connect_bio_async(calcium_dynamics_t calcium) {
-    if (!calcium) return -1;
+    if (!calcium) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(calcium->mutex);
 
@@ -659,7 +685,13 @@ int calcium_connect_bio_async(calcium_dynamics_t calcium) {
 }
 
 int calcium_disconnect_bio_async(calcium_dynamics_t calcium) {
-    if (!calcium) return -1;
+    if (!calcium) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(calcium->mutex);
 

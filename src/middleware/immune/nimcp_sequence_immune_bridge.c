@@ -73,7 +73,13 @@ static float get_inflammation_duration_sec(const brain_immune_system_t* immune) 
  * ============================================================================ */
 
 int sequence_immune_default_config(sequence_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* All features enabled by default */
     config->enable_cytokine_modulation = true;
@@ -111,6 +117,8 @@ sequence_immune_bridge_t* sequence_immune_bridge_create(
         nimcp_malloc(sizeof(sequence_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("sequence_immune_bridge", "Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -172,7 +180,13 @@ void sequence_immune_bridge_destroy(sequence_immune_bridge_t* bridge) {
 
 int sequence_immune_apply_cytokine_effects(sequence_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_cytokine_modulation) return 0;
     if (!bridge->immune_system || !bridge->sequence_detector) return -1;
 
@@ -225,7 +239,13 @@ int sequence_immune_apply_cytokine_effects(sequence_immune_bridge_t* bridge) {
 
 int sequence_immune_apply_inflammation_effects(sequence_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_inflammation_impairment) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -367,7 +387,13 @@ int sequence_immune_trigger_from_anomaly(
 
 int sequence_immune_report_learning_failure(sequence_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_anomaly_immune_trigger) return 0;
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
@@ -399,7 +425,13 @@ int sequence_immune_report_detection_failure(
     float match_strength
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_anomaly_immune_trigger) return 0;
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
@@ -427,7 +459,13 @@ int sequence_immune_report_detection_failure(
 
 int sequence_immune_boost_from_learning_success(sequence_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_positive_feedback) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -474,7 +512,13 @@ int sequence_immune_bridge_update(
     sequence_immune_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Apply all bidirectional effects */
 
@@ -547,7 +591,13 @@ int sequence_immune_get_stats(
     uint32_t* anomaly_alerts,
     uint32_t* learning_failures
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -569,7 +619,13 @@ int sequence_immune_get_stats(
  * @brief Connect bridge to bio-async router
  */
 int sequence_immune_connect_bio_async(sequence_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -594,7 +650,13 @@ int sequence_immune_connect_bio_async(sequence_immune_bridge_t* bridge) {
  * @brief Disconnect from bio-async router
  */
 int sequence_immune_disconnect_bio_async(sequence_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

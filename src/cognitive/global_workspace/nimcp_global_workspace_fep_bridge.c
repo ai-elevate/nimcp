@@ -121,7 +121,13 @@ static float compute_competition_strength(
  * HOW:  Set biologically-plausible parameter values
  */
 int global_workspace_fep_bridge_default_config(global_workspace_fep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->belief_evidence_threshold = BELIEF_EVIDENCE_THRESHOLD;
     config->broadcast_prior_weight = BROADCAST_PRIOR_UPDATE_RATE;
@@ -147,6 +153,8 @@ global_workspace_fep_bridge_t* global_workspace_fep_bridge_create(
         1, sizeof(global_workspace_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate global workspace FEP bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -213,7 +221,13 @@ int global_workspace_fep_bridge_connect_fep(
     global_workspace_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     /* Allow NULL fep to disconnect/reset FEP connection */
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -504,7 +518,13 @@ int global_workspace_fep_bridge_update(
     global_workspace_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* FEP → Workspace: Compete with current beliefs */
     global_workspace_fep_compete_with_beliefs(bridge);
@@ -567,7 +587,13 @@ int global_workspace_fep_bridge_get_stats(
 int global_workspace_fep_bridge_connect_bio_async(
     global_workspace_fep_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -596,7 +622,13 @@ int global_workspace_fep_bridge_connect_bio_async(
 int global_workspace_fep_bridge_disconnect_bio_async(
     global_workspace_fep_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

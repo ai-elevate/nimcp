@@ -112,6 +112,9 @@ hypo_drives_bio_ctx_t* hypo_drives_bio_init(
 
     if (!drives) {
         LOG_ERROR(DRIVE_BIO_LOG_MODULE, "Cannot init bio-async without drive system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "drives is NULL");
+
+
         return NULL;
     }
 
@@ -122,6 +125,8 @@ hypo_drives_bio_ctx_t* hypo_drives_bio_init(
         1, sizeof(hypo_drives_bio_ctx_t));
     if (!ctx) {
         LOG_ERROR(DRIVE_BIO_LOG_MODULE, "Failed to allocate bio context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 

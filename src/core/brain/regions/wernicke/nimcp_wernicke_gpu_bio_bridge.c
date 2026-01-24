@@ -202,6 +202,8 @@ wernicke_gpu_bio_bridge_t* wernicke_gpu_bio_create(
     wernicke_gpu_bio_bridge_t* bridge = calloc(1, sizeof(wernicke_gpu_bio_bridge_t));
     if (!bridge) {
         LOG_ERROR("Failed to allocate GPU bio bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -268,7 +270,13 @@ int wernicke_gpu_bio_set_gpu_context(
     wernicke_gpu_bio_bridge_t* bridge,
     wernicke_gpu_context_t* gpu_ctx)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     if (bridge->owns_gpu_ctx && bridge->gpu_ctx) {
         wernicke_gpu_destroy(bridge->gpu_ctx);
@@ -291,7 +299,13 @@ wernicke_gpu_context_t* wernicke_gpu_bio_get_gpu_context(
  *=============================================================================*/
 
 int wernicke_gpu_bio_connect(wernicke_gpu_bio_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->bio_connected) return 0;
     if (!bridge->config.enable_bio_async) return 0;
 
@@ -334,7 +348,13 @@ int wernicke_gpu_bio_connect(wernicke_gpu_bio_bridge_t* bridge) {
 }
 
 int wernicke_gpu_bio_disconnect(wernicke_gpu_bio_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->bio_connected) return 0;
 
     if (bridge->bio_ctx) {
@@ -451,7 +471,13 @@ int wernicke_gpu_bio_add_frame(
  *=============================================================================*/
 
 int wernicke_gpu_bio_update(wernicke_gpu_bio_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Process incoming bio-async messages */
     if (bridge->bio_connected && bridge->bio_ctx) {

@@ -526,6 +526,8 @@ dendritic_tree_t dendritic_tree_create(const dendritic_tree_config_t* config) {
     /* Guard: Validate config */
     if (!config) {
         NIMCP_LOGGING_ERROR("Null config in dendritic_tree_create");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
     if (config->num_branches == 0 || config->num_branches > DENDRITIC_MAX_BRANCHES) {
@@ -542,6 +544,8 @@ dendritic_tree_t dendritic_tree_create(const dendritic_tree_config_t* config) {
     dendritic_tree_t tree = nimcp_calloc(1, sizeof(struct dendritic_tree_struct));
     if (!tree) {
         NIMCP_LOGGING_ERROR("Failed to allocate dendritic tree");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tree is NULL");
+
         return NULL;
     }
 

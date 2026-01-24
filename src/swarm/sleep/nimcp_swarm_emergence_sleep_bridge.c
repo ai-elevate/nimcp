@@ -52,7 +52,13 @@ static void swarm_emergence_on_sleep_state_change(sleep_state_t new_state, void*
 
 int swarm_emergence_sleep_default_config(swarm_emergence_sleep_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->enable_transition_modulation = true;
     config->enable_capability_modulation = true;
@@ -75,6 +81,8 @@ swarm_emergence_sleep_bridge_t swarm_emergence_sleep_bridge_create(
         (swarm_emergence_sleep_bridge_t)nimcp_malloc(sizeof(struct swarm_emergence_sleep_bridge_struct));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate swarm emergence sleep bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -127,7 +135,13 @@ void swarm_emergence_sleep_bridge_destroy(swarm_emergence_sleep_bridge_t bridge)
 
 int swarm_emergence_sleep_update(swarm_emergence_sleep_bridge_t bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     if (bridge->sleep_system) {

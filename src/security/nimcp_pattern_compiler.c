@@ -320,7 +320,11 @@ nimcp_error_t nimcp_pattern_test(
  */
 uint32_t nimcp_pattern_estimate_complexity(const char* pattern) {
     if (!pattern) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_pattern_estimate_complexity: pattern is NULL");
+
+            return 0;
     }
 
     uint32_t complexity = 0;

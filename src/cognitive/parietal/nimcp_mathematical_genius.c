@@ -283,6 +283,8 @@ NIMCP_API mathematical_genius_t* genius_create(const genius_config_t* config) {
     mathematical_genius_t* genius = nimcp_calloc(1, sizeof(mathematical_genius_t));
     if (!genius) {
         NIMCP_LOG_ERROR("Failed to allocate mathematical genius");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "genius is NULL");
+
         return NULL;
     }
 

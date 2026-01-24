@@ -239,6 +239,8 @@ NimcpEnergyGossip* nimcp_energy_gossip_create(
     NimcpEnergyGossip* gossip = (NimcpEnergyGossip*)nimcp_malloc(sizeof(NimcpEnergyGossip));
     if (!gossip) {
         LOG_ERROR("Failed to allocate energy gossip protocol");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gossip is NULL");
+
         return NULL;
     }
 

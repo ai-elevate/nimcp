@@ -1539,6 +1539,8 @@ synapse_t* sparse_synapse_get_metadata(
     const synapse_handle_t* handle
 ) {
     if (handle == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle is NULL");
+
         return NULL;
     }
 

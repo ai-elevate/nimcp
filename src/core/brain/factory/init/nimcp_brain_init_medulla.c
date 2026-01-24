@@ -225,7 +225,11 @@ protection_level_t nimcp_brain_get_protection_level(brain_t brain) {
 
 bool nimcp_brain_is_medulla_emergency(brain_t brain) {
     if (!brain || !brain->medulla_enabled || !brain->medulla) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "nimcp_brain_is_medulla_emergency: invalid parameters");
+
+            return false;
     }
 
     medulla_stats_t stats;
@@ -239,7 +243,11 @@ bool nimcp_brain_is_medulla_emergency(brain_t brain) {
 
 medulla_t brain_get_medulla(brain_t brain) {
     if (!brain || !brain->medulla_enabled) {
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_get_medulla: invalid parameters");
+
+            return NULL;
     }
     return brain->medulla;
 }

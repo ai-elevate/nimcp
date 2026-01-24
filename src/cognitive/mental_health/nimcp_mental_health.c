@@ -658,7 +658,15 @@ disorder_severity_t mental_health_classify_severity(float score, const mental_he
 
 bool mental_health_connect_immune(mental_health_monitor_t* mon, brain_immune_system_t* immune) {
     if (!is_valid_monitor(mon)) return false;
-    if (!immune) return false;  /* Reject NULL immune system */
+    if (!immune) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "mental_health_connect_immune: immune is NULL");
+
+            return false;
+
+        }  /* Reject NULL immune system */
     nimcp_mutex_lock(mon->lock);
     mon->immune_ref = immune;
     nimcp_mutex_unlock(mon->lock);
@@ -698,7 +706,15 @@ bool mental_health_test_memory_reset(mental_health_monitor_t* mon, brain_t brain
     /* Reject invalid fraction */
     if (frac < 0.0f || frac > 1.0f) return false;
     /* Reject NULL brain */
-    if (!brain) return false;
+    if (!brain) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "mental_health_test_memory_reset: brain is NULL");
+
+            return false;
+
+        }
     /* 0.0 fraction clears no systems, return false (no systems cleared) */
     if (frac == 0.0f) return false;
     /* Valid fraction with valid brain - would clear memory systems */

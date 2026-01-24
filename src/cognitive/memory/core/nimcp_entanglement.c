@@ -284,6 +284,8 @@ static node_entry_t* find_or_create_node_unlocked(entangle_graph_t graph, uint64
     node_entry_t* new_entry = (node_entry_t*)calloc(1, sizeof(node_entry_t));
     if (!new_entry) {
         set_error("Failed to allocate node entry");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_entry is NULL");
+
         return NULL;
     }
 
@@ -504,6 +506,8 @@ entangle_graph_t entangle_graph_create(const entangle_config_t* config) {
     entangle_graph_t graph = (entangle_graph_t)calloc(1, sizeof(struct entangle_graph_struct));
     if (!graph) {
         set_error("Failed to allocate graph structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph is NULL");
+
         return NULL;
     }
 
@@ -1499,6 +1503,8 @@ quantum_walk_state_t* quantum_walk_init(
 {
     if (!graph) {
         set_error("NULL graph");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "graph is NULL");
+
         return NULL;
     }
 
@@ -1536,6 +1542,8 @@ quantum_walk_state_t* quantum_walk_init(
     if (!state) {
         free(node_ids);
         set_error("Failed to allocate walk state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
         return NULL;
     }
 

@@ -288,6 +288,8 @@ hemispheric_immune_bridge_t* hemispheric_immune_create(
     hemispheric_immune_bridge_t* bridge = nimcp_malloc(sizeof(hemispheric_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("hemispheric_immune_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     memset(bridge, 0, sizeof(hemispheric_immune_bridge_t));

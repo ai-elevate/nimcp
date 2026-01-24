@@ -111,6 +111,8 @@ cortical_substrate_bridge_t* cortical_substrate_bridge_create(
     /* Guard: Validate inputs */
     if (!substrate) {
         NIMCP_LOGGING_ERROR("Cannot create cortical substrate bridge: NULL substrate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
+
         return NULL;
     }
 
@@ -119,6 +121,8 @@ cortical_substrate_bridge_t* cortical_substrate_bridge_create(
         (cortical_substrate_bridge_t*)nimcp_malloc(sizeof(cortical_substrate_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate cortical substrate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

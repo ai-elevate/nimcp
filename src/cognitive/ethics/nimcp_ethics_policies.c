@@ -241,7 +241,15 @@ bool ethics_remove_policy(ethics_engine_t engine, uint32_t policy_id)
 {
     // Guard clause: Validate input
     if (!engine)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "ethics_remove_policy: engine is NULL");
+
+            return false;
+
+        }
 
     return ethics_engine_remove_policy_internal(engine, policy_id);
 }

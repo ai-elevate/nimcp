@@ -1717,6 +1717,8 @@ brain_t nimcp_model_create_brain(const nimcp_loaded_model_t* model, uint8_t task
 {
     if (!model) {
         set_error("NULL model");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "model is NULL");
+
         return NULL;
     }
 
@@ -1754,6 +1756,8 @@ brain_t nimcp_model_create_brain(const nimcp_loaded_model_t* model, uint8_t task
     brain_t brain = brain_create_custom(&config);
     if (!brain) {
         set_error("Failed to create brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return NULL;
     }
 

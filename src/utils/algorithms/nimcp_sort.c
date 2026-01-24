@@ -189,7 +189,11 @@ cleanup:
 
 bool nimcp_has_cycle(const nimcp_topo_config_t* config) {
     if (!config || config->node_count == 0) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "nimcp_has_cycle: invalid parameters");
+
+            return false;
     }
 
     uint32_t* order = (uint32_t*)nimcp_calloc(config->node_count, sizeof(uint32_t));
@@ -595,7 +599,11 @@ uint32_t nimcp_binary_search_u32(
     uint32_t value
 ) {
     if (!array || count == 0) {
-        return UINT32_MAX;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "nimcp_binary_search_u32: invalid parameters");
+
+            return UINT32_MAX;
     }
 
     uint32_t left = 0;

@@ -95,7 +95,13 @@ static void metabolic_on_sleep_state_change(sleep_state_t new_state, void* user_
  * ============================================================================ */
 
 int metabolic_sleep_default_config(metabolic_sleep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->enable_recovery_modulation = true;
     config->enable_cost_modulation = true;
@@ -122,6 +128,8 @@ metabolic_sleep_bridge_t metabolic_sleep_bridge_create(
             sizeof(struct metabolic_sleep_bridge_struct));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate metabolic sleep bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -189,7 +197,13 @@ void metabolic_sleep_bridge_destroy(metabolic_sleep_bridge_t bridge) {
 
 int metabolic_sleep_update(metabolic_sleep_bridge_t bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->sleep_system) return -1;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);

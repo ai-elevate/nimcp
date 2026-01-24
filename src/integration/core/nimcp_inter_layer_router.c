@@ -240,7 +240,15 @@ nimcp_layer_error_t nimcp_inter_layer_router_set_coupling(
 bool nimcp_inter_layer_router_route_available(
     nimcp_inter_layer_router_t router, nimcp_layer_id_t source, nimcp_layer_id_t target
 ) {
-    if (!router) return false;
+    if (!router) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_inter_layer_router_route_available: router is NULL");
+
+            return false;
+
+        }
     if (source >= NIMCP_LAYER_COUNT || target >= NIMCP_LAYER_COUNT) return false;
     return true;
 }

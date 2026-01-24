@@ -374,10 +374,14 @@ NIMCP_EXPORT metamemory_t metamemory_create(
     // Validate required parameters
     if (!entanglement) {
         set_error("entanglement graph is required");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entanglement is NULL");
+
         return NULL;
     }
     if (!node_manager) {
         set_error("node manager is required");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node_manager is NULL");
+
         return NULL;
     }
 
@@ -392,6 +396,8 @@ NIMCP_EXPORT metamemory_t metamemory_create(
     metamemory_t meta = (metamemory_t)calloc(1, sizeof(struct metamemory_struct));
     if (!meta) {
         set_error("memory allocation failed for metamemory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta is NULL");
+
         return NULL;
     }
 

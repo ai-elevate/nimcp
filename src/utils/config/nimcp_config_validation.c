@@ -209,6 +209,8 @@ config_validation_schema_t config_schema_create(void) {
     unified_mem_handle_t handle = unified_mem_alloc(g_mem_manager, &req);
     if (!handle) {
         LOG_ERROR("Failed to allocate memory for schema");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "handle is NULL");
+
         return NULL;
     }
 
@@ -216,6 +218,8 @@ config_validation_schema_t config_schema_create(void) {
     if (!schema) {
         LOG_ERROR("Failed to get writable pointer for schema");
         unified_mem_free(handle);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "schema is NULL");
+
         return NULL;
     }
 
@@ -275,6 +279,8 @@ config_validation_schema_t config_schema_clone(config_validation_schema_t schema
     config_validation_schema_t new_schema = config_schema_create();
     if (!new_schema) {
         LOG_ERROR("Failed to create new schema for cloning");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "new_schema is NULL");
+
         return NULL;
     }
 

@@ -1456,7 +1456,11 @@ static size_t is_valid_utf8_char(const char* str, size_t len)
     // NULL/empty check
     // RETURN 0: Invalid (error condition)
     if (!str || len == 0) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "is_valid_utf8_char: invalid parameters");
+
+            return 0;
     }
 
     // Examine first byte to determine sequence length

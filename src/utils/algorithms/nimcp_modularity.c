@@ -84,7 +84,11 @@ static uint32_t count_unique_communities(const uint32_t* assignments, uint32_t n
 
     bool* seen = (bool*)nimcp_malloc(sizeof(bool) * num_vertices);
     if (!seen) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "count_unique_communities: seen is NULL");
+
+            return 0;
     }
 
     memset(seen, false, sizeof(bool) * num_vertices);
@@ -155,7 +159,15 @@ double nimcp_calculate_modularity_with_resolution(const NimcpGraph* graph,
 bool nimcp_validate_partition(const uint32_t* assignments, uint32_t num_vertices,
                               uint32_t num_communities)
 {
-    if (!assignments) return false;
+    if (!assignments) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_validate_partition: assignments is NULL");
+
+            return false;
+
+        }
 
     if (num_vertices == 0) {
         return false;
@@ -171,7 +183,11 @@ bool nimcp_validate_partition(const uint32_t* assignments, uint32_t num_vertices
     // Check all communities have at least one member
     bool* has_member = (bool*)nimcp_malloc(sizeof(bool) * num_communities);
     if (!has_member) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "if: has_member is NULL");
+
+            return false;
     }
 
     memset(has_member, false, sizeof(bool) * num_communities);

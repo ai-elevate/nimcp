@@ -163,6 +163,8 @@ portia_power_manager_t portia_power_init(const portia_power_config_t* config) {
         1, sizeof(portia_power_manager_struct_t));
     if (!mgr) {
         LOG_ERROR("[%s] Failed to allocate power manager", POWER_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mgr is NULL");
+
         return NULL;
     }
 

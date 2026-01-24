@@ -56,7 +56,13 @@ struct physics_immune_bridge_struct {
 //=============================================================================
 
 int physics_immune_default_config(physics_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->monitor_temperature = true;
     config->monitor_atp = true;
@@ -124,7 +130,13 @@ int physics_immune_connect_physics(
     nimcp_hh_population_t* hh_pop,
     nimcp_ephaptic_system_t* ephaptic
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->thermo = thermo;
     bridge->hh_pop = hh_pop;
@@ -141,7 +153,13 @@ int physics_immune_connect_immune(
     physics_immune_bridge_t* bridge,
     brain_immune_system_t* immune
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->immune = immune;
 
@@ -159,7 +177,13 @@ int physics_immune_report_state(
     physics_immune_bridge_t* bridge,
     physics_immune_state_t* state
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Sample thermodynamics state */
     if (bridge->thermo) {
@@ -287,7 +311,13 @@ int physics_immune_receive_cytokine(
     uint32_t cytokine_type,
     float concentration
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_cytokine_mod) return 0;
 
     /* Map cytokine type to conductance modulation */
@@ -331,7 +361,13 @@ int physics_immune_receive_inflammation(
     float region_y,
     float region_z
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_inflammation) return 0;
 
     (void)region_x;  /* Spatial specificity for future use */
@@ -364,7 +400,13 @@ int physics_immune_update(
     physics_immune_bridge_t* bridge,
     float dt
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Update timers */
     bridge->temp_sample_timer += dt;

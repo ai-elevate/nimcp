@@ -655,6 +655,8 @@ nlp_message_t* nlp_message_create(
     nlp_message_t* msg = (nlp_message_t*)nimcp_calloc(1, sizeof(nlp_message_t));
     if (!msg) {
         LOG_MODULE_ERROR(MODULE_NAME, "Failed to allocate message structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "msg is NULL");
+
         return NULL;
     }
 
@@ -1725,6 +1727,8 @@ nlp_message_t* nlp_message_create_chaff(uint32_t sender_id, uint32_t dest_id) {
     nlp_message_t* msg = nlp_message_create(NLP_MSG_CHAFF, NULL, payload_len);
     if (!msg) {
         LOG_MODULE_ERROR(MODULE_NAME, "Failed to create chaff message");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "msg is NULL");
+
         return NULL;
     }
 

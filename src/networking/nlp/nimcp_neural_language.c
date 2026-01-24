@@ -147,7 +147,13 @@ void nlang_expr_init(nlang_expression_t* expr, nlang_intent_t intent) {
 }
 
 int nlang_expr_add(nlang_expression_t* expr, uint8_t primitive) {
-    if (!expr) return -1;
+    if (!expr) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "expr is NULL");
+
+        return -1;
+
+    }
 
     if (expr->primitive_count >= NLANG_MAX_EXPRESSION_LEN) {
         NIMCP_LOGGING_WARN("nlang", "Expression full, cannot add primitive 0x%02X", primitive);

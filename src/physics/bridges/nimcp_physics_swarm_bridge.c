@@ -44,7 +44,13 @@ struct physics_swarm_bridge_struct {
 //=============================================================================
 
 int physics_swarm_default_config(physics_swarm_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->node_id = 0;
     config->total_nodes = 1;
@@ -194,7 +200,13 @@ int physics_swarm_sync_boundary(
 //=============================================================================
 
 int physics_swarm_update(physics_swarm_bridge_t* bridge, float dt) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->sync_timer += dt;
     bridge->sim_time += dt;

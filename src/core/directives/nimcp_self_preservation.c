@@ -109,6 +109,8 @@ self_preservation_system_t* self_preservation_create(
     /* Guard clause: allocation failed */
     if (!system) {
         NIMCP_LOGGING_ERROR("Failed to allocate self-preservation system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
 

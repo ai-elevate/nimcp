@@ -126,6 +126,8 @@ wm_transfer_system_t* wm_transfer_create(void) {
     wm_transfer_system_t* system = (wm_transfer_system_t*)nimcp_calloc(1, sizeof(wm_transfer_system_t));
     if (!system) {
         LOG_ERROR("Failed to allocate WM transfer system (%zu bytes)", sizeof(wm_transfer_system_t));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
 

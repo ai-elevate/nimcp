@@ -266,6 +266,8 @@ oligo_sleep_bridge_t oligo_sleep_create(
     /* Guard clause: Validate sleep system */
     if (!sleep) {
         NIMCP_LOGGING_ERROR("NULL sleep system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep is NULL");
+
         return NULL;
     }
 
@@ -278,6 +280,8 @@ oligo_sleep_bridge_t oligo_sleep_create(
             sizeof(struct oligo_sleep_bridge_struct));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate oligodendrocyte-sleep bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

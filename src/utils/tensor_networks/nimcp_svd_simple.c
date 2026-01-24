@@ -342,7 +342,11 @@ void svd_free(svd_result_t* svd) {
  */
 bool svd_reconstruct(const svd_result_t* svd, float* A) {
     if (!svd || !A || !svd->U || !svd->S || !svd->Vt) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "svd_reconstruct: invalid parameters");
+
+            return false;
     }
 
     // WHAT: Initialize output to zero

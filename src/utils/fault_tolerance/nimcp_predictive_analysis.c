@@ -367,12 +367,16 @@ pa_config_t pa_default_config(void) {
 pa_context_t* pa_create(const pa_config_t* config) {
     if (!config) {
         LOG_ERROR("PA", "NULL configuration provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
     pa_context_t* ctx = (pa_context_t*)nimcp_malloc(sizeof(pa_context_t));
     if (!ctx) {
         LOG_ERROR("PA", "Failed to allocate context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 

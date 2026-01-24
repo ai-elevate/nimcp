@@ -104,6 +104,8 @@ medulla_immune_bridge_t medulla_immune_create(
     medulla_immune_bridge_t bridge = nimcp_malloc(sizeof(struct medulla_immune_bridge));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate medulla-immune bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

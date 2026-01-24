@@ -54,12 +54,16 @@ void substantia_nigra_default_config(substantia_nigra_config_t* config,
 substantia_nigra_t* substantia_nigra_create(const substantia_nigra_config_t* config) {
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config for substantia nigra");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
     substantia_nigra_t* sn = nimcp_malloc(sizeof(substantia_nigra_t));
     if (!sn) {
         NIMCP_LOGGING_ERROR("Failed to allocate substantia nigra");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sn is NULL");
+
         return NULL;
     }
     memset(sn, 0, sizeof(substantia_nigra_t));
@@ -173,7 +177,13 @@ void substantia_nigra_destroy(substantia_nigra_t* sn) {
 }
 
 int substantia_nigra_reset(substantia_nigra_t* sn) {
-    if (!sn) return -1;
+    if (!sn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sn is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(sn->mutex);
 

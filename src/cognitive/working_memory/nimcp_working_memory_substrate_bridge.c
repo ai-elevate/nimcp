@@ -92,10 +92,14 @@ wm_substrate_bridge_t* wm_substrate_bridge_create(
     /* Guard: Validate required pointers */
     if (!substrate) {
         NIMCP_LOGGING_ERROR("Cannot create WM-substrate bridge: NULL substrate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
+
         return NULL;
     }
     if (!wm) {
         NIMCP_LOGGING_ERROR("Cannot create WM-substrate bridge: NULL working memory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "wm is NULL");
+
         return NULL;
     }
 
@@ -108,6 +112,8 @@ wm_substrate_bridge_t* wm_substrate_bridge_create(
     );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate WM-substrate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

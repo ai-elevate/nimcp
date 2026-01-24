@@ -153,7 +153,13 @@ static float inflammation_level_to_float(brain_inflammation_level_t level) {
  * ============================================================================ */
 
 int executive_immune_default_config(executive_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* All features enabled by default */
     config->enable_cytokine_executive_modulation = true;
@@ -192,6 +198,8 @@ executive_immune_bridge_t* executive_immune_bridge_create(
         nimcp_malloc(sizeof(executive_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("executive_immune_bridge", "Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -249,7 +257,13 @@ void executive_immune_bridge_destroy(executive_immune_bridge_t* bridge) {
 
 int executive_immune_apply_cytokine_effects(executive_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_cytokine_executive_modulation) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -334,7 +348,13 @@ int executive_immune_apply_cytokine_effects(executive_immune_bridge_t* bridge) {
 
 int executive_immune_apply_inflammation_effects(executive_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_inflammation_impairment) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -417,7 +437,13 @@ float executive_immune_compute_planning_reduction(const executive_immune_bridge_
 
 int executive_immune_trigger_from_overload(executive_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_executive_immune_trigger) return 0;
     if (!bridge->immune_system || !bridge->executive_controller) return -1;
 
@@ -454,7 +480,13 @@ int executive_immune_trigger_from_overload(executive_immune_bridge_t* bridge) {
 
 int executive_immune_amplify_from_frustration(executive_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_executive_immune_trigger) return 0;
     if (!bridge->immune_system || !bridge->executive_controller) return -1;
 
@@ -490,7 +522,13 @@ int executive_immune_amplify_from_frustration(executive_immune_bridge_t* bridge)
 
 int executive_immune_detect_burnout(executive_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_overload_monitoring) return 0;
     if (!bridge->immune_system || !bridge->executive_controller) return -1;
 
@@ -540,7 +578,13 @@ int executive_immune_detect_burnout(executive_immune_bridge_t* bridge) {
 
 int executive_immune_boost_from_success(executive_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_success_immune_boost) return 0;
     if (!bridge->immune_system || !bridge->executive_controller) return -1;
 
@@ -601,7 +645,13 @@ int executive_immune_bridge_update(
     uint64_t delta_ms
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -691,7 +741,13 @@ float executive_immune_get_burnout_severity(const executive_immune_bridge_t* bri
  * @brief Connect bridge to bio-async router
  */
 int executive_immune_connect_bio_async(executive_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -716,7 +772,13 @@ int executive_immune_connect_bio_async(executive_immune_bridge_t* bridge) {
  * @brief Disconnect from bio-async router
  */
 int executive_immune_disconnect_bio_async(executive_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

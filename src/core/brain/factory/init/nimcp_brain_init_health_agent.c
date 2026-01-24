@@ -91,7 +91,11 @@ extern float nimcp_health_agent_get_brain_probe_health_score(const nimcp_health_
  */
 bool nimcp_brain_factory_init_health_agent_subsystem(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_health_agent_subsystem: brain is NULL");
+
+            return false;
     }
 
     /* Initialize fields */
@@ -207,7 +211,11 @@ void nimcp_brain_factory_destroy_health_agent_subsystem(brain_t brain) {
  */
 struct nimcp_health_agent* brain_get_health_agent(brain_t brain) {
     if (!brain || !brain->health_agent_enabled) {
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_get_health_agent: invalid parameters");
+
+            return NULL;
     }
     return brain->health_agent;
 }
@@ -220,7 +228,11 @@ struct nimcp_health_agent* brain_get_health_agent(brain_t brain) {
  */
 bool brain_start_health_agent(brain_t brain) {
     if (!brain || !brain->health_agent_enabled || !brain->health_agent) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_start_health_agent: invalid parameters");
+
+            return false;
     }
 
     int result = nimcp_health_agent_start(brain->health_agent);
@@ -241,7 +253,11 @@ bool brain_start_health_agent(brain_t brain) {
  */
 bool brain_stop_health_agent(brain_t brain) {
     if (!brain || !brain->health_agent_enabled || !brain->health_agent) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_stop_health_agent: invalid parameters");
+
+            return false;
     }
 
     int result = nimcp_health_agent_stop(brain->health_agent);

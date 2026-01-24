@@ -560,6 +560,8 @@ spatial_neuromod_field_t* spatial_neuromod_create(uint32_t num_neurons,
         nimcp_aligned_alloc(64, sizeof(spatial_neuromod_field_t));
     if (!field) {
         LOG_ERROR("Failed to allocate spatial neuromodulator field");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "field is NULL");
+
         return NULL;
     }
 
@@ -674,6 +676,8 @@ spatial_neuromod_system_t* spatial_neuromod_system_create(
         nimcp_aligned_alloc(64, sizeof(spatial_neuromod_system_t));
     if (!system) {
         LOG_ERROR("Failed to allocate spatial neuromodulator system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
 

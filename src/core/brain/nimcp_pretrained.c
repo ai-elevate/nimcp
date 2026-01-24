@@ -277,6 +277,8 @@ static cJSON* load_model_metadata(const char* model_name, const char* models_dir
     FILE* fp = fopen(metadata_path, "r");
     if (!fp) {
         LOG_ERROR("Could not open metadata file: %s", metadata_path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "fp is NULL");
+
         return NULL;
     }
 
@@ -292,6 +294,8 @@ static cJSON* load_model_metadata(const char* model_name, const char* models_dir
     if (!content) {
         LOG_ERROR("Failed to allocate %ld bytes for metadata", file_size + 1);
         fclose(fp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "content is NULL");
+
         return NULL;
     }
 
@@ -311,6 +315,9 @@ static cJSON* load_model_metadata(const char* model_name, const char* models_dir
 
     if (!metadata) {
         LOG_ERROR("Invalid JSON in metadata file: %s", metadata_path);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metadata is NULL");
+
+
         return NULL;
     }
 
@@ -373,6 +380,9 @@ brain_t brain_load_pretrained(const char* model_name, const char* models_dir) {
 
     if (!model_name) {
         LOG_ERROR("model_name parameter is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "model_name is NULL");
+
+
         return NULL;
     }
 
@@ -388,6 +398,8 @@ brain_t brain_load_pretrained(const char* model_name, const char* models_dir) {
         LOG_ERROR("Could not load metadata for model: %s", model_name);
         publish_model_event(BIO_CHANNEL_SEROTONIN, BIO_MSG_BRAIN_STATE_RESPONSE,
                            model_name, false);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metadata is NULL");
+
         return NULL;
     }
 
@@ -467,6 +479,9 @@ brain_t brain_load_pretrained(const char* model_name, const char* models_dir) {
         LOG_ERROR("Failed to deserialize brain from: %s", model_path);
         publish_model_event(BIO_CHANNEL_SEROTONIN, BIO_MSG_BRAIN_STATE_RESPONSE,
                            model_name, false);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+
         return NULL;
     }
 

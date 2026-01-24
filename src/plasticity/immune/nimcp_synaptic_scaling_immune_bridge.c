@@ -213,7 +213,13 @@ static float map_inflammation_to_rate(brain_inflammation_level_t level) {
 
 int synaptic_scaling_immune_default_config(synaptic_scaling_immune_config_t* config) {
     /* Guard: validate input */
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* All features enabled by default */
     config->enable_tnf_scaling_modulation = true;
@@ -245,6 +251,8 @@ synaptic_scaling_immune_bridge_t* synaptic_scaling_immune_bridge_create(
     if (!immune_system) {
         LOG_MODULE_ERROR("synaptic_scaling_immune_bridge",
                   "Cannot create bridge without immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_system is NULL");
+
         return NULL;
     }
 
@@ -254,6 +262,8 @@ synaptic_scaling_immune_bridge_t* synaptic_scaling_immune_bridge_create(
     if (!bridge) {
         LOG_MODULE_ERROR("synaptic_scaling_immune_bridge",
                   "Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -742,7 +752,13 @@ int synaptic_scaling_immune_bridge_update(
     uint64_t delta_ms
 ) {
     /* Guard: validate input */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Lock for thread safety */
     if (bridge->base.mutex) nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -867,7 +883,13 @@ float synaptic_scaling_immune_get_recovery_progress(
  * @brief Connect bridge to bio-async router
  */
 int synaptic_scaling_immune_connect_bio_async(synaptic_scaling_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -892,7 +914,13 @@ int synaptic_scaling_immune_connect_bio_async(synaptic_scaling_immune_bridge_t* 
  * @brief Disconnect from bio-async router
  */
 int synaptic_scaling_immune_disconnect_bio_async(synaptic_scaling_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

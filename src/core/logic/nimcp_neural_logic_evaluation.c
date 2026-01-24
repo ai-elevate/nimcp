@@ -152,6 +152,8 @@ logic_batch_result_t* logic_batch_result_create(
     logic_batch_result_t* result = (logic_batch_result_t*)nimcp_calloc(1, sizeof(logic_batch_result_t));
     if (!result) {
         LOG_ERROR("logic_batch_result_create: failed to allocate result");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
         return NULL;
     }
 

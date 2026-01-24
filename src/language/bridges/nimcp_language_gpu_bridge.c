@@ -79,6 +79,8 @@ language_gpu_bridge_t* language_gpu_bridge_create(
         nimcp_calloc(1, sizeof(language_gpu_bridge_t));
     if (!bridge) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate GPU bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -195,7 +197,13 @@ void language_gpu_bridge_destroy(language_gpu_bridge_t* bridge) {
 }
 
 int language_gpu_bridge_init(language_gpu_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Check for GPU availability - in a real implementation,
        this would probe the system for CUDA/OpenCL/etc. */
@@ -227,7 +235,13 @@ int language_gpu_bridge_start(language_gpu_bridge_t* bridge) {
 }
 
 int language_gpu_bridge_stop(language_gpu_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->active = false;
     bridge->status = GPU_STATUS_IDLE;
@@ -244,7 +258,13 @@ int language_gpu_bridge_connect_orchestrator(
     language_gpu_bridge_t* bridge,
     language_orchestrator_t* orchestrator)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->orchestrator = orchestrator;
     return 0;
 }
@@ -253,7 +273,13 @@ int language_gpu_bridge_connect_gpu_context(
     language_gpu_bridge_t* bridge,
     gpu_execution_context_t* gpu_ctx)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->gpu_ctx = gpu_ctx;
 
     if (gpu_ctx) {
@@ -532,7 +558,13 @@ int language_gpu_bridge_submit_attention_batch(
 }
 
 int language_gpu_bridge_flush(language_gpu_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Execute all pending operations */
     bridge->status = GPU_STATUS_EXECUTING;
@@ -654,7 +686,13 @@ int language_gpu_bridge_update(
     language_gpu_bridge_t* bridge,
     uint64_t current_time_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->active) return 0;
 
     /* Check batch timeouts and flush if needed */
@@ -684,7 +722,13 @@ int language_gpu_bridge_bio_async_register(
     language_gpu_bridge_t* bridge,
     bio_router_t* router)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->bio_router = router;
     bridge->bio_async_registered = (router != NULL);
@@ -695,7 +739,13 @@ int language_gpu_bridge_bio_async_register(
 }
 
 int language_gpu_bridge_bio_async_unregister(language_gpu_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->bio_router = NULL;
     bridge->bio_async_registered = false;

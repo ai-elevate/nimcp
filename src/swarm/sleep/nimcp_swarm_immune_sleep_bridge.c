@@ -62,7 +62,13 @@ static void swarm_immune_on_sleep_state_change(sleep_state_t new_state, void* us
 
 int swarm_immune_sleep_default_config(swarm_immune_sleep_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->enable_detection_modulation = true;
     config->enable_response_modulation = true;
@@ -85,6 +91,8 @@ swarm_immune_sleep_bridge_t swarm_immune_sleep_bridge_create(
         (swarm_immune_sleep_bridge_t)nimcp_malloc(sizeof(struct swarm_immune_sleep_bridge_struct));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate swarm immune sleep bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -137,7 +145,13 @@ void swarm_immune_sleep_bridge_destroy(swarm_immune_sleep_bridge_t bridge)
 
 int swarm_immune_sleep_update(swarm_immune_sleep_bridge_t bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     if (bridge->sleep_system) {

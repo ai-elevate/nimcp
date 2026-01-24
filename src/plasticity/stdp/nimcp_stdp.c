@@ -687,7 +687,13 @@ size_t stdp_state_get_size(void* module_state) {
  * @return 0 on success, -1 on error, -2 if buffer too small
  */
 int stdp_state_serialize(void* module_state, uint8_t* buffer, size_t* size) {
-    if (!size) return -1;
+    if (!size) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "size is NULL");
+
+        return -1;
+
+    }
 
     size_t required_size = stdp_state_get_size(module_state);
 
@@ -703,7 +709,16 @@ int stdp_state_serialize(void* module_state, uint8_t* buffer, size_t* size) {
         return -2;
     }
 
-    if (!module_state) return -1;
+    if (!module_state) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "module_state is NULL");
+
+
+        return -1;
+
+
+    }
 
     stdp_synapse_t* synapse = (stdp_synapse_t*)module_state;
 
@@ -868,7 +883,13 @@ int stdp_state_deserialize(void* module_state, const uint8_t* buffer, size_t siz
  * @return 0 if valid, negative error code if invalid
  */
 int stdp_state_validate(void* module_state) {
-    if (!module_state) return -1;
+    if (!module_state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "module_state is NULL");
+
+        return -1;
+
+    }
 
     stdp_synapse_t* synapse = (stdp_synapse_t*)module_state;
 
@@ -928,7 +949,13 @@ int stdp_state_validate(void* module_state) {
  * @return 0 on success, negative on error
  */
 int stdp_state_reset(void* module_state) {
-    if (!module_state) return -1;
+    if (!module_state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "module_state is NULL");
+
+        return -1;
+
+    }
 
     stdp_synapse_t* synapse = (stdp_synapse_t*)module_state;
 

@@ -115,7 +115,13 @@ static float sample_from_replay_buffer(cl_ctx_t* ctx, float** input, float** tar
 //=============================================================================
 
 int cl_default_config(cl_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     memset(config, 0, sizeof(cl_config_t));
 
@@ -154,6 +160,8 @@ int cl_default_config(cl_config_t* config) {
 cl_ctx_t* cl_create(const cl_config_t* config) {
     if (!config) {
         NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "cl_create: config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
@@ -161,6 +169,8 @@ cl_ctx_t* cl_create(const cl_config_t* config) {
     if (!ctx) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(cl_ctx_t),
                           "cl_create: failed to allocate context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 
@@ -340,7 +350,13 @@ int cl_start_task(cl_ctx_t* ctx, uint32_t task_id, const char* task_name) {
 }
 
 int cl_get_current_task(const cl_ctx_t* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return -1;
+
+    }
     if (!ctx->in_task) return -1;
     return (int)ctx->current_task;
 }
@@ -746,7 +762,13 @@ const char* cl_strategy_name(cl_strategy_t strategy) {
 }
 
 int cl_validate_config(const cl_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
     if (config->strategy >= CL_STRATEGY_COUNT) return -1;
     if (config->ewc.lambda < 0.0f) return -1;
     return 0;

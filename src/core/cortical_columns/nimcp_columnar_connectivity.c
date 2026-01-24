@@ -161,6 +161,8 @@ static connection_hash_table_t* conn_hash_table_create(void) {
     connection_hash_table_t* table = nimcp_calloc(1, sizeof(connection_hash_table_t));
     if (!table) {
         LOG_ERROR("Failed to allocate hash table");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "table is NULL");
+
         return NULL;
     }
     return table;
@@ -360,6 +362,8 @@ columnar_connectivity_t* columnar_connectivity_create(uint32_t max_connections) 
     columnar_connectivity_t* conn = nimcp_calloc(1, sizeof(columnar_connectivity_t));
     if (!conn) {
         LOG_ERROR("Failed to allocate connectivity manager");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "conn is NULL");
+
         return NULL;
     }
 

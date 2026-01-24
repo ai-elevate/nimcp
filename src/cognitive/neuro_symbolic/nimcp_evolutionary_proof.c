@@ -254,6 +254,8 @@ NIMCP_API evolutionary_proof_search_t* evolutionary_proof_create(
     evolutionary_proof_search_t* eps = nimcp_calloc(1, sizeof(evolutionary_proof_search_t));
     if (!eps) {
         NIMCP_LOG_ERROR("Failed to allocate evolutionary proof search");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eps is NULL");
+
         return NULL;
     }
 

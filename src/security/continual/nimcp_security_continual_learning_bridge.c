@@ -113,7 +113,13 @@ static bool hash_equals(const uint8_t* h1, const uint8_t* h2) {
  * @brief Find task by ID
  */
 static int find_task(const security_cl_bridge_t* bridge, uint32_t task_id) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     for (uint32_t i = 0; i < bridge->num_tasks; i++) {
         if (bridge->tasks[i].task_id == task_id) {
             return (int)i;
@@ -129,7 +135,13 @@ static int find_replay_buffer(
     const security_cl_bridge_t* bridge,
     uint32_t buffer_id)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     for (uint32_t i = 0; i < bridge->num_replay_buffers; i++) {
         if (bridge->replay_buffers[i].buffer_id == buffer_id) {
             return (int)i;
@@ -228,6 +240,8 @@ security_cl_bridge_t* security_cl_bridge_create(
     security_cl_bridge_t* bridge = nimcp_malloc(alloc_size);
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate security-CL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     memset(bridge, 0, alloc_size);

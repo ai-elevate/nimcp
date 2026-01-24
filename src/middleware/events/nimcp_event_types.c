@@ -247,7 +247,15 @@ bool event_copy(event_t* dest, const event_t* src) {
         case EVENT_TYPE_SPIKE_BURST:
             if (src->data.spike_burst.neuron_ids && src->data.spike_burst.num_neurons > 0) {
                 uint32_t* ids = nimcp_malloc(src->data.spike_burst.num_neurons * sizeof(uint32_t));
-                if (!ids) return false;
+                if (!ids) {
+
+                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                            "if: ids is NULL");
+
+                        return false;
+
+                    }
                 memcpy(ids, src->data.spike_burst.neuron_ids,
                        src->data.spike_burst.num_neurons * sizeof(uint32_t));
                 dest->data.spike_burst.neuron_ids = ids;
@@ -257,7 +265,15 @@ bool event_copy(event_t* dest, const event_t* src) {
         case EVENT_TYPE_MEMORY_FORMED:
             if (src->data.memory_formed.memory_trace && src->data.memory_formed.trace_size > 0) {
                 float* trace = nimcp_malloc(src->data.memory_formed.trace_size * sizeof(float));
-                if (!trace) return false;
+                if (!trace) {
+
+                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                            "if: trace is NULL");
+
+                        return false;
+
+                    }
                 memcpy(trace, src->data.memory_formed.memory_trace,
                        src->data.memory_formed.trace_size * sizeof(float));
                 dest->data.memory_formed.memory_trace = trace;
@@ -267,7 +283,15 @@ bool event_copy(event_t* dest, const event_t* src) {
         case EVENT_TYPE_DECISION_MADE:
             if (src->data.decision_made.decision_vector && src->data.decision_made.vector_size > 0) {
                 float* vec = nimcp_malloc(src->data.decision_made.vector_size * sizeof(float));
-                if (!vec) return false;
+                if (!vec) {
+
+                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                            "if: vec is NULL");
+
+                        return false;
+
+                    }
                 memcpy(vec, src->data.decision_made.decision_vector,
                        src->data.decision_made.vector_size * sizeof(float));
                 dest->data.decision_made.decision_vector = vec;
@@ -277,7 +301,15 @@ bool event_copy(event_t* dest, const event_t* src) {
         case EVENT_TYPE_CUSTOM:
             if (src->data.custom.data && src->data.custom.data_size > 0) {
                 void* data = nimcp_malloc(src->data.custom.data_size);
-                if (!data) return false;
+                if (!data) {
+
+                        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                            "if: data is NULL");
+
+                        return false;
+
+                    }
                 memcpy(data, src->data.custom.data, src->data.custom.data_size);
                 dest->data.custom.data = data;
             }

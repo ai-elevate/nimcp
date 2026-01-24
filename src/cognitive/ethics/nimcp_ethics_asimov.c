@@ -450,7 +450,15 @@ NIMCP_EXPORT asimov_evaluation_t ethics_evaluate_asimov_laws(ethics_engine_t eng
 NIMCP_EXPORT bool asimov_laws_are_protected(ethics_engine_t engine)
 {
     if (!engine)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "asimov_laws_are_protected: engine is NULL");
+
+            return false;
+
+        }
     return ethics_engine_is_asimov_locked(engine);
 }
 
@@ -481,7 +489,15 @@ void ethics_compute_asimov_hash(uint8_t* hash_out)
 NIMCP_EXPORT bool asimov_laws_lock(ethics_engine_t engine)
 {
     if (!engine)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "asimov_laws_lock: engine is NULL");
+
+            return false;
+
+        }
 
     // Already locked?
     if (ethics_engine_is_asimov_locked(engine))
@@ -507,7 +523,15 @@ NIMCP_EXPORT bool asimov_laws_lock(ethics_engine_t engine)
 NIMCP_EXPORT bool asimov_laws_verify_integrity(ethics_engine_t engine)
 {
     if (!engine)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "asimov_laws_verify_integrity: engine is NULL");
+
+            return false;
+
+        }
 
     if (!ethics_engine_is_asimov_locked(engine))
         return true;  // Not locked = no integrity to verify

@@ -140,6 +140,8 @@ explanation_generator_t explanation_generator_create(const explanation_config_t*
     if (!gen) {
         set_error("Failed to allocate explanation_generator_s (%zu bytes)",
                   sizeof(struct explanation_generator_s));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gen is NULL");
+
         return NULL;
     }
 

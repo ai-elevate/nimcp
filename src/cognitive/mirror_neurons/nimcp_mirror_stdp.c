@@ -382,6 +382,8 @@ mirror_stdp_t mirror_stdp_create(const mirror_stdp_config_t* config, uint32_t ma
     mirror_stdp_t stdp = (mirror_stdp_t)nimcp_calloc(1, sizeof(struct mirror_stdp_system));
     if (!stdp) {
         LOG_ERROR("mirror_stdp_create: failed to allocate STDP system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp is NULL");
+
         return NULL;
     }
 

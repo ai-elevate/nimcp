@@ -182,6 +182,8 @@ cortical_predictive_t* cortical_predictive_create(const predictive_config_t* con
     cortical_predictive_t* pc = (cortical_predictive_t*)nimcp_calloc(1, sizeof(cortical_predictive_t));
     if (!pc) {
         NIMCP_LOGGING_ERROR("Failed to allocate predictive coding system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pc is NULL");
+
         return NULL;
     }
 

@@ -52,7 +52,13 @@ static void update_precision_multiplier(fep_neuromod_system_t* sys) {
  * ============================================================================ */
 
 int fep_neuromod_default_config(fep_neuromod_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->ach_baseline = FEP_NEUROMOD_DEFAULT_ACH_BASELINE;
     config->ne_baseline = FEP_NEUROMOD_DEFAULT_NE_BASELINE;
@@ -79,6 +85,8 @@ fep_neuromod_system_t* fep_neuromod_create(const fep_neuromod_config_t* config) 
         1, sizeof(fep_neuromod_system_t));
     if (!sys) {
         NIMCP_LOGGING_ERROR("Failed to allocate neuromod system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
         return NULL;
     }
 
@@ -133,7 +141,13 @@ void fep_neuromod_destroy(fep_neuromod_system_t* sys) {
  * ============================================================================ */
 
 int fep_neuromod_update(fep_neuromod_system_t* sys, uint64_t delta_ms) {
-    if (!sys) return -1;
+    if (!sys) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(sys->mutex);
 
@@ -185,7 +199,13 @@ int fep_neuromod_release(
     fep_neuromod_type_t type,
     float amount
 ) {
-    if (!sys) return -1;
+    if (!sys) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
+        return -1;
+
+    }
     if (type >= FEP_NEUROMOD_COUNT) return -1;
 
     nimcp_platform_mutex_lock(sys->mutex);
@@ -219,7 +239,13 @@ int fep_neuromod_set_level(
     fep_neuromod_type_t type,
     float level
 ) {
-    if (!sys) return -1;
+    if (!sys) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
+        return -1;
+
+    }
     if (type >= FEP_NEUROMOD_COUNT) return -1;
 
     nimcp_platform_mutex_lock(sys->mutex);
@@ -300,7 +326,13 @@ int fep_neuromod_on_prediction_error(
     fep_neuromod_system_t* sys,
     float error_magnitude
 ) {
-    if (!sys) return -1;
+    if (!sys) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
+        return -1;
+
+    }
 
     /* Large errors indicate unreliable predictions → decrease ACh */
     float normalized_error = clamp_f(error_magnitude / 10.0f, 0.0f, 1.0f);
@@ -313,7 +345,13 @@ int fep_neuromod_on_surprise(
     fep_neuromod_system_t* sys,
     float surprise
 ) {
-    if (!sys) return -1;
+    if (!sys) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
+        return -1;
+
+    }
 
     /* Surprise → NE release */
     float normalized_surprise = clamp_f(surprise / 10.0f, 0.0f, 0.5f);
@@ -324,7 +362,13 @@ int fep_neuromod_on_reward(
     fep_neuromod_system_t* sys,
     float reward
 ) {
-    if (!sys) return -1;
+    if (!sys) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
+        return -1;
+
+    }
 
     /* Reward prediction error → DA release (can be negative) */
     float da_change = clamp_f(reward * 0.3f, -0.3f, 0.3f);
@@ -335,7 +379,13 @@ int fep_neuromod_on_uncertainty(
     fep_neuromod_system_t* sys,
     float uncertainty
 ) {
-    if (!sys) return -1;
+    if (!sys) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
+        return -1;
+
+    }
 
     /* High uncertainty → decrease ACh (predictions unreliable) */
     float ach_change = 0.2f * (1.0f - uncertainty);
@@ -378,7 +428,13 @@ int fep_neuromod_connect(
  * ============================================================================ */
 
 int fep_neuromod_connect_bio_async(fep_neuromod_system_t* sys) {
-    if (!sys) return -1;
+    if (!sys) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
+        return -1;
+
+    }
     if (sys->bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -399,7 +455,13 @@ int fep_neuromod_connect_bio_async(fep_neuromod_system_t* sys) {
 }
 
 int fep_neuromod_disconnect_bio_async(fep_neuromod_system_t* sys) {
-    if (!sys) return -1;
+    if (!sys) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
+        return -1;
+
+    }
     if (!sys->bio_async_enabled) return 0;
 
     if (sys->bio_ctx) {

@@ -92,6 +92,9 @@ static PyObject* MetricsCollector_record_counter(MetricsCollectorObject* self, P
 
     if (!success) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to record counter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "success is NULL");
+
+
         return NULL;
     }
 
@@ -114,6 +117,9 @@ static PyObject* MetricsCollector_record_gauge(MetricsCollectorObject* self, PyO
 
     if (!success) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to record gauge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "success is NULL");
+
+
         return NULL;
     }
 
@@ -136,6 +142,9 @@ static PyObject* MetricsCollector_record_timer(MetricsCollectorObject* self, PyO
 
     if (!success) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to record timer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "success is NULL");
+
+
         return NULL;
     }
 
@@ -158,6 +167,9 @@ static PyObject* MetricsCollector_record_event(MetricsCollectorObject* self, PyO
 
     if (!success) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to record event");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "success is NULL");
+
+
         return NULL;
     }
 
@@ -192,6 +204,9 @@ static PyObject* MetricsCollector_timer_stop(MetricsCollectorObject* self, PyObj
 
     if (!success) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to stop timer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "success is NULL");
+
+
         return NULL;
     }
 
@@ -236,6 +251,9 @@ static PyObject* MetricsCollector_export_tableau_csv(MetricsCollectorObject* sel
 
     if (!success) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to export Tableau CSV");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "success is NULL");
+
+
         return NULL;
     }
 
@@ -265,6 +283,9 @@ static PyObject* MetricsCollector_export_powerbi_json(MetricsCollectorObject* se
 
     if (!success) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to export PowerBI JSON");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "success is NULL");
+
+
         return NULL;
     }
 
@@ -294,6 +315,9 @@ static PyObject* MetricsCollector_set_directory(MetricsCollectorObject* self, Py
 
     if (!success) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to set directory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "success is NULL");
+
+
         return NULL;
     }
 

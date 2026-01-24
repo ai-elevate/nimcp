@@ -96,6 +96,8 @@ static float* py_list_to_float_array(PyObject* list, Py_ssize_t* size) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, (*size) * sizeof(float),
                           "py_list_to_float_array: Failed to allocate float array");
         PyErr_SetString(PyExc_MemoryError, "Failed to allocate float array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "array is NULL");
+
         return NULL;
     }
 
@@ -213,6 +215,8 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args) {
     float* features = py_list_to_float_array(features_list, &num_features);
     if (!features) {
         // Exception already thrown in py_list_to_float_array
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "features is NULL");
+
         return NULL;
     }
 
@@ -250,6 +254,8 @@ static PyObject* Brain_predict(BrainObject* self, PyObject* args) {
     float* features = py_list_to_float_array(features_list, &num_features);
     if (!features) {
         // Exception already thrown in py_list_to_float_array
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "features is NULL");
+
         return NULL;
     }
 
@@ -305,6 +311,8 @@ static PyObject* Brain_predict_batch(BrainObject* self, PyObject* args) {
     float* first_features = py_list_to_float_array(first_example, &num_features);
     if (!first_features) {
         // Exception already thrown in py_list_to_float_array
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "first_features is NULL");
+
         return NULL;
     }
 
@@ -461,6 +469,9 @@ static PyObject* Brain_load(PyTypeObject* type, PyObject* args) {
         NIMCP_THROW_IO(NIMCP_ERROR_FILE_READ, filepath,
                       "Brain_load: Failed to load brain from '%s'", filepath);
         PyErr_SetString(PyExc_IOError, nimcp_get_error());
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+
         return NULL;
     }
 
@@ -470,6 +481,8 @@ static PyObject* Brain_load(PyTypeObject* type, PyObject* args) {
                           "Brain_load: Failed to allocate BrainObject");
         nimcp_brain_destroy(brain);
         PyErr_SetString(PyExc_MemoryError, "Failed to allocate Brain object");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self is NULL");
+
         return NULL;
     }
     self->brain = brain;
@@ -506,6 +519,9 @@ static PyObject* Brain_resize(BrainObject* self, PyObject* args) {
         NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "python_binding",
                          "Brain_resize: Failed to resize brain to %u neurons", new_neuron_count);
         PyErr_SetString(PyExc_RuntimeError, "Failed to resize brain. Check that new size > current size and sufficient memory available.");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "success is NULL");
+
+
         return NULL;
     }
 
@@ -571,6 +587,9 @@ static PyObject* Brain_get_utilization_metrics(BrainObject* self, PyObject* args
         NIMCP_THROW_BRAIN(NIMCP_ERROR_OPERATION_FAILED, 0, "python_binding",
                          "Brain_get_utilization_metrics: Failed to get metrics");
         PyErr_SetString(PyExc_RuntimeError, "Failed to get utilization metrics");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "success is NULL");
+
+
         return NULL;
     }
 

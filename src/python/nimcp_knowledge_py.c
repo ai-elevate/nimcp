@@ -96,6 +96,8 @@ static PyObject* KnowledgeItem_FromC(const knowledge_item_t* item)
 {
     KnowledgeItemObject* obj = PyObject_New(KnowledgeItemObject, &KnowledgeItemType);
     if (obj == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "obj is NULL");
+
         return NULL;
     }
 
@@ -175,6 +177,8 @@ static PyObject* DomainKnowledge_FromC(const domain_knowledge_t* dk)
 {
     DomainKnowledgeObject* obj = PyObject_New(DomainKnowledgeObject, &DomainKnowledgeType);
     if (obj == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "obj is NULL");
+
         return NULL;
     }
 
@@ -496,6 +500,9 @@ static PyObject* KnowledgeSystem_assess_domain(KnowledgeSystemObject* self, PyOb
 
     if (!success) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to assess domain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "success is NULL");
+
+
         return NULL;
     }
 
@@ -520,6 +527,8 @@ static PyObject* KnowledgeSystem_get_summary(KnowledgeSystemObject* self, PyObje
 
     PyObject* result = PyList_New((Py_ssize_t)num_domains);
     if (result == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
         return NULL;
     }
 

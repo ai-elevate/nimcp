@@ -152,6 +152,8 @@ salience_fep_bridge_t* salience_fep_bridge_create(const salience_fep_config_t* c
         1, sizeof(salience_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate salience-FEP bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

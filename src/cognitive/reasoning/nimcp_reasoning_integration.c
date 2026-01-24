@@ -573,6 +573,8 @@ reasoning_integration_t* reasoning_integration_create_custom(
 {
     if (!event_bus) {
         set_error("Event bus cannot be NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "event_bus is NULL");
+
         return NULL;
     }
 
@@ -587,6 +589,8 @@ reasoning_integration_t* reasoning_integration_create_custom(
     );
     if (!integration) {
         set_error("Failed to allocate integration structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "integration is NULL");
+
         return NULL;
     }
 

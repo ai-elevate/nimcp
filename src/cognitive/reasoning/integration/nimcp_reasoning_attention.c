@@ -146,6 +146,8 @@ reasoning_attention_t* reasoning_attention_create_custom(
     reasoning_attention_t* integration = nimcp_calloc(1, sizeof(reasoning_attention_t));
     if (!integration) {
         LOG_ERROR("Failed to allocate integration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "integration is NULL");
+
         return NULL;
     }
 

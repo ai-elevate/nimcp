@@ -129,6 +129,8 @@ spatial_pink_bridge_t* spatial_pink_bridge_create(
     );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     memset(bridge, 0, sizeof(spatial_pink_bridge_t));
@@ -258,7 +260,13 @@ int spatial_pink_bridge_connect_neuromod(
  * HOW:  Clear pointer, set flag
  */
 int spatial_pink_bridge_disconnect_neuromod(spatial_pink_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->neuromod_field = NULL;
     bridge->is_connected = false;
@@ -322,7 +330,13 @@ int spatial_pink_bridge_map_neuron_to_region(
     uint32_t region_index,
     float weight)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     // Validate region index
     if (region_index >= bridge->num_region_maps) {
@@ -575,7 +589,13 @@ int spatial_pink_bridge_apply_modulation(spatial_pink_bridge_t* bridge) {
  * HOW:  Set config flag
  */
 int spatial_pink_bridge_enable(spatial_pink_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->config.enabled = true;
     NIMCP_LOGGING_INFO("Enabled pink noise bridge");
     return 0;
@@ -587,7 +607,13 @@ int spatial_pink_bridge_enable(spatial_pink_bridge_t* bridge) {
  * HOW:  Clear config flag
  */
 int spatial_pink_bridge_disable(spatial_pink_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->config.enabled = false;
     NIMCP_LOGGING_INFO("Disabled pink noise bridge");
     return 0;
@@ -659,7 +685,13 @@ int spatial_pink_bridge_get_stats(
     float* max_noise,
     float* spatial_correlation)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     if (avg_noise) *avg_noise = bridge->avg_noise_magnitude;
     if (max_noise) *max_noise = bridge->max_noise_magnitude;
@@ -746,7 +778,13 @@ int spatial_pink_bridge_connect_memory_manager(
     spatial_pink_bridge_t* bridge,
     unified_mem_manager_t mem_manager)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->mem_manager = mem_manager;
 

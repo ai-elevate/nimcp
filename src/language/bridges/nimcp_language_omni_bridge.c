@@ -176,6 +176,8 @@ language_omni_bridge_t* language_omni_bridge_create(const language_omni_config_t
         nimcp_calloc(1, sizeof(language_omni_bridge_t));
     if (!bridge) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -225,7 +227,13 @@ void language_omni_bridge_destroy(language_omni_bridge_t* bridge) {
 }
 
 int language_omni_bridge_init(language_omni_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     memset(&bridge->stats, 0, sizeof(language_omni_stats_t));
     bridge->initialized = true;
     return 0;
@@ -239,7 +247,13 @@ int language_omni_bridge_start(language_omni_bridge_t* bridge) {
 }
 
 int language_omni_bridge_stop(language_omni_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->active = false;
     LOG_INFO(LOG_MODULE, "Omni bridge stopped");
     return 0;
@@ -251,14 +265,26 @@ int language_omni_bridge_stop(language_omni_bridge_t* bridge) {
 
 int language_omni_bridge_connect_orchestrator(
     language_omni_bridge_t* bridge, language_orchestrator_t* orchestrator) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->orchestrator = orchestrator;
     return 0;
 }
 
 int language_omni_bridge_connect_jepa(
     language_omni_bridge_t* bridge, jepa_bidirectional_t* jepa) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->jepa = jepa;
     bridge->jepa_state.connected = (jepa != NULL);
     bridge->jepa_state.jepa = jepa;
@@ -267,21 +293,39 @@ int language_omni_bridge_connect_jepa(
 
 int language_omni_bridge_connect_predictive_hierarchy(
     language_omni_bridge_t* bridge, predictive_hierarchy_t* pred_hierarchy) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->pred_hierarchy = pred_hierarchy;
     return 0;
 }
 
 int language_omni_bridge_connect_hopfield(
     language_omni_bridge_t* bridge, hopfield_memory_t* hopfield) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->hopfield = hopfield;
     return 0;
 }
 
 int language_omni_bridge_connect_fep(
     language_omni_bridge_t* bridge, fep_orchestrator_t* fep) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->fep = fep;
     return 0;
 }
@@ -512,7 +556,13 @@ float language_omni_bridge_get_free_energy(const language_omni_bridge_t* bridge)
 
 int language_omni_bridge_set_precision(
     language_omni_bridge_t* bridge, prediction_level_t level, float precision) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     switch (level) {
         case PREDICTION_LEVEL_PHONEME:
@@ -577,7 +627,13 @@ int language_omni_bridge_update_precision(language_omni_bridge_t* bridge) {
 }
 
 int language_omni_bridge_set_precision_lr(language_omni_bridge_t* bridge, float lr) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->precision.precision_lr = lr;
     return 0;
 }
@@ -588,7 +644,13 @@ int language_omni_bridge_set_precision_lr(language_omni_bridge_t* bridge, float 
 
 int language_omni_bridge_set_inference_mode(
     language_omni_bridge_t* bridge, language_inference_direction_t direction) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->inference_mode = direction;
     return 0;
 }
@@ -604,7 +666,13 @@ language_inference_direction_t language_omni_bridge_get_inference_mode(
 //=============================================================================
 
 int language_omni_bridge_update(language_omni_bridge_t* bridge, uint64_t current_time_ms) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->active) return 0;
 
     bridge->stats.last_update_time_ms = current_time_ms;
@@ -655,7 +723,13 @@ int language_omni_bridge_bio_async_register(
 }
 
 int language_omni_bridge_bio_async_unregister(language_omni_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->bio_router = NULL;
     bridge->bio_async_registered = false;
     return 0;

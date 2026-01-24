@@ -720,7 +720,11 @@ int nlp_compress_get_info(const uint8_t* data, size_t len,
                           size_t* original_size, size_t* compressed_size,
                           uint8_t* compress_type) {
     if (!data || len < NLP_COMPRESS_HEADER_SIZE) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "nlp_compress_get_info: invalid parameters");
+
+            return -1;
     }
 
     const nlp_compress_header_t* header = (const nlp_compress_header_t*)data;

@@ -692,6 +692,8 @@ replication_cluster_t replication_create_cluster(const replication_config_t* con
     // Guard: Validate config
     if (!config) {
         set_replication_error("Null configuration provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
@@ -699,6 +701,8 @@ replication_cluster_t replication_create_cluster(const replication_config_t* con
     replication_cluster_t cluster = nimcp_calloc(1, sizeof(struct replication_cluster_struct));
     if (!cluster) {
         set_replication_error("Failed to allocate cluster structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "cluster is NULL");
+
         return NULL;
     }
 

@@ -50,7 +50,13 @@ static void free_level_mapping(predictive_fep_level_mapping_t* mapping) {
 int predictive_regions_fep_bridge_default_config(
     predictive_regions_fep_config_t* config
 ) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->num_hierarchy_levels = 3;
     config->enable_precision_adaptation = true;
@@ -77,6 +83,8 @@ predictive_regions_fep_bridge_t* predictive_regions_fep_bridge_create(
         nimcp_calloc(1, sizeof(predictive_regions_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate predictive regions-FEP bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -197,7 +205,13 @@ int predictive_regions_fep_bridge_map_region(
 int predictive_regions_fep_bridge_disconnect(
     predictive_regions_fep_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -474,7 +488,13 @@ int predictive_regions_fep_bridge_update(
     predictive_regions_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     (void)delta_ms; /* Unused for now */
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -565,7 +585,13 @@ bool predictive_regions_fep_is_converged(
 int predictive_regions_fep_bridge_connect_bio_async(
     predictive_regions_fep_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -588,7 +614,13 @@ int predictive_regions_fep_bridge_connect_bio_async(
 int predictive_regions_fep_bridge_disconnect_bio_async(
     predictive_regions_fep_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

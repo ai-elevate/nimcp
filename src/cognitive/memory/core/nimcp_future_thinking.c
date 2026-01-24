@@ -234,11 +234,16 @@ NIMCP_EXPORT future_thinking_t future_thinking_create(
 ) {
     if (!entanglement) {
         set_error("NULL entanglement graph");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entanglement is NULL");
+
         return NULL;
     }
 
     if (!node_manager) {
         set_error("NULL node manager");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "node_manager is NULL");
+
+
         return NULL;
     }
 
@@ -255,6 +260,8 @@ NIMCP_EXPORT future_thinking_t future_thinking_create(
     future_thinking_t ft = calloc(1, sizeof(struct future_thinking_struct));
     if (!ft) {
         set_error("Failed to allocate future thinking system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ft is NULL");
+
         return NULL;
     }
 

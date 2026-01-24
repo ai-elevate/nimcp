@@ -113,6 +113,8 @@ metaplasticity_immune_bridge_t* metaplasticity_immune_bridge_create(
         );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate immune bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -638,7 +640,13 @@ float metaplasticity_immune_get_threshold_elevation(
  * ============================================================================ */
 
 int metaplasticity_immune_connect_bio_async(metaplasticity_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {

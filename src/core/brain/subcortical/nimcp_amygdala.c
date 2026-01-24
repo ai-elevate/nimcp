@@ -236,6 +236,8 @@ amygdala_t* amygdala_create(const amyg_config_t* config) {
     amygdala_t* amyg = (amygdala_t*)nimcp_malloc(sizeof(amygdala_t));
     if (!amyg) {
         NIMCP_LOGGING_ERROR("Failed to allocate amygdala");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "amyg is NULL");
+
         return NULL;
     }
 

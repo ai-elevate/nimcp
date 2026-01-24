@@ -146,6 +146,8 @@ nlp_cortical_adapter_t* nlp_cortical_adapter_create(nlp_node_t node, brain_t bra
         nimcp_calloc(1, sizeof(nlp_cortical_adapter_t));
     if (!adapter) {
         LOG_MODULE_ERROR(NLP_CORTICAL_MODULE, "Failed to allocate adapter");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
         return NULL;
     }
 
@@ -388,7 +390,13 @@ int nlp_cortical_speak_message(
     uint8_t* modulated_payload,
     size_t* modulated_len)
 {
-    if (!adapter) return -1;
+    if (!adapter) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adapter is NULL");
+
+        return -1;
+
+    }
 
     // Update neuromodulation
     nlp_cortical_update_modulation(adapter);

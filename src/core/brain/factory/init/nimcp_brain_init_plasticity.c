@@ -123,7 +123,11 @@
 bool nimcp_brain_factory_init_homeostatic_plasticity_subsystem(brain_t brain)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_homeostatic_plasticity_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Check if already initialized
@@ -185,7 +189,11 @@ bool nimcp_brain_factory_init_homeostatic_plasticity_subsystem(brain_t brain)
 bool nimcp_brain_factory_init_dendritic_computation_subsystem(brain_t brain)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_dendritic_computation_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Check if already initialized
@@ -241,7 +249,11 @@ bool nimcp_brain_factory_init_dendritic_computation_subsystem(brain_t brain)
 bool nimcp_brain_factory_init_biological_predictive_subsystem(brain_t brain)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_biological_predictive_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Check if already initialized
@@ -321,7 +333,11 @@ bool nimcp_brain_factory_init_biological_predictive_subsystem(brain_t brain)
 bool nimcp_brain_factory_init_second_messenger_subsystem(brain_t brain)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_second_messenger_subsystem: brain is NULL");
+
+            return false;
     }
 
     /* Check if already initialized */
@@ -397,7 +413,11 @@ bool nimcp_brain_factory_init_second_messenger_subsystem(brain_t brain)
 bool nimcp_brain_factory_init_training_subsystem(brain_t brain)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_training_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Check if already initialized

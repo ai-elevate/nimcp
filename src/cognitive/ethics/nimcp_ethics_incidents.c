@@ -41,7 +41,11 @@
 static int compare_incident_timestamps(const char* key1, const char* key2)
 {
     if (!key1 || !key2) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "compare_incident_timestamps: invalid parameters");
+
+            return 0;
     }
 
     // Parse timestamp keys
@@ -85,12 +89,28 @@ bool ethics_init_incident_logging(ethics_engine_t engine)
 {
     // Guard clause: Validate input
     if (!engine)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "ethics_init_incident_logging: engine is NULL");
+
+            return false;
+
+        }
 
     // Initialize incident storage
     ethics_incident_storage_t* storage = ethics_engine_get_incident_storage(engine);
     if (!storage)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "ethics_init_incident_logging: storage is NULL");
+
+            return false;
+
+        }
 
     // Allocate circular buffer
     storage->incident_history = nimcp_calloc(MAX_INCIDENT_HISTORY, sizeof(ethics_incident_t));

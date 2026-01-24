@@ -143,6 +143,8 @@ NimcpSerializer* nimcp_serializer_create(size_t initial_capacity)
     if (!serializer) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(NimcpSerializer),
                           "Failed to allocate serializer structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "serializer is NULL");
+
         return NULL;
     }
 

@@ -295,6 +295,8 @@ pr_attention_bridge_t* pr_attention_bridge_create(
     pr_attention_bridge_t* bridge = (pr_attention_bridge_t*)calloc(1, sizeof(pr_attention_bridge_t));
     if (!bridge) {
         set_last_error("Failed to allocate bridge structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

@@ -118,6 +118,8 @@ directive_immune_bridge_t* directive_immune_bridge_create(
     /* Guard: validate parameters */
     if (!immune_system) {
         NIMCP_LOGGING_ERROR("directive_immune_bridge_create: NULL immune_system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_system is NULL");
+
         return NULL;
     }
 
@@ -126,6 +128,8 @@ directive_immune_bridge_t* directive_immune_bridge_create(
         nimcp_malloc(sizeof(directive_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("directive_immune_bridge_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

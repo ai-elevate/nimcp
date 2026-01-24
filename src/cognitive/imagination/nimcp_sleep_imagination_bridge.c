@@ -94,7 +94,13 @@ const char* sleep_imagination_stage_name(sleep_stage_t stage) {
  * ============================================================================ */
 
 int sleep_imagination_default_config(sleep_imagination_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->rem_vividness = SLEEP_IMAG_DEFAULT_REM_VIVIDNESS;
     config->rem_creativity_boost = SLEEP_IMAG_DEFAULT_REM_CREATIVITY;
@@ -118,7 +124,13 @@ int sleep_imagination_default_config(sleep_imagination_config_t* config) {
 }
 
 int sleep_imagination_validate_config(const sleep_imagination_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     if (config->rem_vividness < 0.0f || config->rem_vividness > 1.0f) {
         return -1;
@@ -157,6 +169,8 @@ sleep_imagination_bridge_t* sleep_imagination_bridge_create(
         1, sizeof(sleep_imagination_bridge_t));
     if (!bridge) {
         NIMCP_LOG_ERROR("Failed to allocate sleep-imagination bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -239,7 +253,13 @@ void sleep_imagination_bridge_destroy(sleep_imagination_bridge_t* bridge) {
 }
 
 int sleep_imagination_reset(sleep_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -267,7 +287,13 @@ int sleep_imagination_connect_sleep(
     sleep_imagination_bridge_t* bridge,
     struct sleep_system* sleep)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -288,7 +314,13 @@ int sleep_imagination_connect_imagination(
     sleep_imagination_bridge_t* bridge,
     struct imagination_engine* imagination)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -326,7 +358,13 @@ int sleep_imagination_update(
     sleep_imagination_bridge_t* bridge,
     float delta_time_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bridge_active) return 0;  /* Nothing to do */
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -362,7 +400,13 @@ int sleep_imagination_update(
 }
 
 int sleep_imagination_compute_sleep_effects(sleep_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     const sleep_stage_descriptor_t* desc =
         sleep_imagination_get_stage_descriptor(bridge->current_stage);
@@ -452,7 +496,13 @@ int sleep_imagination_compute_imag_effects(sleep_imagination_bridge_t* bridge) {
 }
 
 int sleep_imagination_apply_effects(sleep_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Apply sleep effects to imagination */
     if (bridge->imagination) {
@@ -484,7 +534,13 @@ int sleep_imagination_set_sleep_stage(
     sleep_imagination_bridge_t* bridge,
     sleep_stage_t stage)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (stage >= SLEEP_STAGE_COUNT) return -1;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -583,7 +639,13 @@ int sleep_imagination_end_dream(
     sleep_imagination_bridge_t* bridge,
     bool encode_as_memory)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->num_dream_scenarios == 0) return -1;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -607,7 +669,13 @@ int sleep_imagination_trigger_replay(
     sleep_imagination_bridge_t* bridge,
     const nimcp_tensor_t* memory_cue)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bridge_active) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -631,7 +699,13 @@ int sleep_imagination_trigger_replay(
 }
 
 int sleep_imagination_interrupt_nightmare(sleep_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_nightmare_interruption) return -1;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -696,7 +770,13 @@ int sleep_imagination_get_stats(
 }
 
 int sleep_imagination_reset_stats(sleep_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -725,7 +805,13 @@ float sleep_imagination_get_rem_time(const sleep_imagination_bridge_t* bridge) {
  * ============================================================================ */
 
 int sleep_imagination_connect_bio_async(sleep_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;  /* Already connected */
 
     int result = bridge_base_connect_bio_async(&bridge->base);
@@ -737,7 +823,13 @@ int sleep_imagination_connect_bio_async(sleep_imagination_bridge_t* bridge) {
 }
 
 int sleep_imagination_disconnect_bio_async(sleep_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;  /* Already disconnected */
 
     int result = bridge_base_disconnect_bio_async(&bridge->base);
@@ -756,7 +848,13 @@ bool sleep_imagination_is_bio_async_connected(
 }
 
 int sleep_imagination_process_messages(sleep_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     /* Process pending bio-async messages */

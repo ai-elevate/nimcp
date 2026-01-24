@@ -386,7 +386,15 @@ bool multimodal_set_semantic(multimodal_action_features_t* features,
 
 bool multimodal_compute_fusion(multimodal_action_features_t* features,
                                const fusion_config_t* config) {
-    if (!features) return false;
+    if (!features) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "multimodal_compute_fusion: features is NULL");
+
+            return false;
+
+        }
 
     /* Use provided config or defaults */
     fusion_config_t cfg = config ? *config : multimodal_get_default_fusion_config();
@@ -474,7 +482,15 @@ bool multimodal_set_weights(multimodal_action_features_t* features,
                             float auditory_weight,
                             float semantic_weight,
                             bool normalize) {
-    if (!features) return false;
+    if (!features) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "multimodal_set_weights: features is NULL");
+
+            return false;
+
+        }
 
     features->visual_weight = clamp_f(visual_weight, 0.0f, 1.0f);
     features->motor_weight = clamp_f(motor_weight, 0.0f, 1.0f);

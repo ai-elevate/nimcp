@@ -219,7 +219,11 @@ uint32_t mirror_hierarchy_create_goal(mirror_hierarchy_t hierarchy,
                                        const char* name,
                                        goal_category_t category) {
     if (!hierarchy || hierarchy->num_goals >= hierarchy->max_goals) {
-        return UINT32_MAX;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "mirror_hierarchy_create_goal: invalid parameters");
+
+            return UINT32_MAX;
     }
 
     uint32_t goal_id = hierarchy->num_goals++;
@@ -250,7 +254,11 @@ uint32_t mirror_hierarchy_create_goal(mirror_hierarchy_t hierarchy,
 bool mirror_hierarchy_get_goal(mirror_hierarchy_t hierarchy, uint32_t goal_id,
                                 goal_representation_t* out_goal) {
     if (!hierarchy || !out_goal || goal_id >= hierarchy->num_goals) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "mirror_hierarchy_get_goal: invalid parameters");
+
+            return false;
     }
 
     *out_goal = hierarchy->goals[goal_id];
@@ -304,7 +312,11 @@ void mirror_hierarchy_select_goal(mirror_hierarchy_t hierarchy, int32_t goal_id)
 
 uint32_t mirror_hierarchy_get_selected_goal(mirror_hierarchy_t hierarchy) {
     if (!hierarchy || hierarchy->selected_goal < 0) {
-        return UINT32_MAX;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "mirror_hierarchy_get_selected_goal: invalid parameters");
+
+            return UINT32_MAX;
     }
     return (uint32_t)hierarchy->selected_goal;
 }
@@ -317,7 +329,11 @@ uint32_t mirror_hierarchy_create_motor(mirror_hierarchy_t hierarchy,
                                         const char* name,
                                         motor_type_t type) {
     if (!hierarchy || hierarchy->num_motors >= hierarchy->max_motors) {
-        return UINT32_MAX;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "mirror_hierarchy_create_motor: invalid parameters");
+
+            return UINT32_MAX;
     }
 
     uint32_t motor_id = hierarchy->num_motors++;
@@ -347,7 +363,11 @@ uint32_t mirror_hierarchy_create_motor(mirror_hierarchy_t hierarchy,
 bool mirror_hierarchy_get_motor(mirror_hierarchy_t hierarchy, uint32_t motor_id,
                                  motor_representation_t* out_motor) {
     if (!hierarchy || !out_motor || motor_id >= hierarchy->num_motors) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "mirror_hierarchy_get_motor: invalid parameters");
+
+            return false;
     }
 
     *out_motor = hierarchy->motors[motor_id];
@@ -414,7 +434,11 @@ bool mirror_hierarchy_create_binding(mirror_hierarchy_t hierarchy,
                                       binding_type_t type) {
     if (!hierarchy || goal_id >= hierarchy->num_goals ||
         motor_id >= hierarchy->num_motors) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "mirror_hierarchy_create_binding: invalid parameters");
+
+            return false;
     }
 
     goal_representation_t* goal = &hierarchy->goals[goal_id];
@@ -490,7 +514,11 @@ uint32_t mirror_hierarchy_infer_goal(mirror_hierarchy_t hierarchy,
                                       uint32_t max_goals) {
     if (!hierarchy || motor_id >= hierarchy->num_motors ||
         !out_goal_ids || !out_probs || max_goals == 0) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "mirror_hierarchy_infer_goal: invalid parameters");
+
+            return 0;
     }
 
     // Compute likelihood for each goal given this motor
@@ -557,7 +585,11 @@ uint32_t mirror_hierarchy_predict_motor(mirror_hierarchy_t hierarchy,
                                          uint32_t max_motors) {
     if (!hierarchy || goal_id >= hierarchy->num_goals ||
         !out_motor_ids || !out_probs || max_motors == 0) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "mirror_hierarchy_predict_motor: invalid parameters");
+
+            return 0;
     }
 
     goal_representation_t* goal = &hierarchy->goals[goal_id];
@@ -612,7 +644,11 @@ uint32_t mirror_hierarchy_infer_goal_contextual(mirror_hierarchy_t hierarchy,
                                                  const float* context_features,
                                                  uint32_t num_features) {
     if (!hierarchy || motor_id >= hierarchy->num_motors) {
-        return UINT32_MAX;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "mirror_hierarchy_infer_goal_contextual: invalid parameters");
+
+            return UINT32_MAX;
     }
 
     uint32_t best_goal = UINT32_MAX;

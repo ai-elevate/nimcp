@@ -656,6 +656,8 @@ static adaptive_network_t perturb_network_weights(adaptive_network_t base,
                                                  float noise_sigma)
 {
     if (base == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "base is NULL");
+
         return NULL;
     }
 

@@ -101,7 +101,13 @@ static brain_inflammation_level_t get_max_inflammation_level(
  * ============================================================================ */
 
 int dendritic_immune_default_config(dendritic_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* All features enabled by default */
     config->enable_cytokine_dendritic_modulation = true;
@@ -143,6 +149,8 @@ dendritic_immune_bridge_t* dendritic_immune_bridge_create(
         nimcp_malloc(sizeof(dendritic_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("dendritic_immune_bridge", "Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -209,7 +217,13 @@ void dendritic_immune_bridge_destroy(dendritic_immune_bridge_t* bridge) {
 
 int dendritic_immune_apply_cytokine_effects(dendritic_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_cytokine_dendritic_modulation) return 0;
     if (!bridge->immune_system || !bridge->dendritic_tree) return -1;
 
@@ -270,7 +284,13 @@ int dendritic_immune_apply_cytokine_effects(dendritic_immune_bridge_t* bridge) {
 
 int dendritic_immune_apply_inflammation_effects(dendritic_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_inflammation_atrophy) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -329,7 +349,13 @@ float dendritic_immune_compute_complexity_loss(const dendritic_immune_bridge_t* 
 
 int dendritic_immune_trigger_from_spine_loss(dendritic_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_damage_immune_trigger) return 0;
     if (!bridge->immune_system || !bridge->dendritic_tree) return -1;
 
@@ -376,7 +402,13 @@ int dendritic_immune_trigger_from_spine_loss(dendritic_immune_bridge_t* bridge) 
 
 int dendritic_immune_trigger_from_damage(dendritic_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_damage_immune_trigger) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -412,7 +444,13 @@ int dendritic_immune_trigger_from_damage(dendritic_immune_bridge_t* bridge) {
 
 int dendritic_immune_support_from_health(dendritic_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_recovery_immune_support) return 0;
     if (!bridge->immune_system || !bridge->dendritic_tree) return -1;
 
@@ -459,7 +497,13 @@ int dendritic_immune_bridge_update(
     dendritic_immune_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Apply all bidirectional effects */
 
@@ -533,7 +577,13 @@ float dendritic_immune_get_complexity_loss(const dendritic_immune_bridge_t* brid
  * @brief Connect bridge to bio-async router
  */
 int dendritic_immune_connect_bio_async(dendritic_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -558,7 +608,13 @@ int dendritic_immune_connect_bio_async(dendritic_immune_bridge_t* bridge) {
  * @brief Disconnect from bio-async router
  */
 int dendritic_immune_disconnect_bio_async(dendritic_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

@@ -41,7 +41,13 @@ nimcp_impulse_config_t nimcp_impulse_default_config(void) {
 
 int nimcp_impulse_init(nimcp_impulse_system_t* system,
                        const nimcp_impulse_config_t* config) {
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
 
     memset(system, 0, sizeof(nimcp_impulse_system_t));
 
@@ -77,13 +83,25 @@ int nimcp_impulse_init(nimcp_impulse_system_t* system,
 }
 
 int nimcp_impulse_shutdown(nimcp_impulse_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
     system->initialized = false;
     return 0;
 }
 
 int nimcp_impulse_reset(nimcp_impulse_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
 
     nimcp_impulse_config_t config = system->config;
     return nimcp_impulse_init(system, &config);

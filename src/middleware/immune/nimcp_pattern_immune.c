@@ -125,7 +125,13 @@ static void hash_pattern_to_signature(
  * ============================================================================ */
 
 int pattern_immune_default_config(pattern_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* All features enabled by default */
     config->enable_inflammation_degradation = true;
@@ -161,6 +167,8 @@ pattern_immune_bridge_t* pattern_immune_bridge_create(
     if (!immune_system) {
         LOG_MODULE_ERROR("pattern_immune_bridge",
                   "Cannot create bridge without immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_system is NULL");
+
         return NULL;
     }
 
@@ -169,6 +177,8 @@ pattern_immune_bridge_t* pattern_immune_bridge_create(
         nimcp_malloc(sizeof(pattern_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("pattern_immune_bridge", "Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -278,7 +288,13 @@ float pattern_immune_compute_accuracy_factor(
 
 int pattern_immune_apply_inflammation_effects(pattern_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_inflammation_degradation) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -623,7 +639,13 @@ int pattern_immune_bridge_update(
     pattern_immune_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     bridge->total_updates++;

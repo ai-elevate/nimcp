@@ -165,6 +165,8 @@ nimcp_metrics_collector_t nimcp_metrics_create_with_config(
 ) {
     if (!config) {
         NIMCP_LOGGING_ERROR("nimcp_metrics_create_with_config: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
@@ -173,6 +175,9 @@ nimcp_metrics_collector_t nimcp_metrics_create_with_config(
 
     if (!collector) {
         NIMCP_LOGGING_ERROR("Failed to allocate metrics collector");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collector is NULL");
+
+
         return NULL;
     }
 
@@ -543,7 +548,13 @@ bool nimcp_metrics_timer_stop(
 //=============================================================================
 
 int32_t nimcp_metrics_flush(nimcp_metrics_collector_t collector) {
-    if (!collector) return -1;
+    if (!collector) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "collector is NULL");
+
+        return -1;
+
+    }
 
     nimcp_metrics_collector_internal_t* internal =
         (nimcp_metrics_collector_internal_t*)collector;

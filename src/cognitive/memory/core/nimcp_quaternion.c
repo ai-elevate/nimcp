@@ -585,7 +585,11 @@ bool quat_interpolate_path(nimcp_quaternion_t q_start,
                             size_t steps,
                             nimcp_quaternion_t* out) {
     if (!out || steps < 2) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "quat_interpolate_path: invalid parameters");
+
+            return false;
     }
 
     // Normalize inputs

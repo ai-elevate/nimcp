@@ -283,12 +283,16 @@ intuitive_engine_t* intuitive_engine_create(void) {
 intuitive_engine_t* intuitive_engine_create_custom(const intuitive_config_t* config) {
     if (!config) {
         set_error("NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
     intuitive_engine_t* engine = nimcp_calloc(1, sizeof(intuitive_engine_t));
     if (!engine) {
         set_error("Failed to allocate engine");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
         return NULL;
     }
 
@@ -387,6 +391,8 @@ hunch_t* intuitive_form_hunch(
     hunch_t* hunch = nimcp_calloc(1, sizeof(hunch_t));
     if (!hunch) {
         set_error("Failed to allocate hunch");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hunch is NULL");
+
         return NULL;
     }
 
@@ -897,6 +903,8 @@ insight_t* intuitive_leap_with_strategy(
     insight_t* insight = nimcp_calloc(1, sizeof(insight_t));
     if (!insight) {
         set_error("Failed to allocate insight");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "insight is NULL");
+
         return NULL;
     }
 
@@ -1428,7 +1436,13 @@ int intuitive_check_incubation(
 }
 
 int intuitive_process_incubation(intuitive_engine_t* engine) {
-    if (!engine) return -1;
+    if (!engine) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
+        return -1;
+
+    }
 
     int insights_generated = 0;
     float progress_rate = 0.1f * (1.0f - engine->fatigue);  /* Fatigue slows incubation */
@@ -1517,19 +1531,37 @@ int intuitive_cancel_incubation(
  * ============================================================================ */
 
 int intuitive_set_inflammation(intuitive_engine_t* engine, float level) {
-    if (!engine) return -1;
+    if (!engine) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
+        return -1;
+
+    }
     engine->inflammation = fmaxf(0.0f, fminf(1.0f, level));
     return 0;
 }
 
 int intuitive_set_fatigue(intuitive_engine_t* engine, float level) {
-    if (!engine) return -1;
+    if (!engine) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
+        return -1;
+
+    }
     engine->fatigue = fmaxf(0.0f, fminf(1.0f, level));
     return 0;
 }
 
 int intuitive_set_emotional_valence(intuitive_engine_t* engine, float valence) {
-    if (!engine) return -1;
+    if (!engine) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
+        return -1;
+
+    }
     engine->emotional_valence = fmaxf(-1.0f, fminf(1.0f, valence));
     return 0;
 }

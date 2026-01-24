@@ -148,6 +148,8 @@ brainstem_immune_bridge_t brainstem_immune_create(
     brainstem_immune_bridge_t bridge = nimcp_malloc(sizeof(struct brainstem_immune_bridge));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate brainstem-immune bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

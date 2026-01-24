@@ -139,6 +139,8 @@ axon_dendrite_substrate_bridge_t* axon_dendrite_substrate_bridge_create(
      */
     if (!substrate) {
         NIMCP_LOGGING_ERROR("Null substrate pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
+
         return NULL;
     }
 
@@ -153,6 +155,8 @@ axon_dendrite_substrate_bridge_t* axon_dendrite_substrate_bridge_create(
         );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -233,7 +237,13 @@ int axon_dendrite_substrate_connect_bio_async(axon_dendrite_substrate_bridge_t* 
      * WHY:  Enable inter-module messaging
      * HOW:  Create module context, register
      */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -260,7 +270,13 @@ int axon_dendrite_substrate_disconnect_bio_async(axon_dendrite_substrate_bridge_
      * WHY:  Clean shutdown
      * HOW:  Unregister module
      */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {
@@ -292,7 +308,13 @@ int axon_dendrite_substrate_update_axon_effects(
      * WHY:  Substrate modulates conduction
      * HOW:  Apply Q10, ATP, ion, membrane effects
      */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->axon) return 0;  /* No axon to modulate */
     if (!bridge->config.enable_axon_modulation) return 0;
 
@@ -445,7 +467,13 @@ int axon_dendrite_substrate_update_dendrite_effects(
      * WHY:  Substrate affects integration and plasticity
      * HOW:  Apply cable theory, calcium, plasticity constraints
      */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->dendrite) return 0;  /* No dendrite to modulate */
     if (!bridge->config.enable_dendrite_modulation) return 0;
 
@@ -613,7 +641,13 @@ int axon_dendrite_substrate_record_axon_spikes(
      * WHY:  Spikes consume ATP and disrupt ion gradients
      * HOW:  Update substrate state based on spike count
      */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_bidirectional_feedback) return 0;
     if (spike_count == 0) return 0;
 
@@ -654,7 +688,13 @@ int axon_dendrite_substrate_record_dendrite_events(
      * WHY:  Synaptic integration consumes ATP
      * HOW:  Update substrate based on event count
      */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_bidirectional_feedback) return 0;
     if (event_count == 0) return 0;
 
@@ -685,7 +725,13 @@ int axon_dendrite_substrate_record_plasticity(
      * WHY:  LTP/LTD is energetically expensive
      * HOW:  Scale ATP cost by plasticity magnitude
      */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_bidirectional_feedback) return 0;
     if (magnitude <= 0.0f) return 0;
 
@@ -718,7 +764,13 @@ int axon_dendrite_substrate_bridge_update(
      * WHY:  Advance coupled state
      * HOW:  Update effects, apply feedback, clear accumulators
      */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 

@@ -120,7 +120,13 @@ static void compute_inflammation_effects(
  * ============================================================================ */
 
 int anomaly_immune_default_config(anomaly_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     memset(config, 0, sizeof(anomaly_immune_config_t));
 
@@ -164,6 +170,8 @@ anomaly_immune_bridge_t* anomaly_immune_create(
         nimcp_malloc(sizeof(anomaly_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate anomaly immune bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -214,7 +222,13 @@ void anomaly_immune_destroy(anomaly_immune_bridge_t* bridge) {
  * ============================================================================ */
 
 int anomaly_immune_update(anomaly_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -237,7 +251,13 @@ int anomaly_immune_update(anomaly_immune_bridge_t* bridge) {
 }
 
 int anomaly_immune_apply_modulation(anomaly_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -310,7 +330,13 @@ int anomaly_immune_training_feedback(
     uint32_t antigen_id,
     bool was_neutralized
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_immune_training_feedback) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -335,7 +361,13 @@ int anomaly_immune_training_feedback(
  * ============================================================================ */
 
 int anomaly_immune_connect_bio_async(anomaly_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {

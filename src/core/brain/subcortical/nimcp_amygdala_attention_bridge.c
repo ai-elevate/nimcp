@@ -58,6 +58,8 @@ amygdala_attention_bridge_t* amygdala_attention_create(
     amygdala_attention_bridge_t* bridge = nimcp_malloc(sizeof(amygdala_attention_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate amygdala-attention bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

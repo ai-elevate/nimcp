@@ -26,6 +26,8 @@ bridge_gpu_context_t* bridge_gpu_context_create(brain_t brain) {
     bridge_gpu_context_t* ctx = nimcp_malloc(sizeof(bridge_gpu_context_t));
     if (!ctx) {
         NIMCP_LOGGING_ERROR("Failed to allocate bridge GPU context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 

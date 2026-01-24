@@ -214,12 +214,16 @@ analogical_engine_t* analogical_engine_create(void) {
 analogical_engine_t* analogical_engine_create_custom(const analog_config_t* config) {
     if (!config) {
         set_error("NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
     analogical_engine_t* engine = nimcp_calloc(1, sizeof(analogical_engine_t));
     if (!engine) {
         set_error("Failed to allocate engine");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
         return NULL;
     }
 
@@ -281,6 +285,8 @@ analog_domain_t* analogical_create_domain(
     analog_domain_t* domain = nimcp_calloc(1, sizeof(analog_domain_t));
     if (!domain) {
         set_error("Failed to allocate domain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "domain is NULL");
+
         return NULL;
     }
 
@@ -439,6 +445,8 @@ analog_analogy_t* analogical_find_analogy(
     analog_analogy_t* analogy = nimcp_calloc(1, sizeof(analog_analogy_t));
     if (!analogy) {
         set_error("Failed to allocate analogy");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "analogy is NULL");
+
         return NULL;
     }
 
@@ -822,6 +830,8 @@ analog_solution_t* analogical_transfer_solution(
     analog_solution_t* transferred = nimcp_calloc(1, sizeof(analog_solution_t));
     if (!transferred) {
         set_error("Failed to allocate solution");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "transferred is NULL");
+
         return NULL;
     }
 
@@ -971,6 +981,8 @@ analog_abstraction_t* analogical_extract_principle(
     analog_abstraction_t* abstraction = nimcp_calloc(1, sizeof(analog_abstraction_t));
     if (!abstraction) {
         set_error("Failed to allocate abstraction");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "abstraction is NULL");
+
         return NULL;
     }
 
@@ -1122,13 +1134,25 @@ float analogical_complete_analogy(
  * ============================================================================ */
 
 int analogical_set_inflammation(analogical_engine_t* engine, float level) {
-    if (!engine) return -1;
+    if (!engine) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
+        return -1;
+
+    }
     engine->inflammation = fmaxf(0.0f, fminf(1.0f, level));
     return 0;
 }
 
 int analogical_set_fatigue(analogical_engine_t* engine, float level) {
-    if (!engine) return -1;
+    if (!engine) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "engine is NULL");
+
+        return -1;
+
+    }
     engine->fatigue = fmaxf(0.0f, fminf(1.0f, level));
     return 0;
 }

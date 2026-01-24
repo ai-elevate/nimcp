@@ -219,7 +219,11 @@ bool nimcp_brain_factory_verify_safety(brain_t brain)
 bool nimcp_brain_is_safety_verified(brain_t brain)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_is_safety_verified: brain is NULL");
+
+            return false;
     }
     return brain->safety_verified && brain->lgss_enabled;
 }

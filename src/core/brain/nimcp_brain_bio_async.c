@@ -89,7 +89,19 @@ static inline bool inject_current_impl(
     float current, float duration_ms) {
     (void)duration_ms;  // Not used in simplified implementation
 
-    if (!network) return false;
+    if (!network) {
+
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+
+                "inject_current_impl: network is NULL");
+
+
+            return false;
+
+
+        }
 
     // Check if neuron state indicates a spike after adding input
     float activation = 0.0F;
@@ -1154,7 +1166,11 @@ static void brain_publish_state_signals(brain_bio_async_ctx_t* ctx) {
  */
 uint32_t brain_bio_async_process_messages(brain_t brain, uint32_t max_messages) {
     if (!brain) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "brain_bio_async_process_messages: brain is NULL");
+
+            return 0;
     }
 
     struct brain_struct* b = (struct brain_struct*)brain;
@@ -1223,7 +1239,11 @@ bool brain_bio_async_get_stats(
     uint64_t* activation_requests
 ) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "brain_bio_async_get_stats: brain is NULL");
+
+            return false;
     }
 
     struct brain_struct* b = (struct brain_struct*)brain;

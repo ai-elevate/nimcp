@@ -308,6 +308,8 @@ math_intuition_t* math_intuition_create_custom(const math_intuition_config_t* co
     math_intuition_t* mi = calloc(1, sizeof(math_intuition_t));
     if (!mi) {
         set_math_error("Failed to allocate math intuition");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mi is NULL");
+
         return NULL;
     }
 
@@ -1092,7 +1094,13 @@ float math_check_analogy(
  * ============================================================================ */
 
 int math_intuition_set_inflammation(math_intuition_t* mi, float level) {
-    if (!mi) return -1;
+    if (!mi) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mi is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(mi->lock);
     mi->inflammation_level = clamp01(level);
@@ -1102,7 +1110,13 @@ int math_intuition_set_inflammation(math_intuition_t* mi, float level) {
 }
 
 int math_intuition_set_fatigue(math_intuition_t* mi, float level) {
-    if (!mi) return -1;
+    if (!mi) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "mi is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(mi->lock);
     mi->fatigue_level = clamp01(level);

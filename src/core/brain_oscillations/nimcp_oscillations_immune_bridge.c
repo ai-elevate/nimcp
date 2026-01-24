@@ -144,7 +144,13 @@ static size_t create_oscillation_epitope(
  * ============================================================================ */
 
 int oscillations_immune_default_config(oscillations_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* All features enabled by default */
     config->enable_cytokine_oscillation_modulation = true;
@@ -183,6 +189,8 @@ oscillations_immune_bridge_t* oscillations_immune_bridge_create(
         nimcp_malloc(sizeof(oscillations_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("oscillations_immune_bridge", "Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -240,7 +248,13 @@ void oscillations_immune_bridge_destroy(oscillations_immune_bridge_t* bridge) {
 
 int oscillations_immune_establish_baseline(oscillations_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->oscillation_analyzer) return -1;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -273,7 +287,13 @@ int oscillations_immune_establish_baseline(oscillations_immune_bridge_t* bridge)
 
 int oscillations_immune_apply_cytokine_effects(oscillations_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_cytokine_oscillation_modulation) return 0;
     if (!bridge->immune_system || !bridge->oscillation_analyzer) return -1;
 
@@ -343,7 +363,13 @@ int oscillations_immune_apply_cytokine_effects(oscillations_immune_bridge_t* bri
 
 int oscillations_immune_apply_inflammation_effects(oscillations_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_inflammation_power_shift) return 0;
     if (!bridge->immune_system || !bridge->oscillation_analyzer) return -1;
 
@@ -431,7 +457,13 @@ int oscillations_immune_restore_with_il10(
     float il10_concentration
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_il10_restoration) return 0;
     if (!bridge->baseline.baseline_established) return -1;
 
@@ -521,7 +553,13 @@ bool oscillations_immune_detect_abnormality(oscillations_immune_bridge_t* bridge
 
 int oscillations_immune_trigger_from_abnormality(oscillations_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_oscillation_immune_trigger) return 0;
     if (!bridge->immune_system || !bridge->oscillation_analyzer) return -1;
 
@@ -611,7 +649,13 @@ int oscillations_immune_bridge_update(
     uint64_t delta_ms
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -719,7 +763,13 @@ float oscillations_immune_get_gamma_suppression(
 #define OSCILLATIONS_IMMUNE_MODULE_NAME "oscillations_immune_bridge"
 
 int oscillations_immune_connect_bio_async(oscillations_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -741,7 +791,13 @@ int oscillations_immune_connect_bio_async(oscillations_immune_bridge_t* bridge) 
 }
 
 int oscillations_immune_disconnect_bio_async(oscillations_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

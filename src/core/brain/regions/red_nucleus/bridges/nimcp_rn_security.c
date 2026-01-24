@@ -76,7 +76,13 @@ static uint32_t op_to_privilege(rn_security_op_t op) {
 //=============================================================================
 
 int rn_security_default_config(rn_security_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->enabled = true;
     config->require_kg_token = true;
@@ -95,7 +101,13 @@ int rn_security_register(
     bbb_system_t bbb,
     rn_security_state_t* state
 ) {
-    if (!bbb) return -1;
+    if (!bbb) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb is NULL");
+
+        return -1;
+
+    }
 
     rn_security_state_t local_state;
     memset(&local_state, 0, sizeof(local_state));
@@ -128,7 +140,13 @@ int rn_security_unregister(
     bbb_system_t bbb,
     rn_security_state_t* state
 ) {
-    if (!state) return -1;
+    if (!state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
+        return -1;
+
+    }
 
     /* Unregister memory region if registered */
     if (state->memory_region_id != 0 && bbb) {
@@ -244,7 +262,13 @@ int rn_security_set_admin_token(
     rn_security_state_t* state,
     uint64_t token
 ) {
-    if (!state) return -1;
+    if (!state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
+        return -1;
+
+    }
 
     state->admin_token = token;
 

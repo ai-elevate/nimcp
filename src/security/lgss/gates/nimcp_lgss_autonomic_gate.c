@@ -235,6 +235,8 @@ static void fill_release_details(
 autonomic_gate_t* autonomic_gate_create(const autonomic_gate_config_t* config) {
     autonomic_gate_t* gate = (autonomic_gate_t*)calloc(1, sizeof(autonomic_gate_t));
     if (gate == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gate is NULL");
+
         return NULL;
     }
 

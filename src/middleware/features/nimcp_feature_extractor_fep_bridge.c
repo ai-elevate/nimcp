@@ -24,7 +24,13 @@ static inline float clamp_f(float value, float min, float max) {
 int feature_extractor_fep_bridge_default_config(
     feature_extractor_fep_config_t* config
 ) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->enable_hierarchical_selection = true;
     config->enable_precision_gating = true;
@@ -47,6 +53,8 @@ feature_extractor_fep_bridge_t* feature_extractor_fep_bridge_create(
         nimcp_calloc(1, sizeof(feature_extractor_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate feature-FEP bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -121,7 +129,13 @@ int feature_extractor_fep_bridge_connect_fep(
 int feature_extractor_fep_bridge_disconnect(
     feature_extractor_fep_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->feature_extractor = NULL;
@@ -136,7 +150,13 @@ int feature_extractor_fep_select_hierarchical_features(
     feature_extractor_fep_bridge_t* bridge,
     uint32_t hierarchy_level
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_hierarchical_selection) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -160,7 +180,13 @@ int feature_extractor_fep_gate_by_precision(
     feature_extractor_fep_bridge_t* bridge,
     float precision
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_precision_gating) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -191,7 +217,13 @@ int feature_extractor_fep_set_expected_features(
     feature_extractor_fep_bridge_t* bridge,
     float expected_rate
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_prediction_gating) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -221,7 +253,13 @@ int feature_extractor_fep_update_uncertainty_from_entropy(
     feature_extractor_fep_bridge_t* bridge,
     float entropy
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_entropy_feedback) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -254,7 +292,13 @@ int feature_extractor_fep_infer_state_from_oscillations(
     float beta_power,
     float alpha_power
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_oscillation_state) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -290,7 +334,13 @@ int feature_extractor_fep_bridge_update(
     feature_extractor_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     return 0;
 }
 
@@ -323,7 +373,13 @@ int feature_extractor_fep_bridge_get_stats(
 int feature_extractor_fep_bridge_connect_bio_async(
     feature_extractor_fep_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -347,7 +403,13 @@ int feature_extractor_fep_bridge_connect_bio_async(
 int feature_extractor_fep_bridge_disconnect_bio_async(
     feature_extractor_fep_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     bio_router_unregister_module(bridge->base.bio_ctx);

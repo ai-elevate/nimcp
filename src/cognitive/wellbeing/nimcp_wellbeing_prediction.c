@@ -476,7 +476,11 @@ bool enhanced_wellbeing_is_critical_imminent(
 {
     /* Guard: NULL system */
     if (!system) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "enhanced_wellbeing_is_critical_imminent: system is NULL");
+
+            return false;
     }
 
     /* Thread safety */

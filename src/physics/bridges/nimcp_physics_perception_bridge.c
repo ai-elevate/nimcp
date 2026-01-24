@@ -122,7 +122,13 @@ static void update_binding(physics_percept_bridge_t* bridge) {
 //=============================================================================
 
 int physics_percept_default_config(physics_percept_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->enable_visual = true;
     config->enable_auditory = true;
@@ -304,7 +310,13 @@ int physics_percept_set_oscillations(
     float gamma_power,
     float alpha_power
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->gamma_power = (gamma_power < 0.0f) ? 0.0f :
                           (gamma_power > 1.0f) ? 1.0f : gamma_power;
@@ -375,7 +387,13 @@ int physics_percept_set_temperature(
     physics_percept_bridge_t* bridge,
     float temperature_k
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->temperature_k = temperature_k;
     update_gains(bridge);
     return 0;
@@ -385,7 +403,13 @@ int physics_percept_set_atp(
     physics_percept_bridge_t* bridge,
     float atp_level
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->atp_level = (atp_level < 0.0f) ? 0.0f :
                         (atp_level > 1.0f) ? 1.0f : atp_level;
     update_gains(bridge);
@@ -405,7 +429,13 @@ int physics_percept_update(
     physics_percept_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->sim_time_ms += dt_ms;
     bridge->stats.last_update_ms = bridge->sim_time_ms;
@@ -418,7 +448,13 @@ int physics_percept_update(
 }
 
 int physics_percept_reset(physics_percept_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->temperature_k = TEMP_REF_K;
     bridge->atp_level = 1.0f;

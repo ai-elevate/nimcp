@@ -731,7 +731,11 @@ uint32_t nimcp_semaphore_get_count(const nimcp_semaphore_t* sem)
     // GUARD CLAUSE: Validate parameters
     // WHY NULL CHECK: Prevent crash, return 0 as sentinel
     if (!sem) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_semaphore_get_count: sem is NULL");
+
+            return 0;
     }
 
     // CRITICAL SECTION START: Lock mutex (cast away const for lock)

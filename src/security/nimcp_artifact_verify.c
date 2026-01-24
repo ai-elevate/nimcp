@@ -513,7 +513,11 @@ nimcp_error_t nimcp_supply_chain_list_sources(nimcp_supply_chain_t sc,
 bool nimcp_supply_chain_is_source_trusted(nimcp_supply_chain_t sc,
                                             const char* source_url) {
     if (!sc || sc->magic != NIMCP_SUPPLY_CHAIN_MAGIC || !source_url) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "nimcp_supply_chain_is_source_trusted: invalid parameters");
+
+            return false;
     }
 
     pthread_mutex_lock(&sc->lock);

@@ -67,6 +67,8 @@ triplet_stdp_immune_bridge_t triplet_stdp_immune_bridge_create(
      */
     if (!immune_system) {
         NIMCP_LOGGING_ERROR("NULL immune_system in bridge create");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_system is NULL");
+
         return NULL;
     }
 
@@ -77,6 +79,9 @@ triplet_stdp_immune_bridge_t triplet_stdp_immune_bridge_create(
 
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate triplet STDP immune bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
         return NULL;
     }
 

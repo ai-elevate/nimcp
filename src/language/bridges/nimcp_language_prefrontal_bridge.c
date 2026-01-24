@@ -172,12 +172,16 @@ language_prefrontal_bridge_t* language_prefrontal_bridge_create(
 ) {
     if (!prefrontal) {
         LOG_ERROR(LOG_MODULE, "Prefrontal adapter required");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "prefrontal is NULL");
+
         return NULL;
     }
 
     language_prefrontal_bridge_t* bridge = nimcp_calloc(1, sizeof(language_prefrontal_bridge_t));
     if (!bridge) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -241,7 +245,13 @@ void language_prefrontal_bridge_destroy(language_prefrontal_bridge_t* bridge) {
 }
 
 int language_prefrontal_bridge_reset(language_prefrontal_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Clear goals */
     goal_entry_t* g = bridge->goals;
@@ -279,7 +289,13 @@ int language_prefrontal_connect_broca(
     language_prefrontal_bridge_t* bridge,
     broca_adapter_t* broca
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->broca = broca;
     LOG_INFO(LOG_MODULE, "Connected to Broca adapter");
     return 0;
@@ -289,7 +305,13 @@ int language_prefrontal_connect_wernicke(
     language_prefrontal_bridge_t* bridge,
     wernicke_adapter_t* wernicke
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->wernicke = wernicke;
     LOG_INFO(LOG_MODULE, "Connected to Wernicke adapter");
     return 0;
@@ -299,7 +321,13 @@ int language_prefrontal_connect_bio_async(
     language_prefrontal_bridge_t* bridge,
     bio_router_t router
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->bio_router = router;
     LOG_INFO(LOG_MODULE, "Connected to bio-async router");
     return 0;
@@ -313,7 +341,13 @@ int language_prefrontal_bridge_update(
     language_prefrontal_bridge_t* bridge,
     uint64_t timestamp_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     int events = 0;
 
@@ -365,7 +399,13 @@ int language_prefrontal_set_communication_goal(
     if (!bridge || !goal) return -1;
 
     goal_entry_t* entry = nimcp_calloc(1, sizeof(goal_entry_t));
-    if (!entry) return -1;
+    if (!entry) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+
+        return -1;
+
+    }
 
     entry->goal = *goal;
     entry->goal.goal_id = bridge->next_goal_id++;
@@ -390,10 +430,22 @@ int language_prefrontal_cancel_goal(
     language_prefrontal_bridge_t* bridge,
     uint32_t goal_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     goal_entry_t* g = find_goal(bridge, goal_id);
-    if (!g) return -1;
+    if (!g) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "g is NULL");
+
+        return -1;
+
+    }
 
     g->active = false;
     bridge->active_goal_count--;
@@ -490,7 +542,13 @@ int language_prefrontal_release_inhibition(
     language_prefrontal_bridge_t* bridge,
     inhibition_type_t type
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     int released = 0;
     for (uint32_t i = 0; i < bridge->inhibition_capacity; i++) {
@@ -544,10 +602,22 @@ int language_prefrontal_report_goal_complete(
     uint32_t goal_id,
     bool success
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     goal_entry_t* g = find_goal(bridge, goal_id);
-    if (!g) return -1;
+    if (!g) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "g is NULL");
+
+        return -1;
+
+    }
 
     g->active = false;
     bridge->active_goal_count--;
@@ -628,7 +698,13 @@ int language_prefrontal_set_discourse_state(
     language_prefrontal_bridge_t* bridge,
     discourse_state_t state
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->discourse_state = state;
     return 0;
 }
@@ -642,7 +718,13 @@ int language_prefrontal_set_goal_callback(
     lp_goal_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->goal_callback = callback;
     bridge->goal_callback_data = user_data;
     return 0;
@@ -653,7 +735,13 @@ int language_prefrontal_set_inhibition_callback(
     lp_inhibition_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->inhibition_callback = callback;
     bridge->inhibition_callback_data = user_data;
     return 0;
@@ -664,7 +752,13 @@ int language_prefrontal_set_conflict_callback(
     lp_conflict_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->conflict_callback = callback;
     bridge->conflict_callback_data = user_data;
     return 0;

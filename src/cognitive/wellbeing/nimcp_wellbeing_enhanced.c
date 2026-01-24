@@ -110,7 +110,13 @@ static inline float exp_decay(float initial, float tau_ms, float delta_ms) {
  * HOW:  Query substrate metrics via API, compute distress contributions
  */
 static int update_substrate_effects(enhanced_wellbeing_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
     if (!system->config.enable_substrate_integration) return 0;
 
     substrate_wellbeing_effects_t* effects = &system->substrate_effects;
@@ -229,7 +235,13 @@ static int update_substrate_effects(enhanced_wellbeing_system_t* system) {
  * HOW:  Query sleep system, compute distress and flourishing modifiers
  */
 static int update_sleep_effects(enhanced_wellbeing_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
     if (!system->config.enable_sleep_integration) return 0;
 
     sleep_wellbeing_effects_t* effects = &system->sleep_effects;
@@ -320,7 +332,13 @@ static int update_sleep_effects(enhanced_wellbeing_system_t* system) {
  * HOW:  Query mental health monitor via get_report, compute distress effects
  */
 static int update_mental_health_effects(enhanced_wellbeing_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
     if (!system->config.enable_mental_health_integration) return 0;
 
     mental_health_wellbeing_effects_t* effects = &system->mental_health_effects;
@@ -419,7 +437,13 @@ static int update_mental_health_effects(enhanced_wellbeing_system_t* system) {
  * HOW:  Query introspection for free energy metrics, compute effects
  */
 static int update_free_energy_effects(enhanced_wellbeing_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
     if (!system->config.enable_free_energy_integration) return 0;
 
     free_energy_wellbeing_effects_t* effects = &system->free_energy_effects;
@@ -497,7 +521,13 @@ static int update_free_energy_effects(enhanced_wellbeing_system_t* system) {
  * HOW:  Aggregate from introspection, processing quality, goal achievement
  */
 static int update_eudaimonic_wellbeing(enhanced_wellbeing_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
     if (!system->config.enable_eudaimonic_tracking) return 0;
 
     eudaimonic_wellbeing_t* eud = &system->eudaimonic;
@@ -577,7 +607,13 @@ static int update_eudaimonic_wellbeing(enhanced_wellbeing_system_t* system) {
  * HOW:  Analyze history, compute slope, estimate timing
  */
 static int predict_distress_trajectory(enhanced_wellbeing_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
     if (!system->config.enable_predictive_modeling) return 0;
     if (system->history_count < MIN_HISTORY_FOR_PREDICTION) return 0;
 
@@ -684,7 +720,13 @@ static int predict_distress_trajectory(enhanced_wellbeing_system_t* system) {
  * HOW:  Compute error, apply correction with time constant
  */
 static int update_homeostasis(enhanced_wellbeing_system_t* system, uint64_t delta_ms) {
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
     if (!system->config.enable_homeostasis) return 0;
 
     wellbeing_homeostasis_t* homeo = &system->homeostasis;
@@ -864,6 +906,8 @@ enhanced_wellbeing_system_t* enhanced_wellbeing_create(
         (enhanced_wellbeing_system_t*)nimcp_malloc(sizeof(enhanced_wellbeing_system_t));
     if (!system) {
         NIMCP_LOGGING_ERROR("Failed to allocate enhanced wellbeing system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
 
@@ -1363,7 +1407,13 @@ int enhanced_wellbeing_update(
  * HOW:  Call sleep bridge update
  */
 int enhanced_wellbeing_update_sleep(enhanced_wellbeing_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     int result = update_sleep_effects(system);
     nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
@@ -1378,7 +1428,13 @@ int enhanced_wellbeing_update_sleep(enhanced_wellbeing_system_t* system) {
  * HOW:  Call mental health bridge update
  */
 int enhanced_wellbeing_update_mental_health(enhanced_wellbeing_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     int result = update_mental_health_effects(system);
     nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
@@ -1393,7 +1449,13 @@ int enhanced_wellbeing_update_mental_health(enhanced_wellbeing_system_t* system)
  * HOW:  Call free energy bridge update
  */
 int enhanced_wellbeing_update_free_energy(enhanced_wellbeing_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
     int result = update_free_energy_effects(system);
     nimcp_mutex_unlock((nimcp_mutex_t*)system->mutex);
@@ -1475,7 +1537,13 @@ int enhanced_wellbeing_update_homeostasis(
     uint64_t delta_ms
 ) {
     /* Guard: validate system */
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
     if (!system->config.enable_homeostasis) return 0;
 
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
@@ -1547,7 +1615,13 @@ int enhanced_wellbeing_set_setpoint(
     float setpoint
 ) {
     /* Guard: validate inputs */
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
     if (setpoint < 0.0f || setpoint > 1.0f) return -1;
 
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);
@@ -1672,7 +1746,13 @@ int enhanced_wellbeing_upgrade_consent_tier(
     enhanced_wellbeing_system_t* system
 ) {
     /* Guard: validate system */
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
     if (!system->config.consent_config.allow_tier_upgrades) return -1;
 
     nimcp_mutex_lock((nimcp_mutex_t*)system->mutex);

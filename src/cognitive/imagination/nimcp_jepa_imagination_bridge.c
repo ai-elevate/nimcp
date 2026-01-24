@@ -29,7 +29,13 @@
  * ============================================================================ */
 
 int jepa_imagination_default_config(jepa_imagination_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->confidence_threshold = JEPA_IMAG_DEFAULT_CONFIDENCE_THRESHOLD;
     config->max_prediction_horizon = 10;
@@ -49,7 +55,13 @@ int jepa_imagination_default_config(jepa_imagination_config_t* config) {
 }
 
 int jepa_imagination_validate_config(const jepa_imagination_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     if (config->confidence_threshold < 0.0f || config->confidence_threshold > 1.0f) {
         return -1;
@@ -87,6 +99,8 @@ jepa_imagination_bridge_t* jepa_imagination_bridge_create(
         1, sizeof(jepa_imagination_bridge_t));
     if (!bridge) {
         NIMCP_LOG_ERROR("Failed to allocate JEPA-imagination bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -178,7 +192,13 @@ void jepa_imagination_bridge_destroy(jepa_imagination_bridge_t* bridge) {
 }
 
 int jepa_imagination_reset(jepa_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -208,7 +228,13 @@ int jepa_imagination_connect_jepa(
     jepa_imagination_bridge_t* bridge,
     struct jepa_predictor* jepa)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -229,7 +255,13 @@ int jepa_imagination_connect_imagination(
     jepa_imagination_bridge_t* bridge,
     struct imagination_engine* imagination)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -267,7 +299,13 @@ int jepa_imagination_update(
     jepa_imagination_bridge_t* bridge,
     float delta_time_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bridge_active) return 0;  /* Nothing to do */
 
     (void)delta_time_ms;  /* Used for rate limiting below */
@@ -343,7 +381,13 @@ int jepa_imagination_compute_imag_effects(jepa_imagination_bridge_t* bridge) {
 }
 
 int jepa_imagination_apply_effects(jepa_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Apply JEPA effects to imagination */
     if (bridge->imagination && bridge->jepa_to_imag.num_predictions > 0) {
@@ -517,7 +561,13 @@ int jepa_imagination_get_stats(
 }
 
 int jepa_imagination_reset_stats(jepa_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -538,7 +588,13 @@ uint32_t jepa_imagination_get_counterfactual_count(
  * ============================================================================ */
 
 int jepa_imagination_connect_bio_async(jepa_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;  /* Already connected */
 
     /* Use bridge base helper if available */
@@ -551,7 +607,13 @@ int jepa_imagination_connect_bio_async(jepa_imagination_bridge_t* bridge) {
 }
 
 int jepa_imagination_disconnect_bio_async(jepa_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;  /* Already disconnected */
 
     int result = bridge_base_disconnect_bio_async(&bridge->base);
@@ -570,7 +632,13 @@ bool jepa_imagination_is_bio_async_connected(
 }
 
 int jepa_imagination_process_messages(jepa_imagination_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     /* Process pending bio-async messages */

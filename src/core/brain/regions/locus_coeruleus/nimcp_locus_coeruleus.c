@@ -272,7 +272,11 @@ nimcp_lc_projection_t* nimcp_lc_get_projection(
     uint32_t projection_id
 ) {
     if (!lc || !lc->initialized) {
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "nimcp_lc_get_projection: invalid parameters");
+
+            return NULL;
     }
 
     if (projection_id >= lc->num_projections) {
@@ -287,7 +291,11 @@ nimcp_lc_projection_t* nimcp_lc_get_projection_by_target(
     nimcp_lc_target_t target
 ) {
     if (!lc || !lc->initialized) {
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "nimcp_lc_get_projection_by_target: invalid parameters");
+
+            return NULL;
     }
 
     for (uint32_t i = 0; i < lc->num_projections; i++) {

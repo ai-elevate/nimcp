@@ -121,7 +121,11 @@ bool nimcp_brain_factory_init_axon_subsystem(brain_t brain)
 {
     // Guard: NULL check
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_axon_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Check if axons are disabled via config
@@ -235,7 +239,11 @@ bool nimcp_brain_factory_init_dendrite_subsystem(brain_t brain)
 {
     // Guard: NULL check
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_dendrite_subsystem: brain is NULL");
+
+            return false;
     }
 
     // Check if dendrites are disabled via config

@@ -76,7 +76,13 @@ static sleep_bio_subscription_t* sleep_find_subscription(
  * ============================================================================ */
 
 int sleep_bio_async_default_config(sleep_bio_async_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->state_broadcast_interval_ms = SLEEP_BIO_DEFAULT_BROADCAST_INTERVAL_MS;
     config->enable_auto_broadcast = true;
@@ -141,7 +147,13 @@ int sleep_bio_async_connect(
     sleep_system_t sleep_system,
     bio_router_t router
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->sleep_system = sleep_system;
     bridge->router = router;
@@ -151,7 +163,13 @@ int sleep_bio_async_connect(
 }
 
 int sleep_bio_async_disconnect(sleep_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->sleep_system = NULL;
     bridge->router = NULL;
@@ -411,7 +429,13 @@ int sleep_bio_async_subscribe_module(
     uint32_t module_id,
     uint32_t msg_types
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     sleep_bio_subscription_t* existing = sleep_find_subscription(bridge, module_id);
     if (existing) {
@@ -442,7 +466,13 @@ int sleep_bio_async_unsubscribe_module(
     sleep_bio_async_bridge_t* bridge,
     uint32_t module_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     for (uint32_t i = 0; i < bridge->subscription_count; i++) {
         if (bridge->subscriptions[i].module_id == module_id) {
@@ -488,7 +518,13 @@ int sleep_bio_async_get_stats(
 }
 
 int sleep_bio_async_reset_stats(sleep_bio_async_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     uint32_t active = bridge->stats.active_subscriptions;
     uint32_t peak = bridge->stats.peak_subscriptions;

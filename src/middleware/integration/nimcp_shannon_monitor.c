@@ -309,12 +309,16 @@ shannon_monitor_t* shannon_monitor_create_custom(
 ) {
     if (!config) {
         LOG_ERROR("Shannon: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
     shannon_monitor_t* monitor = (shannon_monitor_t*)nimcp_calloc(1, sizeof(shannon_monitor_t));
     if (!monitor) {
         LOG_ERROR("Shannon: Failed to allocate monitor");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitor is NULL");
+
         return NULL;
     }
 

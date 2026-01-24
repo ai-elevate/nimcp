@@ -77,7 +77,13 @@ static float compute_saturation_fraction(const hetero_system_t* system,
  * HOW:  Fill struct with empirical defaults
  */
 int hetero_pink_noise_default_config(hetero_pink_noise_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* Modulation parameters */
     config->modulation.competition_alpha = HETERO_PINK_DEFAULT_COMPETITION_ALPHA;
@@ -125,6 +131,8 @@ hetero_pink_noise_bridge_t* hetero_pink_noise_bridge_create(
 {
     if (!hetero_system) {
         NIMCP_LOGGING_ERROR("Heterosynaptic system required");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_system is NULL");
+
         return NULL;
     }
 
@@ -133,6 +141,8 @@ hetero_pink_noise_bridge_t* hetero_pink_noise_bridge_create(
         sizeof(hetero_pink_noise_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -267,7 +277,13 @@ int hetero_pink_noise_connect_generator(
  * HOW:  Clear handles, restore base parameters
  */
 int hetero_pink_noise_disconnect(hetero_pink_noise_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -294,7 +310,13 @@ int hetero_pink_noise_disconnect(hetero_pink_noise_bridge_t* bridge) {
  * HOW:  Set enabled flag
  */
 int hetero_pink_noise_enable(hetero_pink_noise_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->enabled = true;
@@ -310,7 +332,13 @@ int hetero_pink_noise_enable(hetero_pink_noise_bridge_t* bridge) {
  * HOW:  Clear enabled flag, restore base parameters
  */
 int hetero_pink_noise_disable(hetero_pink_noise_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->enabled = false;
@@ -560,7 +588,13 @@ int hetero_pink_noise_bridge_update(
     hetero_pink_noise_bridge_t* bridge,
     uint64_t delta_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     (void)delta_ms;  /* Currently unused, reserved for future time-based logic */
 
     bridge->total_updates++;
@@ -636,7 +670,13 @@ int hetero_pink_noise_get_statistics(
     float* avg_competition,
     float* avg_radius)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     if (total_updates) *total_updates = bridge->total_updates;
     if (noise_samples) *noise_samples = bridge->noise_samples_generated;
@@ -652,7 +692,13 @@ int hetero_pink_noise_get_statistics(
  * HOW:  Reset counters, reseed pink generator
  */
 int hetero_pink_noise_reset(hetero_pink_noise_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -687,7 +733,13 @@ int hetero_pink_noise_reset(hetero_pink_noise_bridge_t* bridge) {
  * HOW:  Register with bio_router
  */
 int hetero_pink_noise_connect_bio_async(hetero_pink_noise_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -721,7 +773,13 @@ int hetero_pink_noise_connect_bio_async(hetero_pink_noise_bridge_t* bridge) {
  * HOW:  Unregister from bio_router
  */
 int hetero_pink_noise_disconnect_bio_async(hetero_pink_noise_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 

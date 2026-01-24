@@ -95,7 +95,13 @@ static float atp_to_immune_capacity(float atp_level) {
  * ============================================================================ */
 
 int metabolic_immune_default_config(metabolic_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* All features enabled by default */
     config->enable_cytokine_metabolic_burden = true;
@@ -127,6 +133,8 @@ metabolic_immune_bridge_t* metabolic_immune_bridge_create(
         nimcp_malloc(sizeof(metabolic_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -193,7 +201,13 @@ void metabolic_immune_bridge_destroy(metabolic_immune_bridge_t* bridge) {
 
 int metabolic_immune_apply_cytokine_effects(metabolic_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_cytokine_metabolic_burden) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -230,7 +244,13 @@ int metabolic_immune_apply_cytokine_effects(metabolic_immune_bridge_t* bridge) {
 
 int metabolic_immune_apply_inflammation_effects(metabolic_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_inflammation_cost_increase) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -303,7 +323,13 @@ float metabolic_immune_get_effective_recovery(
 
 int metabolic_immune_update_atp_effects(metabolic_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_atp_immune_feedback) return 0;
     if (!bridge->metabolic) return -1;
 
@@ -357,7 +383,13 @@ int metabolic_immune_bridge_update(
     metabolic_immune_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -429,7 +461,13 @@ int metabolic_immune_get_atp_effects(
  * ============================================================================ */
 
 int metabolic_immune_connect_bio_async(metabolic_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -451,7 +489,13 @@ int metabolic_immune_connect_bio_async(metabolic_immune_bridge_t* bridge) {
 }
 
 int metabolic_immune_disconnect_bio_async(metabolic_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

@@ -120,6 +120,8 @@ nimcp_lnn_gradient_dao_t* nimcp_lnn_gradient_dao_create(
         1, sizeof(nimcp_lnn_gradient_dao_t));
     if (!dao) {
         LOG_ERROR("Failed to allocate gradient DAO");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dao is NULL");
+
         return NULL;
     }
 
@@ -145,6 +147,8 @@ nimcp_lnn_gradient_dao_t* nimcp_lnn_gradient_dao_create(
         if (!tensor) {
             LOG_ERROR("Failed to allocate GPU gradient buffer");
             free(dao);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tensor is NULL");
+
             return NULL;
         }
         nimcp_gpu_zeros(ctx, tensor);

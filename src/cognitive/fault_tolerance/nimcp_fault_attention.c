@@ -264,6 +264,9 @@ fault_attention_t* fault_attention_create_custom(
         nimcp_log(LOG_LEVEL_ERROR,
                   "Failed to allocate fault_attention_t (%zu bytes)",
                   sizeof(fault_attention_t));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention is NULL");
+
+
         return NULL;
     }
 

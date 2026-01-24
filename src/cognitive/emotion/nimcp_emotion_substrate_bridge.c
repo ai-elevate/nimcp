@@ -295,11 +295,16 @@ emotion_substrate_bridge_t* emotion_substrate_bridge_create(
     /* Guard: validate required pointers */
     if (!emotion_system) {
         NIMCP_LOGGING_ERROR("Cannot create emotion substrate bridge: NULL emotion_system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_system is NULL");
+
         return NULL;
     }
 
     if (!substrate) {
         NIMCP_LOGGING_ERROR("Cannot create emotion substrate bridge: NULL substrate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
+
+
         return NULL;
     }
 
@@ -308,6 +313,8 @@ emotion_substrate_bridge_t* emotion_substrate_bridge_create(
         nimcp_malloc(sizeof(emotion_substrate_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate emotion substrate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

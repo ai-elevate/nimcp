@@ -53,7 +53,13 @@ static inline float map_synchrony_to_confidence(float synchrony) {
 int population_coding_fep_bridge_default_config(
     population_coding_fep_config_t* config
 ) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->enable_precision_tuning = true;
     config->enable_prediction_baseline = true;
@@ -79,6 +85,8 @@ population_coding_fep_bridge_t* population_coding_fep_bridge_create(
         nimcp_calloc(1, sizeof(population_coding_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate population-FEP bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -169,7 +177,13 @@ int population_coding_fep_bridge_connect_fep(
 int population_coding_fep_bridge_disconnect(
     population_coding_fep_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->population_encoder = NULL;
@@ -188,7 +202,13 @@ int population_coding_fep_apply_precision_tuning(
     population_coding_fep_bridge_t* bridge,
     float precision
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_precision_tuning) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -229,7 +249,13 @@ int population_coding_fep_set_baseline(
     population_coding_fep_bridge_t* bridge,
     float prediction
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_prediction_baseline) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -262,7 +288,13 @@ int population_coding_fep_adjust_synchrony_threshold(
     population_coding_fep_bridge_t* bridge,
     float prediction_error
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_synchrony_confidence) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -313,7 +345,13 @@ int population_coding_fep_update_precision_from_synchrony(
     population_coding_fep_bridge_t* bridge,
     float synchrony
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_synchrony_confidence) return 0;
     if (!bridge->fep_system) return -1;
 
@@ -349,7 +387,13 @@ int population_coding_fep_report_sparsity(
     population_coding_fep_bridge_t* bridge,
     float sparsity
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_sparsity_optimization) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -387,7 +431,13 @@ int population_coding_fep_bridge_update(
     population_coding_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Update precision tuning if FEP system available */
     if (bridge->fep_system && bridge->config.enable_precision_tuning) {
@@ -470,7 +520,13 @@ int population_coding_fep_get_baseline(
 int population_coding_fep_bridge_connect_bio_async(
     population_coding_fep_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -494,7 +550,13 @@ int population_coding_fep_bridge_connect_bio_async(
 int population_coding_fep_bridge_disconnect_bio_async(
     population_coding_fep_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     bio_router_unregister_module(bridge->base.bio_ctx);

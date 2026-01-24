@@ -646,7 +646,11 @@ nimcp_network_serial_result_t nimcp_network_deserialize(
 bool nimcp_network_validate_serialized(NimcpSerializer* serializer)
 {
     if (!serializer) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_network_validate_serialized: serializer is NULL");
+
+            return false;
     }
 
     size_t original_position = nimcp_serializer_get_position(serializer);

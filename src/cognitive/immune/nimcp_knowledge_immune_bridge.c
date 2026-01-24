@@ -160,7 +160,13 @@ static bool is_health_concept(const char* concept) {
  * ============================================================================ */
 
 int knowledge_immune_default_config(knowledge_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* All features enabled by default */
     config->enable_cytokine_retrieval_modulation = true;
@@ -201,6 +207,8 @@ knowledge_immune_bridge_t* knowledge_immune_bridge_create(
         nimcp_malloc(sizeof(knowledge_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("knowledge_immune_bridge", "Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -263,7 +271,13 @@ void knowledge_immune_bridge_destroy(knowledge_immune_bridge_t* bridge) {
 
 int knowledge_immune_apply_cytokine_effects(knowledge_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_cytokine_retrieval_modulation) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -319,7 +333,13 @@ int knowledge_immune_apply_cytokine_effects(knowledge_immune_bridge_t* bridge) {
 
 int knowledge_immune_apply_inflammation_encoding(knowledge_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_inflammation_encoding_impairment) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -395,7 +415,13 @@ int knowledge_immune_apply_sickness_learning_impairment(
     knowledge_immune_bridge_t* bridge
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_sickness_learning_impairment) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -424,7 +450,13 @@ int knowledge_immune_apply_sickness_learning_impairment(
 
 int knowledge_immune_prime_from_health_knowledge(knowledge_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_knowledge_immune_priming) return 0;
     if (!bridge->knowledge_system) return -1;
 
@@ -527,7 +559,13 @@ int knowledge_immune_prioritize_health_knowledge(
     knowledge_immune_bridge_t* bridge
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_illness_knowledge_priority) return 0;
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
@@ -590,7 +628,13 @@ int knowledge_immune_bridge_update(
     knowledge_immune_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Apply immune → knowledge effects */
     knowledge_immune_apply_cytokine_effects(bridge);
@@ -675,7 +719,13 @@ float knowledge_immune_get_encoding_success_rate(
  * @brief Connect bridge to bio-async router
  */
 int knowledge_immune_connect_bio_async(knowledge_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -700,7 +750,13 @@ int knowledge_immune_connect_bio_async(knowledge_immune_bridge_t* bridge) {
  * @brief Disconnect from bio-async router
  */
 int knowledge_immune_disconnect_bio_async(knowledge_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

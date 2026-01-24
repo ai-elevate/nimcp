@@ -227,6 +227,8 @@ nimcp_toctou_guard_t nimcp_toctou_guard_create(
         1, sizeof(struct nimcp_toctou_guard_impl));
     if (!guard) {
         LOG_ERROR("Failed to allocate TOCTOU guard");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "guard is NULL");
+
         return NULL;
     }
 

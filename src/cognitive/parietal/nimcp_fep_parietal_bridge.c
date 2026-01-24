@@ -70,6 +70,8 @@ fep_parietal_bridge_t* fep_parietal_bridge_create(const fep_parietal_config_t* c
     fep_parietal_bridge_t* bridge = calloc(1, sizeof(fep_parietal_bridge_t));
     if (!bridge) {
         set_error("Failed to allocate fep_parietal_bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     bridge->config = config ? *config : fep_parietal_default_config();
@@ -84,7 +86,13 @@ void fep_parietal_bridge_destroy(fep_parietal_bridge_t* bridge) {
 }
 
 int fep_parietal_set_enabled(fep_parietal_bridge_t* bridge, bool enabled) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->enabled = enabled;
     return 0;
 }
@@ -335,13 +343,25 @@ float fep_parietal_epistemic_value(
  * ============================================================================ */
 
 int fep_parietal_set_inflammation(fep_parietal_bridge_t* bridge, float level) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->inflammation_level = level < 0.0f ? 0.0f : (level > 1.0f ? 1.0f : level);
     return 0;
 }
 
 int fep_parietal_set_fatigue(fep_parietal_bridge_t* bridge, float level) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->fatigue_level = level < 0.0f ? 0.0f : (level > 1.0f ? 1.0f : level);
     return 0;
 }
@@ -377,7 +397,13 @@ int fep_parietal_attach_fep_system(
     fep_parietal_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->fep_system = fep;
     return 0;
 }

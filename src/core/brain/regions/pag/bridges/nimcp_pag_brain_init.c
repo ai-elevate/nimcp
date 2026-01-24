@@ -51,7 +51,13 @@ static const char* pag_version_string = "1.0.0";
 //=============================================================================
 
 int pag_init_default_config(pag_init_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->default_threat_threshold = 0.3f;
     config->default_defense_decay = 0.1f;
@@ -73,7 +79,13 @@ int pag_init_default_config(pag_init_config_t* config) {
 //=============================================================================
 
 int pag_brain_init_register(brain_t brain) {
-    if (!brain) return -1;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return -1;
+
+    }
 
     pag_init_config_t config;
     pag_init_default_config(&config);
@@ -133,6 +145,8 @@ nimcp_pag_t* pag_brain_init_create(
         NIMCP_LOG_ERROR(PAG_INIT_MODULE_NAME, "Failed to create PAG instance");
         local_result.error_count++;
         if (result) *result = local_result;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag is NULL");
+
         return NULL;
     }
     local_result.pag_created = true;
@@ -202,7 +216,13 @@ nimcp_pag_t* pag_brain_init_create(
 }
 
 int pag_brain_init_destroy(nimcp_pag_t* pag) {
-    if (!pag) return -1;
+    if (!pag) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pag is NULL");
+
+        return -1;
+
+    }
 
     /* Destroy PAG instance - this handles all internal cleanup */
     pag_destroy(pag);

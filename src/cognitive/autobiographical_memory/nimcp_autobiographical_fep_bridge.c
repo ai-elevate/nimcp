@@ -92,7 +92,13 @@ static float compute_memory_importance(float surprise_level, float threshold) {
  * HOW:  Set thresholds and rates based on neuroscience literature
  */
 int autobiographical_fep_bridge_default_config(autobiographical_fep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->surprise_memory_threshold = SURPRISE_MEMORY_THRESHOLD;
     config->memory_importance_weight = 1.0f;
@@ -118,6 +124,8 @@ autobiographical_fep_bridge_t* autobiographical_fep_bridge_create(
         1, sizeof(autobiographical_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate autobiographical-FEP bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -193,7 +201,13 @@ int autobiographical_fep_bridge_connect_fep(
     autobiographical_fep_bridge_t* bridge,
     fep_system_t* fep
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     /* Allow NULL fep to disconnect/reset FEP connection */
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -213,7 +227,13 @@ int autobiographical_fep_bridge_connect_autobiographical(
     autobiographical_fep_bridge_t* bridge,
     autobiographical_memory_t autobio
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->autobio_system = autobio;
@@ -425,7 +445,13 @@ int autobiographical_fep_bridge_update(
     autobiographical_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Check for surprising episodes to encode */
     if (bridge->config.enable_surprise_encoding && bridge->fep_system) {
@@ -497,7 +523,13 @@ int autobiographical_fep_bridge_get_stats(
  * HOW:  Register module with bio-async router, set enabled flag
  */
 int autobiographical_fep_bridge_connect_bio_async(autobiographical_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -524,7 +556,13 @@ int autobiographical_fep_bridge_connect_bio_async(autobiographical_fep_bridge_t*
  * HOW:  Unregister module, clear context and flag
  */
 int autobiographical_fep_bridge_disconnect_bio_async(autobiographical_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

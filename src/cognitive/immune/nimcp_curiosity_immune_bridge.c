@@ -137,7 +137,13 @@ static float inflammation_to_suppression(brain_inflammation_level_t level) {
  * ============================================================================ */
 
 int curiosity_immune_default_config(curiosity_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* Enable all features by default */
     config->enable_sickness_behavior = true;
@@ -177,6 +183,8 @@ curiosity_immune_bridge_t* curiosity_immune_bridge_create(
         nimcp_malloc(sizeof(curiosity_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR(LOG_MODULE, "Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -250,7 +258,13 @@ void curiosity_immune_bridge_destroy(curiosity_immune_bridge_t* bridge) {
 
 int curiosity_immune_update_sickness_behavior(curiosity_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_sickness_behavior) return 0;
     if (!bridge->immune_system || !bridge->curiosity_engine) return -1;
 
@@ -404,7 +418,13 @@ int curiosity_immune_apply_suppression(
     float sickness_level
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->curiosity_engine) return -1;
 
     /* Compute suppression factor (1.0 = no suppression, 0.1 = max suppression) */
@@ -430,7 +450,13 @@ int curiosity_immune_apply_suppression(
 
 int curiosity_immune_restore_curiosity(curiosity_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->curiosity_engine) return -1;
 
     /* Gradually restore (10% per update) */
@@ -458,7 +484,13 @@ int curiosity_immune_restore_curiosity(curiosity_immune_bridge_t* bridge) {
 
 int curiosity_immune_update_novelty_vigilance(curiosity_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_novelty_vigilance) return 0;
     if (!bridge->immune_system || !bridge->curiosity_engine) return -1;
 
@@ -494,7 +526,13 @@ int curiosity_immune_trigger_vigilance(
     float novelty_level
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Compute vigilance boost */
     float boost = 1.0f + (novelty_level * 0.2f);  /* Up to 1.2x */
@@ -551,7 +589,13 @@ int curiosity_immune_bridge_update(
     uint64_t delta_ms
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     (void)delta_ms;  /* Currently unused, for future decay logic */
 
     /* Update sickness behavior */
@@ -609,7 +653,13 @@ bool curiosity_immune_is_chronic_inflammation(
  * @brief Connect bridge to bio-async router
  */
 int curiosity_immune_connect_bio_async(curiosity_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -634,7 +684,13 @@ int curiosity_immune_connect_bio_async(curiosity_immune_bridge_t* bridge) {
  * @brief Disconnect from bio-async router
  */
 int curiosity_immune_disconnect_bio_async(curiosity_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

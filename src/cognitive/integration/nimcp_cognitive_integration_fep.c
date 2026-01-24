@@ -118,7 +118,13 @@ static void update_metrics(
 
 int cognitive_hub_fep_update(void* handle) {
     cognitive_integration_hub_t hub = (cognitive_integration_hub_t)handle;
-    if (!hub) return -1;
+    if (!hub) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hub is NULL");
+
+        return -1;
+
+    }
 
     /* Process pending events in the hub */
     cognitive_hub_stats_t stats;
@@ -143,7 +149,13 @@ int cognitive_hub_fep_update(void* handle) {
 
 int emotion_memory_bridge_fep_update(void* handle) {
     emotion_memory_bridge_t* bridge = (emotion_memory_bridge_t*)handle;
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     emotion_memory_stats_t stats;
     if (emotion_memory_bridge_get_stats(bridge, &stats) == 0) {
@@ -167,7 +179,13 @@ int emotion_memory_bridge_fep_update(void* handle) {
 
 int attention_wm_bridge_fep_update(void* handle) {
     attention_wm_bridge_t* bridge = (attention_wm_bridge_t*)handle;
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     attention_wm_stats_t stats;
     if (attention_wm_bridge_get_stats(bridge, &stats) == 0) {
@@ -192,7 +210,13 @@ int attention_wm_bridge_fep_update(void* handle) {
 
 int curiosity_reasoning_bridge_fep_update(void* handle) {
     curiosity_reasoning_bridge_t* bridge = (curiosity_reasoning_bridge_t*)handle;
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     curiosity_reasoning_stats_t stats;
     if (curiosity_reasoning_bridge_get_stats(bridge, &stats) == 0) {
@@ -217,7 +241,13 @@ int curiosity_reasoning_bridge_fep_update(void* handle) {
 
 int ethics_executive_bridge_fep_update(void* handle) {
     ethics_executive_bridge_t* bridge = (ethics_executive_bridge_t*)handle;
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     ethics_executive_stats_t stats;
     if (ethics_executive_bridge_get_stats(bridge, &stats) == 0) {
@@ -241,7 +271,13 @@ int ethics_executive_bridge_fep_update(void* handle) {
 
 int tom_social_bridge_fep_update(void* handle) {
     tom_social_bridge_t* bridge = (tom_social_bridge_t*)handle;
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     tom_social_stats_t stats;
     if (tom_social_get_stats(bridge, &stats) == 0) {
@@ -264,7 +300,13 @@ int tom_social_bridge_fep_update(void* handle) {
 
 int self_introspection_bridge_fep_update(void* handle) {
     self_introspection_bridge_t* bridge = (self_introspection_bridge_t*)handle;
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     self_introspection_stats_t stats;
     if (self_introspection_get_stats(bridge, &stats) == 0) {
@@ -286,7 +328,13 @@ int self_introspection_bridge_fep_update(void* handle) {
 
 int emotion_executive_bridge_fep_update(void* handle) {
     emotion_executive_bridge_t* bridge = (emotion_executive_bridge_t*)handle;
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     emotion_executive_stats_t stats;
     if (emotion_executive_get_stats(bridge, &stats) == 0) {
@@ -310,7 +358,13 @@ int emotion_executive_bridge_fep_update(void* handle) {
 
 int gw_cognitive_bridge_fep_update(void* handle) {
     gw_cognitive_bridge_t* bridge = (gw_cognitive_bridge_t*)handle;
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     gw_cognitive_stats_t stats;
     if (gw_cognitive_get_stats(bridge, &stats) == 0) {
@@ -764,7 +818,13 @@ int cognitive_integration_fep_register_all(
 }
 
 int cognitive_integration_fep_unregister_all(fep_orchestrator_t* orchestrator) {
-    if (!orchestrator) return -1;
+    if (!orchestrator) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "orchestrator is NULL");
+
+        return -1;
+
+    }
 
     if (!g_cog_integ_fep_state.initialized) return 0;
 
@@ -815,7 +875,13 @@ int cognitive_integration_fep_get_metrics(
 int cognitive_integration_fep_get_stats(
     cognitive_integration_fep_stats_t* stats_out
 ) {
-    if (!stats_out) return -1;
+    if (!stats_out) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats_out is NULL");
+
+        return -1;
+
+    }
 
     memset(stats_out, 0, sizeof(cognitive_integration_fep_stats_t));
 

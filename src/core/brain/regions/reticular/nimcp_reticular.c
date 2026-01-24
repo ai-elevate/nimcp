@@ -181,7 +181,13 @@ static void update_modulator(reticular_modulator_state_t* mod, float dt) {
  *===========================================================================*/
 
 int reticular_default_config(reticular_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -252,6 +258,8 @@ nimcp_reticular_t* reticular_create(const reticular_config_t* config) {
         1, sizeof(nimcp_reticular_t));
     if (!reticular) {
         NIMCP_LOG_ERROR(RETICULAR_LOG_TAG, "Failed to allocate reticular formation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
         return NULL;
     }
 
@@ -378,7 +386,13 @@ void reticular_destroy(nimcp_reticular_t* reticular) {
 }
 
 int reticular_init(nimcp_reticular_t* reticular) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(reticular->mutex);
 
@@ -415,7 +429,13 @@ int reticular_init(nimcp_reticular_t* reticular) {
 }
 
 int reticular_reset(nimcp_reticular_t* reticular) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
     return reticular_init(reticular);
 }
 
@@ -517,7 +537,13 @@ reticular_arousal_state_t reticular_get_arousal_state(
 int reticular_apply_arousal_stimulus(nimcp_reticular_t* reticular,
                                      float stimulus,
                                      const char* source) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(reticular->mutex);
 
@@ -549,7 +575,13 @@ int reticular_apply_arousal_stimulus(nimcp_reticular_t* reticular,
 
 int reticular_initiate_sleep(nimcp_reticular_t* reticular,
                              reticular_arousal_state_t target_state) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
     if (target_state > RETICULAR_AROUSAL_REM_SLEEP) return -1;
 
     nimcp_mutex_lock(reticular->mutex);
@@ -581,7 +613,13 @@ int reticular_initiate_sleep(nimcp_reticular_t* reticular,
 }
 
 int reticular_wake(nimcp_reticular_t* reticular, float urgency) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(reticular->mutex);
 
@@ -724,7 +762,13 @@ int reticular_get_nucleus_state(const nimcp_reticular_t* reticular,
  *===========================================================================*/
 
 int reticular_update_autonomic(nimcp_reticular_t* reticular, float dt) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(reticular->mutex);
 
@@ -780,7 +824,13 @@ int reticular_set_autonomic_setpoint(nimcp_reticular_t* reticular,
 }
 
 int reticular_apply_sympathetic_drive(nimcp_reticular_t* reticular, float intensity) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(reticular->mutex);
 
@@ -800,7 +850,13 @@ int reticular_apply_sympathetic_drive(nimcp_reticular_t* reticular, float intens
 }
 
 int reticular_apply_parasympathetic_drive(nimcp_reticular_t* reticular, float intensity) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(reticular->mutex);
 
@@ -890,7 +946,13 @@ int reticular_get_reflex_state(const nimcp_reticular_t* reticular,
  *===========================================================================*/
 
 int reticular_update_motor_tone(nimcp_reticular_t* reticular, float dt) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(reticular->mutex);
 
@@ -931,7 +993,13 @@ float reticular_get_postural_tone(const nimcp_reticular_t* reticular) {
 }
 
 int reticular_set_rem_atonia(nimcp_reticular_t* reticular, bool active) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(reticular->mutex);
     reticular->motor.rem_atonia_active = active;
@@ -946,7 +1014,13 @@ float reticular_get_locomotor_drive(const nimcp_reticular_t* reticular) {
 }
 
 int reticular_set_locomotor_drive(nimcp_reticular_t* reticular, float drive) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(reticular->mutex);
     reticular->motor.locomotor_drive = clamp_f(drive, 0.0f, 1.0f);
@@ -964,7 +1038,13 @@ int reticular_set_locomotor_drive(nimcp_reticular_t* reticular, float drive) {
  *===========================================================================*/
 
 int reticular_update_pain_modulation(nimcp_reticular_t* reticular, float dt) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(reticular->mutex);
 
@@ -1006,7 +1086,13 @@ float reticular_get_pain_gate(const nimcp_reticular_t* reticular) {
 }
 
 int reticular_apply_pain_inhibition(nimcp_reticular_t* reticular, float inhibition) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(reticular->mutex);
 
@@ -1028,7 +1114,13 @@ float reticular_get_pain_threshold(const nimcp_reticular_t* reticular) {
 }
 
 int reticular_activate_stress_analgesia(nimcp_reticular_t* reticular, float stress_level) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(reticular->mutex);
 
@@ -1045,7 +1137,13 @@ int reticular_activate_stress_analgesia(nimcp_reticular_t* reticular, float stre
  *===========================================================================*/
 
 int reticular_update_sensory_gating(nimcp_reticular_t* reticular, float dt) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(reticular->mutex);
 
@@ -1093,7 +1191,13 @@ float reticular_get_thalamic_gate(const nimcp_reticular_t* reticular) {
 }
 
 int reticular_set_attention_bias(nimcp_reticular_t* reticular, float bias) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(reticular->mutex);
     reticular->sensory_gate.attention_bias = clamp_f(bias, 0.0f, 1.0f);
@@ -1104,7 +1208,13 @@ int reticular_set_attention_bias(nimcp_reticular_t* reticular, float bias) {
 }
 
 int reticular_apply_habituation(nimcp_reticular_t* reticular, float stimulus) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(reticular->mutex);
 
@@ -1135,7 +1245,13 @@ float reticular_get_modality_gate(const nimcp_reticular_t* reticular, int modali
 int reticular_set_circadian_input(nimcp_reticular_t* reticular,
                                   float circadian_phase,
                                   float circadian_amplitude) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(reticular->mutex);
 
@@ -1158,7 +1274,13 @@ int reticular_set_circadian_input(nimcp_reticular_t* reticular,
 }
 
 int reticular_update_sleep_pressure(nimcp_reticular_t* reticular, float wake_duration) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(reticular->mutex);
 
@@ -1232,7 +1354,13 @@ int reticular_kg_register(nimcp_reticular_t* reticular,
 }
 
 int reticular_kg_unregister(nimcp_reticular_t* reticular) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(reticular->mutex);
 
@@ -1280,7 +1408,13 @@ int reticular_bio_async_connect(nimcp_reticular_t* reticular,
 }
 
 int reticular_bio_async_disconnect(nimcp_reticular_t* reticular) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(reticular->mutex);
 
@@ -1325,7 +1459,13 @@ int reticular_bio_async_subscribe(nimcp_reticular_t* reticular,
 
 int reticular_immune_connect(nimcp_reticular_t* reticular,
                              struct nimcp_immune_system* immune) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
     reticular->immune = immune;
     NIMCP_LOG_DEBUG(RETICULAR_LOG_TAG, "Connected to immune system");
     return 0;
@@ -1333,7 +1473,13 @@ int reticular_immune_connect(nimcp_reticular_t* reticular,
 
 int reticular_security_connect(nimcp_reticular_t* reticular,
                                struct nimcp_security_context* security) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
     reticular->security = security;
     NIMCP_LOG_DEBUG(RETICULAR_LOG_TAG, "Connected to security context");
     return 0;
@@ -1342,7 +1488,13 @@ int reticular_security_connect(nimcp_reticular_t* reticular,
 int reticular_snn_connect(nimcp_reticular_t* reticular,
                           struct nimcp_snn_network* snn,
                           struct nimcp_plasticity_engine* plasticity) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
     reticular->snn = snn;
     reticular->plasticity = plasticity;
     NIMCP_LOG_DEBUG(RETICULAR_LOG_TAG, "Connected to SNN/plasticity");
@@ -1351,7 +1503,13 @@ int reticular_snn_connect(nimcp_reticular_t* reticular,
 
 int reticular_hypothalamus_connect(nimcp_reticular_t* reticular,
                                    struct nimcp_hypothalamus* hypo) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
     reticular->hypothalamus = hypo;
     NIMCP_LOG_DEBUG(RETICULAR_LOG_TAG, "Connected to hypothalamus");
     return 0;
@@ -1359,7 +1517,13 @@ int reticular_hypothalamus_connect(nimcp_reticular_t* reticular,
 
 int reticular_thalamus_connect(nimcp_reticular_t* reticular,
                                struct nimcp_thalamus* thalamus) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
     reticular->thalamus = thalamus;
     NIMCP_LOG_DEBUG(RETICULAR_LOG_TAG, "Connected to thalamus");
     return 0;
@@ -1367,7 +1531,13 @@ int reticular_thalamus_connect(nimcp_reticular_t* reticular,
 
 int reticular_cognitive_connect(nimcp_reticular_t* reticular,
                                 struct nimcp_cognitive_hub* hub) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
     reticular->cognitive_hub = hub;
     NIMCP_LOG_DEBUG(RETICULAR_LOG_TAG, "Connected to cognitive hub");
     return 0;
@@ -1375,7 +1545,13 @@ int reticular_cognitive_connect(nimcp_reticular_t* reticular,
 
 int reticular_training_connect(nimcp_reticular_t* reticular,
                                struct nimcp_training_context* training) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
     reticular->training = training;
     NIMCP_LOG_DEBUG(RETICULAR_LOG_TAG, "Connected to training system");
     return 0;
@@ -1383,7 +1559,13 @@ int reticular_training_connect(nimcp_reticular_t* reticular,
 
 int reticular_perception_connect(nimcp_reticular_t* reticular,
                                  struct nimcp_perception_system* perception) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
     reticular->perception = perception;
     NIMCP_LOG_DEBUG(RETICULAR_LOG_TAG, "Connected to perception system");
     return 0;
@@ -1391,7 +1573,13 @@ int reticular_perception_connect(nimcp_reticular_t* reticular,
 
 int reticular_symbolic_connect(nimcp_reticular_t* reticular,
                                struct nimcp_symbolic_engine* symbolic) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
     reticular->symbolic = symbolic;
     NIMCP_LOG_DEBUG(RETICULAR_LOG_TAG, "Connected to symbolic engine");
     return 0;
@@ -1399,7 +1587,13 @@ int reticular_symbolic_connect(nimcp_reticular_t* reticular,
 
 int reticular_swarm_connect(nimcp_reticular_t* reticular,
                             struct nimcp_swarm_context* swarm) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
     reticular->swarm = swarm;
     NIMCP_LOG_DEBUG(RETICULAR_LOG_TAG, "Connected to swarm system");
     return 0;
@@ -1407,7 +1601,13 @@ int reticular_swarm_connect(nimcp_reticular_t* reticular,
 
 int reticular_dragonfly_connect(nimcp_reticular_t* reticular,
                                 struct nimcp_dragonfly_context* dragonfly) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
     reticular->dragonfly = dragonfly;
     NIMCP_LOG_DEBUG(RETICULAR_LOG_TAG, "Connected to dragonfly system");
     return 0;
@@ -1415,7 +1615,13 @@ int reticular_dragonfly_connect(nimcp_reticular_t* reticular,
 
 int reticular_portia_connect(nimcp_reticular_t* reticular,
                              struct nimcp_portia_context* portia) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
     reticular->portia = portia;
     NIMCP_LOG_DEBUG(RETICULAR_LOG_TAG, "Connected to portia system");
     return 0;
@@ -1423,7 +1629,13 @@ int reticular_portia_connect(nimcp_reticular_t* reticular,
 
 int reticular_qmc_connect(nimcp_reticular_t* reticular,
                           struct nimcp_qmc_context* qmc) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
     reticular->qmc = qmc;
     NIMCP_LOG_DEBUG(RETICULAR_LOG_TAG, "Connected to QMC system");
     return 0;
@@ -1431,7 +1643,13 @@ int reticular_qmc_connect(nimcp_reticular_t* reticular,
 
 int reticular_omni_connect(nimcp_reticular_t* reticular,
                            struct nimcp_omni_predictor* omni) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
     reticular->omni = omni;
     NIMCP_LOG_DEBUG(RETICULAR_LOG_TAG, "Connected to omnidirectional predictor");
     return 0;
@@ -1439,7 +1657,13 @@ int reticular_omni_connect(nimcp_reticular_t* reticular,
 
 int reticular_pag_connect(nimcp_reticular_t* reticular,
                           struct nimcp_pag* pag) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
     reticular->pag = pag;
     NIMCP_LOG_DEBUG(RETICULAR_LOG_TAG, "Connected to PAG");
     return 0;
@@ -1447,7 +1671,13 @@ int reticular_pag_connect(nimcp_reticular_t* reticular,
 
 int reticular_substrate_connect(nimcp_reticular_t* reticular,
                                 struct nimcp_neural_substrate* substrate) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
     reticular->substrate = substrate;
     NIMCP_LOG_DEBUG(RETICULAR_LOG_TAG, "Connected to neural substrate");
     return 0;
@@ -1535,7 +1765,13 @@ int reticular_get_stats(const nimcp_reticular_t* reticular,
 }
 
 int reticular_reset_stats(nimcp_reticular_t* reticular) {
-    if (!reticular) return -1;
+    if (!reticular) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reticular is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(reticular->mutex);
     memset(&reticular->stats, 0, sizeof(reticular_stats_t));

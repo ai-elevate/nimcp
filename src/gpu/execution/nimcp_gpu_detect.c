@@ -837,7 +837,11 @@ uint32_t gpu_get_device_count(void)
 bool gpu_get_device_info(uint32_t device_index, gpu_device_info_t* info)
 {
     if (!info) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "gpu_get_device_info: info is NULL");
+
+            return false;
     }
 
     // Ensure cache is initialized (thread-safe)
@@ -894,7 +898,11 @@ const char* gpu_vendor_name(gpu_vendor_t vendor)
 size_t gpu_capabilities_string(char* buffer, size_t size)
 {
     if (!buffer || size == 0) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "gpu_capabilities_string: invalid parameters");
+
+            return 0;
     }
 
     // Ensure cache is initialized (thread-safe)

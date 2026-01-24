@@ -227,10 +227,14 @@ reasoning_substrate_bridge_t* reasoning_substrate_bridge_create(
     /* Guard: validate required pointers */
     if (!reasoning) {
         NIMCP_LOGGING_ERROR("Cannot create bridge: NULL reasoning system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "reasoning is NULL");
+
         return NULL;
     }
     if (!substrate) {
         NIMCP_LOGGING_ERROR("Cannot create bridge: NULL substrate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
+
         return NULL;
     }
 
@@ -239,6 +243,8 @@ reasoning_substrate_bridge_t* reasoning_substrate_bridge_create(
         (reasoning_substrate_bridge_t*)nimcp_malloc(sizeof(reasoning_substrate_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate reasoning substrate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -576,6 +582,8 @@ const reasoning_substrate_effects_t* reasoning_substrate_get_effects(
 {
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Cannot get effects: NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -597,6 +605,8 @@ const reasoning_substrate_stats_t* reasoning_substrate_get_stats(
 {
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Cannot get stats: NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

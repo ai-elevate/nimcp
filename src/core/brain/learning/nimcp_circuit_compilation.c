@@ -108,7 +108,11 @@ circuit_id_t compile_rule_to_circuit(brain_t brain, const char* rule_str) {
 
     circuit_entry_t* circuit = create_circuit(rule_str);
     if (!circuit) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "if: circuit is NULL");
+
+            return 0;
     }
 
     // Parse rule string and create gates
@@ -148,7 +152,11 @@ circuit_id_t compile_rule_to_circuit(brain_t brain, const char* rule_str) {
 
 bool optimize_circuit(brain_t brain, circuit_id_t circuit_id) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "optimize_circuit: brain is NULL");
+
+            return false;
     }
 
     circuit_entry_t* circuit = find_circuit(circuit_id);
@@ -175,7 +183,11 @@ bool verify_circuit_correctness(brain_t brain, circuit_id_t circuit_id,
                                 const circuit_test_case_t* test_cases,
                                 uint32_t num_cases) {
     if (!brain || !test_cases || num_cases == 0) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "verify_circuit_correctness: invalid parameters");
+
+            return false;
     }
 
     circuit_entry_t* circuit = find_circuit(circuit_id);
@@ -205,12 +217,20 @@ bool verify_circuit_correctness(brain_t brain, circuit_id_t circuit_id,
 
 uint32_t get_circuit_gate_count(brain_t brain, circuit_id_t circuit_id) {
     if (!brain) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "get_circuit_gate_count: brain is NULL");
+
+            return 0;
     }
 
     circuit_entry_t* circuit = find_circuit(circuit_id);
     if (!circuit) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "if: circuit is NULL");
+
+            return 0;
     }
 
     return circuit->num_gates;
@@ -218,12 +238,20 @@ uint32_t get_circuit_gate_count(brain_t brain, circuit_id_t circuit_id) {
 
 bool delete_circuit(brain_t brain, circuit_id_t circuit_id) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "delete_circuit: brain is NULL");
+
+            return false;
     }
 
     circuit_entry_t* circuit = find_circuit(circuit_id);
     if (!circuit) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "if: circuit is NULL");
+
+            return false;
     }
 
     // Free gates
@@ -238,12 +266,20 @@ bool delete_circuit(brain_t brain, circuit_id_t circuit_id) {
 
 uint64_t get_circuit_eval_count(brain_t brain, circuit_id_t circuit_id) {
     if (!brain) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "get_circuit_eval_count: brain is NULL");
+
+            return 0;
     }
 
     circuit_entry_t* circuit = find_circuit(circuit_id);
     if (!circuit) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "if: circuit is NULL");
+
+            return 0;
     }
 
     return circuit->eval_count;

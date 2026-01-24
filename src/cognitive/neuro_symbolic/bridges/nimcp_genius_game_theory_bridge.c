@@ -5,6 +5,7 @@
 
 #include "cognitive/neuro_symbolic/bridges/nimcp_genius_game_theory_bridge.h"
 #include "utils/memory/nimcp_memory.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include <string.h>
 
 NIMCP_API genius_gt_bridge_t* genius_gt_bridge_create(void) {

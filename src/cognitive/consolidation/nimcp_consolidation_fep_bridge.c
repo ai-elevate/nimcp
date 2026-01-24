@@ -38,6 +38,8 @@ consolidation_fep_bridge_t* consolidation_fep_bridge_create(const consolidation_
     consolidation_fep_bridge_t* bridge = nimcp_malloc(sizeof(consolidation_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate consolidation FEP bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     memset(bridge, 0, sizeof(consolidation_fep_bridge_t));

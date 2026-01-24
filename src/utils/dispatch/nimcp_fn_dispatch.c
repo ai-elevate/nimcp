@@ -91,6 +91,8 @@ NIMCP_EXPORT fn_dispatch_table_t* fn_dispatch_create(void)
     fn_dispatch_table_t* table = nimcp_calloc(1, sizeof(fn_dispatch_table_t));
     if (!table) {
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to allocate dispatch table");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "table is NULL");
+
         return NULL;
     }
 
@@ -380,6 +382,8 @@ NIMCP_EXPORT void* fn_dispatch_get(fn_dispatch_table_t* table, const char* name)
     fn_dispatch_entry_t* entry = find_entry(table, name);
     if (!entry) {
         pthread_mutex_unlock(&table->table_lock);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+
         return NULL;
     }
 

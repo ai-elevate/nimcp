@@ -88,7 +88,13 @@ static float clamp01(float value) {
  * @brief Initialize QUBO matrix
  */
 static int init_qubo_matrix(homeostatic_qubo_t* qubo, uint32_t size) {
-    if (!qubo) return -1;
+    if (!qubo) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "qubo is NULL");
+
+        return -1;
+
+    }
 
     qubo->qubo_size = size;
 
@@ -429,6 +435,9 @@ hypothalamus_quantum_bridge_t* hypothalamus_quantum_bridge_create(
 
     if (!hypothalamus) {
         LOG_ERROR(LOG_MODULE, "Hypothalamus adapter is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypothalamus is NULL");
+
+
         return NULL;
     }
 
@@ -437,6 +446,8 @@ hypothalamus_quantum_bridge_t* hypothalamus_quantum_bridge_create(
             1, sizeof(hypothalamus_quantum_bridge_t));
     if (!bridge) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate bridge memory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -481,7 +492,13 @@ void hypothalamus_quantum_bridge_destroy(hypothalamus_quantum_bridge_t* bridge) 
 }
 
 int hypothalamus_quantum_bridge_reset(hypothalamus_quantum_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     LOG_DEBUG(LOG_MODULE, "Resetting quantum bridge");
 
@@ -932,7 +949,13 @@ int hypothalamus_quantum_optimize_hpa(
 
 int hypothalamus_quantum_update(hypothalamus_quantum_bridge_t* bridge,
                                  uint64_t delta_time_us) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     if (bridge->config.mode == HYPOTHALAMUS_QUANTUM_MODE_DISABLED) {
         return 0;
@@ -1019,7 +1042,16 @@ int hypothalamus_quantum_set_mode(
     hypothalamus_quantum_bridge_t* bridge,
     hypothalamus_quantum_mode_t mode) {
 
-    if (!bridge) return -1;
+    if (!bridge) {
+
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
+        return -1;
+
+
+    }
     bridge->config.mode = mode;
 
     LOG_INFO(LOG_MODULE, "Quantum mode set to: %d", mode);

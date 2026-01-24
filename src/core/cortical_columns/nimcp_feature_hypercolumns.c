@@ -305,6 +305,8 @@ feature_hypercolumn_t* feature_hypercolumn_create(
     );
     if (!hcol) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate hypercolumn");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hcol is NULL");
+
         return NULL;
     }
 
@@ -344,6 +346,8 @@ feature_hypercolumn_t* feature_hypercolumn_create(
         nimcp_free(hcol->columns);
         nimcp_free(hcol->dimensions);
         nimcp_free(hcol);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "indices is NULL");
+
         return NULL;
     }
 

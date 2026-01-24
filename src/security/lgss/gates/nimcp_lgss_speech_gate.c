@@ -374,6 +374,8 @@ static void fill_emit_details(
 speech_gate_t* speech_gate_create(const speech_gate_config_t* config) {
     speech_gate_t* gate = (speech_gate_t*)calloc(1, sizeof(speech_gate_t));
     if (gate == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gate is NULL");
+
         return NULL;
     }
 

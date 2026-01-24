@@ -91,6 +91,8 @@ language_logic_bridge_t* language_logic_bridge_create(
         nimcp_calloc(1, sizeof(language_logic_bridge_t));
     if (!bridge) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -128,7 +130,13 @@ int language_logic_bridge_connect_logic_engine(
     language_logic_bridge_t* bridge,
     symbolic_logic_t* logic_engine)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->logic_engine = logic_engine;
     return 0;
 }
@@ -315,7 +323,13 @@ int language_logic_bridge_get_discourse_state(
 }
 
 int language_logic_bridge_clear_discourse(language_logic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     memset(&bridge->discourse_state, 0, sizeof(language_discourse_state_t));
     bridge->discourse_state.is_consistent = true;
     bridge->discourse_state.coherence_score = 1.0f;

@@ -101,6 +101,8 @@ ensemble_pink_bridge_t* ensemble_pink_create(const ensemble_pink_config_t* confi
     );
     if (!bridge) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

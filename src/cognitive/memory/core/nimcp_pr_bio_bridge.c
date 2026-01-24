@@ -345,6 +345,8 @@ NIMCP_EXPORT pr_bio_bridge_t pr_bio_bridge_create(
     pr_bio_bridge_t bridge = (pr_bio_bridge_t)calloc(1, sizeof(*bridge));
     if (!bridge) {
         set_error("Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

@@ -273,12 +273,16 @@ hemispheric_injury_system_t* hemispheric_injury_create(
 ) {
     if (!brain) {
         NIMCP_LOGGING_ERROR("hemispheric_injury_create: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return NULL;
     }
 
     hemispheric_injury_system_t* system = nimcp_malloc(sizeof(hemispheric_injury_system_t));
     if (!system) {
         NIMCP_LOGGING_ERROR("hemispheric_injury_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
     memset(system, 0, sizeof(hemispheric_injury_system_t));

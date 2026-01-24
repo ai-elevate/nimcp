@@ -268,7 +268,13 @@ static sec_immune_memory_cell_t* find_memory_cell_by_id(
  * ============================================================================ */
 
 int sec_immune_unified_default_config(sec_immune_unified_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     memset(config, 0, sizeof(sec_immune_unified_config_t));
 
@@ -356,6 +362,8 @@ sec_immune_unified_bridge_t* sec_immune_unified_create(
 ) {
     if (!immune_system) {
         NIMCP_LOGGING_ERROR("Immune system required for unified bridge creation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_system is NULL");
+
         return NULL;
     }
 
@@ -364,6 +372,8 @@ sec_immune_unified_bridge_t* sec_immune_unified_create(
         nimcp_malloc(sizeof(sec_immune_unified_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate security-immune unified bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -455,7 +465,13 @@ void sec_immune_unified_destroy(sec_immune_unified_bridge_t* bridge) {
 }
 
 int sec_immune_unified_reset(sec_immune_unified_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -504,7 +520,13 @@ int sec_immune_unified_connect_bbb(
     sec_immune_unified_bridge_t* bridge,
     bbb_system_t bbb_system
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->bbb_system = bbb_system;
@@ -519,7 +541,13 @@ int sec_immune_unified_connect_anomaly(
     sec_immune_unified_bridge_t* bridge,
     nimcp_anomaly_detector_t detector
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->anomaly_detector = detector;
@@ -534,7 +562,13 @@ int sec_immune_unified_connect_pattern_db(
     sec_immune_unified_bridge_t* bridge,
     nimcp_pattern_db_t pattern_db
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->pattern_db = pattern_db;
@@ -549,7 +583,13 @@ int sec_immune_unified_connect_rate_limiter(
     sec_immune_unified_bridge_t* bridge,
     nimcp_rate_limiter_t rate_limiter
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->rate_limiter = rate_limiter;
@@ -565,7 +605,13 @@ int sec_immune_unified_connect_policy_engine(
     sec_immune_unified_bridge_t* bridge,
     nimcp_policy_engine_t policy_engine
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->policy_engine = policy_engine;
@@ -584,7 +630,13 @@ int sec_immune_unified_connect_all(
     nimcp_rate_limiter_t rate_limiter,
     nimcp_policy_engine_t policy_engine
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     if (bbb_system) {
         sec_immune_unified_connect_bbb(bridge, bbb_system);
@@ -610,7 +662,13 @@ int sec_immune_unified_connect_all(
  * ============================================================================ */
 
 int sec_immune_unified_update(sec_immune_unified_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -643,7 +701,13 @@ int sec_immune_unified_update(sec_immune_unified_bridge_t* bridge) {
 }
 
 int sec_immune_unified_apply_cytokine_effects(sec_immune_unified_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Apply to BBB state */
     if (bridge->config.enable_cytokine_bbb_modulation) {
@@ -695,7 +759,13 @@ int sec_immune_unified_apply_cytokine_effects(sec_immune_unified_bridge_t* bridg
 }
 
 int sec_immune_unified_apply_inflammation(sec_immune_unified_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     sec_immune_inflammation_state_t* state = &bridge->inflammation_state;
 
@@ -1009,7 +1079,13 @@ int sec_immune_unified_execute_antibody_action(
     sec_immune_unified_bridge_t* bridge,
     uint32_t antibody_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_antibody_action_execution) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -1030,7 +1106,13 @@ int sec_immune_unified_execute_killer_action(
     uint32_t t_cell_id,
     uint32_t target
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -1059,7 +1141,13 @@ int sec_immune_unified_execute_helper_action(
     sec_immune_unified_bridge_t* bridge,
     uint32_t t_cell_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -1129,7 +1217,13 @@ int sec_immune_unified_sync_memory_to_pattern(
     sec_immune_unified_bridge_t* bridge,
     uint32_t memory_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_pattern_memory_sync) return 0;
     if (!bridge->pattern_db) return -1;
 
@@ -1196,7 +1290,13 @@ int sec_immune_unified_secondary_response(
     uint32_t memory_id,
     uint32_t antigen_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -1349,7 +1449,13 @@ int sec_immune_unified_set_learning_mode(
     sec_immune_unified_bridge_t* bridge,
     bool enable
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -1367,7 +1473,13 @@ int sec_immune_unified_activate_regulatory(
     sec_immune_unified_bridge_t* bridge,
     float suppression_level
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_regulatory_t_cells) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -1389,7 +1501,13 @@ int sec_immune_unified_feedback_true_positive(
     sec_immune_unified_bridge_t* bridge,
     uint32_t antigen_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->anomaly_state.true_positives++;
@@ -1401,7 +1519,13 @@ int sec_immune_unified_feedback_false_positive(
     sec_immune_unified_bridge_t* bridge,
     uint32_t antigen_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -1423,7 +1547,13 @@ int sec_immune_unified_feedback_false_positive(
  * ============================================================================ */
 
 int sec_immune_unified_connect_bio_async(sec_immune_unified_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -1475,7 +1605,13 @@ int sec_immune_unified_broadcast_security_event(
     size_t payload_size = data_len > 0 ? data_len : sizeof(uint32_t);
     size_t msg_size = sizeof(bio_message_header_t) + payload_size;
     void* msg_buffer = nimcp_malloc(msg_size);
-    if (!msg_buffer) return -1;
+    if (!msg_buffer) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "msg_buffer is NULL");
+
+        return -1;
+
+    }
 
     /* Build header */
     bio_message_header_t* header = (bio_message_header_t*)msg_buffer;

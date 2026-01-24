@@ -98,12 +98,16 @@ hypo_wellbeing_bridge_t* hypo_wellbeing_bridge_create(
 {
     if (!drives) {
         nimcp_log(LOG_LEVEL_ERROR, "hypo_wellbeing_bridge_create: drives is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "drives is NULL");
+
         return NULL;
     }
 
     hypo_wellbeing_bridge_t* bridge = nimcp_calloc(1, sizeof(hypo_wellbeing_bridge_t));
     if (!bridge) {
         nimcp_log(LOG_LEVEL_ERROR, "hypo_wellbeing_bridge_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

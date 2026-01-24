@@ -557,7 +557,13 @@ int training_dispatch_step(
 }
 
 int training_dispatch_set_reward(brain_t brain, float reward) {
-    if (!brain) return -1;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return -1;
+
+    }
 
     if (brain->active_network_type == NIMCP_NETWORK_SNN && brain->snn_training_ctx) {
         snn_rstdp_set_reward(brain->snn_training_ctx, reward);
@@ -573,7 +579,13 @@ int training_dispatch_get_stats(
     float* total_loss,
     float* current_lr)
 {
-    if (!brain) return -1;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return -1;
+
+    }
 
     switch (brain->active_network_type) {
         case NIMCP_NETWORK_SNN:
@@ -610,7 +622,13 @@ int training_dispatch_get_stats(
 }
 
 int training_dispatch_reset(brain_t brain) {
-    if (!brain) return -1;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return -1;
+
+    }
 
     switch (brain->active_network_type) {
         case NIMCP_NETWORK_SNN:

@@ -129,7 +129,13 @@ static float get_inflammation_duration_days(const brain_immune_system_t* immune)
  * ============================================================================ */
 
 int self_model_immune_default_config(self_model_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* All features enabled by default */
     config->enable_interoceptive_signaling = true;
@@ -167,6 +173,8 @@ self_model_immune_bridge_t* self_model_immune_bridge_create(
         nimcp_malloc(sizeof(self_model_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("self_model_immune_bridge", "Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -226,7 +234,13 @@ int self_model_immune_generate_interoceptive_signals(
     self_model_immune_bridge_t* bridge
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_interoceptive_signaling) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -273,7 +287,13 @@ int self_model_immune_update_health_status(
     self_model_immune_bridge_t* bridge
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_self_model_health_update) return 0;
     if (!bridge->immune_system || !bridge->self_model) return -1;
 
@@ -333,7 +353,13 @@ int self_model_immune_modulate_capabilities(
     self_model_immune_bridge_t* bridge
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_capability_modulation) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -370,7 +396,13 @@ int self_model_immune_integrate_chronic_illness(
     self_model_immune_bridge_t* bridge
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_identity_integration) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -419,7 +451,13 @@ int self_model_immune_trigger_adaptive_behavior(
     self_model_immune_bridge_t* bridge
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->self_model) return -1;
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
@@ -449,7 +487,13 @@ int self_model_immune_boost_from_health_beliefs(
     self_model_immune_bridge_t* bridge
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_health_belief_immune_effects) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -491,7 +535,13 @@ int self_model_immune_suppress_from_health_anxiety(
     self_model_immune_bridge_t* bridge
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->immune_system) return -1;
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
@@ -520,7 +570,13 @@ int self_model_immune_accelerate_from_acceptance(
     self_model_immune_bridge_t* bridge
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->immune_system) return -1;
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
@@ -551,7 +607,13 @@ int self_model_immune_bridge_update(
     self_model_immune_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Apply all bidirectional effects */
 
@@ -649,7 +711,13 @@ float self_model_immune_get_interoceptive_accuracy(
  * @brief Connect bridge to bio-async router
  */
 int self_model_immune_connect_bio_async(self_model_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -674,7 +742,13 @@ int self_model_immune_connect_bio_async(self_model_immune_bridge_t* bridge) {
  * @brief Disconnect from bio-async router
  */
 int self_model_immune_disconnect_bio_async(self_model_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

@@ -401,7 +401,11 @@ const char* simd_feature_name(simd_feature_t feature)
 size_t simd_features_string(char* buffer, size_t size)
 {
     if (!buffer || size == 0) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "simd_features_string: invalid parameters");
+
+            return 0;
     }
 
     // Ensure cache is initialized (thread-safe)

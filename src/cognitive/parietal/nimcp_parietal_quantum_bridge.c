@@ -66,6 +66,8 @@ parietal_quantum_bridge_t* parietal_quantum_bridge_create(
     parietal_quantum_bridge_t* bridge = nimcp_malloc(sizeof(parietal_quantum_bridge_t));
     if (!bridge) {
         set_error("Failed to allocate parietal_quantum_bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     memset(bridge, 0, sizeof(parietal_quantum_bridge_t));
@@ -90,7 +92,13 @@ void parietal_quantum_bridge_destroy(parietal_quantum_bridge_t* bridge) {
 }
 
 int parietal_quantum_set_enabled(parietal_quantum_bridge_t* bridge, bool enabled) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->base.bridge_active = enabled;
     return 0;
 }
@@ -322,13 +330,25 @@ int parietal_quantum_control_opt(
  * ============================================================================ */
 
 int parietal_quantum_set_inflammation(parietal_quantum_bridge_t* bridge, float level) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->inflammation_level = level < 0.0f ? 0.0f : (level > 1.0f ? 1.0f : level);
     return 0;
 }
 
 int parietal_quantum_set_fatigue(parietal_quantum_bridge_t* bridge, float level) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->fatigue_level = level < 0.0f ? 0.0f : (level > 1.0f ? 1.0f : level);
     return 0;
 }

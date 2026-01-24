@@ -202,6 +202,8 @@ static slot_entry_t* find_slot(working_memory_guard_t* guard, uint32_t slot_id) 
 static source_tracking_t* get_source_tracking(working_memory_guard_t* guard,
                                                const char* source) {
     if (source == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "source is NULL");
+
         return NULL;
     }
 
@@ -270,6 +272,8 @@ working_memory_guard_t* wm_guard_create(
 
     working_memory_guard_t* guard = (working_memory_guard_t*)calloc(1, sizeof(working_memory_guard_t));
     if (guard == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "guard is NULL");
+
         return NULL;
     }
 

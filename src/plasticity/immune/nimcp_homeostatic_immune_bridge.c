@@ -111,7 +111,13 @@ static float compute_firing_rate_variance(
  * ============================================================================ */
 
 int homeostatic_immune_default_config(homeostatic_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* All features enabled by default */
     config->enable_cytokine_homeostasis_modulation = true;
@@ -154,6 +160,8 @@ homeostatic_immune_bridge_t* homeostatic_immune_bridge_create(
         nimcp_malloc(sizeof(homeostatic_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("homeostatic_immune_bridge", "Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -220,7 +228,13 @@ int homeostatic_immune_apply_cytokine_effects(
     homeostatic_immune_bridge_t* bridge
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_cytokine_homeostasis_modulation) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -305,7 +319,13 @@ int homeostatic_immune_apply_inflammation_effects(
     homeostatic_immune_bridge_t* bridge
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_inflammation_disruption) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -400,7 +420,13 @@ int homeostatic_immune_apply_modulated_parameters(
     homeostatic_immune_bridge_t* bridge
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->homeostatic_controller) return -1;
 
     /* Note: Actual implementation would call homeostatic_controller API
@@ -426,7 +452,13 @@ int homeostatic_immune_trigger_from_instability(
     uint32_t num_neurons
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_instability_immune_trigger) return 0;
     if (!bridge->immune_system || !firing_rates) return -1;
 
@@ -533,7 +565,13 @@ int homeostatic_immune_boost_from_recovery(
     bool is_stable
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_recovery_immune_boost) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -595,7 +633,13 @@ int homeostatic_immune_bridge_update(
     uint64_t delta_ms
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
     bridge->total_updates++;
@@ -714,7 +758,13 @@ float homeostatic_immune_get_disruption_level(
  * @brief Connect bridge to bio-async router
  */
 int homeostatic_immune_connect_bio_async(homeostatic_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -739,7 +789,13 @@ int homeostatic_immune_connect_bio_async(homeostatic_immune_bridge_t* bridge) {
  * @brief Disconnect from bio-async router
  */
 int homeostatic_immune_disconnect_bio_async(homeostatic_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

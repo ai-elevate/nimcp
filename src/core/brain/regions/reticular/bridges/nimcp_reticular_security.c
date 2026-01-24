@@ -104,7 +104,13 @@ static uint32_t op_to_privilege(reticular_security_op_t op) {
 //=============================================================================
 
 int reticular_security_default_config(reticular_security_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->strict_mode = false;
     config->enable_audit_log = true;
@@ -124,7 +130,13 @@ int reticular_security_register(
     bbb_system_t bbb,
     reticular_security_state_t* state
 ) {
-    if (!bbb) return -1;
+    if (!bbb) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb is NULL");
+
+        return -1;
+
+    }
 
     reticular_security_state_t local_state;
     memset(&local_state, 0, sizeof(local_state));
@@ -157,7 +169,13 @@ int reticular_security_unregister(
     bbb_system_t bbb,
     reticular_security_state_t* state
 ) {
-    if (!state) return -1;
+    if (!state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
+        return -1;
+
+    }
 
     /* Unregister memory region if registered */
     if (state->memory_region_id != 0 && bbb) {
@@ -268,7 +286,13 @@ int reticular_security_grant_capability(
     bbb_system_t bbb,
     uint64_t capability
 ) {
-    if (!bbb) return -1;
+    if (!bbb) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb is NULL");
+
+        return -1;
+
+    }
 
     if (!bbb_grant_capability(bbb, RETICULAR_MODULE_ID, capability)) {
         NIMCP_LOG_WARN(RETICULAR_SECURITY_MODULE_NAME,
@@ -283,7 +307,13 @@ int reticular_security_revoke_capability(
     bbb_system_t bbb,
     uint64_t capability
 ) {
-    if (!bbb) return -1;
+    if (!bbb) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb is NULL");
+
+        return -1;
+
+    }
 
     if (!bbb_revoke_capability(bbb, RETICULAR_MODULE_ID, capability)) {
         NIMCP_LOG_WARN(RETICULAR_SECURITY_MODULE_NAME,

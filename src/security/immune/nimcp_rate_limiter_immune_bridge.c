@@ -118,7 +118,13 @@ static void compute_inflammation_effects(
  * ============================================================================ */
 
 int rate_limiter_immune_default_config(rate_limiter_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     memset(config, 0, sizeof(rate_limiter_immune_config_t));
 
@@ -163,6 +169,8 @@ rate_limiter_immune_bridge_t* rate_limiter_immune_create(
         nimcp_malloc(sizeof(rate_limiter_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate rate limiter immune bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -213,7 +221,13 @@ void rate_limiter_immune_destroy(rate_limiter_immune_bridge_t* bridge) {
  * ============================================================================ */
 
 int rate_limiter_immune_update(rate_limiter_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -236,7 +250,13 @@ int rate_limiter_immune_update(rate_limiter_immune_bridge_t* bridge) {
 }
 
 int rate_limiter_immune_apply_modulation(rate_limiter_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -337,7 +357,13 @@ int rate_limiter_immune_quarantine_client(
  * ============================================================================ */
 
 int rate_limiter_immune_connect_bio_async(rate_limiter_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {

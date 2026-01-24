@@ -71,11 +71,15 @@ float curiosity_hyperbolic_priority(const knowledge_item_t *current_knowledge,
                                    const knowledge_item_t *candidate_knowledge,
                                    float exploration_radius) {
     if (!current_knowledge || !candidate_knowledge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "curiosity_hyperbolic_priority: NULL knowledge item");
         return 0.0f;
     }
 
     // Check both have hyperbolic embeddings
     if (!current_knowledge->hyperbolic_embedding || !candidate_knowledge->hyperbolic_embedding) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "curiosity_hyperbolic_priority: missing hyperbolic embedding");
         return 0.0f;  // Can't compute hyperbolic priority
     }
 
@@ -145,6 +149,8 @@ uint32_t curiosity_find_interesting_hyperbolic(knowledge_system_t system,
                                               float exploration_radius,
                                               knowledge_item_t **interesting_out) {
     if (!system || !current_concept || k == 0 || !interesting_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "curiosity_find_interesting_hyperbolic: invalid parameters");
         return 0;
     }
 
@@ -154,6 +160,8 @@ uint32_t curiosity_find_interesting_hyperbolic(knowledge_system_t system,
     float *distances = nimcp_malloc(oversample_k * sizeof(float));
 
     if (!neighbors || !distances) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "curiosity_find_interesting_hyperbolic: allocation failed");
         nimcp_free(neighbors);
         nimcp_free(distances);
         return 0;
@@ -177,6 +185,8 @@ uint32_t curiosity_find_interesting_hyperbolic(knowledge_system_t system,
 
     scored_item_t *scored = nimcp_malloc(num_neighbors * sizeof(scored_item_t));
     if (!scored) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "curiosity_find_interesting_hyperbolic: scored allocation failed");
         nimcp_free(neighbors);
         nimcp_free(distances);
         return 0;

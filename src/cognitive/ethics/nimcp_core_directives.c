@@ -153,12 +153,16 @@ core_directives_system_t* core_directives_create(const core_directives_config_t*
 {
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config in core_directives_create");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
     core_directives_system_t* directives = nimcp_calloc(1, sizeof(core_directives_system_t));
     if (!directives) {
         NIMCP_LOGGING_ERROR("Failed to allocate core directives system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "directives is NULL");
+
         return NULL;
     }
 

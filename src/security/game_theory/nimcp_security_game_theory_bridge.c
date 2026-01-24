@@ -163,6 +163,8 @@ security_game_theory_bridge_t* security_gt_bridge_create(
     security_game_theory_bridge_t* bridge = nimcp_malloc(sizeof(security_game_theory_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate security_game_theory_bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     memset(bridge, 0, sizeof(security_game_theory_bridge_t));

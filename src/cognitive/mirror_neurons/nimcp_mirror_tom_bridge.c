@@ -140,7 +140,13 @@ static uint32_t hash_agent_id(uint32_t agent_id) {
  */
 static int32_t find_agent_slot(const struct mirror_tom_bridge* bridge,
                                 uint32_t agent_id) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     uint32_t start = hash_agent_id(agent_id);
     for (uint32_t i = 0; i < MIRROR_TOM_MAX_AGENTS; i++) {
@@ -158,7 +164,13 @@ static int32_t find_agent_slot(const struct mirror_tom_bridge* bridge,
  */
 static int32_t find_or_create_agent_slot(struct mirror_tom_bridge* bridge,
                                           uint32_t agent_id) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* First check existing */
     int32_t existing = find_agent_slot(bridge, agent_id);
@@ -279,6 +291,8 @@ mirror_tom_bridge_t mirror_tom_create(const mirror_tom_config_t* config) {
     struct mirror_tom_bridge* bridge = nimcp_malloc(sizeof(struct mirror_tom_bridge));
     if (!bridge) {
         nimcp_log(LOG_LEVEL_ERROR, "Mirror-ToM: failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -344,7 +358,13 @@ mirror_tom_config_t mirror_tom_get_default_config(void) {
 }
 
 int mirror_tom_connect_mirror(mirror_tom_bridge_t bridge, mirror_neurons_t mirror) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->mirror = mirror;
     nimcp_log(LOG_LEVEL_INFO, "Mirror-ToM: connected to mirror neuron system");
@@ -352,7 +372,13 @@ int mirror_tom_connect_mirror(mirror_tom_bridge_t bridge, mirror_neurons_t mirro
 }
 
 int mirror_tom_connect_tom(mirror_tom_bridge_t bridge, theory_of_mind_t tom) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->tom = tom;
     nimcp_log(LOG_LEVEL_INFO, "Mirror-ToM: connected to Theory of Mind system");
@@ -467,7 +493,13 @@ int mirror_tom_trigger_empathy(mirror_tom_bridge_t bridge,
                                 uint32_t agent_id,
                                 mirror_tom_emotion_t emotion,
                                 float intensity) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     int32_t slot = find_or_create_agent_slot(bridge, agent_id);
     if (slot < 0) return -1;
@@ -493,7 +525,13 @@ int mirror_tom_signal_false_belief(mirror_tom_bridge_t bridge,
                                     float prediction_error,
                                     const float* context_features,
                                     uint32_t context_dim) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     (void)context_features;
     (void)context_dim;
 
@@ -589,7 +627,13 @@ int mirror_tom_get_observation_bias(mirror_tom_bridge_t bridge,
                                      uint32_t agent_id,
                                      float* out_bias,
                                      float* out_confidence) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     int32_t slot = find_agent_slot(bridge, agent_id);
     if (slot < 0) return -1;
@@ -690,7 +734,13 @@ int mirror_tom_get_stats(mirror_tom_bridge_t bridge,
  * ============================================================================ */
 
 int mirror_tom_update(mirror_tom_bridge_t bridge, uint64_t delta_time_us) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Decay belief confidence over time */
     float decay_factor = expf(-(float)delta_time_us / (float)BELIEF_DECAY_TIME_CONSTANT_US *
@@ -724,7 +774,13 @@ int mirror_tom_update(mirror_tom_bridge_t bridge, uint64_t delta_time_us) {
 }
 
 int mirror_tom_reset_agent(mirror_tom_bridge_t bridge, uint32_t agent_id) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     int32_t slot = find_agent_slot(bridge, agent_id);
     if (slot < 0) return -1;

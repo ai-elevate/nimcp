@@ -1908,6 +1908,8 @@ NIMCP_EXPORT pr_pink_history_t* pr_pink_history_create(size_t max_samples) {
 
     pr_pink_history_t* history = calloc(1, sizeof(pr_pink_history_t));
     if (history == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "history is NULL");
+
         return NULL;
     }
 

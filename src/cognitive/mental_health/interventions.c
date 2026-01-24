@@ -15,6 +15,7 @@
  * - SHUTDOWN: Graceful shutdown (critical, configurable)
  *
  * @note This file is #included by nimcp_mental_health.c (not compiled standalone)
+#include "utils/exception/nimcp_exception_macros.h"
  * @note Bio-async, logging, and unified memory provided by parent file
  */
 
@@ -344,13 +345,21 @@ static bool adjust_neurotransmitter(brain_t brain,
                                    float delta)
 {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "adjust_neurotransmitter: brain is NULL");
+
+            return false;
     }
 
     // Get neuromodulator system
     neuromodulator_system_t system = brain_get_neuromodulator_system(brain);
     if (!system) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "if: system is NULL");
+
+            return false;
     }
 
     // Get current level

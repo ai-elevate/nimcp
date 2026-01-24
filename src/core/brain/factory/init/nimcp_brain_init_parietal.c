@@ -277,7 +277,11 @@ static void connect_parietal_to_brain_regions(parietal_lobe_t* parietal, brain_t
  */
 bool nimcp_brain_factory_init_parietal_subsystem(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_parietal_subsystem: brain is NULL");
+
+            return false;
     }
 
     /* Check if parietal is disabled in config */
@@ -386,7 +390,11 @@ bool nimcp_brain_factory_init_parietal_subsystem(brain_t brain) {
  */
 parietal_lobe_t* brain_get_parietal(brain_t brain) {
     if (!brain || !brain->parietal_enabled) {
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_get_parietal: invalid parameters");
+
+            return NULL;
     }
     return brain->parietal;
 }
@@ -405,7 +413,11 @@ parietal_lobe_t* brain_get_parietal(brain_t brain) {
  */
 int brain_update_parietal_from_immune(brain_t brain) {
     if (!brain || !brain->parietal_enabled || !brain->parietal) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_update_parietal_from_immune: invalid parameters");
+
+            return -1;
     }
 
     return parietal_update_from_immune(brain->parietal);
@@ -421,7 +433,11 @@ int brain_update_parietal_from_immune(brain_t brain) {
  */
 int brain_update_parietal_from_sleep(brain_t brain) {
     if (!brain || !brain->parietal_enabled || !brain->parietal) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_update_parietal_from_sleep: invalid parameters");
+
+            return -1;
     }
 
     return parietal_update_from_sleep(brain->parietal);
@@ -438,7 +454,11 @@ int brain_update_parietal_from_sleep(brain_t brain) {
  */
 int brain_step_parietal(brain_t brain, uint64_t delta_t) {
     if (!brain || !brain->parietal_enabled || !brain->parietal) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_step_parietal: invalid parameters");
+
+            return -1;
     }
 
     int result = parietal_step(brain->parietal, delta_t);
@@ -564,7 +584,11 @@ static void connect_intuition_to_semantic_memory(intuition_system_t* intuition, 
  */
 bool nimcp_brain_factory_init_intuition_subsystem(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_intuition_subsystem: brain is NULL");
+
+            return false;
     }
 
     /* Check if intuition is disabled or parietal is disabled */
@@ -653,7 +677,11 @@ bool nimcp_brain_factory_init_intuition_subsystem(brain_t brain) {
  */
 intuition_system_t* brain_get_intuition_system(brain_t brain) {
     if (!brain || !brain->intuition_system_enabled) {
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_get_intuition_system: invalid parameters");
+
+            return NULL;
     }
     return brain->intuition_system;
 }
@@ -668,7 +696,11 @@ intuition_system_t* brain_get_intuition_system(brain_t brain) {
  */
 int brain_update_intuition_biological_state(brain_t brain) {
     if (!brain || !brain->intuition_system_enabled || !brain->intuition_system) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_update_intuition_biological_state: invalid parameters");
+
+            return -1;
     }
 
     /* Get inflammation from immune system if available */

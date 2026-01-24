@@ -256,6 +256,8 @@ orientation_column_t* orientation_column_create(
     );
     if (!col) {
         LOG_ERROR("Failed to allocate orientation column");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "col is NULL");
+
         return NULL;
     }
 
@@ -550,6 +552,8 @@ orientation_hypercolumn_t* orientation_hypercolumn_create(
     );
     if (!hcol) {
         LOG_ERROR("Failed to allocate hypercolumn");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hcol is NULL");
+
         return NULL;
     }
 

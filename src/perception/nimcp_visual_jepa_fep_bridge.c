@@ -68,6 +68,8 @@ visual_jepa_fep_bridge_t* visual_jepa_fep_bridge_create(
     visual_jepa_fep_bridge_t* bridge = nimcp_malloc(sizeof(visual_jepa_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR(LOG_MODULE " Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     memset(bridge, 0, sizeof(visual_jepa_fep_bridge_t));

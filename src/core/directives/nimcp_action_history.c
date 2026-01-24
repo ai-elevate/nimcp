@@ -92,6 +92,8 @@ action_history_t* action_history_create(const action_history_config_t* config) {
     action_history_t* history = (action_history_t*)nimcp_malloc(sizeof(action_history_t));
     if (!history) {
         NIMCP_LOGGING_ERROR("Failed to allocate action_history_t");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "history is NULL");
+
         return NULL;
     }
 

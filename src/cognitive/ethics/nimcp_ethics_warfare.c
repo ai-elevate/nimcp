@@ -463,7 +463,15 @@ target_classification_t ethics_classify_target(
 
 bool ethics_is_target_surrendering(const target_classification_t* target)
 {
-    if (!target) return false;
+    if (!target) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "ethics_is_target_surrendering: target is NULL");
+
+            return false;
+
+        }
 
     return target->is_surrendering ||
            target->status == COMBATANT_STATUS_SURRENDERING;
@@ -987,7 +995,11 @@ psychological_assessment_t ethics_get_psychological_state(ethics_engine_t engine
 bool ethics_apply_moral_support(ethics_engine_t engine, const char* support_type)
 {
     if (!support_type) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "ethics_apply_moral_support: support_type is NULL");
+
+            return false;
     }
 
     LOG_INFO("Applying moral support: type=%s", support_type);

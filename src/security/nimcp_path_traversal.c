@@ -248,7 +248,15 @@ static int calculate_traversal_depth(const char* path)
  */
 static bool contains_null_byte(const char* path, size_t max_len)
 {
-    if (!path) return false;
+    if (!path) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "contains_null_byte: path is NULL");
+
+            return false;
+
+        }
 
     size_t len = strnlen(path, max_len);
     for (size_t i = 0; i < len; i++) {

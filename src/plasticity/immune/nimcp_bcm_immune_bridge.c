@@ -131,7 +131,13 @@ static float compute_threshold_variance(
  * ============================================================================ */
 
 int bcm_immune_default_config(bcm_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* All features enabled by default */
     config->enable_cytokine_modulation = true;
@@ -173,6 +179,8 @@ bcm_immune_bridge_t* bcm_immune_bridge_create(
         nimcp_malloc(sizeof(bcm_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("bcm_immune_bridge", "Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -237,7 +245,13 @@ void bcm_immune_bridge_destroy(bcm_immune_bridge_t* bridge) {
 
 int bcm_immune_apply_cytokine_effects(bcm_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_cytokine_modulation) return 0;
     if (!bridge->immune_system || !bridge->bcm_params) return -1;
 
@@ -297,7 +311,13 @@ int bcm_immune_apply_cytokine_effects(bcm_immune_bridge_t* bridge) {
 
 int bcm_immune_apply_inflammation_effects(bcm_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_inflammation_disruption) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -366,7 +386,13 @@ float bcm_immune_compute_theta_modulation(const bcm_immune_bridge_t* bridge) {
 
 int bcm_immune_assist_recovery(bcm_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_recovery_assistance) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -396,7 +422,13 @@ int bcm_immune_update_baseline(
     const bcm_stats_t* stats
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_baseline_tracking) return 0;
     if (!synapses || num_synapses == 0 || !stats) return -1;
 
@@ -452,7 +484,13 @@ int bcm_immune_detect_abnormalities(
     const bcm_stats_t* stats
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_bcm_immune_trigger) return 0;
     if (!synapses || num_synapses == 0 || !stats) return -1;
 
@@ -525,7 +563,13 @@ int bcm_immune_detect_abnormalities(
 
 int bcm_immune_trigger_from_abnormality(bcm_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_bcm_immune_trigger) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -587,7 +631,13 @@ int bcm_immune_bridge_update(
     const bcm_stats_t* stats,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Update baseline (if tracking) */
     if (bridge->enable_baseline_tracking && synapses && stats) {
@@ -699,7 +749,13 @@ float bcm_immune_get_metaplasticity_health(const bcm_immune_bridge_t* bridge) {
  * @brief Connect bridge to bio-async router
  */
 int bcm_immune_connect_bio_async(bcm_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -724,7 +780,13 @@ int bcm_immune_connect_bio_async(bcm_immune_bridge_t* bridge) {
  * @brief Disconnect from bio-async router
  */
 int bcm_immune_disconnect_bio_async(bcm_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

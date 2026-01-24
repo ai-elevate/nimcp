@@ -73,7 +73,13 @@ static demyelination_state_t classify_demyelination(
 
 int oligo_immune_default_config(oligo_immune_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -109,6 +115,8 @@ oligo_immune_bridge_t* oligo_immune_create(
     oligo_immune_bridge_t* bridge = nimcp_malloc(sizeof(oligo_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate oligo-immune bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

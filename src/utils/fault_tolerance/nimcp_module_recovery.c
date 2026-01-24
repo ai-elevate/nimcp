@@ -37,6 +37,8 @@ nimcp_module_recovery_manager_t* nimcp_module_recovery_manager_create(void) {
     nimcp_module_recovery_manager_t* manager = nimcp_calloc(1, sizeof(nimcp_module_recovery_manager_t));
     if (!manager) {
         LOG_ERROR("Failed to allocate module recovery manager");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+
         return NULL;
     }
 
@@ -303,7 +305,13 @@ nimcp_module_recovery_result_t nimcp_module_recovery_attempt(
 int nimcp_module_recovery_attempt_all_unhealthy(
     nimcp_module_recovery_manager_t* manager
 ) {
-    if (!manager) return -1;
+    if (!manager) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "manager is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(manager->mutex);
 

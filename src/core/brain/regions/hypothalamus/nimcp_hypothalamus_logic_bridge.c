@@ -285,6 +285,8 @@ hypo_logic_bridge_t* hypo_logic_bridge_create(
     hypo_logic_bridge_t* bridge = nimcp_calloc(1, sizeof(hypo_logic_bridge_t));
     if (!bridge) {
         nimcp_log(LOG_LEVEL_ERROR, "hypo_logic_bridge: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -358,7 +360,13 @@ void hypo_logic_bridge_destroy(hypo_logic_bridge_t* bridge) {
 }
 
 int hypo_logic_bridge_reset(hypo_logic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Reset modulation */
     bridge->modulation.max_inference_depth = (uint32_t)bridge->config.base_inference_depth;
@@ -404,7 +412,13 @@ int hypo_logic_bridge_reset(hypo_logic_bridge_t* bridge) {
 }
 
 int hypo_logic_bridge_update(hypo_logic_bridge_t* bridge, uint64_t delta_us) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     (void)delta_us;
 
@@ -447,7 +461,13 @@ int hypo_logic_bridge_update(hypo_logic_bridge_t* bridge, uint64_t delta_us) {
  *===========================================================================*/
 
 int hypo_logic_compute_modulation(hypo_logic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     hypo_drive_system_t drive_state;
     if (!hypo_drive_get_system_state(bridge->drives, &drive_state)) {
@@ -959,7 +979,13 @@ int hypo_logic_get_anticipation(
  *===========================================================================*/
 
 int hypo_logic_generate_predictions(hypo_logic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     hypo_drive_system_t drive_state;
     if (!hypo_drive_get_system_state(bridge->drives, &drive_state)) {
@@ -1357,7 +1383,13 @@ int hypo_logic_get_stats(
 }
 
 int hypo_logic_reset_stats(hypo_logic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     return 0;

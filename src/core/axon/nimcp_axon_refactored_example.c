@@ -250,6 +250,8 @@ nimcp_future_t axon_create_async(uint32_t id,
     nimcp_promise_t promise = nimcp_promise_create(sizeof(axon_t*));
     if (!promise) {
         LOG_MODULE_ERROR(MODULE_NAME, "Failed to create promise for axon creation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "promise is NULL");
+
         return NULL;
     }
 
@@ -368,6 +370,8 @@ axon_t* axon_create(uint32_t id,
                                                target_synapse_id, length, diameter);
     if (!future) {
         LOG_MODULE_ERROR(MODULE_NAME, "Failed to create async future for axon");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "future is NULL");
+
         return NULL;
     }
 

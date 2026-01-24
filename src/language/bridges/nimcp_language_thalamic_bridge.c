@@ -77,6 +77,8 @@ language_thalamic_bridge_t* language_thalamic_bridge_create(
         nimcp_calloc(1, sizeof(language_thalamic_bridge_t));
     if (!bridge) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -114,7 +116,13 @@ int language_thalamic_bridge_connect_router(
     language_thalamic_bridge_t* bridge,
     thalamic_router_t* router)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->router = router;
     return 0;
 }
@@ -251,7 +259,13 @@ int language_thalamic_bridge_set_attention(
     language_thalamic_bridge_t* bridge,
     float attention_level)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Clamp attention to [0, 1] */
     if (attention_level < 0.0f) attention_level = 0.0f;
@@ -280,7 +294,13 @@ int language_thalamic_bridge_gate_nucleus(
     language_thalamic_nucleus_t nucleus,
     float gate_level)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (nucleus >= LANG_THAL_NUCLEUS_COUNT) return -1;
 
     /* Clamp gating to [0, 1] */

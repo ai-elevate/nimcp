@@ -377,7 +377,15 @@ NIMCP_EXPORT bool bbb_check_memory_access(bbb_system_t system,
 {
     /* Guard: Null address */
     if (!address)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "bbb_check_memory_access: address is NULL");
+
+            return false;
+
+        }
 
     /* Guard: Zero size is technically valid (no access) */
     if (size == 0)
@@ -453,7 +461,15 @@ NIMCP_EXPORT bool bbb_protect_memory(bbb_system_t system,
 
     /* Guard: Null address */
     if (!address)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "bbb_protect_memory: address is NULL");
+
+            return false;
+
+        }
 
     /* Guard: Zero size */
     if (size == 0)
@@ -556,7 +572,15 @@ NIMCP_EXPORT bool bbb_verify_stack_canary(bbb_system_t system,
 
     /* Guard: Null stack pointer */
     if (!stack_ptr)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "bbb_verify_stack_canary: stack_ptr is NULL");
+
+            return false;
+
+        }
 
     /* Guard: Zero canary is likely uninitialized */
     if (expected_canary == 0)

@@ -50,7 +50,13 @@ static float get_emergence_factor_for_level(brain_inflammation_level_t level)
 
 int swarm_emergence_immune_default_config(swarm_emergence_immune_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->enable_cytokine_effects = true;
     config->enable_inflammation_effects = true;
@@ -75,6 +81,8 @@ swarm_emergence_immune_bridge_t* swarm_emergence_immune_bridge_create(
         (swarm_emergence_immune_bridge_t*)nimcp_malloc(sizeof(swarm_emergence_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate swarm emergence immune bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -186,7 +194,13 @@ int swarm_emergence_immune_apply_inflammation_effects(swarm_emergence_immune_bri
 
 int swarm_emergence_immune_trigger_from_regression(swarm_emergence_immune_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_regression_stress) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -204,7 +218,13 @@ int swarm_emergence_immune_trigger_from_regression(swarm_emergence_immune_bridge
 
 int swarm_emergence_immune_boost_from_advancement(swarm_emergence_immune_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_tier_boost) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -222,7 +242,13 @@ int swarm_emergence_immune_boost_from_advancement(swarm_emergence_immune_bridge_
 
 int swarm_emergence_immune_bridge_update(swarm_emergence_immune_bridge_t* bridge, uint64_t delta_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     (void)delta_ms;
 
     swarm_emergence_immune_apply_cytokine_effects(bridge);

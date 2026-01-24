@@ -134,7 +134,13 @@ static float add_gaussian_noise(float value, float noise_std) {
  * ============================================================================ */
 
 int population_immune_default_config(population_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* All features enabled by default */
     config->enable_cytokine_noise_modulation = true;
@@ -179,6 +185,8 @@ population_immune_bridge_t* population_immune_bridge_create(
     if (!bridge) {
         LOG_MODULE_ERROR("population_immune_bridge",
                   "Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -253,7 +261,13 @@ int population_immune_apply_cytokine_effects(
     population_immune_bridge_t* bridge
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_cytokine_noise_modulation) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -310,7 +324,13 @@ int population_immune_apply_inflammation_effects(
     population_immune_bridge_t* bridge
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_inflammation_tuning_modulation) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -437,7 +457,13 @@ int population_immune_detect_anomalies(
     float gain
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_population_anomaly_detection) return 0;
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
@@ -476,7 +502,13 @@ int population_immune_trigger_from_anomaly(
     population_immune_bridge_t* bridge
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->immune_system) return -1;
     if (bridge->immune_trigger.threat_severity < 0.3f) return 0;
 
@@ -522,7 +554,13 @@ int population_immune_restoration_signal(
     population_immune_bridge_t* bridge
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_precision_restoration) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -563,7 +601,13 @@ int population_immune_bridge_update(
     population_immune_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -772,7 +816,13 @@ int population_immune_modulate_sparse_code(
  * @brief Connect bridge to bio-async router
  */
 int population_coding_immune_connect_bio_async(population_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -797,7 +847,13 @@ int population_coding_immune_connect_bio_async(population_immune_bridge_t* bridg
  * @brief Disconnect from bio-async router
  */
 int population_coding_immune_disconnect_bio_async(population_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

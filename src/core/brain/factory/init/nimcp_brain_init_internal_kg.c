@@ -170,7 +170,11 @@ static void log_security_config(brain_kg_t* kg) {
  */
 bool nimcp_brain_factory_init_internal_kg_subsystem(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_internal_kg_subsystem: brain is NULL");
+
+            return false;
     }
 
     /* Check if internal KG is disabled in config */
@@ -293,7 +297,11 @@ bool nimcp_brain_factory_init_internal_kg_subsystem(brain_t brain) {
  */
 brain_kg_t* brain_get_internal_kg(brain_t brain) {
     if (!brain || !brain->internal_kg_enabled) {
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_get_internal_kg: invalid parameters");
+
+            return NULL;
     }
     return brain->internal_kg;
 }
@@ -309,7 +317,11 @@ brain_kg_t* brain_get_internal_kg(brain_t brain) {
  */
 uint64_t brain_get_internal_kg_admin_token(brain_t brain) {
     if (!brain || !brain->internal_kg_enabled) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_get_internal_kg_admin_token: invalid parameters");
+
+            return 0;
     }
     return brain->internal_kg_admin_token;
 }
@@ -324,7 +336,11 @@ uint64_t brain_get_internal_kg_admin_token(brain_t brain) {
  */
 int brain_refresh_internal_kg(brain_t brain) {
     if (!brain || !brain->internal_kg_enabled || !brain->internal_kg) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_refresh_internal_kg: invalid parameters");
+
+            return -1;
     }
 
     /* Elevate to ADMIN for modifications */
@@ -352,7 +368,11 @@ int brain_refresh_internal_kg(brain_t brain) {
  */
 int brain_emergency_lock_internal_kg(brain_t brain) {
     if (!brain || !brain->internal_kg_enabled || !brain->internal_kg) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_emergency_lock_internal_kg: invalid parameters");
+
+            return -1;
     }
 
     return brain_kg_emergency_lock(brain->internal_kg);
@@ -370,7 +390,11 @@ int brain_emergency_lock_internal_kg(brain_t brain) {
  */
 int brain_generate_internal_kg_summary(brain_t brain, char* buffer, size_t buffer_size) {
     if (!brain || !brain->internal_kg_enabled || !brain->internal_kg || !buffer) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_generate_internal_kg_summary: invalid parameters");
+
+            return -1;
     }
     return brain_kg_generate_summary(brain->internal_kg, buffer, buffer_size);
 }

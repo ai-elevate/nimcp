@@ -94,6 +94,8 @@ static PyObject* Brain_learn(BrainObject* self, PyObject* args) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_features * sizeof(float),
                           "Brain_learn: Failed to allocate features array");
         PyErr_SetString(PyExc_MemoryError, "Failed to allocate features array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "features is NULL");
+
         return NULL;
     }
 
@@ -136,6 +138,8 @@ static PyObject* Brain_predict(BrainObject* self, PyObject* args) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_features * sizeof(float),
                           "Brain_predict: Failed to allocate features array");
         PyErr_SetString(PyExc_MemoryError, "Failed to allocate features array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "features is NULL");
+
         return NULL;
     }
 
@@ -195,6 +199,9 @@ static PyObject* Brain_load(PyTypeObject* type, PyObject* args) {
         NIMCP_THROW_IO(NIMCP_ERROR_FILE_READ, filepath,
                       "Brain_load: Failed to load brain from '%s'", filepath);
         PyErr_SetString(PyExc_IOError, nimcp_get_error());
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+
         return NULL;
     }
 
@@ -204,6 +211,8 @@ static PyObject* Brain_load(PyTypeObject* type, PyObject* args) {
                           "Brain_load: Failed to allocate BrainObject");
         nimcp_brain_destroy(brain);
         PyErr_SetString(PyExc_MemoryError, "Failed to allocate Brain object");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "self is NULL");
+
         return NULL;
     }
     self->brain = brain;
@@ -302,6 +311,8 @@ static PyObject* Network_forward(NetworkObject* self, PyObject* args) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_inputs * sizeof(float),
                           "Network_forward: Failed to allocate inputs array");
         PyErr_SetString(PyExc_MemoryError, "Failed to allocate inputs array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "inputs is NULL");
+
         return NULL;
     }
 
@@ -317,6 +328,8 @@ static PyObject* Network_forward(NetworkObject* self, PyObject* args) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_inputs * sizeof(float),
                           "Network_forward: Failed to allocate outputs array");
         PyErr_SetString(PyExc_MemoryError, "Failed to allocate outputs array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "outputs is NULL");
+
         return NULL;
     }
 
@@ -337,6 +350,8 @@ static PyObject* Network_forward(NetworkObject* self, PyObject* args) {
         free(outputs);
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, 0,
                           "Network_forward: Failed to create result list");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
         return NULL;
     }
     for (Py_ssize_t i = 0; i < num_inputs; i++) {

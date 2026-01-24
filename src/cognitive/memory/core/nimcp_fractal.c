@@ -91,7 +91,11 @@ fractal_config_t fractal_config_default(void) {
 
 bool fractal_config_validate(const fractal_config_t* config) {
     if (!config) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "fractal_config_validate: config is NULL");
+
+            return false;
     }
 
     /* Validate scale parameters */
@@ -176,7 +180,11 @@ static float compute_std(const float* data, size_t count, float mean) {
  */
 static bool linear_regression(const float* x, const float* y, size_t n, linear_fit_t* fit) {
     if (!x || !y || !fit || n < 2) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "linear_regression: invalid parameters");
+
+            return false;
     }
 
     double sum_x = 0.0, sum_y = 0.0;
@@ -397,7 +405,11 @@ static void generate_scales(size_t min_scale, size_t max_scale, size_t num_scale
  */
 static bool validate_input(const float* samples, size_t count, size_t min_required) {
     if (!samples || count < min_required) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "validate_input: invalid parameters");
+
+            return false;
     }
 
     /* Check for NaN/Inf */
@@ -1467,7 +1479,11 @@ bool fractal_is_pink_noise(
     float tolerance
 ) {
     if (!samples || count < FRACTAL_MIN_SAMPLES) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "fractal_is_pink_noise: invalid parameters");
+
+            return false;
     }
     if (tolerance <= 0.0f || tolerance > 1.0f) {
         tolerance = FRACTAL_PINK_NOISE_TOLERANCE;
@@ -1489,7 +1505,11 @@ bool fractal_is_self_similar(
     size_t min_scales
 ) {
     if (!samples || count < FRACTAL_MIN_SAMPLES) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "fractal_is_self_similar: invalid parameters");
+
+            return false;
     }
     if (min_scales < 4) {
         min_scales = 4;
@@ -1512,7 +1532,11 @@ bool fractal_validate_signal(
     size_t count
 ) {
     if (!samples || count < FRACTAL_MIN_SAMPLES) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "fractal_validate_signal: invalid parameters");
+
+            return false;
     }
 
     /* Check for NaN/Inf */

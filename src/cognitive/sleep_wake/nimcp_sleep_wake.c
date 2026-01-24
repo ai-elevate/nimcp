@@ -167,6 +167,8 @@ sleep_system_t sleep_system_create(const sleep_config_t* config)
     sleep_system_t sleep =
         (sleep_system_t) nimcp_calloc(1, sizeof(struct sleep_system_struct));
     if (sleep == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep is NULL");
+
         return NULL;
     }
 

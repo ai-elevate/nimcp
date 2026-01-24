@@ -189,6 +189,8 @@ emotion_consolidation_system_t* emotion_consolidation_create(
     /* Guard: Validate emotion tensor */
     if (!emotion_tensor) {
         EC_LOG_ERROR("Invalid emotion tensor");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "emotion_tensor is NULL");
+
         return NULL;
     }
 
@@ -196,6 +198,8 @@ emotion_consolidation_system_t* emotion_consolidation_create(
     emotion_consolidation_system_t* system = calloc(1, sizeof(emotion_consolidation_system_t));
     if (!system) {
         EC_LOG_ERROR("Failed to allocate emotion-consolidation system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
 

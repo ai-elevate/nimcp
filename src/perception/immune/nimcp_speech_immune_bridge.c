@@ -95,7 +95,15 @@ static brain_inflammation_level_t get_max_inflammation_level(
  * HOW:  Simple keyword matching (could be more sophisticated)
  */
 static bool is_illness_word(const char* word) {
-    if (!word) return false;
+    if (!word) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "is_illness_word: word is NULL");
+
+            return false;
+
+        }
 
     /* Common illness-related words */
     const char* illness_words[] = {
@@ -615,7 +623,15 @@ int speech_immune_get_inflammation_state(
 }
 
 bool speech_immune_is_speech_impaired(const speech_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "speech_immune_is_speech_impaired: bridge is NULL");
+
+            return false;
+
+        }
 
     float impairment = speech_immune_compute_impairment(bridge);
     return (impairment > 0.3f);  /* Threshold for noticeable impairment */
@@ -685,6 +701,14 @@ int speech_immune_disconnect_bio_async(speech_immune_bridge_t* bridge) {
  * @brief Check if bio-async is connected
  */
 bool speech_immune_is_bio_async_connected(const speech_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "speech_immune_is_bio_async_connected: bridge is NULL");
+
+            return false;
+
+        }
     return bridge->base.bio_async_enabled;
 }

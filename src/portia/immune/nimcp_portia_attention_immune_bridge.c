@@ -169,11 +169,16 @@ portia_attention_immune_bridge_t* portia_attention_immune_create(
     /* Guard clauses */
     if (!immune_system) {
         NIMCP_LOGGING_ERROR("Null immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "immune_system is NULL");
+
         return NULL;
     }
 
     if (!attention_system) {
         NIMCP_LOGGING_ERROR("Null attention system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_system is NULL");
+
+
         return NULL;
     }
 
@@ -184,6 +189,8 @@ portia_attention_immune_bridge_t* portia_attention_immune_create(
         );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

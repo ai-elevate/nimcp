@@ -153,12 +153,16 @@ hypo_immune_bridge_t* hypo_immune_bridge_create(
 {
     if (!drives) {
         nimcp_log(LOG_LEVEL_ERROR, "hypo_immune_bridge_create: drives is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "drives is NULL");
+
         return NULL;
     }
 
     hypo_immune_bridge_t* bridge = nimcp_calloc(1, sizeof(hypo_immune_bridge_t));
     if (!bridge) {
         nimcp_log(LOG_LEVEL_ERROR, "hypo_immune_bridge_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -255,7 +259,13 @@ int hypo_immune_bridge_update_cytokines(
 }
 
 int hypo_immune_bridge_apply_cytokine_effects(hypo_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -335,7 +345,13 @@ int hypo_immune_bridge_get_sickness_state(
  *===========================================================================*/
 
 int hypo_immune_bridge_update_hpa(hypo_immune_bridge_t* bridge, float stress_input) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -416,7 +432,13 @@ int hypo_immune_bridge_get_hpa_state(
 }
 
 int hypo_immune_bridge_apply_cortisol_effects(hypo_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -444,7 +466,13 @@ int hypo_immune_bridge_update_circadian(
     hypo_immune_bridge_t* bridge,
     float scn_phase)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.circadian_enabled) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -529,7 +557,13 @@ hypo_sickness_level_t hypo_immune_bridge_compute_sickness_level(
 }
 
 int hypo_immune_bridge_apply_sickness_behavior(hypo_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* First update sickness level */
     hypo_immune_bridge_compute_sickness_level(bridge);
@@ -547,7 +581,13 @@ int hypo_immune_bridge_enter_safety_mode(
     hypo_immune_bridge_t* bridge,
     float threat_level)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.use_as_safety_mode) return -1;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -576,7 +616,13 @@ int hypo_immune_bridge_enter_safety_mode(
 }
 
 int hypo_immune_bridge_exit_safety_mode(hypo_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -910,7 +956,13 @@ int hypo_immune_connect(
     hypo_orchestrator_t orch,
     brain_immune_system_t* immune)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -937,7 +989,13 @@ int hypo_immune_connect(
 
 int hypo_immune_update(hypo_immune_bridge_t* bridge, uint64_t delta_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1028,7 +1086,13 @@ int hypo_immune_receive_cytokines(
 
 int hypo_immune_send_cortisol(hypo_immune_bridge_t* bridge, float cortisol)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (cortisol < 0.0f || cortisol > 1.0f) return -1;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1128,7 +1192,13 @@ int hypo_immune_modulate_immune_response(
     hypo_immune_bridge_t* bridge,
     float suppression)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (suppression < 0.0f || suppression > 1.0f) return -1;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -1167,7 +1237,13 @@ int hypo_immune_modulate_immune_response(
 
 int hypo_immune_trigger_acute_phase(hypo_immune_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1203,7 +1279,13 @@ int hypo_immune_trigger_acute_phase(hypo_immune_bridge_t* bridge)
 
 int hypo_immune_end_acute_phase(hypo_immune_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -1247,7 +1329,13 @@ int hypo_immune_update_sleep(
     float sleep_quality,
     bool is_sleeping)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (sleep_quality < 0.0f || sleep_quality > 1.0f) return -1;
 
     nimcp_mutex_lock(bridge->base.mutex);

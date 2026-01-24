@@ -50,7 +50,15 @@ void nimcp_msg_header_init(
 }
 
 bool nimcp_msg_header_validate(const nimcp_msg_header_t* header) {
-    if (!header) return false;
+    if (!header) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_msg_header_validate: header is NULL");
+
+            return false;
+
+        }
 
     /* Check magic bytes */
     if (header->magic[0] != NIMCP_MSG_MAGIC_0 ||

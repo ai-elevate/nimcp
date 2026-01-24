@@ -38,15 +38,39 @@ bool ethics_validate_learning_inputs(ethics_engine_t engine, const action_contex
 {
     // Guard clause: Check engine
     if (!engine)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "ethics_validate_learning_inputs: engine is NULL");
+
+            return false;
+
+        }
 
     // Guard clause: Check action
     if (!action)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "ethics_validate_learning_inputs: action is NULL");
+
+            return false;
+
+        }
 
     // Guard clause: Check outcome
     if (!outcome)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "ethics_validate_learning_inputs: outcome is NULL");
+
+            return false;
+
+        }
 
     // Guard clause: Check if learning enabled
     if (!ethics_engine_is_learning_enabled(engine))

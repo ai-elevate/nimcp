@@ -218,6 +218,9 @@ static PyObject* py_topology_generate(PyObject* self, PyObject* args) {
         Py_DECREF(stats_obj);
         const char* error = topology_get_last_error();
         PyErr_SetString(NetworkError, error ? error : "Topology generation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "success is NULL");
+
+
         return NULL;
     }
 

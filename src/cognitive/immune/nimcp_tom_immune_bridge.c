@@ -109,7 +109,13 @@ static brain_inflammation_level_t get_max_inflammation_level(
  * ============================================================================ */
 
 int tom_immune_default_config(tom_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* All features enabled by default */
     config->enable_cytokine_tom_modulation = true;
@@ -148,6 +154,8 @@ tom_immune_bridge_t* tom_immune_bridge_create(
         nimcp_malloc(sizeof(tom_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("tom_immune_bridge", "Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -207,7 +215,13 @@ void tom_immune_bridge_destroy(tom_immune_bridge_t* bridge) {
 
 int tom_immune_apply_cytokine_effects(tom_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_cytokine_tom_modulation) return 0;
     if (!bridge->immune_system || !bridge->tom_system) return -1;
 
@@ -255,7 +269,13 @@ int tom_immune_apply_cytokine_effects(tom_immune_bridge_t* bridge) {
 
 int tom_immune_apply_inflammation_effects(tom_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_inflammation_impairment) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -312,7 +332,13 @@ float tom_immune_compute_impairment(const tom_immune_bridge_t* bridge) {
 
 int tom_immune_impair_perspective_taking(tom_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->tom_system) return -1;
 
     /* Compute impairment */
@@ -327,7 +353,13 @@ int tom_immune_impair_perspective_taking(tom_immune_bridge_t* bridge) {
 
 int tom_immune_impair_empathy(tom_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->tom_system) return -1;
 
     /* Get empathy reduction from both cytokines and inflammation */
@@ -353,7 +385,13 @@ int tom_immune_trigger_from_rejection(
     float rejection_severity
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_rejection_inflammation) return 0;
     if (!bridge->immune_system) return -1;
     if (rejection_severity < 0.0f || rejection_severity > 1.0f) return -1;
@@ -393,7 +431,13 @@ int tom_immune_trigger_from_prediction_error(
     float prediction_error
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_social_stress_immune_trigger) return 0;
     if (!bridge->immune_system) return -1;
     if (prediction_error < 0.0f || prediction_error > 1.0f) return -1;
@@ -430,7 +474,13 @@ int tom_immune_trigger_from_isolation(
     float isolation_duration_sec
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_isolation_chronic_inflammation) return 0;
     if (!bridge->immune_system) return -1;
     if (isolation_duration_sec < 0.0f) return -1;
@@ -488,7 +538,13 @@ int tom_immune_boost_from_social_connection(
     float connection_strength
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_social_connection_boost) return 0;
     if (!bridge->immune_system) return -1;
     if (connection_strength < 0.0f || connection_strength > 1.0f) return -1;
@@ -535,7 +591,13 @@ int tom_immune_bridge_update(
     uint64_t delta_ms
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Apply immune → ToM effects */
     tom_immune_apply_cytokine_effects(bridge);
@@ -613,7 +675,13 @@ float tom_immune_get_empathy_impairment(const tom_immune_bridge_t* bridge) {
  * @brief Connect bridge to bio-async router
  */
 int tom_immune_connect_bio_async(tom_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -638,7 +706,13 @@ int tom_immune_connect_bio_async(tom_immune_bridge_t* bridge) {
  * @brief Disconnect from bio-async router
  */
 int tom_immune_disconnect_bio_async(tom_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

@@ -164,6 +164,8 @@ extended_metaplasticity_state_t* metaplasticity_state_create(
         (extended_metaplasticity_state_t*)nimcp_malloc(sizeof(extended_metaplasticity_state_t));
     if (!state) {
         NIMCP_LOGGING_ERROR("Failed to allocate metaplasticity state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
         return NULL;
     }
 
@@ -636,6 +638,8 @@ metaplasticity_controller_t metaplasticity_controller_create(
         );
     if (!controller) {
         NIMCP_LOGGING_ERROR("Failed to allocate controller");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "controller is NULL");
+
         return NULL;
     }
 

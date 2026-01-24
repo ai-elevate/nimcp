@@ -400,6 +400,8 @@ emotional_system_t* emotion_system_create(const emotion_config_t* config) {
     emotional_system_t* system = (emotional_system_t*)nimcp_calloc(1, sizeof(emotional_system_t));
     if (!system) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate emotional system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
     LOG_DEBUG(LOG_MODULE, "Allocated %zu bytes for emotional system", sizeof(emotional_system_t));

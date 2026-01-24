@@ -92,7 +92,13 @@ int physics_security_register_all(
     bbb_system_t bbb,
     physics_security_state_t* state
 ) {
-    if (!bbb) return -1;
+    if (!bbb) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb is NULL");
+
+        return -1;
+
+    }
 
     physics_security_state_t local_state;
     memset(&local_state, 0, sizeof(local_state));
@@ -126,7 +132,13 @@ int physics_security_register_hh(
     bbb_system_t bbb,
     bbb_subject_t* subject
 ) {
-    if (!bbb) return -1;
+    if (!bbb) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb is NULL");
+
+        return -1;
+
+    }
 
     bbb_subject_t local_subject = {
         .id = PHYSICS_MODULE_ID_HH,
@@ -155,7 +167,13 @@ int physics_security_register_thermo(
     bbb_system_t bbb,
     bbb_subject_t* subject
 ) {
-    if (!bbb) return -1;
+    if (!bbb) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb is NULL");
+
+        return -1;
+
+    }
 
     bbb_subject_t local_subject = {
         .id = PHYSICS_MODULE_ID_THERMO,
@@ -185,7 +203,13 @@ int physics_security_register_ephaptic(
     bbb_system_t bbb,
     bbb_subject_t* subject
 ) {
-    if (!bbb) return -1;
+    if (!bbb) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb is NULL");
+
+        return -1;
+
+    }
 
     bbb_subject_t local_subject = {
         .id = PHYSICS_MODULE_ID_EPHAPTIC,
@@ -316,7 +340,13 @@ int physics_security_grant_capability(
     uint32_t module_id,
     uint64_t capability
 ) {
-    if (!bbb) return -1;
+    if (!bbb) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb is NULL");
+
+        return -1;
+
+    }
 
     if (!bbb_grant_capability(bbb, module_id, capability)) {
         NIMCP_LOG_WARN(PHYSICS_SECURITY_MODULE_NAME,
@@ -333,7 +363,13 @@ int physics_security_revoke_capability(
     uint32_t module_id,
     uint64_t capability
 ) {
-    if (!bbb) return -1;
+    if (!bbb) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb is NULL");
+
+        return -1;
+
+    }
 
     if (!bbb_revoke_capability(bbb, module_id, capability)) {
         NIMCP_LOG_WARN(PHYSICS_SECURITY_MODULE_NAME,
@@ -381,7 +417,13 @@ int physics_security_unregister_all(
     bbb_system_t bbb,
     physics_security_state_t* state
 ) {
-    if (!state) return -1;
+    if (!state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
+        return -1;
+
+    }
 
     /* Unregister memory region if registered */
     if (state->memory_region_id != 0 && bbb) {

@@ -183,6 +183,8 @@ brainstem_coupling_t* brainstem_coupling_create(const brainstem_coupling_config_
     );
     if (!coupling) {
         NIMCP_LOGGING_ERROR("Failed to allocate coupling structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "coupling is NULL");
+
         return NULL;
     }
 

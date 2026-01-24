@@ -570,7 +570,13 @@ static int orch_event_callback(const hypo_event_data_orch_t* event, void* user_d
  *===========================================================================*/
 
 int hypo_logging_bridge_default_config(hypo_logging_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     memset(config, 0, sizeof(hypo_logging_config_t));
 
@@ -619,6 +625,8 @@ hypo_logging_bridge_t* hypo_logging_bridge_create(
     hypo_logging_bridge_t* bridge = nimcp_calloc(1, sizeof(hypo_logging_bridge_t));
     if (!bridge) {
         LOG_ERROR("hypo_logging_bridge_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -717,7 +725,13 @@ void hypo_logging_bridge_destroy(hypo_logging_bridge_t* bridge) {
 }
 
 int hypo_logging_bridge_reset(hypo_logging_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge_lock(bridge);
 
@@ -795,7 +809,13 @@ int hypo_logging_connect(
 }
 
 int hypo_logging_disconnect(hypo_logging_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     if (!bridge->connected) {
         return 0;  /* Already disconnected */
@@ -821,7 +841,13 @@ int hypo_logging_connect_drives(
     hypo_logging_bridge_t* bridge,
     hypo_drive_system_handle_t* drives)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->drives = drives;
     return 0;
 }
@@ -830,7 +856,13 @@ int hypo_logging_connect_homeostasis(
     hypo_logging_bridge_t* bridge,
     hypo_homeostasis_handle_t* homeostasis)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->homeostasis = homeostasis;
     return 0;
 }
@@ -845,7 +877,13 @@ int hypo_logging_log_drive(
     float old_val,
     float new_val)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     hypo_log_entry_t entry = create_entry(
         HYPO_LOG_DRIVE_CHANGE,
@@ -875,7 +913,13 @@ int hypo_logging_log_drive_satisfied(
     float satisfaction_level,
     float reward)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     hypo_log_entry_t entry = create_entry(
         HYPO_LOG_DRIVE_SATISFIED,
@@ -905,7 +949,13 @@ int hypo_logging_log_drive_conflict(
     hypo_drive_type_t drive2,
     hypo_drive_type_t winner)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     hypo_log_entry_t entry = create_entry(
         HYPO_LOG_DRIVE_CONFLICT,
@@ -935,7 +985,13 @@ int hypo_logging_log_homeostatic(
     const char* variable,
     float deviation)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     uint32_t severity = HYPO_LOG_SEVERITY_WARNING;
     if (deviation > 0.5f) {
@@ -968,7 +1024,13 @@ int hypo_logging_log_stress(
     float cortisol,
     const char* trigger)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     hypo_log_entry_t entry = create_entry(
         HYPO_LOG_STRESS_RESPONSE,
@@ -998,7 +1060,13 @@ int hypo_logging_log_circadian(
     uint32_t new_phase,
     float alertness)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     hypo_log_entry_t entry = create_entry(
         HYPO_LOG_CIRCADIAN_PHASE,
@@ -1027,7 +1095,13 @@ int hypo_logging_log_alignment(
     bool passed,
     const char* check_name)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     hypo_log_entry_t entry = create_entry(
         passed ? HYPO_LOG_ALIGNMENT_CHECK : HYPO_LOG_ALIGNMENT_VIOLATION,
@@ -1062,7 +1136,13 @@ int hypo_logging_log_alignment_violation(
     const char* details,
     uint32_t severity)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     hypo_log_entry_t entry = create_entry(
         HYPO_LOG_ALIGNMENT_VIOLATION,
@@ -1096,7 +1176,13 @@ int hypo_logging_log_setpoint_change(
     float new_value,
     uint32_t modifier_id)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     hypo_log_entry_t entry = create_entry(
         HYPO_LOG_SETPOINT_CHANGE,
@@ -1128,7 +1214,13 @@ int hypo_logging_log_reward(
     hypo_drive_type_t source_drive,
     float prediction_error)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     hypo_log_entry_t entry = create_entry(
         HYPO_LOG_REWARD_SIGNAL,
@@ -1157,7 +1249,13 @@ int hypo_logging_log_event(
     hypo_log_type_t type,
     const char* msg)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     hypo_log_entry_t entry = create_entry(
         type,
@@ -1419,7 +1517,13 @@ int hypo_logging_export_query(
     /* Query entries */
     hypo_log_entry_t* entries = nimcp_calloc(HYPO_LOG_MAX_QUERY_ENTRIES,
                                               sizeof(hypo_log_entry_t));
-    if (!entries) return -1;
+    if (!entries) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entries is NULL");
+
+        return -1;
+
+    }
 
     uint32_t count = 0;
     int ret = hypo_logging_query(bridge, query, entries,
@@ -1473,7 +1577,13 @@ int hypo_logging_get_stats(
 }
 
 int hypo_logging_reset_stats(hypo_logging_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge_lock(bridge);
 
@@ -1516,7 +1626,13 @@ int hypo_logging_set_level(
     hypo_logging_bridge_t* bridge,
     log_level_t level)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->config.min_level = level;
     return 0;
 }

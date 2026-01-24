@@ -194,7 +194,11 @@ static bool connect_thalamic_bridge(brain_t brain) {
 
 bool nimcp_brain_factory_init_occipital_subsystem(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_occipital_subsystem: brain is NULL");
+
+            return false;
     }
 
     /* Check if already initialized */
@@ -305,7 +309,11 @@ bool nimcp_brain_factory_init_occipital_subsystem(brain_t brain) {
 
 bool nimcp_brain_factory_init_occipital_substrate_bridge(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_occipital_substrate_bridge: brain is NULL");
+
+            return false;
     }
 
     /* Check if already initialized */
@@ -345,7 +353,11 @@ bool nimcp_brain_factory_init_occipital_substrate_bridge(brain_t brain) {
 
 bool nimcp_brain_factory_init_occipital_thalamic_bridge(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_occipital_thalamic_bridge: brain is NULL");
+
+            return false;
     }
 
     /* Check if already initialized */
@@ -385,7 +397,11 @@ bool nimcp_brain_factory_init_occipital_thalamic_bridge(brain_t brain) {
 
 bool nimcp_brain_factory_init_occipital_quantum_bridge(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_occipital_quantum_bridge: brain is NULL");
+
+            return false;
     }
 
     /* Check if already initialized */

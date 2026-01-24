@@ -691,6 +691,8 @@ shannon_distribution_t* shannon_distribution_create(
     if (!dist) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(shannon_distribution_t),
                           "shannon_distribution_create: Failed to allocate distribution");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dist is NULL");
+
         return NULL;
     }
 
@@ -781,6 +783,8 @@ shannon_joint_distribution_t* shannon_joint_distribution_create(
     if (!joint) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(shannon_joint_distribution_t),
                           "shannon_joint_distribution_create: Failed to allocate joint distribution");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "joint is NULL");
+
         return NULL;
     }
 
@@ -836,6 +840,8 @@ shannon_distribution_t* shannon_marginal_x(
     if (!joint_distribution) {
         NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
                     "shannon_marginal_x: NULL joint distribution");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "joint_distribution is NULL");
+
         return NULL;
     }
 
@@ -846,6 +852,8 @@ shannon_distribution_t* shannon_marginal_x(
     if (!marginal_probs) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_x * sizeof(float),
                           "shannon_marginal_x: Failed to allocate marginal probs");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "marginal_probs is NULL");
+
         return NULL;
     }
 
@@ -868,6 +876,8 @@ shannon_distribution_t* shannon_marginal_y(
     if (!joint_distribution) {
         NIMCP_THROW(NIMCP_ERROR_NULL_POINTER,
                     "shannon_marginal_y: NULL joint distribution");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "joint_distribution is NULL");
+
         return NULL;
     }
 
@@ -878,6 +888,8 @@ shannon_distribution_t* shannon_marginal_y(
     if (!marginal_probs) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_y * sizeof(float),
                           "shannon_marginal_y: Failed to allocate marginal probs");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "marginal_probs is NULL");
+
         return NULL;
     }
 

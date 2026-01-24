@@ -115,7 +115,13 @@ static float compute_thermo_strength(float temperature, float setpoint) {
 //=============================================================================
 
 int physics_hypo_default_config(physics_hypo_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->enable_temperature = true;
     config->enable_energy = true;
@@ -195,7 +201,13 @@ int physics_hypo_connect_physics(
     nimcp_thermodynamic_state_t* thermo,
     nimcp_hh_population_t* hh_pop
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->thermo = thermo;
     bridge->hh_pop = hh_pop;
@@ -211,7 +223,13 @@ int physics_hypo_connect_homeostasis(
     physics_hypo_bridge_t* bridge,
     hypo_homeostasis_handle_t* homeostasis
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->homeostasis = homeostasis;
 
@@ -222,7 +240,13 @@ int physics_hypo_connect_homeostasis(
 }
 
 int physics_hypo_reset(physics_hypo_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Reset state */
     bridge->current_state.temperature = bridge->config.temp_setpoint;
@@ -264,7 +288,13 @@ int physics_hypo_report_state(
     physics_hypo_bridge_t* bridge,
     physics_hypo_state_t* state
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Sample thermodynamics */
     if (bridge->thermo && bridge->config.enable_temperature) {
@@ -333,7 +363,13 @@ int physics_hypo_report_temperature(
     physics_hypo_bridge_t* bridge,
     float temperature
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->current_state.temperature = temperature;
 
@@ -353,7 +389,13 @@ int physics_hypo_report_atp(
     physics_hypo_bridge_t* bridge,
     float atp_level
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->current_state.atp_level = atp_level;
 
@@ -498,7 +540,13 @@ int physics_hypo_set_circadian_phase(
     physics_hypo_bridge_t* bridge,
     float phase
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Normalize to 0-24 range */
     while (phase < 0.0f) phase += 24.0f;
@@ -515,7 +563,13 @@ int physics_hypo_advance_circadian(
     physics_hypo_bridge_t* bridge,
     float dt
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_circadian) return 0;
 
     /* Convert ms to hours */
@@ -550,7 +604,13 @@ int physics_hypo_update(
     physics_hypo_bridge_t* bridge,
     float dt
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Update timers */
     bridge->temp_sample_timer += dt;
@@ -630,7 +690,13 @@ int physics_hypo_get_thermo_status(
     physics_hypo_thermo_dir_t* direction,
     float* strength
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     if (direction) {
         *direction = bridge->current_modulation.thermo_direction;

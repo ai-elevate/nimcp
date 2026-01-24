@@ -160,12 +160,16 @@ re_config_t re_default_config(void) {
 re_context_t* re_create(const re_config_t* config) {
     if (!config) {
         LOG_ERROR("RE", "NULL config provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
     re_context_t* ctx = nimcp_malloc(sizeof(re_context_t));
     if (!ctx) {
         LOG_ERROR("RE", "Failed to allocate context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 

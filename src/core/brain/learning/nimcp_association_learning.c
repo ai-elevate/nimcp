@@ -94,7 +94,15 @@ bool brain_learn_association(brain_t brain, const char* A, const char* B,
     association_entry_t* entry = find_association(A, B);
     if (!entry) {
         entry = create_association(A, B);
-        if (!entry) return false;
+        if (!entry) {
+
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                    "if: entry is NULL");
+
+                return false;
+
+            }
     }
 
     // Update statistics
@@ -183,7 +191,11 @@ float get_association_strength(brain_t brain, const char* A, const char* B) {
 
 uint32_t decay_all_associations(brain_t brain, float decay_factor) {
     if (!brain || decay_factor < 0.0F || decay_factor > 1.0F) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "decay_all_associations: invalid parameters");
+
+            return 0;
     }
 
     init_association_store();

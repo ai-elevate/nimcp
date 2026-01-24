@@ -75,7 +75,13 @@ static uint32_t hash_agent_id(uint32_t agent_id) {
  */
 static int32_t find_agent_slot(const struct social_context_system* sys,
                                uint32_t agent_id) {
-    if (!sys) return -1;
+    if (!sys) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
+        return -1;
+
+    }
 
     /* Start at hash position, linear probe on collision */
     uint32_t start = hash_agent_id(agent_id);
@@ -93,7 +99,13 @@ static int32_t find_agent_slot(const struct social_context_system* sys,
  */
 static int32_t find_or_create_agent_slot(struct social_context_system* sys,
                                           uint32_t agent_id) {
-    if (!sys) return -1;
+    if (!sys) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
+        return -1;
+
+    }
 
     /* First try to find existing */
     int32_t existing = find_agent_slot(sys, agent_id);
@@ -216,6 +228,8 @@ social_context_t social_context_create(const social_context_config_t* config) {
     struct social_context_system* sys = nimcp_malloc(sizeof(struct social_context_system));
     if (!sys) {
         nimcp_log(LOG_LEVEL_ERROR, "Social context: failed to allocate system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sys is NULL");
+
         return NULL;
     }
 

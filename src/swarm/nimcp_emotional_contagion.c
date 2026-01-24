@@ -385,6 +385,8 @@ emotional_contagion_t* emotional_contagion_create(
         (emotional_contagion_t*)nimcp_malloc(sizeof(emotional_contagion_t));
     if (!ec) {
         LOG_ERROR(CONTAGION_MODULE, "Failed to allocate contagion system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ec is NULL");
+
         return NULL;
     }
 

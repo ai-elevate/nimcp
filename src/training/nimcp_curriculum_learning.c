@@ -344,6 +344,8 @@ curriculum_ctx_t* curriculum_create(
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(curriculum_ctx_t),
                           "curriculum_create: failed to allocate context");
         NIMCP_LOGGING_ERROR("Failed to allocate curriculum context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 
@@ -670,7 +672,13 @@ int curriculum_select_samples(
 }
 
 int curriculum_start_epoch(curriculum_ctx_t* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return -1;
+
+    }
 
     ctx->current_epoch++;
 
@@ -750,7 +758,13 @@ int curriculum_end_epoch(
     float epoch_loss,
     float epoch_accuracy
 ) {
-    if (!ctx) return -1;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return -1;
+
+    }
 
     (void)epoch_accuracy;  /* Could be used for adaptive pacing */
 

@@ -137,6 +137,8 @@ temporal_quantum_bridge_t* temporal_quantum_bridge_create(
         1, sizeof(temporal_quantum_bridge_t));
     if (!bridge) {
         LOG_ERROR("[%s] Failed to allocate bridge", LOG_MODULE);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

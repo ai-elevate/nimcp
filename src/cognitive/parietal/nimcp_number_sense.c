@@ -202,6 +202,8 @@ number_sense_t* number_sense_create_custom(const number_sense_config_t* config) 
     number_sense_t* ns = calloc(1, sizeof(number_sense_t));
     if (!ns) {
         set_error("Failed to allocate number sense");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ns is NULL");
+
         return NULL;
     }
 
@@ -649,7 +651,13 @@ int number_sense_set_inflammation(
     number_sense_t* ns,
     float level
 ) {
-    if (!ns) return -1;
+    if (!ns) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ns is NULL");
+
+        return -1;
+
+    }
 
     if (level < 0.0f) level = 0.0f;
     if (level > 1.0f) level = 1.0f;
@@ -666,7 +674,13 @@ int number_sense_set_sleep_deprivation(
     number_sense_t* ns,
     float level
 ) {
-    if (!ns) return -1;
+    if (!ns) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ns is NULL");
+
+        return -1;
+
+    }
 
     if (level < 0.0f) level = 0.0f;
     if (level > 1.0f) level = 1.0f;

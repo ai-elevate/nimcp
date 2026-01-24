@@ -157,7 +157,15 @@ static bool validate_serialize_inputs(const uint8_t* buffer, uint32_t buffer_siz
 {
     // Guard clause: Check buffer pointer
     if (!buffer)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "validate_serialize_inputs: buffer is NULL");
+
+            return false;
+
+        }
 
     // Guard clause: Check buffer size
     uint32_t required_size = sizeof(msg_header_t) + payload_len;
@@ -285,11 +293,27 @@ static bool validate_deserialize_inputs(const uint8_t* buffer, uint32_t buffer_s
 {
     // Guard clause: Check buffer
     if (!buffer)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "validate_deserialize_inputs: buffer is NULL");
+
+            return false;
+
+        }
 
     // Guard clause: Check header
     if (!header)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "validate_deserialize_inputs: header is NULL");
+
+            return false;
+
+        }
 
     // Guard clause: Check minimum buffer size
     if (buffer_size < sizeof(msg_header_t))
@@ -354,7 +378,15 @@ static bool verify_message_checksum(const msg_header_t* header, const void* payl
 {
     // Guard clause: Validate header
     if (!header)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "verify_message_checksum: header is NULL");
+
+            return false;
+
+        }
 
     uint32_t calculated = protocol_calculate_checksum(header, payload, header->length);
 
@@ -548,7 +580,15 @@ bool protocol_validate_header(const msg_header_t* header)
 {
     // Guard clause: Check pointer
     if (!header)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "protocol_validate_header: header is NULL");
+
+            return false;
+
+        }
 
     // Guard clause: Validate magic field using nimcp_validate
     if (!nimcp_validate_integer_field(&header->magic, sizeof(uint32_t))) {
@@ -747,11 +787,27 @@ static bool validate_event_serialize_inputs(const event_packet_t* packet, const 
 {
     // Guard clause: Check packet
     if (!packet)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "validate_event_serialize_inputs: packet is NULL");
+
+            return false;
+
+        }
 
     // Guard clause: Check buffer
     if (!buffer)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "validate_event_serialize_inputs: buffer is NULL");
+
+            return false;
+
+        }
 
     // Guard clause: Check buffer size
     uint32_t required = sizeof(event_packet_t) + packet->payload_length;
@@ -836,11 +892,27 @@ static bool validate_event_deserialize_inputs(const uint8_t* buffer, uint32_t bu
 {
     // Guard clause: Check buffer
     if (!buffer)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "validate_event_deserialize_inputs: buffer is NULL");
+
+            return false;
+
+        }
 
     // Guard clause: Check packet
     if (!packet)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "validate_event_deserialize_inputs: packet is NULL");
+
+            return false;
+
+        }
 
     // Guard clause: Check buffer size
     if (buffer_size < sizeof(event_packet_t))
@@ -867,7 +939,15 @@ static bool extract_event_payload(const uint8_t* buffer, void* payload, uint32_t
 
     // Guard clause: Check payload buffer
     if (!payload)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "extract_event_payload: payload is NULL");
+
+            return false;
+
+        }
 
     // Guard clause: Check payload size
     if (payload_size < payload_length)
@@ -948,7 +1028,15 @@ int event_packet_deserialize(const uint8_t* buffer, uint32_t buffer_size, event_
 static bool is_event_version_valid(const event_packet_t* packet)
 {
     if (!packet)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "is_event_version_valid: packet is NULL");
+
+            return false;
+
+        }
     return EVENT_GET_VERSION(packet) == PROTOCOL_VERSION;
 }
 
@@ -1008,7 +1096,15 @@ bool event_packet_validate(const event_packet_t* packet)
 {
     // Guard clause: Check pointer
     if (!packet)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "event_packet_validate: packet is NULL");
+
+            return false;
+
+        }
 
     // Guard clause: Check version
     if (!is_event_version_valid(packet))
@@ -1063,11 +1159,27 @@ static bool validate_control_serialize_inputs(const control_message_t* msg, cons
 {
     // Guard clause: Check message
     if (!msg)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "validate_control_serialize_inputs: msg is NULL");
+
+            return false;
+
+        }
 
     // Guard clause: Check buffer
     if (!buffer)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "validate_control_serialize_inputs: buffer is NULL");
+
+            return false;
+
+        }
 
     // Guard clause: Check buffer size
     if (buffer_size < required_size)
@@ -1156,11 +1268,27 @@ static bool validate_control_deserialize_inputs(const uint8_t* buffer, uint32_t 
 {
     // Guard clause: Check buffer
     if (!buffer)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "validate_control_deserialize_inputs: buffer is NULL");
+
+            return false;
+
+        }
 
     // Guard clause: Check message
     if (!msg)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "validate_control_deserialize_inputs: msg is NULL");
+
+            return false;
+
+        }
 
     // Guard clause: Check buffer size
     if (buffer_size < sizeof(control_message_t))
@@ -1187,7 +1315,15 @@ static bool extract_control_params(const uint8_t* buffer, void* params, uint32_t
 
     // Guard clause: Check params buffer
     if (!params)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "extract_control_params: params is NULL");
+
+            return false;
+
+        }
 
     // Guard clause: Check param size
     if (param_size < actual_param_size)
@@ -1313,7 +1449,15 @@ bool control_message_validate(const control_message_t* msg)
 {
     // Guard clause: Check pointer
     if (!msg)
-        return false;
+        {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "control_message_validate: msg is NULL");
+
+            return false;
+
+        }
 
     // Guard clause: Check version
     if (msg->version != PROTOCOL_VERSION)
@@ -1382,7 +1526,11 @@ bool feature_code_matches(feature_code_t code, feature_code_t filter, uint32_t m
 bool subscription_matches(const subscription_filter_t* filter, const event_packet_t* packet)
 {
     if (!filter || !packet) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "subscription_matches: invalid parameters");
+
+            return false;
     }
 
     // Check feature code with mask

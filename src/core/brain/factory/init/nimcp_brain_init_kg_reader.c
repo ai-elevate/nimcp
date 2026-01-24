@@ -146,7 +146,11 @@ static void log_kg_reader_stats(kg_reader_t* kg_reader) {
  */
 bool nimcp_brain_factory_init_kg_reader_subsystem(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_kg_reader_subsystem: brain is NULL");
+
+            return false;
     }
 
     /* Check if KG reader is disabled in config */
@@ -223,7 +227,11 @@ bool nimcp_brain_factory_init_kg_reader_subsystem(brain_t brain) {
  */
 kg_reader_t* brain_get_kg_reader(brain_t brain) {
     if (!brain || !brain->kg_reader_enabled) {
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_get_kg_reader: invalid parameters");
+
+            return NULL;
     }
     return brain->kg_reader;
 }
@@ -238,7 +246,11 @@ kg_reader_t* brain_get_kg_reader(brain_t brain) {
  */
 int brain_reload_kg(brain_t brain) {
     if (!brain || !brain->kg_reader_enabled || !brain->kg_reader) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_reload_kg: invalid parameters");
+
+            return -1;
     }
 
     int result = kg_reader_reload(brain->kg_reader);
@@ -257,7 +269,11 @@ int brain_reload_kg(brain_t brain) {
  */
 bool brain_is_kg_modified(brain_t brain) {
     if (!brain || !brain->kg_reader_enabled || !brain->kg_reader) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_is_kg_modified: invalid parameters");
+
+            return false;
     }
     return kg_reader_is_modified(brain->kg_reader);
 }
@@ -274,7 +290,11 @@ bool brain_is_kg_modified(brain_t brain) {
  */
 int brain_generate_self_description(brain_t brain, char* buffer, size_t buffer_size) {
     if (!brain || !brain->kg_reader_enabled || !brain->kg_reader || !buffer) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_generate_self_description: invalid parameters");
+
+            return -1;
     }
     return kg_reader_generate_self_description(brain->kg_reader, buffer, buffer_size);
 }

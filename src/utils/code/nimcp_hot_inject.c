@@ -133,6 +133,8 @@ NIMCP_EXPORT hot_injector_t hot_injector_create(
     // Guard: NULL dispatch table
     if (!dispatch_table) {
         LOG_MODULE_ERROR(LOG_MODULE, "NULL dispatch table");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dispatch_table is NULL");
+
         return NULL;
     }
 
@@ -146,6 +148,8 @@ NIMCP_EXPORT hot_injector_t hot_injector_create(
     struct hot_injector* injector = nimcp_calloc(1, sizeof(struct hot_injector));
     if (!injector) {
         LOG_MODULE_ERROR(LOG_MODULE, "Failed to allocate injector");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "injector is NULL");
+
         return NULL;
     }
 

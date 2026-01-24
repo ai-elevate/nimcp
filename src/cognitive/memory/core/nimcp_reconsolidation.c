@@ -235,6 +235,8 @@ NIMCP_EXPORT reconsolidation_system_t* reconsolidation_create(
     reconsolidation_system_t* system = (reconsolidation_system_t*)calloc(
         1, sizeof(reconsolidation_system_t));
     if (system == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
         return NULL;
     }
 
@@ -1447,6 +1449,8 @@ static reconsolidation_window_t* find_window_by_memory(
     reconsolidation_system_t* system, pr_memory_node_t* memory)
 {
     if (memory == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "memory is NULL");
+
         return NULL;
     }
 

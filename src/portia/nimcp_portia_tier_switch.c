@@ -416,6 +416,8 @@ portia_tier_switch_t portia_tier_switch_init(const tier_switch_config_t* config)
         1, sizeof(struct portia_tier_switch_struct));
     if (!switcher) {
         LOG_ERROR("[%s] Failed to allocate switcher structure", PORTIA_MODULE_NAME);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "switcher is NULL");
+
         return NULL;
     }
 

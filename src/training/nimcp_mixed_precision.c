@@ -139,7 +139,13 @@ static float fp16_to_fp32(uint16_t value) {
 //=============================================================================
 
 int amp_default_config(amp_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -181,7 +187,13 @@ int amp_default_config(amp_config_t* config) {
 }
 
 int amp_bf16_config(amp_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* Start with default config */
     int ret = amp_default_config(config);
@@ -200,7 +212,13 @@ int amp_bf16_config(amp_config_t* config) {
 }
 
 int amp_validate_config(const amp_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* Validate scaling config */
     if (config->scaling.mode != AMP_SCALING_NONE) {
@@ -226,6 +244,8 @@ int amp_validate_config(const amp_config_t* config) {
 amp_ctx_t* amp_create(const amp_config_t* config) {
     if (!config) {
         NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "amp_create: config is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
@@ -238,6 +258,8 @@ amp_ctx_t* amp_create(const amp_config_t* config) {
     if (!ctx) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(amp_ctx_t),
                           "amp_create: failed to allocate context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 
@@ -306,7 +328,13 @@ int amp_connect_gradient_manager(amp_ctx_t* ctx,
 //=============================================================================
 
 int amp_autocast_enter(amp_ctx_t* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(ctx->mutex);
     ctx->autocast_enabled = true;
@@ -317,7 +345,13 @@ int amp_autocast_enter(amp_ctx_t* ctx) {
 }
 
 int amp_autocast_exit(amp_ctx_t* ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(ctx->mutex);
     if (ctx->autocast_depth > 0) {
@@ -481,7 +515,13 @@ float amp_get_scale(const amp_ctx_t* ctx) {
 }
 
 int amp_set_scale(amp_ctx_t* ctx, float scale) {
-    if (!ctx) return -1;
+    if (!ctx) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
+        return -1;
+
+    }
 
     if (scale < ctx->config.scaling.min_scale ||
         scale > ctx->config.scaling.max_scale) {
@@ -506,10 +546,14 @@ float* amp_create_master_weights(amp_ctx_t* ctx,
                                   amp_dtype_t weight_dtype) {
     if (!ctx) {
         NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "amp_create_master_weights: ctx is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
     if (!weights) {
         NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "amp_create_master_weights: weights is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "weights is NULL");
+
         return NULL;
     }
     if (count == 0) {
@@ -521,6 +565,8 @@ float* amp_create_master_weights(amp_ctx_t* ctx,
     if (!master) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, count * sizeof(float),
                           "amp_create_master_weights: failed to allocate master weights");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "master is NULL");
+
         return NULL;
     }
 

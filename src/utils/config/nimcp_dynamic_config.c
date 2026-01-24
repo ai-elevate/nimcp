@@ -903,7 +903,15 @@ bool config_dump(const char* output_path) {
 }
 
 bool config_validate(const char* config_path) {
-    if (!config_path) return false;
+    if (!config_path) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "config_validate: config_path is NULL");
+
+            return false;
+
+        }
 
     FILE* file = fopen(config_path, "r");
     if (!file) {

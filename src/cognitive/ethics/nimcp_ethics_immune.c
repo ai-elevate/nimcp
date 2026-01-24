@@ -121,7 +121,11 @@ bool ethics_evaluate_with_immune_check(ethics_engine_t engine,
 {
     // Guard: Validate parameters
     if (!engine || !action || !evaluation || !inflammation_penalty) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "ethics_evaluate_with_immune_check: invalid parameters");
+
+            return false;
     }
 
     // WHAT: Perform standard ethical evaluation
@@ -197,7 +201,11 @@ bool ethics_trigger_immune_response(ethics_engine_t engine,
 {
     // Guard: Validate parameters
     if (!engine || !description) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "ethics_trigger_immune_response: invalid parameters");
+
+            return false;
     }
 
     // Guard: Immune integration not enabled

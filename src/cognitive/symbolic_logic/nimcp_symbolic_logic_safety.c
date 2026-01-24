@@ -194,6 +194,8 @@ safety_kb_t* symbolic_logic_safety_kb_create(uint32_t max_rules) {
     safety_kb_t* kb = (safety_kb_t*)nimcp_calloc(1, sizeof(safety_kb_t));
     if (!kb) {
         LOG_ERROR("Failed to allocate safety KB structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "kb is NULL");
+
         return NULL;
     }
 

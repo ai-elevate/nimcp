@@ -296,6 +296,8 @@ consolidation_substrate_bridge_t* consolidation_substrate_bridge_create(
         (consolidation_substrate_bridge_t*)nimcp_malloc(sizeof(consolidation_substrate_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate memory consolidation substrate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

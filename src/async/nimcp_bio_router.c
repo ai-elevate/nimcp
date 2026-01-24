@@ -855,6 +855,8 @@ bio_module_context_t bio_router_register_module(const bio_module_info_t* info) {
             bio_module_context_t ctx = nimcp_calloc(1, sizeof(struct bio_module_context_struct));
             if (!ctx) {
                 LOG_ERROR("Failed to allocate context for existing module");
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
                 return NULL;
             }
             ctx->magic = BIO_MODULE_MAGIC;
@@ -880,7 +882,9 @@ bio_module_context_t bio_router_register_module(const bio_module_info_t* info) {
         if (g_router->module_count >= g_router->module_capacity) {
             nimcp_platform_mutex_unlock(&g_router->modules_mutex);
             LOG_ERROR("Module registry full (max=%u)", g_router->module_capacity);
-            return NULL;
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "entry is NULL");
+
+        return NULL;
         }
         entry = &g_router->modules[g_router->module_count];
         g_router->module_count++;
@@ -935,6 +939,8 @@ bio_module_context_t bio_router_register_module(const bio_module_info_t* info) {
     bio_module_context_t ctx = nimcp_calloc(1, sizeof(struct bio_module_context_struct));
     if (!ctx) {
         LOG_ERROR("Failed to allocate module context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 
@@ -1451,6 +1457,8 @@ nimcp_bio_promise_t bio_router_send_async(bio_module_context_t ctx,
     nimcp_bio_promise_t promise = nimcp_bio_promise_create(channel, 0);
     if (!promise) {
         LOG_ERROR("Failed to create promise for async send");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "promise is NULL");
+
         return NULL;
     }
 
@@ -1808,6 +1816,9 @@ nimcp_phase_sync_t bio_router_sync_request(bio_module_context_t ctx,
 
     if (!g_router) {
         LOG_ERROR("Router not initialized");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "g_router is NULL");
+
+
         return NULL;
     }
 
@@ -1815,6 +1826,8 @@ nimcp_phase_sync_t bio_router_sync_request(bio_module_context_t ctx,
     phase_sync_context_t* sync_ctx = nimcp_calloc(1, sizeof(phase_sync_context_t));
     if (!sync_ctx) {
         LOG_ERROR("Failed to allocate phase sync context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sync_ctx is NULL");
+
         return NULL;
     }
 

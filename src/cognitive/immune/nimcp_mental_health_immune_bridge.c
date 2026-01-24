@@ -127,7 +127,13 @@ static float estimate_cytokine_level(
  * ============================================================================ */
 
 int mental_health_immune_default_config(mental_health_immune_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     /* All features enabled by default */
     config->enable_cytokine_disorder_modulation = true;
@@ -168,6 +174,8 @@ mental_health_immune_bridge_t* mental_health_immune_bridge_create(
         nimcp_malloc(sizeof(mental_health_immune_bridge_t));
     if (!bridge) {
         LOG_MODULE_ERROR("mental_health_immune_bridge", "Allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -227,7 +235,13 @@ void mental_health_immune_bridge_destroy(mental_health_immune_bridge_t* bridge) 
 
 int mental_health_immune_apply_cytokine_effects(mental_health_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_cytokine_disorder_modulation) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -282,7 +296,13 @@ int mental_health_immune_apply_cytokine_effects(mental_health_immune_bridge_t* b
 
 int mental_health_immune_apply_inflammation_effects(mental_health_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->immune_system) return -1;
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
@@ -347,7 +367,13 @@ int mental_health_immune_apply_inflammation_effects(mental_health_immune_bridge_
 
 int mental_health_immune_modulate_neurotransmitters(mental_health_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_neurotransmitter_modulation) return 0;
 
     /* Neurotransmitter modulation would integrate with neuromodulator system */
@@ -382,7 +408,13 @@ float mental_health_immune_compute_anxiety_risk(const mental_health_immune_bridg
 
 int mental_health_immune_trigger_from_depression(mental_health_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_disorder_immune_trigger) return 0;
     if (!bridge->mental_health_monitor || !bridge->immune_system) return -1;
 
@@ -428,7 +460,13 @@ int mental_health_immune_trigger_from_depression(mental_health_immune_bridge_t* 
 
 int mental_health_immune_trigger_from_anxiety(mental_health_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_disorder_immune_trigger) return 0;
     if (!bridge->mental_health_monitor || !bridge->immune_system) return -1;
 
@@ -471,7 +509,13 @@ int mental_health_immune_trigger_from_anxiety(mental_health_immune_bridge_t* bri
 
 int mental_health_immune_trigger_from_ptsd(mental_health_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_disorder_immune_trigger) return 0;
     if (!bridge->mental_health_monitor || !bridge->immune_system) return -1;
 
@@ -517,7 +561,13 @@ int mental_health_immune_trigger_from_ptsd(mental_health_immune_bridge_t* bridge
 
 int mental_health_immune_boost_from_recovery(mental_health_immune_bridge_t* bridge) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->enable_recovery_immune_boost) return 0;
     if (!bridge->immune_system) return -1;
 
@@ -566,7 +616,13 @@ int mental_health_immune_bridge_update(
     mental_health_immune_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     (void)delta_ms; /* Unused for now */
 
@@ -635,7 +691,13 @@ int mental_health_immune_get_stats(
     uint32_t* depression_triggers,
     uint32_t* anxiety_triggers
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     pthread_mutex_lock((pthread_mutex_t*)bridge->base.mutex);
 
@@ -657,7 +719,13 @@ int mental_health_immune_get_stats(
  * @brief Connect bridge to bio-async router
  */
 int mental_health_immune_connect_bio_async(mental_health_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -682,7 +750,13 @@ int mental_health_immune_connect_bio_async(mental_health_immune_bridge_t* bridge
  * @brief Disconnect from bio-async router
  */
 int mental_health_immune_disconnect_bio_async(mental_health_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {

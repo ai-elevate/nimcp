@@ -192,6 +192,8 @@ triplet_stdp_sleep_bridge_t triplet_stdp_sleep_bridge_create(
      */
     if (!sleep_system) {
         NIMCP_LOGGING_ERROR("NULL sleep_system in bridge create");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "sleep_system is NULL");
+
         return NULL;
     }
 
@@ -202,6 +204,9 @@ triplet_stdp_sleep_bridge_t triplet_stdp_sleep_bridge_create(
 
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate triplet STDP sleep bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+
         return NULL;
     }
 

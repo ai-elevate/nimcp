@@ -51,7 +51,13 @@ static float get_coherence_factor_for_level(brain_inflammation_level_t level)
 
 int swarm_brain_immune_default_config(swarm_brain_immune_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->enable_cytokine_impairment = true;
     config->enable_inflammation_effects = true;
@@ -77,6 +83,8 @@ swarm_brain_immune_bridge_t* swarm_brain_immune_bridge_create(
         (swarm_brain_immune_bridge_t*)nimcp_malloc(sizeof(swarm_brain_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate swarm brain immune bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -233,7 +241,13 @@ int swarm_brain_immune_boost_from_cohesion(swarm_brain_immune_bridge_t* bridge)
 
 int swarm_brain_immune_bridge_update(swarm_brain_immune_bridge_t* bridge, uint64_t delta_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     (void)delta_ms;
 
     swarm_brain_immune_apply_cytokine_effects(bridge);

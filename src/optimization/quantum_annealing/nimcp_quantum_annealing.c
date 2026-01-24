@@ -445,6 +445,8 @@ quantum_annealer_t quantum_annealer_create(const quantum_annealing_config_t* con
     // Guard: null config
     if (!config) {
         NIMCP_THROW(NIMCP_ERROR_NULL_POINTER, "quantum_annealer_create: null config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
@@ -457,6 +459,8 @@ quantum_annealer_t quantum_annealer_create(const quantum_annealing_config_t* con
     if (!annealer) {
         NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(struct quantum_annealer_struct),
                           "Failed to allocate quantum annealer structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "annealer is NULL");
+
         return NULL;
     }
 

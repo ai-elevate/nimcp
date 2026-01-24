@@ -249,12 +249,16 @@ flow_tracker_t* flow_tracker_create_custom(
 ) {
     if (!config) {
         LOG_ERROR("FlowTracker: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
     flow_tracker_t* tracker = (flow_tracker_t*)nimcp_calloc(1, sizeof(flow_tracker_t));
     if (!tracker) {
         LOG_ERROR("FlowTracker: Failed to allocate tracker");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tracker is NULL");
+
         return NULL;
     }
 

@@ -222,6 +222,8 @@ mirror_snn_bridge_t* mirror_snn_create(const mirror_snn_config_t* config) {
     mirror_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(mirror_snn_bridge_t));
     if (!bridge) {
         NIMCP_LOG_ERROR(LOG_MODULE, "Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -302,12 +304,16 @@ mirror_snn_bridge_t* mirror_snn_create_with_network(
 ) {
     if (!snn) {
         NIMCP_LOG_ERROR(LOG_MODULE, "NULL SNN network provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn is NULL");
+
         return NULL;
     }
 
     mirror_snn_bridge_t* bridge = nimcp_calloc(1, sizeof(mirror_snn_bridge_t));
     if (!bridge) {
         NIMCP_LOG_ERROR(LOG_MODULE, "Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -356,7 +362,13 @@ void mirror_snn_destroy(mirror_snn_bridge_t* bridge) {
 //=============================================================================
 
 int mirror_snn_connect_bio_async(mirror_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->bio_async_connected) return 0;  /* Already connected */
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -536,7 +548,13 @@ int mirror_snn_set_input_tensor(
 //=============================================================================
 
 int mirror_snn_simulate(mirror_snn_bridge_t* bridge, float duration_ms) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = MIRROR_SNN_STATE_SIMULATING;
@@ -697,12 +715,24 @@ int mirror_snn_forward(
 //=============================================================================
 
 int mirror_snn_set_training(mirror_snn_bridge_t* bridge, bool enable) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     return snn_network_set_training(bridge->snn, enable);
 }
 
 int mirror_snn_apply_stdp(mirror_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = MIRROR_SNN_STATE_TRAINING;
@@ -717,7 +747,13 @@ int mirror_snn_apply_stdp(mirror_snn_bridge_t* bridge) {
 }
 
 int mirror_snn_apply_reward(mirror_snn_bridge_t* bridge, float reward) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->state = MIRROR_SNN_STATE_TRAINING;
@@ -762,7 +798,13 @@ int mirror_snn_register_spike_callback(
     mirror_snn_spike_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->spike_callback = callback;
     bridge->spike_callback_data = user_data;
@@ -775,7 +817,13 @@ int mirror_snn_register_recognition_callback(
     mirror_snn_recognition_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->recognition_callback = callback;
     bridge->recognition_callback_data = user_data;
@@ -788,7 +836,13 @@ int mirror_snn_register_training_callback(
     mirror_snn_training_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->training_callback = callback;
     bridge->training_callback_data = user_data;
@@ -801,7 +855,13 @@ int mirror_snn_register_health_callback(
     mirror_snn_health_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->health_callback = callback;
     bridge->health_callback_data = user_data;
@@ -902,7 +962,13 @@ snn_state_health_t mirror_snn_check_health(const mirror_snn_bridge_t* bridge) {
 //=============================================================================
 
 int mirror_snn_update(mirror_snn_bridge_t* bridge, float dt_ms) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -948,7 +1014,13 @@ int mirror_snn_update(mirror_snn_bridge_t* bridge, float dt_ms) {
 }
 
 int mirror_snn_reset(mirror_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 

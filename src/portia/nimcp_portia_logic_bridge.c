@@ -244,6 +244,8 @@ portia_logic_bridge_t* portia_logic_bridge_create(
 {
     if (!portia) {
         NIMCP_LOGGING_ERROR("Portia context is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "portia is NULL");
+
         return NULL;
     }
 
@@ -260,6 +262,8 @@ portia_logic_bridge_t* portia_logic_bridge_create(
     );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

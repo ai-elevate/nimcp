@@ -22,7 +22,13 @@ static inline float clamp_f(float value, float min, float max) {
 }
 
 int thalamic_router_fep_bridge_default_config(thalamic_router_fep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
     config->enable_precision_gain = true;
     config->enable_prediction_routing = true;
     config->enable_pe_priority_boost = true;
@@ -101,7 +107,13 @@ int thalamic_router_fep_bridge_connect_fep(
 }
 
 int thalamic_router_fep_bridge_disconnect(thalamic_router_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->thalamic_router = NULL;
     bridge->fep_system = NULL;
@@ -114,7 +126,13 @@ int thalamic_router_fep_apply_precision_gain(
     thalamic_router_fep_bridge_t* bridge,
     float precision
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_precision_gain) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -140,7 +158,13 @@ int thalamic_router_fep_route_prediction(
     thalamic_router_fep_bridge_t* bridge,
     float prediction
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_prediction_routing) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -155,7 +179,13 @@ int thalamic_router_fep_boost_pe_priority(
     thalamic_router_fep_bridge_t* bridge,
     float prediction_error
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_pe_priority_boost) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -198,7 +228,13 @@ int thalamic_router_fep_update_confidence_from_routing(
     thalamic_router_fep_bridge_t* bridge,
     float synchrony
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_synchrony_confidence) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -213,7 +249,13 @@ int thalamic_router_fep_bridge_update(
     thalamic_router_fep_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     return 0;
 }
 
@@ -242,7 +284,13 @@ int thalamic_router_fep_bridge_get_stats(
 int thalamic_router_fep_bridge_connect_bio_async(
     thalamic_router_fep_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -266,7 +314,13 @@ int thalamic_router_fep_bridge_connect_bio_async(
 int thalamic_router_fep_bridge_disconnect_bio_async(
     thalamic_router_fep_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     bio_router_unregister_module(bridge->base.bio_ctx);

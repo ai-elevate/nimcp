@@ -51,7 +51,13 @@ static float get_phi_factor_for_level(brain_inflammation_level_t level)
 
 int swarm_consciousness_immune_default_config(swarm_consciousness_immune_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->enable_cytokine_effects = true;
     config->enable_inflammation_effects = true;
@@ -76,6 +82,8 @@ swarm_consciousness_immune_bridge_t* swarm_consciousness_immune_bridge_create(
         (swarm_consciousness_immune_bridge_t*)nimcp_malloc(sizeof(swarm_consciousness_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate swarm consciousness immune bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -176,7 +184,13 @@ int swarm_consciousness_immune_apply_inflammation_effects(swarm_consciousness_im
 
 int swarm_consciousness_immune_trigger_from_low_phi(swarm_consciousness_immune_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_low_phi_stress) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -193,7 +207,13 @@ int swarm_consciousness_immune_trigger_from_low_phi(swarm_consciousness_immune_b
 
 int swarm_consciousness_immune_boost_from_high_phi(swarm_consciousness_immune_bridge_t* bridge)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_high_phi_boost) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -211,7 +231,13 @@ int swarm_consciousness_immune_boost_from_high_phi(swarm_consciousness_immune_br
 
 int swarm_consciousness_immune_bridge_update(swarm_consciousness_immune_bridge_t* bridge, uint64_t delta_ms)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     (void)delta_ms;
 
     swarm_consciousness_immune_apply_cytokine_effects(bridge);

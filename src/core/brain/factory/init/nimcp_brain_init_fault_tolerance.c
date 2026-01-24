@@ -229,7 +229,11 @@ static void connect_fault_tolerance_to_metacognition(
  */
 bool nimcp_brain_factory_init_fault_tolerance_subsystem(brain_t brain) {
     if (!brain) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "nimcp_brain_factory_init_fault_tolerance_subsystem: brain is NULL");
+
+            return false;
     }
 
     /* Check if fault tolerance is enabled */
@@ -318,7 +322,11 @@ bool nimcp_brain_factory_init_fault_tolerance_subsystem(brain_t brain) {
  */
 recovery_executive_t* brain_get_recovery_executive(brain_t brain) {
     if (!brain || !brain->fault_tolerance_enabled) {
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_get_recovery_executive: invalid parameters");
+
+            return NULL;
     }
     return brain->recovery_executive;
 }
@@ -342,7 +350,11 @@ recovery_plan_t* brain_create_parietal_enhanced_recovery_plan(
     recovery_goal_t goal
 ) {
     if (!brain || !brain->fault_tolerance_enabled || !brain->recovery_executive) {
-        return NULL;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_create_parietal_enhanced_recovery_plan: invalid parameters");
+
+            return NULL;
     }
 
     if (!brain->parietal_enabled || !brain->parietal) {
@@ -383,7 +395,11 @@ recovery_plan_t* brain_create_parietal_enhanced_recovery_plan(
  */
 int brain_step_fault_tolerance(brain_t brain, uint64_t delta_t) {
     if (!brain || !brain->fault_tolerance_enabled) {
-        return -1;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "brain_step_fault_tolerance: invalid parameters");
+
+            return -1;
     }
 
     /* Fault tolerance stepping is event-driven, not time-based */

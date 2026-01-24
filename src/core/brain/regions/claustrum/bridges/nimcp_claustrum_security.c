@@ -90,7 +90,13 @@ static uint32_t op_to_privilege(claustrum_security_op_t op) {
 //=============================================================================
 
 int claustrum_security_default_config(claustrum_security_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->strict_mode = false;
     config->enable_kg_write = true;
@@ -108,7 +114,13 @@ int claustrum_security_register(
     bbb_system_t bbb,
     claustrum_security_state_t* state
 ) {
-    if (!bbb) return -1;
+    if (!bbb) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bbb is NULL");
+
+        return -1;
+
+    }
 
     claustrum_security_state_t local_state;
     memset(&local_state, 0, sizeof(local_state));
@@ -147,7 +159,13 @@ int claustrum_security_unregister(
     bbb_system_t bbb,
     claustrum_security_state_t* state
 ) {
-    if (!state) return -1;
+    if (!state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
+        return -1;
+
+    }
 
     /* Unregister memory region if registered */
     if (state->memory_region_id != 0 && bbb) {

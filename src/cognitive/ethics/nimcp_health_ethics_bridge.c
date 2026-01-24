@@ -622,7 +622,13 @@ int health_psych_self_calm(
     health_agent_psych_state_t* state,
     const health_agent_psych_config_t* config
 ) {
-    if (!state) return -1;
+    if (!state) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
+
+        return -1;
+
+    }
     if (config && !config->enable_self_calming) return 0;
 
     state->self_calming_active = true;

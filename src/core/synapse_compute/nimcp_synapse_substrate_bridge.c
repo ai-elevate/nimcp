@@ -261,6 +261,8 @@ synapse_substrate_bridge_t* synapse_substrate_bridge_create(
     /* Guard: require substrate */
     if (!substrate) {
         NIMCP_LOGGING_ERROR("Cannot create bridge without substrate");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "substrate is NULL");
+
         return NULL;
     }
 
@@ -268,6 +270,8 @@ synapse_substrate_bridge_t* synapse_substrate_bridge_create(
         nimcp_calloc(1, sizeof(synapse_substrate_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Bridge allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

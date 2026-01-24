@@ -152,6 +152,8 @@ language_substrate_bridge_t* language_substrate_bridge_create(
         nimcp_calloc(1, sizeof(language_substrate_bridge_t));
     if (!bridge) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -197,7 +199,13 @@ int language_substrate_bridge_connect_substrate(
     language_substrate_bridge_t* bridge,
     neural_substrate_t* substrate)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->substrate = substrate;
     return 0;
 }
@@ -207,7 +215,13 @@ int language_substrate_bridge_connect_substrate(
 //=============================================================================
 
 int language_substrate_bridge_update(language_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->active) return 0;
 
     /* Natural recovery */

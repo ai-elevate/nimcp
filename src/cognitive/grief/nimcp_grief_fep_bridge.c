@@ -59,6 +59,8 @@ grief_fep_bridge_t* grief_fep_create(
     grief_fep_bridge_t* bridge = nimcp_malloc(sizeof(grief_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate grief FEP bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 

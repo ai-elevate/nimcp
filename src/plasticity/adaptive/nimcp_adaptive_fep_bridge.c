@@ -48,6 +48,8 @@ adaptive_fep_bridge_t* adaptive_fep_bridge_create(const adaptive_fep_config_t* c
     adaptive_fep_bridge_t* bridge = (adaptive_fep_bridge_t*)nimcp_malloc(sizeof(adaptive_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
 
@@ -123,7 +125,13 @@ int adaptive_fep_bridge_connect_adaptive(adaptive_fep_bridge_t* bridge,
 }
 
 int adaptive_fep_bridge_disconnect(adaptive_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -213,7 +221,13 @@ float adaptive_fep_get_effective_adaptation_rate(const adaptive_fep_bridge_t* br
  * ============================================================================ */
 
 int adaptive_fep_report_sparsity(adaptive_fep_bridge_t* bridge, float sparsity) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->feedback.measured_sparsity = sparsity;
@@ -229,7 +243,13 @@ int adaptive_fep_report_sparsity(adaptive_fep_bridge_t* bridge, float sparsity) 
 
 int adaptive_fep_report_threshold_changes(adaptive_fep_bridge_t* bridge,
                                            float threshold_delta) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->stats.threshold_updates++;
@@ -254,7 +274,13 @@ float adaptive_fep_compute_sparsity_precision(const adaptive_fep_bridge_t* bridg
  * ============================================================================ */
 
 int adaptive_fep_bridge_update(adaptive_fep_bridge_t* bridge, uint64_t delta_ms) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 

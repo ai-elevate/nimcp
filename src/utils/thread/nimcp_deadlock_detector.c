@@ -237,7 +237,15 @@ void deadlock_detector_shutdown(void) {
 }
 
 bool tracked_mutex_init(tracked_mutex_t* mutex, const char* name, uint32_t timeout_ms) {
-    if (!mutex) return false;
+    if (!mutex) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "tracked_mutex_init: mutex is NULL");
+
+            return false;
+
+        }
 
     // Initialize underlying mutex
     if (pthread_mutex_init(&mutex->mutex, NULL) != 0) {
@@ -291,7 +299,15 @@ void tracked_mutex_destroy(tracked_mutex_t* mutex) {
 }
 
 bool tracked_mutex_lock(tracked_mutex_t* mutex) {
-    if (!mutex) return false;
+    if (!mutex) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "tracked_mutex_lock: mutex is NULL");
+
+            return false;
+
+        }
 
     /* Use atomic load to safely check g_initialized without holding the detector lock.
      * This avoids the race condition where g_initialized could change between check and use. */
@@ -402,7 +418,15 @@ bool tracked_mutex_lock(tracked_mutex_t* mutex) {
 }
 
 bool tracked_mutex_trylock(tracked_mutex_t* mutex) {
-    if (!mutex) return false;
+    if (!mutex) {
+
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "tracked_mutex_trylock: mutex is NULL");
+
+            return false;
+
+        }
 
     int result = pthread_mutex_trylock(&mutex->mutex);
     if (result == 0) {
@@ -454,7 +478,11 @@ void tracked_mutex_unlock(tracked_mutex_t* mutex) {
 
 uint32_t deadlock_detector_check(void) {
     if (!g_initialized || !g_config.enable_detector) {
-        return 0;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "deadlock_detector_check: invalid parameters");
+
+            return 0;
     }
 
     lock_detector();
@@ -572,7 +600,11 @@ bool deadlock_detector_is_enabled(void) {
     /* Use atomic load to avoid race condition on g_initialized */
     bool initialized = __atomic_load_n(&g_initialized, __ATOMIC_ACQUIRE);
     if (!initialized) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+
+                "deadlock_detector_is_enabled: initialized is NULL");
+
+            return false;
     }
     lock_detector();
     bool enabled = g_config.enable_detector;

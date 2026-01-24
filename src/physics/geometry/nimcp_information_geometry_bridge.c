@@ -163,14 +163,26 @@ int info_geom_bridge_register_kg(info_geom_bridge_t bridge, brain_kg_t* kg)
 
 int info_geom_bridge_register_exception(info_geom_bridge_t bridge, void* handler)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->exception_handler = handler;
     return 0;
 }
 
 int info_geom_bridge_register_bio_async(info_geom_bridge_t bridge, void* channel)
 {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     bridge->bio_async_channel = channel;
     return 0;
 }

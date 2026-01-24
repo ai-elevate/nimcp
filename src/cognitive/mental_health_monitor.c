@@ -617,12 +617,16 @@ mental_health_monitor_t* mental_health_create_default(void) {
 mental_health_monitor_t* mental_health_create(const mental_health_config_t* config) {
     if (!config) {
         set_error("mental_health_create: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
     mental_health_monitor_t* monitor = nimcp_calloc(1, sizeof(mental_health_monitor_t));
     if (!monitor) {
         set_error("mental_health_create: Out of memory");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "monitor is NULL");
+
         return NULL;
     }
 

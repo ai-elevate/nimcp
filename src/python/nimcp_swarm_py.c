@@ -71,6 +71,8 @@ static PyObject* SwarmStats_FromC(const swarm_stats_t* stats)
 {
     SwarmStatsObject* obj = PyObject_New(SwarmStatsObject, &SwarmStatsType);
     if (obj == NULL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "obj is NULL");
+
         return NULL;
     }
 
@@ -674,6 +676,8 @@ static PyObject* SwarmBrain_get_stats(SwarmBrainObject* self, PyObject* Py_UNUSE
     bool success = swarm_brain_get_stats(self->swarm, &stats);
     if (!success) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to get stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "success is NULL");
+
         return NULL;
     }
 

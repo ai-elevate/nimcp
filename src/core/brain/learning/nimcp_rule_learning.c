@@ -69,7 +69,11 @@ int brain_learn_rule_from_examples(brain_t brain, const rule_example_t* examples
 bool extract_rule_pattern(const rule_example_t* examples, uint32_t count,
                           const char* label, char* rule_out, size_t rule_size) {
     if (!examples || count == 0 || !label || !rule_out) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "extract_rule_pattern: invalid parameters");
+
+            return false;
     }
 
     // Find common features (threshold: present in >80% of examples)
@@ -126,7 +130,11 @@ bool extract_rule_pattern(const rule_example_t* examples, uint32_t count,
 
 bool add_learned_rule_to_kb(brain_t brain, const char* rule, float confidence) {
     if (!brain || !rule) {
-        return false;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+
+                "add_learned_rule_to_kb: invalid parameters");
+
+            return false;
     }
 
     // In a full implementation, this would integrate with the KB module

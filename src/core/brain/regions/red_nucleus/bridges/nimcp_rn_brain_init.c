@@ -25,7 +25,13 @@ static const char* rn_version_string = "1.0.0";
 //=============================================================================
 
 int rn_init_default_config(rn_init_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->enable_command_queue = true;
     config->enable_learning = true;
@@ -47,7 +53,13 @@ int rn_init_default_config(rn_init_config_t* config) {
 //=============================================================================
 
 int rn_brain_init_register(brain_t brain) {
-    if (!brain) return -1;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return -1;
+
+    }
 
     rn_init_config_t config;
     rn_init_default_config(&config);
@@ -176,7 +188,13 @@ int rn_brain_init_create(
 }
 
 int rn_brain_init_destroy(brain_t brain) {
-    if (!brain) return -1;
+    if (!brain) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
+        return -1;
+
+    }
 
     /* Get Red Nucleus from brain */
     /* nimcp_red_nucleus_t* rn = brain_get_red_nucleus(brain); */
@@ -196,7 +214,13 @@ int rn_init_command_queue(
     struct nimcp_red_nucleus* rn,
     uint32_t max_commands
 ) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
 
     /* Command queue is allocated by rn_create based on config */
     /* Verify it's ready */
@@ -215,7 +239,13 @@ int rn_init_learning(
     struct nimcp_red_nucleus* rn,
     float base_learning_rate
 ) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
 
     /* Initialize learning state for each effector */
     for (int i = 0; i < RN_EFFECTOR_COUNT; i++) {
@@ -233,7 +263,13 @@ int rn_init_learning(
 }
 
 int rn_init_cerebellar(struct nimcp_red_nucleus* rn) {
-    if (!rn) return -1;
+    if (!rn) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "rn is NULL");
+
+        return -1;
+
+    }
 
     /* Initialize cerebellar integration state */
     memset(&rn->dentate_input, 0, sizeof(rn->dentate_input));

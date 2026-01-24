@@ -142,6 +142,8 @@ cortical_oscillation_integration_t* cortical_oscillation_create(
     /* Validate inputs */
     if (!hypercolumn) {
         NIMCP_LOGGING_ERROR("Null hypercolumn pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hypercolumn is NULL");
+
         return NULL;
     }
 
@@ -150,6 +152,8 @@ cortical_oscillation_integration_t* cortical_oscillation_create(
         (cortical_oscillation_integration_t*)nimcp_malloc(sizeof(cortical_oscillation_integration_t));
     if (!integration) {
         NIMCP_LOGGING_ERROR("Failed to allocate integration structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "integration is NULL");
+
         return NULL;
     }
 

@@ -127,7 +127,13 @@ static float compute_geometric_mean(float* factors, uint32_t count) {
 //=============================================================================
 
 int physics_cog_default_config(physics_cog_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     config->enable_physics_to_cog = true;
     config->enable_cog_to_physics = true;
@@ -210,7 +216,13 @@ int physics_cog_connect_physics(
     nimcp_hh_population_t* hh_pop,
     nimcp_ephaptic_system_t* ephaptic
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->thermo = thermo;
     bridge->hh_pop = hh_pop;
@@ -224,7 +236,13 @@ int physics_cog_connect_physics(
 }
 
 int physics_cog_reset(physics_cog_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Reset state */
     memset(&bridge->current_state, 0, sizeof(bridge->current_state));
@@ -269,7 +287,13 @@ int physics_cog_report_state(
     physics_cog_bridge_t* bridge,
     physics_cog_state_t* state
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Sample HH population */
     if (bridge->hh_pop) {
@@ -312,7 +336,13 @@ int physics_cog_compute_capacity(
     physics_cog_bridge_t* bridge,
     physics_cog_capacity_t* capacity
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     /* Report state first to get current values */
     physics_cog_report_state(bridge, NULL);
@@ -460,7 +490,13 @@ int physics_cog_receive_feedback(
 }
 
 int physics_cog_apply_modulation(physics_cog_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
     if (!bridge->config.enable_cog_to_physics) return 0;
 
     /* Compute excitability modulation from attention and arousal */
@@ -494,7 +530,13 @@ int physics_cog_set_attention(
     physics_cog_bridge_t* bridge,
     float attention
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->current_feedback.attention_level =
         fmaxf(0.0f, fminf(1.0f, attention));
@@ -506,7 +548,13 @@ int physics_cog_set_arousal(
     physics_cog_bridge_t* bridge,
     float arousal
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->current_feedback.arousal_level =
         fmaxf(0.0f, fminf(1.0f, arousal));
@@ -522,7 +570,13 @@ int physics_cog_update(
     physics_cog_bridge_t* bridge,
     float dt
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
+        return -1;
+
+    }
 
     bridge->update_timer += dt;
 

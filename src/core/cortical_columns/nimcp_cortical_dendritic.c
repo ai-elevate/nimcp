@@ -274,6 +274,8 @@ cortical_dendritic_t* cortical_dendritic_create(
     );
     if (!dend) {
         NIMCP_LOGGING_ERROR("cortical_dendritic_create: failed to allocate structure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dend is NULL");
+
         return NULL;
     }
 
@@ -729,7 +731,13 @@ int cortical_dendritic_connect_bio_async(cortical_dendritic_t* dend) {
 
 int cortical_dendritic_disconnect_bio_async(cortical_dendritic_t* dend) {
     // Guard clause
-    if (!dend) return -1;
+    if (!dend) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dend is NULL");
+
+        return -1;
+
+    }
 
     nimcp_mutex_lock(&dend->mutex);
 

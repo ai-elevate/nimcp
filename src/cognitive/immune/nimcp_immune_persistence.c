@@ -62,7 +62,13 @@ static void fill_counts_from_system(
  * HOW:  Set all save flags to true, no compression/encryption
  */
 int immune_persistence_default_config(immune_persistence_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
+        return -1;
+
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -240,7 +246,13 @@ static int read_counts(FILE* file, immune_persistence_counts_t* counts) {
  * @brief Validate header contents
  */
 static int validate_header(const immune_persistence_header_t* header) {
-    if (!header) return -1;
+    if (!header) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "header is NULL");
+
+        return -1;
+
+    }
 
     /* Check magic */
     if (memcmp(header->magic, IMMUNE_PERSISTENCE_MAGIC,
@@ -263,7 +275,13 @@ static int validate_header(const immune_persistence_header_t* header) {
  * @brief Validate counts against capacity limits
  */
 static int validate_counts(const immune_persistence_counts_t* counts) {
-    if (!counts) return -1;
+    if (!counts) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "counts is NULL");
+
+        return -1;
+
+    }
 
     /* Check against maximum capacities */
     if (counts->antigen_count > BRAIN_IMMUNE_MAX_ANTIGENS) {
@@ -703,7 +721,13 @@ int immune_persistence_validate_file(
     const char* filepath,
     bool verify_checksum
 ) {
-    if (!filepath) return -1;
+    if (!filepath) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "filepath is NULL");
+
+        return -1;
+
+    }
 
     FILE* file = fopen(filepath, "rb");
     if (!file) {
@@ -745,10 +769,22 @@ int immune_persistence_get_file_info(
     immune_persistence_header_t* header,
     immune_persistence_counts_t* counts
 ) {
-    if (!filepath) return -1;
+    if (!filepath) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "filepath is NULL");
+
+        return -1;
+
+    }
 
     FILE* file = fopen(filepath, "rb");
-    if (!file) return -1;
+    if (!file) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "file is NULL");
+
+        return -1;
+
+    }
 
     int result = -1;
 
@@ -781,7 +817,13 @@ int immune_persistence_create_backup(
     const char* filepath,
     const char* backup_suffix
 ) {
-    if (!filepath) return -1;
+    if (!filepath) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "filepath is NULL");
+
+        return -1;
+
+    }
 
     /* Check if source file exists */
     FILE* src = fopen(filepath, "rb");
@@ -824,7 +866,13 @@ int immune_persistence_create_backup(
  * @brief Clear immune system state
  */
 int immune_persistence_clear_state(brain_immune_system_t* system) {
-    if (!system) return -1;
+    if (!system) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
+
+        return -1;
+
+    }
 
     /* Clear counts */
     system->antigen_count = 0;
@@ -883,7 +931,13 @@ int immune_persistence_save_ex(
     const immune_persistence_config_t* config,
     immune_persistence_result_t* result
 ) {
-    if (!result) return -1;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return -1;
+
+    }
 
     memset(result, 0, sizeof(*result));
     uint64_t start_time = get_timestamp_ms();
@@ -910,7 +964,13 @@ int immune_persistence_load_ex(
     const immune_persistence_config_t* config,
     immune_persistence_result_t* result
 ) {
-    if (!result) return -1;
+    if (!result) {
+
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "result is NULL");
+
+        return -1;
+
+    }
 
     memset(result, 0, sizeof(*result));
     uint64_t start_time = get_timestamp_ms();

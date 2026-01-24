@@ -190,6 +190,8 @@ hemispheric_fep_bridge_t* hemispheric_fep_create(
     // Validate inputs
     if (!brain) {
         NIMCP_LOGGING_ERROR("hemispheric_fep_create: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brain is NULL");
+
         return NULL;
     }
 
@@ -197,6 +199,8 @@ hemispheric_fep_bridge_t* hemispheric_fep_create(
     hemispheric_fep_bridge_t* bridge = nimcp_malloc(sizeof(hemispheric_fep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("hemispheric_fep_create: allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+
         return NULL;
     }
     memset(bridge, 0, sizeof(hemispheric_fep_bridge_t));

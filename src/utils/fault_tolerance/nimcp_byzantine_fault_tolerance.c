@@ -156,6 +156,8 @@ bft_config_t bft_default_config(void) {
 bft_context_t* bft_create(const bft_config_t* config) {
     if (!config) {
         LOG_ERROR("BFT", "NULL config provided");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
+
         return NULL;
     }
 
@@ -169,6 +171,8 @@ bft_context_t* bft_create(const bft_config_t* config) {
     bft_context_t* ctx = nimcp_malloc(sizeof(bft_context_t));
     if (!ctx) {
         LOG_ERROR("BFT", "Failed to allocate context");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
+
         return NULL;
     }
 
