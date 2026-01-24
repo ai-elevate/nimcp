@@ -33,7 +33,8 @@
 
 bool nimcp_brain_factory_init_pr_memory_subsystem(struct brain_struct* brain) {
     if (!brain) {
-        LOG_ERROR(LOG_MODULE, "NULL brain pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "nimcp_brain_factory_init_pr_memory_subsystem: brain is NULL");
         return false;
     }
 
