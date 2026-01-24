@@ -67,6 +67,7 @@ subthalamic_nucleus_t* subthalamic_create(const subthalamic_config_t* config) {
     stn->neurons = nimcp_calloc(config->num_neurons, sizeof(stn_neuron_t));
     if (!stn->neurons) {
         NIMCP_LOGGING_ERROR("Failed to allocate STN neurons");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "subthalamic_create: failed to allocate neurons");
         nimcp_free(stn);
         return NULL;
     }
@@ -87,6 +88,7 @@ subthalamic_nucleus_t* subthalamic_create(const subthalamic_config_t* config) {
 
     if (!stn->output || !stn->cortical_input || !stn->gpe_input) {
         NIMCP_LOGGING_ERROR("Failed to allocate STN buffers");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "subthalamic_create: failed to allocate buffers");
         if (stn->output) nimcp_free(stn->output);
         if (stn->cortical_input) nimcp_free(stn->cortical_input);
         if (stn->gpe_input) nimcp_free(stn->gpe_input);
@@ -120,6 +122,7 @@ subthalamic_nucleus_t* subthalamic_create(const subthalamic_config_t* config) {
     stn->mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!stn->mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate STN mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "subthalamic_create: failed to allocate mutex");
         if (stn->hyperdirect_buffer) nimcp_free(stn->hyperdirect_buffer);
         if (stn->indirect_buffer) nimcp_free(stn->indirect_buffer);
         nimcp_free(stn->output);
@@ -209,7 +212,14 @@ int subthalamic_reset(subthalamic_nucleus_t* stn) {
 int subthalamic_set_cortical_input(subthalamic_nucleus_t* stn,
                                     const float* input,
                                     bool global) {
-    if (!stn || !input) return -1;
+    if (!stn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subthalamic_set_cortical_input: stn is NULL");
+        return -1;
+    }
+    if (!input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subthalamic_set_cortical_input: input is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(stn->mutex);
 
@@ -244,7 +254,14 @@ int subthalamic_set_cortical_input(subthalamic_nucleus_t* stn,
 }
 
 int subthalamic_set_gpe_input(subthalamic_nucleus_t* stn, const float* input) {
-    if (!stn || !input) return -1;
+    if (!stn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subthalamic_set_gpe_input: stn is NULL");
+        return -1;
+    }
+    if (!input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subthalamic_set_gpe_input: input is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(stn->mutex);
     memcpy(stn->gpe_input, input, stn->num_actions * sizeof(float));
@@ -377,7 +394,14 @@ int subthalamic_process(subthalamic_nucleus_t* stn) {
 }
 
 int subthalamic_get_output(const subthalamic_nucleus_t* stn, float* output) {
-    if (!stn || !output) return -1;
+    if (!stn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subthalamic_get_output: stn is NULL");
+        return -1;
+    }
+    if (!output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subthalamic_get_output: output is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)stn->mutex);
     memcpy(output, stn->output, stn->num_actions * sizeof(float));
@@ -387,7 +411,10 @@ int subthalamic_get_output(const subthalamic_nucleus_t* stn, float* output) {
 }
 
 float subthalamic_get_global_output(const subthalamic_nucleus_t* stn) {
-    if (!stn) return 0.0f;
+    if (!stn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subthalamic_get_global_output: stn is NULL");
+        return 0.0f;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)stn->mutex);
     float global = stn->global_output;
@@ -430,7 +457,10 @@ int subthalamic_step(subthalamic_nucleus_t* stn, float dt) {
 }
 
 stn_mode_t subthalamic_get_mode(const subthalamic_nucleus_t* stn) {
-    if (!stn) return STN_MODE_BASELINE;
+    if (!stn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subthalamic_get_mode: stn is NULL");
+        return STN_MODE_BASELINE;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)stn->mutex);
     stn_mode_t mode = stn->mode;
@@ -444,7 +474,14 @@ stn_mode_t subthalamic_get_mode(const subthalamic_nucleus_t* stn) {
 //=============================================================================
 
 int subthalamic_get_stats(const subthalamic_nucleus_t* stn, stn_stats_t* stats) {
-    if (!stn || !stats) return -1;
+    if (!stn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subthalamic_get_stats: stn is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "subthalamic_get_stats: stats is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock((nimcp_mutex_t*)stn->mutex);
     *stats = stn->stats;

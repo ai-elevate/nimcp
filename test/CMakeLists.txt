@@ -1314,10 +1314,8 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/core/geometry")
     add_subdirectory(regression/core/geometry)
 endif()
 
-if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/e2e/core/geometry")
-    message(STATUS "Adding surface geometry E2E tests...")
-    add_subdirectory(e2e/core/geometry)
-endif()
+# NOTE: e2e/core/geometry is included via test/e2e/core/CMakeLists.txt
+# to avoid duplicate add_subdirectory
 
 # ============================================================================
 # Cortical Columns Tests

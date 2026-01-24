@@ -13,3 +13,13 @@ message(STATUS "-- Configuring Core Layer E2E Tests")
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/neural_substrate/CMakeLists.txt)
     add_subdirectory(neural_substrate)
 endif()
+
+# Include Brain E2E tests (hemispheric, thalamic, regions)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/brain/CMakeLists.txt)
+    add_subdirectory(brain)
+endif()
+
+# Include Geometry E2E tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/geometry/CMakeLists.txt)
+    add_subdirectory(geometry)
+endif()

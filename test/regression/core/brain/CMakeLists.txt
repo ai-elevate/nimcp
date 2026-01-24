@@ -141,3 +141,8 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/hemispheric")
     add_subdirectory(hemispheric)
 endif()
+
+# Add thalamic subdirectory (thalamus, thalamic router, subthalamic nucleus)
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/thalamic")
+    add_subdirectory(thalamic)
+endif()

@@ -81,7 +81,10 @@ static void thalamic_router_on_sleep_state_change(sleep_state_t new_state, void*
 }
 
 int thalamic_router_sleep_default_config(thalamic_router_sleep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_sleep_default_config: config is NULL");
+        return -1;
+    }
     config->enable_routing_modulation = true;
     config->enable_queue_modulation = true;
     config->enable_attention_modulation = true;
@@ -168,7 +171,10 @@ void thalamic_router_sleep_bridge_destroy(thalamic_router_sleep_bridge_t bridge)
 }
 
 int thalamic_router_sleep_update(thalamic_router_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -206,7 +212,14 @@ int thalamic_router_sleep_get_effects(
     const thalamic_router_sleep_bridge_t bridge,
     thalamic_router_sleep_effects_t* effects)
 {
-    if (!bridge || !effects) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_sleep_get_effects: bridge is NULL");
+        return -1;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_sleep_get_effects: effects is NULL");
+        return -1;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -216,7 +229,10 @@ int thalamic_router_sleep_get_effects(
 float thalamic_router_sleep_get_routing_efficiency(
     const thalamic_router_sleep_bridge_t bridge)
 {
-    if (!bridge) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_sleep_get_routing_efficiency: bridge is NULL");
+        return 1.0f;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.routing_efficiency_factor;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -226,7 +242,10 @@ float thalamic_router_sleep_get_routing_efficiency(
 float thalamic_router_sleep_get_queue_capacity(
     const thalamic_router_sleep_bridge_t bridge)
 {
-    if (!bridge) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_sleep_get_queue_capacity: bridge is NULL");
+        return 1.0f;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.queue_capacity_factor;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -236,7 +255,10 @@ float thalamic_router_sleep_get_queue_capacity(
 float thalamic_router_sleep_get_attention_threshold(
     const thalamic_router_sleep_bridge_t bridge)
 {
-    if (!bridge) return 0.3f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_sleep_get_attention_threshold: bridge is NULL");
+        return 0.3f;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.attention_threshold;
     nimcp_mutex_unlock(bridge->base.mutex);

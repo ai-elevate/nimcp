@@ -184,6 +184,15 @@ protected:
         brain_immune_set_recovery_callback(immune, on_recovery_completed, nullptr);
         brain_immune_set_cytokine_callback(immune, on_cytokine_released, nullptr);
 
+        // Initialize and connect exception-immune integration
+        // This is CRITICAL: nimcp_exception_present_to_immune() uses this global connection
+        nimcp_exception_immune_config_t ex_immune_config;
+        nimcp_exception_immune_default_config(&ex_immune_config);
+        ex_immune_config.enable_auto_present = true;
+        ex_immune_config.async_presentation = false;  // Synchronous for testing
+        ASSERT_EQ(0, nimcp_exception_immune_init(&ex_immune_config));
+        ASSERT_EQ(0, nimcp_exception_immune_connect(immune));
+
         // Create immune bridge
         hypo_immune_config_t bridge_config;
         hypo_immune_bridge_default_config(&bridge_config);
@@ -196,6 +205,10 @@ protected:
     }
 
     void TearDown() override {
+        // Disconnect exception-immune integration before destroying immune system
+        nimcp_exception_immune_disconnect();
+        nimcp_exception_immune_shutdown();
+
         if (immune_bridge) {
             hypo_immune_bridge_destroy(immune_bridge);
             immune_bridge = nullptr;
@@ -254,11 +267,25 @@ TEST_F(HypothalamusExceptionPipelineTest, FullPipelineErrorHandling) {
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Trigger error in orchestrator", MAX_ERROR_LATENCY_MS);
+    // Check connection state before triggering exception
+    bool is_connected = nimcp_exception_immune_is_connected();
+    fprintf(stderr, "DEBUG: Exception-immune connected: %s\n", is_connected ? "YES" : "NO");
+    fflush(stderr);
+
     // Simulate an error condition
     TriggerTestException(NIMCP_ERROR_INVALID_STATE, "Test orchestrator error");
 
+    // Check exception-immune stats
+    nimcp_exception_immune_stats_t ex_stats;
+    nimcp_exception_immune_get_stats(&ex_stats);
+    fprintf(stderr, "DEBUG: exceptions_presented (ex_immune): %lu\n", (unsigned long)ex_stats.exceptions_presented);
+    fflush(stderr);
+
     // Wait for exception to be processed
     WaitForExceptionProcessing(1);
+
+    fprintf(stderr, "DEBUG: tracker.exceptions_presented: %d\n", g_exception_tracker.exceptions_presented.load());
+    fflush(stderr);
 
     EXPECT_GE(g_exception_tracker.exceptions_presented.load(), 1);
     E2E_STAGE_END();

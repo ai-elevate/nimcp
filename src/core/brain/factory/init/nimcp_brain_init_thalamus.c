@@ -92,6 +92,7 @@ void nimcp_brain_thal_default_config(brain_t brain, thalamus_config_t* config) {
 bool nimcp_brain_factory_init_thalamus_subsystem(brain_t brain) {
     if (!brain) {
         NIMCP_LOGGING_ERROR("Cannot init thalamus: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_factory_init_thalamus_subsystem: brain is NULL");
         return false;
     }
 
@@ -113,6 +114,7 @@ bool nimcp_brain_factory_init_thalamus_subsystem(brain_t brain) {
     b->thalamus = thalamus_create(&config);
     if (!b->thalamus) {
         NIMCP_LOGGING_ERROR("Failed to create thalamus");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "nimcp_brain_factory_init_thalamus_subsystem: failed to create thalamus");
         return false;
     }
 
@@ -161,7 +163,10 @@ void nimcp_brain_thal_destroy(brain_t brain) {
 //=============================================================================
 
 int nimcp_brain_thal_step(brain_t brain, float dt_ms) {
-    if (!brain) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_step: brain is NULL");
+        return -1;
+    }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
@@ -188,7 +193,18 @@ int nimcp_brain_thal_relay_visual(brain_t brain,
                                    uint32_t input_size,
                                    float* v1_output,
                                    uint32_t output_size) {
-    if (!brain || !retinal_input || !v1_output) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_relay_visual: brain is NULL");
+        return -1;
+    }
+    if (!retinal_input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_relay_visual: retinal_input is NULL");
+        return -1;
+    }
+    if (!v1_output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_relay_visual: v1_output is NULL");
+        return -1;
+    }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
@@ -208,7 +224,18 @@ int nimcp_brain_thal_relay_auditory(brain_t brain,
                                      uint32_t input_size,
                                      float* a1_output,
                                      uint32_t output_size) {
-    if (!brain || !ic_input || !a1_output) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_relay_auditory: brain is NULL");
+        return -1;
+    }
+    if (!ic_input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_relay_auditory: ic_input is NULL");
+        return -1;
+    }
+    if (!a1_output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_relay_auditory: a1_output is NULL");
+        return -1;
+    }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
@@ -228,7 +255,18 @@ int nimcp_brain_thal_relay_motor(brain_t brain,
                                   uint32_t bg_size,
                                   float* motor_output,
                                   uint32_t output_size) {
-    if (!brain || !bg_input || !motor_output) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_relay_motor: brain is NULL");
+        return -1;
+    }
+    if (!bg_input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_relay_motor: bg_input is NULL");
+        return -1;
+    }
+    if (!motor_output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_relay_motor: motor_output is NULL");
+        return -1;
+    }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
@@ -248,7 +286,18 @@ int nimcp_brain_thal_relay_executive(brain_t brain,
                                       uint32_t input_size,
                                       float* pfc_output,
                                       uint32_t output_size) {
-    if (!brain || !input || !pfc_output) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_relay_executive: brain is NULL");
+        return -1;
+    }
+    if (!input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_relay_executive: input is NULL");
+        return -1;
+    }
+    if (!pfc_output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_relay_executive: pfc_output is NULL");
+        return -1;
+    }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
@@ -269,7 +318,18 @@ int nimcp_brain_thal_relay(brain_t brain,
                             uint32_t input_size,
                             float* output,
                             uint32_t output_size) {
-    if (!brain || !input || !output) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_relay: brain is NULL");
+        return -1;
+    }
+    if (!input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_relay: input is NULL");
+        return -1;
+    }
+    if (!output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_relay: output is NULL");
+        return -1;
+    }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
@@ -289,11 +349,15 @@ int nimcp_brain_thal_relay(brain_t brain,
 //=============================================================================
 
 int nimcp_brain_thal_set_attention(brain_t brain, float attention) {
-    if (!brain) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_set_attention: brain is NULL");
+        return -1;
+    }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
     if (!b->thalamus_enabled || !b->thalamus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "nimcp_brain_thal_set_attention: thalamus not enabled");
         return -1;
     }
 
@@ -308,11 +372,15 @@ int nimcp_brain_thal_set_attention(brain_t brain, float attention) {
 int nimcp_brain_thal_set_nucleus_attention(brain_t brain,
                                             thal_nucleus_type_t nucleus_type,
                                             float attention) {
-    if (!brain) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_set_nucleus_attention: brain is NULL");
+        return -1;
+    }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
     if (!b->thalamus_enabled || !b->thalamus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "nimcp_brain_thal_set_nucleus_attention: thalamus not enabled");
         return -1;
     }
 
@@ -320,11 +388,15 @@ int nimcp_brain_thal_set_nucleus_attention(brain_t brain,
 }
 
 int nimcp_brain_thal_set_arousal(brain_t brain, float arousal) {
-    if (!brain) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_set_arousal: brain is NULL");
+        return -1;
+    }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
     if (!b->thalamus_enabled || !b->thalamus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "nimcp_brain_thal_set_arousal: thalamus not enabled");
         return -1;
     }
 
@@ -334,11 +406,15 @@ int nimcp_brain_thal_set_arousal(brain_t brain, float arousal) {
 int nimcp_brain_thal_apply_trn_inhibition(brain_t brain,
                                            thal_nucleus_type_t nucleus_type,
                                            float inhibition) {
-    if (!brain) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_apply_trn_inhibition: brain is NULL");
+        return -1;
+    }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
     if (!b->thalamus_enabled || !b->thalamus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "nimcp_brain_thal_apply_trn_inhibition: thalamus not enabled");
         return -1;
     }
 
@@ -352,11 +428,15 @@ int nimcp_brain_thal_apply_trn_inhibition(brain_t brain,
 int nimcp_brain_thal_set_mode(brain_t brain,
                                thal_nucleus_type_t nucleus_type,
                                thal_firing_mode_t mode) {
-    if (!brain) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_set_mode: brain is NULL");
+        return -1;
+    }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
     if (!b->thalamus_enabled || !b->thalamus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "nimcp_brain_thal_set_mode: thalamus not enabled");
         return -1;
     }
 
@@ -365,7 +445,10 @@ int nimcp_brain_thal_set_mode(brain_t brain,
 
 thal_firing_mode_t nimcp_brain_thal_get_mode(brain_t brain,
                                               thal_nucleus_type_t nucleus_type) {
-    if (!brain) return THAL_MODE_TONIC;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_get_mode: brain is NULL");
+        return THAL_MODE_TONIC;
+    }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
@@ -378,11 +461,15 @@ thal_firing_mode_t nimcp_brain_thal_get_mode(brain_t brain,
 
 int nimcp_brain_thal_trigger_burst(brain_t brain,
                                     thal_nucleus_type_t nucleus_type) {
-    if (!brain) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_trigger_burst: brain is NULL");
+        return -1;
+    }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
     if (!b->thalamus_enabled || !b->thalamus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "nimcp_brain_thal_trigger_burst: thalamus not enabled");
         return -1;
     }
 
@@ -468,12 +555,20 @@ void nimcp_brain_thal_on_sleep_wake_change(brain_t brain, bool is_awake) {
 //=============================================================================
 
 int nimcp_brain_thal_get_stats(brain_t brain, thalamus_stats_t* stats) {
-    if (!brain || !stats) return -1;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_get_stats: brain is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_get_stats: stats is NULL");
+        return -1;
+    }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
     if (!b->thalamus_enabled || !b->thalamus) {
         memset(stats, 0, sizeof(*stats));
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "nimcp_brain_thal_get_stats: thalamus not enabled");
         return -1;
     }
 
@@ -487,11 +582,15 @@ bool nimcp_brain_thal_is_enabled(brain_t brain) {
 }
 
 float nimcp_brain_thal_get_attention(brain_t brain) {
-    if (!brain) return -1.0f;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_get_attention: brain is NULL");
+        return -1.0f;
+    }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
     if (!b->thalamus_enabled || !b->thalamus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "nimcp_brain_thal_get_attention: thalamus not enabled");
         return -1.0f;
     }
 
@@ -499,11 +598,15 @@ float nimcp_brain_thal_get_attention(brain_t brain) {
 }
 
 float nimcp_brain_thal_get_arousal(brain_t brain) {
-    if (!brain) return -1.0f;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_get_arousal: brain is NULL");
+        return -1.0f;
+    }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
     if (!b->thalamus_enabled || !b->thalamus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "nimcp_brain_thal_get_arousal: thalamus not enabled");
         return -1.0f;
     }
 
@@ -512,7 +615,10 @@ float nimcp_brain_thal_get_arousal(brain_t brain) {
 
 float nimcp_brain_thal_get_firing_rate(brain_t brain,
                                         thal_nucleus_type_t nucleus_type) {
-    if (!brain) return -1.0f;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_get_firing_rate: brain is NULL");
+        return -1.0f;
+    }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 
@@ -525,7 +631,10 @@ float nimcp_brain_thal_get_firing_rate(brain_t brain,
 
 float nimcp_brain_thal_get_tonic_fraction(brain_t brain,
                                            thal_nucleus_type_t nucleus_type) {
-    if (!brain) return -1.0f;
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nimcp_brain_thal_get_tonic_fraction: brain is NULL");
+        return -1.0f;
+    }
 
     struct brain_struct* b = (struct brain_struct*)brain;
 

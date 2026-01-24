@@ -106,7 +106,10 @@ void bgt_bridge_destroy(bgt_bridge_t* bridge) {
 }
 
 int bgt_bridge_reset(bgt_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgt_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     bridge->current_mode = BGT_MODE_NORMAL;
     bridge->current_attention = BGT_DEFAULT_ATTENTION;
@@ -127,13 +130,19 @@ int bgt_bridge_reset(bgt_bridge_t* bridge) {
  * ============================================================================ */
 
 int bgt_bridge_connect_bg(bgt_bridge_t* bridge, basal_ganglia_t* bg) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgt_bridge_connect_bg: bridge is NULL");
+        return -1;
+    }
     bridge->bg = bg;
     return 0;
 }
 
 int bgt_bridge_connect_thalamus(bgt_bridge_t* bridge, thalamus_t* thalamus) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgt_bridge_connect_thalamus: bridge is NULL");
+        return -1;
+    }
     bridge->thalamus = thalamus;
     return 0;
 }
@@ -153,7 +162,14 @@ int bgt_bridge_set_channel_map(
     uint32_t thal_channel,
     float weight
 ) {
-    if (!bridge || bg_action >= bridge->num_channels) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgt_bridge_set_channel_map: bridge is NULL");
+        return -1;
+    }
+    if (bg_action >= bridge->num_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgt_bridge_set_channel_map: bg_action out of range");
+        return -1;
+    }
 
     bridge->channels[bg_action].bg_action_id = bg_action;
     bridge->channels[bg_action].thal_channel = thal_channel;
@@ -164,7 +180,10 @@ int bgt_bridge_set_channel_map(
 }
 
 int bgt_bridge_create_default_mapping(bgt_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgt_bridge_create_default_mapping: bridge is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < bridge->num_channels; i++) {
         bridge->channels[i].bg_action_id = i;
@@ -180,7 +199,14 @@ float bgt_bridge_get_channel_weight(
     const bgt_bridge_t* bridge,
     uint32_t bg_action
 ) {
-    if (!bridge || bg_action >= bridge->num_channels) return -1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgt_bridge_get_channel_weight: bridge is NULL");
+        return -1.0f;
+    }
+    if (bg_action >= bridge->num_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgt_bridge_get_channel_weight: bg_action out of range");
+        return -1.0f;
+    }
     return bridge->channels[bg_action].weight;
 }
 
@@ -189,7 +215,14 @@ float bgt_bridge_get_channel_weight(
  * ============================================================================ */
 
 int bgt_bridge_relay(bgt_bridge_t* bridge, bgt_relay_result_t* result) {
-    if (!bridge || !result) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgt_bridge_relay: bridge is NULL");
+        return -1;
+    }
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgt_bridge_relay: result is NULL");
+        return -1;
+    }
 
     /* Get BG output if connected */
     if (bridge->bg) {
@@ -210,7 +243,18 @@ int bgt_bridge_relay_explicit(
     uint32_t num_actions,
     bgt_relay_result_t* result
 ) {
-    if (!bridge || !bg_output || !result) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgt_bridge_relay_explicit: bridge is NULL");
+        return -1;
+    }
+    if (!bg_output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgt_bridge_relay_explicit: bg_output is NULL");
+        return -1;
+    }
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgt_bridge_relay_explicit: result is NULL");
+        return -1;
+    }
 
     uint32_t nc = bridge->num_channels < num_actions ?
                   bridge->num_channels : num_actions;
@@ -307,7 +351,14 @@ float bgt_bridge_get_action_output(
     const bgt_bridge_t* bridge,
     uint32_t action_id
 ) {
-    if (!bridge || action_id >= bridge->num_channels) return -1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgt_bridge_get_action_output: bridge is NULL");
+        return -1.0f;
+    }
+    if (action_id >= bridge->num_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bgt_bridge_get_action_output: action_id out of range");
+        return -1.0f;
+    }
     return bridge->motor_output_buffer[action_id];
 }
 
@@ -316,25 +367,37 @@ float bgt_bridge_get_action_output(
  * ============================================================================ */
 
 int bgt_bridge_set_attention(bgt_bridge_t* bridge, float attention) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgt_bridge_set_attention: bridge is NULL");
+        return -1;
+    }
     bridge->current_attention = clamp(attention, 0.0f, 1.0f);
     return 0;
 }
 
 int bgt_bridge_set_urgency(bgt_bridge_t* bridge, float urgency) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgt_bridge_set_urgency: bridge is NULL");
+        return -1;
+    }
     bridge->current_urgency = clamp(urgency, 0.0f, 1.0f);
     return 0;
 }
 
 int bgt_bridge_set_trn_inhibition(bgt_bridge_t* bridge, float inhibition) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgt_bridge_set_trn_inhibition: bridge is NULL");
+        return -1;
+    }
     bridge->trn_inhibition = clamp(inhibition, 0.0f, 1.0f);
     return 0;
 }
 
 int bgt_bridge_set_mode(bgt_bridge_t* bridge, bgt_relay_mode_t mode) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgt_bridge_set_mode: bridge is NULL");
+        return -1;
+    }
     bridge->current_mode = mode;
     return 0;
 }
@@ -357,7 +420,14 @@ int bgt_bridge_get_stats(
     const bgt_bridge_t* bridge,
     bgt_bridge_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgt_bridge_get_stats: bridge is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bgt_bridge_get_stats: stats is NULL");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }

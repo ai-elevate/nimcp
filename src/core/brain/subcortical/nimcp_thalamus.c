@@ -134,6 +134,7 @@ thal_nucleus_t* thal_nucleus_create(const thal_nucleus_config_t* config) {
     thal_nucleus_t* nucleus = nimcp_malloc(sizeof(thal_nucleus_t));
     if (!nucleus) {
         NIMCP_LOGGING_ERROR("Failed to allocate nucleus");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "thal_nucleus_create: failed to allocate nucleus");
         return NULL;
     }
     memset(nucleus, 0, sizeof(thal_nucleus_t));
@@ -153,6 +154,7 @@ thal_nucleus_t* thal_nucleus_create(const thal_nucleus_config_t* config) {
     /* Allocate cells */
     nucleus->cells = nimcp_malloc(sizeof(thal_relay_cell_t) * nucleus->num_cells);
     if (!nucleus->cells) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "thal_nucleus_create: failed to allocate cells");
         nimcp_free(nucleus);
         return NULL;
     }
@@ -175,6 +177,7 @@ thal_nucleus_t* thal_nucleus_create(const thal_nucleus_config_t* config) {
 
     if (!nucleus->input_buffer || !nucleus->output_buffer ||
         !nucleus->channel_attention || !nucleus->channel_inhibition) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "thal_nucleus_create: failed to allocate buffers");
         thal_nucleus_destroy(nucleus);
         return NULL;
     }
@@ -235,6 +238,7 @@ static thalamic_reticular_nucleus_t* trn_create(uint32_t num_channels) {
     trn->collateral_input = nimcp_malloc(sizeof(float) * num_channels);
 
     if (!trn->inhibition_map || !trn->cortical_drive || !trn->collateral_input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "trn_create: failed to allocate buffers");
         nimcp_free(trn->inhibition_map);
         nimcp_free(trn->cortical_drive);
         nimcp_free(trn->collateral_input);
@@ -281,6 +285,7 @@ thalamus_t* thalamus_create(const thalamus_config_t* config) {
     thalamus_t* thal = nimcp_malloc(sizeof(thalamus_t));
     if (!thal) {
         NIMCP_LOGGING_ERROR("Failed to allocate thalamus");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "thalamus_create: failed to allocate thalamus");
         return NULL;
     }
     memset(thal, 0, sizeof(thalamus_t));
@@ -302,6 +307,7 @@ thalamus_t* thalamus_create(const thalamus_config_t* config) {
 
     if (!thal->lgn || !thal->mgn || !thal->vpl || !thal->vpm ||
         !thal->va || !thal->vl || !thal->pulvinar || !thal->md) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "thalamus_create: failed to create nuclei");
         thalamus_destroy(thal);
         return NULL;
     }
@@ -320,6 +326,7 @@ thalamus_t* thalamus_create(const thalamus_config_t* config) {
 
         thal->trn = trn_create(total_channels);
         if (!thal->trn) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "thalamus_create: failed to create TRN");
             thalamus_destroy(thal);
             return NULL;
         }
@@ -624,10 +631,16 @@ int thalamus_set_arousal(thalamus_t* thal, float arousal) {
 }
 
 float thalamus_get_attention(const thalamus_t* thal, thal_nucleus_type_t nucleus_type) {
-    if (!thal) return -1.0f;
+    if (!thal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamus_get_attention: thal is NULL");
+        return -1.0f;
+    }
 
     const thal_nucleus_t* nucleus = thalamus_get_nucleus_const(thal, nucleus_type);
-    if (!nucleus) return -1.0f;
+    if (!nucleus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "thalamus_get_attention: invalid nucleus type");
+        return -1.0f;
+    }
 
     return nucleus->attention_level;
 }
@@ -702,10 +715,16 @@ thal_firing_mode_t thalamus_get_mode(
     const thalamus_t* thal,
     thal_nucleus_type_t nucleus_type
 ) {
-    if (!thal) return THAL_MODE_TONIC;
+    if (!thal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamus_get_mode: thal is NULL");
+        return THAL_MODE_TONIC;
+    }
 
     const thal_nucleus_t* nucleus = thalamus_get_nucleus_const(thal, nucleus_type);
-    if (!nucleus) return THAL_MODE_TONIC;
+    if (!nucleus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "thalamus_get_mode: invalid nucleus type");
+        return THAL_MODE_TONIC;
+    }
 
     return nucleus->dominant_mode;
 }
@@ -735,10 +754,16 @@ float thalamus_get_tonic_fraction(
     const thalamus_t* thal,
     thal_nucleus_type_t nucleus_type
 ) {
-    if (!thal) return 0.0f;
+    if (!thal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamus_get_tonic_fraction: thal is NULL");
+        return 0.0f;
+    }
 
     const thal_nucleus_t* nucleus = thalamus_get_nucleus_const(thal, nucleus_type);
-    if (!nucleus) return 0.0f;
+    if (!nucleus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "thalamus_get_tonic_fraction: invalid nucleus type");
+        return 0.0f;
+    }
 
     return nucleus->tonic_fraction;
 }
@@ -1014,10 +1039,16 @@ float thalamus_get_firing_rate(
     const thalamus_t* thal,
     thal_nucleus_type_t nucleus_type
 ) {
-    if (!thal) return 0.0f;
+    if (!thal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamus_get_firing_rate: thal is NULL");
+        return 0.0f;
+    }
 
     const thal_nucleus_t* nucleus = thalamus_get_nucleus_const(thal, nucleus_type);
-    if (!nucleus) return 0.0f;
+    if (!nucleus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "thalamus_get_firing_rate: invalid nucleus type");
+        return 0.0f;
+    }
 
     return nucleus->avg_firing_rate;
 }

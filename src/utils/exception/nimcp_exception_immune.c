@@ -27,10 +27,8 @@
 #include "security/nimcp_blood_brain_barrier.h"
 #include "utils/fault_tolerance/nimcp_runtime_adaptation.h"
 
-/* Include brain immune only if available - forward declare otherwise */
-#ifdef NIMCP_BRAIN_IMMUNE_H
+/* Include brain immune for full exception-to-immune integration */
 #include "cognitive/immune/nimcp_brain_immune.h"
-#endif
 
 #include <string.h>
 #include <time.h>
@@ -478,21 +476,14 @@ int nimcp_exception_present_to_immune(
         nimcp_exception_generate_epitope(ex);
     }
 
-    /* Map to immune concepts */
-    exception_antigen_source_t source = nimcp_exception_to_antigen_source(ex->category);
-    uint32_t severity = nimcp_exception_to_immune_severity(ex->severity);
-
-    /* Present to immune system */
+    /* Present to immune system using the exception-aware function
+     * This will invoke any registered exception callbacks */
     uint32_t antigen_id = 0;
 
 #ifdef NIMCP_BRAIN_IMMUNE_H
-    int result = brain_immune_present_antigen(
+    int result = brain_immune_present_exception(
         g_immune_system,
-        (brain_antigen_source_t)source,
-        ex->epitope,
-        ex->epitope_len,
-        severity,
-        0,  /* source_node - we don't track this for exceptions */
+        ex,
         &antigen_id
     );
 
@@ -516,8 +507,8 @@ int nimcp_exception_present_to_immune(
         (g_stats.avg_response_time_us * (g_stats.exceptions_presented - 1) + response_time)
         / g_stats.exceptions_presented;
 
-    LOG_DEBUG("Presented exception to immune: code=%d, antigen_id=%u, severity=%u",
-              ex->code, antigen_id, severity);
+    LOG_DEBUG("Presented exception to immune: code=%d, antigen_id=%u, severity=%d",
+              ex->code, antigen_id, ex->severity);
 
     /* Fill response if requested */
     if (response) {

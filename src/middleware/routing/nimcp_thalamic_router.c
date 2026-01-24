@@ -179,6 +179,7 @@ static bool enqueue_signal(thalamic_router_t* router, const routed_signal_t* sig
         if (router->queue_mutex) {
             nimcp_mutex_unlock(router->queue_mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_BUFFER_OVERFLOW, "enqueue_signal: queue full");
         return false;
     }
 
@@ -193,6 +194,7 @@ static bool enqueue_signal(thalamic_router_t* router, const routed_signal_t* sig
         if (router->queue_mutex) {
             nimcp_mutex_unlock(router->queue_mutex);
         }
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "enqueue_signal: failed to create signal wrapper");
         return false;
     }
 
@@ -337,7 +339,10 @@ static bool deliver_signal_wrapper(thalamic_router_t* router,
     uint32_t signal_size = 0;
     const float* signal_data = signal_wrapper_read_data(wrapper, &signal_size);
 
-    if (!dest_ids || !signal_data) return false;
+    if (!dest_ids || !signal_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deliver_signal_wrapper: dest_ids or signal_data is NULL");
+        return false;
+    }
 
     // Apply quantum routing to filter destinations (O(√N) speedup)
     uint32_t* filtered_dests = (uint32_t*)nimcp_malloc(num_dests * sizeof(uint32_t));
@@ -345,6 +350,7 @@ static bool deliver_signal_wrapper(thalamic_router_t* router,
 
     if (!filtered_dests) {
         LOG_ERROR(LOG_MODULE, "Failed to allocate filtered destinations");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "deliver_signal_wrapper: failed to allocate filtered_dests");
         return false;
     }
 
@@ -436,7 +442,10 @@ static bool deliver_signal(thalamic_router_t* router, const routed_signal_t* sig
         signal->dest_ids, signal->num_dests,
         signal->signal_data, signal->signal_size);
 
-    if (!wrapper) return false;
+    if (!wrapper) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "deliver_signal: failed to create signal wrapper");
+        return false;
+    }
 
     bool delivered = deliver_signal_wrapper(router, wrapper,
                                            signal->source_id,
@@ -490,6 +499,7 @@ thalamic_router_t* thalamic_router_create(const thalamic_router_config_t* config
         attention_gate_config_t gate_config = attention_gate_default_config();
         router->attention_gate = attention_gate_create(&gate_config);
         if (!router->attention_gate) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "thalamic_router_create: failed to create attention_gate");
             thalamic_router_destroy(router);
             return NULL;
         }
@@ -499,6 +509,7 @@ thalamic_router_t* thalamic_router_create(const thalamic_router_config_t* config
     routing_table_config_t table_config = routing_table_default_config();
     router->routing_table = routing_table_create(&table_config);
     if (!router->routing_table) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "thalamic_router_create: failed to create routing_table");
         thalamic_router_destroy(router);
         return NULL;
     }
@@ -508,6 +519,7 @@ thalamic_router_t* thalamic_router_create(const thalamic_router_config_t* config
     router->queue = (queued_signal_t*)nimcp_calloc(router->queue_capacity,
                                             sizeof(queued_signal_t));
     if (!router->queue) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "thalamic_router_create: failed to allocate queue");
         thalamic_router_destroy(router);
         return NULL;
     }
@@ -517,6 +529,7 @@ thalamic_router_t* thalamic_router_create(const thalamic_router_config_t* config
     // Initialize queue mutex for thread safety
     router->queue_mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!router->queue_mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "thalamic_router_create: failed to allocate queue_mutex");
         thalamic_router_destroy(router);
         return NULL;
     }
@@ -526,6 +539,7 @@ thalamic_router_t* thalamic_router_create(const thalamic_router_config_t* config
     router->callbacks = (delivery_registration_t*)nimcp_calloc(MAX_DESTINATIONS,
                                                          sizeof(delivery_registration_t));
     if (!router->callbacks) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "thalamic_router_create: failed to allocate callbacks");
         thalamic_router_destroy(router);
         return NULL;
     }
@@ -648,7 +662,16 @@ void thalamic_router_destroy(thalamic_router_t* router) {
 
 bool thalamic_router_route_signal(thalamic_router_t* router,
                                    const routed_signal_t* signal) {
-    if (!router || !signal || !signal->dest_ids || signal->num_dests == 0) {
+    if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_route_signal: router is NULL");
+        return false;
+    }
+    if (!signal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_route_signal: signal is NULL");
+        return false;
+    }
+    if (!signal->dest_ids || signal->num_dests == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "thalamic_router_route_signal: invalid destinations");
         return false;
     }
 
@@ -707,7 +730,10 @@ bool thalamic_router_route_signal(thalamic_router_t* router,
 bool thalamic_router_process_queue(thalamic_router_t* router,
                                     uint32_t max_signals,
                                     uint32_t* num_processed) {
-    if (!router) return false;
+    if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_process_queue: router is NULL");
+        return false;
+    }
 
     /* Phase 8: Send heartbeat at start of thalamic queue processing */
     thalamic_heartbeat("thalamic_process_queue", 0.0f);
@@ -833,7 +859,12 @@ bool thalamic_router_set_callback(thalamic_router_t* router,
                                    uint32_t dest_id,
                                    signal_delivery_callback_t callback,
                                    void* user_data) {
-    if (!router || dest_id >= MAX_DESTINATIONS) {
+    if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_set_callback: router is NULL");
+        return false;
+    }
+    if (dest_id >= MAX_DESTINATIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "thalamic_router_set_callback: dest_id out of range");
         return false;
     }
 
@@ -869,7 +900,12 @@ bool thalamic_router_set_attention(thalamic_router_t* router,
                                     uint32_t source_id,
                                     uint32_t dest_id,
                                     float attention) {
-    if (!router || !router->attention_gate) {
+    if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_set_attention: router is NULL");
+        return false;
+    }
+    if (!router->attention_gate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "thalamic_router_set_attention: attention_gate is NULL");
         return false;
     }
 
@@ -881,7 +917,16 @@ bool thalamic_router_get_attention(const thalamic_router_t* router,
                                     uint32_t source_id,
                                     uint32_t dest_id,
                                     float* attention) {
-    if (!router || !router->attention_gate || !attention) {
+    if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_get_attention: router is NULL");
+        return false;
+    }
+    if (!router->attention_gate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "thalamic_router_get_attention: attention_gate is NULL");
+        return false;
+    }
+    if (!attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_get_attention: attention is NULL");
         return false;
     }
 
@@ -891,7 +936,14 @@ bool thalamic_router_get_attention(const thalamic_router_t* router,
 
 bool thalamic_router_get_stats(const thalamic_router_t* router,
                                 routing_stats_t* stats) {
-    if (!router || !stats) return false;
+    if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_get_stats: router is NULL");
+        return false;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_get_stats: stats is NULL");
+        return false;
+    }
 
     *stats = router->stats;
     return true;
@@ -930,7 +982,12 @@ routed_signal_t* thalamic_router_create_signal(uint32_t source_id,
                                                 const float* signal_data,
                                                 uint32_t signal_size,
                                                 signal_priority_t priority) {
-    if (!dest_ids || num_dests == 0 || !signal_data || signal_size == 0) {
+    if (!dest_ids || num_dests == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "thalamic_router_create_signal: invalid dest_ids or num_dests");
+        return NULL;
+    }
+    if (!signal_data || signal_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "thalamic_router_create_signal: invalid signal_data or signal_size");
         return NULL;
     }
 
@@ -945,12 +1002,14 @@ routed_signal_t* thalamic_router_create_signal(uint32_t source_id,
 
     signal->dest_ids = (uint32_t*)nimcp_malloc(num_dests * sizeof(uint32_t));
     if (!signal->dest_ids) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "thalamic_router_create_signal: failed to allocate dest_ids");
         nimcp_free(signal);
         return NULL;
     }
 
     signal->signal_data = (float*)nimcp_malloc(signal_size * sizeof(float));
     if (!signal->signal_data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "thalamic_router_create_signal: failed to allocate signal_data");
         nimcp_free(signal->dest_ids);
         nimcp_free(signal);
         return NULL;
@@ -990,11 +1049,13 @@ bool thalamic_router_trigger_receptor(thalamic_router_t* router,
     // Guard clauses
     if (!router) {
         LOG_ERROR(LOG_MODULE, "NULL router in trigger_receptor");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_trigger_receptor: router is NULL");
         return false;
     }
 
     if (!router->second_messengers_enabled || !router->second_messengers) {
         LOG_DEBUG(LOG_MODULE, "Second messengers not enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "thalamic_router_trigger_receptor: second_messengers not enabled");
         return false;
     }
 
@@ -1036,11 +1097,13 @@ bool thalamic_router_trigger_receptor(thalamic_router_t* router,
 
         default:
             LOG_WARN(LOG_MODULE, "Unsupported receptor coupling type: %d", coupling);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "thalamic_router_trigger_receptor: unsupported receptor coupling");
             return false;
     }
 
     if (result != NIMCP_SUCCESS) {
         LOG_ERROR(LOG_MODULE, "Failed to activate cascade (result=%d)", result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "thalamic_router_trigger_receptor: cascade activation failed");
         return false;
     }
 
@@ -1057,16 +1120,19 @@ bool thalamic_router_get_second_messenger_state(const thalamic_router_t* router,
     // Guard clauses
     if (!router) {
         LOG_ERROR(LOG_MODULE, "NULL router in get_second_messenger_state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_get_second_messenger_state: router is NULL");
         return false;
     }
 
     if (!state) {
         LOG_ERROR(LOG_MODULE, "NULL state buffer in get_second_messenger_state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_get_second_messenger_state: state is NULL");
         return false;
     }
 
     if (!router->second_messengers_enabled || !router->second_messengers) {
         LOG_DEBUG(LOG_MODULE, "Second messengers not enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "thalamic_router_get_second_messenger_state: second_messengers not enabled");
         return false;
     }
 
@@ -1078,6 +1144,7 @@ bool thalamic_router_get_second_messenger_state(const thalamic_router_t* router,
     if (result != NIMCP_SUCCESS) {
         LOG_WARN(LOG_MODULE, "Failed to get cascade state for neuron %u (result=%d)",
                  neuron_id, result);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "thalamic_router_get_second_messenger_state: query failed");
         return false;
     }
 
@@ -1110,6 +1177,7 @@ bool thalamic_router_set_imagination_attention(thalamic_router_t* router,
     // Guard clauses
     if (!router) {
         LOG_ERROR(LOG_MODULE, "NULL router in set_imagination_attention");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_set_imagination_attention: router is NULL");
         return false;
     }
 
@@ -1168,6 +1236,7 @@ bool thalamic_router_set_imagination_attention(thalamic_router_t* router,
 float thalamic_router_get_imagination_attention(const thalamic_router_t* router) {
     if (!router) {
         LOG_ERROR(LOG_MODULE, "NULL router in get_imagination_attention");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_get_imagination_attention: router is NULL");
         return -1.0f;
     }
     return router->imagination_attention_weight;
@@ -1183,12 +1252,18 @@ static nimcp_error_t imagination_attention_handler(const void* msg,
     (void)response_promise;  /* Not expecting response */
 
     thalamic_router_t* router = (thalamic_router_t*)user_data;
-    if (!router || !msg) {
+    if (!router) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_attention_handler: router is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+    if (!msg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "imagination_attention_handler: msg is NULL");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
     if (msg_size < sizeof(bio_msg_imagination_modulation_t)) {
         LOG_WARN(LOG_MODULE, "Imagination modulation message too small");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "imagination_attention_handler: message too small");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -1224,11 +1299,13 @@ static nimcp_error_t imagination_attention_handler(const void* msg,
 bool thalamic_router_register_imagination_handler(thalamic_router_t* router) {
     if (!router) {
         LOG_ERROR(LOG_MODULE, "NULL router in register_imagination_handler");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_register_imagination_handler: router is NULL");
         return false;
     }
 
     if (!router->bio_async_enabled || !router->bio_ctx) {
         LOG_WARN(LOG_MODULE, "Bio-async not enabled, cannot register imagination handler");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "thalamic_router_register_imagination_handler: bio_async not enabled");
         return false;
     }
 
@@ -1250,6 +1327,7 @@ bool thalamic_router_register_imagination_handler(thalamic_router_t* router) {
 
         if (result != NIMCP_SUCCESS) {
             LOG_ERROR(LOG_MODULE, "Failed to register imagination attention handler");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "thalamic_router_register_imagination_handler: registration failed");
             return false;
         }
     }
@@ -1271,6 +1349,7 @@ bool thalamic_router_set_imagination_callback(thalamic_router_t* router,
                                                void* user_data) {
     if (!router) {
         LOG_ERROR(LOG_MODULE, "NULL router in set_imagination_callback");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_set_imagination_callback: router is NULL");
         return false;
     }
 
@@ -1311,22 +1390,26 @@ bool thalamic_router_route_imagination_content(thalamic_router_t* router,
     // Guard clauses
     if (!router) {
         LOG_ERROR(LOG_MODULE, "NULL router in route_imagination_content");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_route_imagination_content: router is NULL");
         return false;
     }
 
     if (!content || content_size == 0) {
         LOG_ERROR(LOG_MODULE, "NULL or empty content in route_imagination_content");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "thalamic_router_route_imagination_content: invalid content");
         return false;
     }
 
     if (!dest_ids || num_dests == 0) {
         LOG_ERROR(LOG_MODULE, "NULL or empty destinations in route_imagination_content");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "thalamic_router_route_imagination_content: invalid destinations");
         return false;
     }
 
     if (!router->imagination_routing_enabled) {
         LOG_DEBUG(LOG_MODULE, "Imagination routing disabled, skipping scenario %u",
                   scenario_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "thalamic_router_route_imagination_content: imagination_routing disabled");
         return false;
     }
 
@@ -1374,6 +1457,7 @@ bool thalamic_router_route_imagination_content(thalamic_router_t* router,
     if (!signal) {
         LOG_ERROR(LOG_MODULE, "Failed to create imagination signal for scenario %u",
                   scenario_id);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "thalamic_router_route_imagination_content: failed to create signal");
         return false;
     }
 
@@ -1409,6 +1493,7 @@ bool thalamic_router_set_imagination_routing_enabled(thalamic_router_t* router,
                                                       bool enabled) {
     if (!router) {
         LOG_ERROR(LOG_MODULE, "NULL router in set_imagination_routing_enabled");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "thalamic_router_set_imagination_routing_enabled: router is NULL");
         return false;
     }
 
