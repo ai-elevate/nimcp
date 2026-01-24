@@ -87,7 +87,8 @@ static association_entry_t* create_association(const char* A, const char* B) {
 bool brain_learn_association(brain_t brain, const char* A, const char* B,
                               uint32_t cooccurrence_count) {
     if (!brain || !A || !B) {
-        LOG_ERROR("association_learning: Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "brain_learn_association: invalid parameters");
         return false;
     }
 
@@ -145,6 +146,8 @@ float compute_association_confidence(const char* A, const char* B,
 float update_association_strength(brain_t brain, const char* A, const char* B,
                                    float outcome) {
     if (!brain || !A || !B) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "update_association_strength: invalid parameters");
         return -1.0F;
     }
 
@@ -178,6 +181,8 @@ float update_association_strength(brain_t brain, const char* A, const char* B,
 
 float get_association_strength(brain_t brain, const char* A, const char* B) {
     if (!brain || !A || !B) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "get_association_strength: invalid parameters");
         return -1.0F;
     }
 

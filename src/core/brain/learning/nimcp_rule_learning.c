@@ -26,7 +26,8 @@
 int brain_learn_rule_from_examples(brain_t brain, const rule_example_t* examples,
                                      const char** labels, uint32_t count) {
     if (!brain || !examples || !labels || count == 0) {
-        LOG_ERROR("rule_learning: Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "brain_learn_rule_from_examples: invalid parameters");
         return -1;
     }
 

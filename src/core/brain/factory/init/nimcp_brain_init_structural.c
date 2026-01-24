@@ -417,7 +417,8 @@ bool nimcp_brain_factory_init_cortical_columns_subsystem(brain_t brain)
 {
     // Guard: NULL check
     if (!brain) {
-        set_error("nimcp_brain_factory_init_cortical_columns_subsystem: NULL brain");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "nimcp_brain_factory_init_cortical_columns_subsystem: brain is NULL");
         return false;
     }
 

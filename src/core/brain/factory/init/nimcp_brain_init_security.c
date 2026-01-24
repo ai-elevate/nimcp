@@ -48,7 +48,8 @@
 bool nimcp_brain_factory_init_security_subsystem(brain_t brain)
 {
     if (!brain) {
-        LOG_ERROR("Null brain in init_security_subsystem");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "nimcp_brain_factory_init_security_subsystem: brain is NULL");
         return false;
     }
 
@@ -334,7 +335,8 @@ bool nimcp_brain_factory_init_immune_subsystem(brain_t brain)
 {
     // Guard clause: Validate brain pointer
     if (!brain) {
-        LOG_ERROR("Null brain in init_immune_subsystem");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "nimcp_brain_factory_init_immune_subsystem: brain is NULL");
         return false;
     }
 
