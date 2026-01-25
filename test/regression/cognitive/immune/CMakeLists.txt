@@ -78,3 +78,37 @@ target_include_directories(regression_cognitive_immune_code_immune
 add_test(NAME regression_cognitive_immune_code_immune
          COMMAND regression_cognitive_immune_code_immune)
 set_tests_properties(regression_cognitive_immune_code_immune PROPERTIES LABELS "regression")
+
+# ============================================================================
+# Brain Immune Tick Enhanced Regression Tests (Check Framework)
+# ============================================================================
+# WHAT: Regression tests for brain immune tick NIMCP utility enhancements
+# WHY:  Catch edge cases: MC clamping, hash collisions, QA zero weights, EMA overflow
+# HOW:  Check framework tests with edge case coverage
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(CHECK check)
+
+if(CHECK_FOUND)
+    add_executable(regression_cognitive_immune_tick_enhanced
+        test_brain_immune_tick_enhanced_regression.c
+    )
+    target_include_directories(regression_cognitive_immune_tick_enhanced PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CHECK_INCLUDE_DIRS}
+    )
+    target_link_libraries(regression_cognitive_immune_tick_enhanced
+        nimcp
+        ${CHECK_LIBRARIES}
+        pthread
+        m
+    )
+    add_test(NAME regression_cognitive_immune_tick_enhanced
+             COMMAND regression_cognitive_immune_tick_enhanced)
+    set_tests_properties(regression_cognitive_immune_tick_enhanced PROPERTIES
+        LABELS "regression;cognitive;immune;tick;enhanced;mc;qa;pattern;edge"
+        TIMEOUT 180
+    )
+else()
+    message(STATUS "Check library not found - skipping brain immune tick enhanced regression tests")
+endif()

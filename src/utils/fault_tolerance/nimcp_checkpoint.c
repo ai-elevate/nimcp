@@ -31,6 +31,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/exception/nimcp_exception_immune.h"
 
 #define LOG_MODULE "utils_checkpoint"
 #include "plasticity/adaptive/nimcp_adaptive.h"
@@ -316,7 +317,18 @@ static bool read_checkpoint_header(FILE* fp, checkpoint_header_t* header) {
  * @return true on success
  */
 static bool serialize_brain_state(brain_t brain, uint8_t** buffer, size_t* size) {
-    if (!brain || !buffer || !size) {
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "serialize_brain_state: brain is NULL");
+        set_error("serialize_brain_state: NULL parameter");
+        return false;
+    }
+    if (!buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "serialize_brain_state: buffer is NULL");
+        set_error("serialize_brain_state: NULL parameter");
+        return false;
+    }
+    if (!size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "serialize_brain_state: size is NULL");
         set_error("serialize_brain_state: NULL parameter");
         return false;
     }
@@ -325,12 +337,14 @@ static bool serialize_brain_state(brain_t brain, uint8_t** buffer, size_t* size)
 
     adaptive_network_t net = b->network;
     if (!net) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "serialize_brain_state: network is NULL");
         set_error("serialize_brain_state: No network");
         return false;
     }
 
     neural_network_t base_net = adaptive_network_get_base_network(net);
     if (!base_net) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "serialize_brain_state: base_net is NULL");
         set_error("serialize_brain_state: No base network");
         return false;
     }
@@ -407,7 +421,18 @@ static bool serialize_brain_state(brain_t brain, uint8_t** buffer, size_t* size)
  * @brief Deserialize brain state from a buffer
  */
 static bool deserialize_brain_state(const uint8_t* buffer, size_t size, brain_t* brain) {
-    if (!buffer || size == 0 || !brain) {
+    if (!buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deserialize_brain_state: buffer is NULL");
+        set_error("deserialize_brain_state: NULL parameter");
+        return false;
+    }
+    if (size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "deserialize_brain_state: size is 0");
+        set_error("deserialize_brain_state: NULL parameter");
+        return false;
+    }
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "deserialize_brain_state: brain is NULL");
         set_error("deserialize_brain_state: NULL parameter");
         return false;
     }
@@ -416,6 +441,7 @@ static bool deserialize_brain_state(const uint8_t* buffer, size_t size, brain_t*
     size_t offset = 0;
 
     if (offset + sizeof(brain_config_t) > size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "deserialize_brain_state: buffer too small for config");
         set_error("deserialize_brain_state: Buffer too small");
         return false;
     }
@@ -424,6 +450,7 @@ static bool deserialize_brain_state(const uint8_t* buffer, size_t size, brain_t*
     offset += sizeof(brain_config_t);
 
     if (offset + sizeof(brain_stats_t) > size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "deserialize_brain_state: buffer too small for stats");
         set_error("deserialize_brain_state: Buffer too small");
         return false;
     }
@@ -432,6 +459,7 @@ static bool deserialize_brain_state(const uint8_t* buffer, size_t size, brain_t*
     offset += sizeof(brain_stats_t);
 
     if (offset + sizeof(uint32_t) > size) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "deserialize_brain_state: buffer too small for neuron count");
         set_error("deserialize_brain_state: Buffer too small");
         return false;
     }
@@ -440,12 +468,14 @@ static bool deserialize_brain_state(const uint8_t* buffer, size_t size, brain_t*
     offset += sizeof(uint32_t);
 
     if (num_neurons > MAX_NEURONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "deserialize_brain_state: neuron count %u exceeds MAX_NEURONS", num_neurons);
         set_error("deserialize_brain_state: Invalid neuron count");
         return false;
     }
 
     brain_t new_brain = brain_create_custom(&config);
     if (!new_brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "deserialize_brain_state: failed to create brain");
         set_error("deserialize_brain_state: Failed to create brain");
         return false;
     }
@@ -638,7 +668,13 @@ bool checkpoint_save_ex(brain_t brain, const char* path, const checkpoint_option
 
 bool checkpoint_save_incremental(brain_t brain, const char* incr_path, const char* base_path) {
     // Guard: NULL checks
-    if (!brain || !incr_path) {
+    if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "checkpoint_save_incremental: brain is NULL");
+        set_error("checkpoint_save_incremental: NULL parameter");
+        return false;
+    }
+    if (!incr_path) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "checkpoint_save_incremental: incr_path is NULL");
         set_error("checkpoint_save_incremental: NULL parameter");
         return false;
     }
@@ -688,6 +724,7 @@ bool checkpoint_validate(const char* path) {
     // Read data section
     uint8_t* data = (uint8_t*)nimcp_malloc(header.data_size);
     if (!data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "checkpoint_validate: failed to allocate %u bytes", header.data_size);
         set_error("Failed to allocate buffer for validation");
         fclose(fp);
         return false;
@@ -741,12 +778,14 @@ bool checkpoint_load(brain_t* brain, const char* path) {
 
     if (header.data_size == 0) {
         fclose(fp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "checkpoint_load: empty checkpoint file");
         set_error("checkpoint_load: Empty checkpoint");
         return false;
     }
 
     uint8_t* data = (uint8_t*)nimcp_malloc(header.data_size);
     if (!data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "checkpoint_load: failed to allocate %u bytes", header.data_size);
         set_error("Failed to allocate buffer");
         fclose(fp);
         return false;
@@ -815,6 +854,7 @@ bool checkpoint_list(const char* dir, checkpoint_info_t** list, uint32_t* count)
 
     *list = (checkpoint_info_t*)nimcp_calloc(checkpoint_count, sizeof(checkpoint_info_t));
     if (!*list) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "checkpoint_list: failed to allocate %u entries", checkpoint_count);
         set_error("Failed to allocate checkpoint list");
         closedir(d);
         return false;
@@ -953,6 +993,7 @@ bool recovery_auto_restore(brain_t* brain, const char* checkpoint_dir) {
 
     // No checkpoints found
     if (count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_FOUND, "recovery_auto_restore: no checkpoints found in %s", checkpoint_dir);
         set_error("No checkpoints found in %s", checkpoint_dir);
         return false;
     }
@@ -999,8 +1040,15 @@ bool recovery_rollback(brain_t brain, const char* checkpoint_path) {
     adaptive_network_t target_net = target->network;
     adaptive_network_t source_net = source->network;
 
-    if (!target_net || !source_net) {
+    if (!target_net) {
         brain_destroy(restored);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_rollback: target network is NULL");
+        set_error("recovery_rollback: Network missing");
+        return false;
+    }
+    if (!source_net) {
+        brain_destroy(restored);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_rollback: source network is NULL");
         set_error("recovery_rollback: Network missing");
         return false;
     }
@@ -1008,8 +1056,15 @@ bool recovery_rollback(brain_t brain, const char* checkpoint_path) {
     neural_network_t target_base = adaptive_network_get_base_network(target_net);
     neural_network_t source_base = adaptive_network_get_base_network(source_net);
 
-    if (!target_base || !source_base) {
+    if (!target_base) {
         brain_destroy(restored);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_rollback: target base network is NULL");
+        set_error("recovery_rollback: Base network missing");
+        return false;
+    }
+    if (!source_base) {
+        brain_destroy(restored);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "recovery_rollback: source base network is NULL");
         set_error("recovery_rollback: Base network missing");
         return false;
     }
@@ -1058,6 +1113,7 @@ bool recovery_partial(brain_t* brain, const char* path, int* recovery_level) {
 
     FILE* fp = fopen(path, "rb");
     if (!fp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_IO, "recovery_partial: failed to open %s: %s", path, strerror(errno));
         set_error("Failed to open: %s", strerror(errno));
         return false;
     }
@@ -1071,12 +1127,14 @@ bool recovery_partial(brain_t* brain, const char* path, int* recovery_level) {
 
     if (header.data_size == 0) {
         fclose(fp);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recovery_partial: empty checkpoint");
         set_error("Empty checkpoint");
         return false;
     }
 
     uint8_t* data = (uint8_t*)nimcp_malloc(header.data_size);
     if (!data) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "recovery_partial: failed to allocate %u bytes", header.data_size);
         fclose(fp);
         return false;
     }
@@ -1085,6 +1143,7 @@ bool recovery_partial(brain_t* brain, const char* path, int* recovery_level) {
     fclose(fp);
 
     if (bytes_read == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_IO, "recovery_partial: failed to read data from checkpoint");
         nimcp_free(data);
         return false;
     }
@@ -1100,6 +1159,7 @@ bool recovery_partial(brain_t* brain, const char* path, int* recovery_level) {
     // Try to extract config
     size_t offset = 0;
     if (offset + sizeof(brain_config_t) > bytes_read) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "recovery_partial: buffer too small for config");
         nimcp_free(data);
         set_error("Cannot recover config");
         return false;
@@ -1119,6 +1179,7 @@ bool recovery_partial(brain_t* brain, const char* path, int* recovery_level) {
 
     brain_t new_brain = brain_create_custom(&config);
     if (!new_brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "recovery_partial: failed to create brain");
         nimcp_free(data);
         set_error("Failed to create brain");
         return false;

@@ -148,6 +148,7 @@ arousal_state_t* arousal_state_create(const arousal_state_config_t* config) {
     // Allocate main structure
     arousal_state_t* state = (arousal_state_t*)nimcp_malloc(sizeof(arousal_state_t));
     if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "arousal_state_create: failed to allocate arousal state");
         NIMCP_LOGGING_ERROR("Failed to allocate arousal state");
         return NULL;
     }
@@ -181,6 +182,7 @@ arousal_state_t* arousal_state_create(const arousal_state_config_t* config) {
     // Create mutex for thread safety
     state->mutex = nimcp_platform_mutex_create();
     if (!state->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "arousal_state_create: failed to create mutex");
         NIMCP_LOGGING_ERROR("Failed to create arousal state mutex");
         nimcp_free(state);
         return NULL;
@@ -437,6 +439,7 @@ const char* arousal_state_get_state_name(arousal_state_enum_t state_enum) {
 int arousal_state_connect_bio_async(arousal_state_t* state) {
     // Guard: NULL check
     if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arousal_state_connect_bio_async: state is NULL");
         NIMCP_LOGGING_ERROR("NULL state pointer");
         return NIMCP_ERROR_NULL_POINTER;
     }
@@ -474,6 +477,7 @@ int arousal_state_connect_bio_async(arousal_state_t* state) {
 int arousal_state_disconnect_bio_async(arousal_state_t* state) {
     // Guard: NULL check
     if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arousal_state_disconnect_bio_async: state is NULL");
         NIMCP_LOGGING_ERROR("NULL state pointer");
         return NIMCP_ERROR_NULL_POINTER;
     }
@@ -502,6 +506,7 @@ int arousal_state_disconnect_bio_async(arousal_state_t* state) {
 bool arousal_state_is_bio_async_connected(const arousal_state_t* state) {
     // Guard: NULL check
     if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "arousal_state_is_bio_async_connected: state is NULL");
         return false;
     }
 

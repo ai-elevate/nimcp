@@ -41,6 +41,7 @@
 #include "utils/math/nimcp_complex_math.h"                /* Phasor coherence for patterns */
 
 #include <string.h>
+#include <stdio.h>
 #include <time.h>
 #include <math.h>
 
@@ -785,14 +786,48 @@ static void integrate_tick_duration(tick_state_t* state, uint64_t duration_us) {
 
 /**
  * @brief Process HEALTH_MSG_ANOMALY_DETECTED -> Present as antigen
+ *
+ * Enhanced with:
+ * - Monte Carlo severity sampling (probabilistic assessment)
+ * - Quantum-inspired pattern memory (recurring anomaly detection)
  */
 static int process_anomaly_message(brain_immune_system_t* immune,
                                     const health_agent_message_t* msg) {
+    tick_state_t* state = get_tick_state(immune);
+
     /* Create epitope from message description */
     uint8_t epitope[BRAIN_IMMUNE_EPITOPE_SIZE] = {0};
     size_t desc_len = strlen(msg->description);
     size_t copy_len = desc_len < BRAIN_IMMUNE_EPITOPE_SIZE ? desc_len : BRAIN_IMMUNE_EPITOPE_SIZE;
     memcpy(epitope, msg->description, copy_len);
+
+    /* ========== Enhanced: Monte Carlo Severity Assessment ========== */
+    float mc_severity = mc_sample_severity(state, msg->severity, msg->source);
+    uint32_t severity = (uint32_t)(mc_severity + 0.5f);  /* Round to integer */
+    if (severity < 1) severity = 1;
+    if (severity > 10) severity = 10;
+
+    /* ========== Enhanced: Pattern Memory Recording ========== */
+    float coherence = 0.0f;
+    bool is_recurring = false;
+    if (state && state->pattern_memory) {
+        /* Check if this is a recurring pattern */
+        coherence = pattern_memory_check_coherence(state->pattern_memory, epitope, copy_len);
+        is_recurring = (coherence >= PATTERN_COHERENCE_THRESHOLD);
+
+        /* Record the pattern */
+        uint64_t now = get_timestamp_us();
+        pattern_memory_record_epitope(state->pattern_memory, epitope, copy_len,
+                                      mc_severity, now);
+
+        /* Boost severity for recurring patterns (immune memory effect) */
+        if (is_recurring) {
+            severity = (uint32_t)(severity * 1.5f);
+            if (severity > 10) severity = 10;
+            LOG_DEBUG("Recurring anomaly detected (coherence=%.2f), severity boosted to %u",
+                      coherence, severity);
+        }
+    }
 
     /* Present as antigen */
     uint32_t antigen_id = 0;
@@ -801,16 +836,17 @@ static int process_anomaly_message(brain_immune_system_t* immune,
         map_health_source_to_antigen_source(msg->source),
         epitope,
         copy_len,
-        (uint32_t)map_health_msg_to_antigen_severity(msg->severity),
+        severity,
         0,  /* source_node */
         &antigen_id
     );
 
     if (result == 0) {
-        LOG_DEBUG("Presented anomaly as antigen: id=%u, severity=%d, source=%s",
-                  antigen_id,
-                  map_health_msg_to_antigen_severity(msg->severity),
-                  health_agent_source_to_string(msg->source));
+        LOG_DEBUG("Presented anomaly as antigen: id=%u, severity=%u (MC=%.1f), "
+                  "source=%s, recurring=%s",
+                  antigen_id, severity, mc_severity,
+                  health_agent_source_to_string(msg->source),
+                  is_recurring ? "yes" : "no");
     }
 
     return result;
@@ -917,42 +953,57 @@ static int process_emergency_message(brain_immune_system_t* immune,
 
 /**
  * @brief Process HEALTH_MSG_RECOVERY_REQUEST -> Execute suggested action
+ *
+ * Enhanced with quantum annealing for optimal action selection when
+ * the suggested action is HEALTH_RECOVERY_AUTO or severity warrants optimization.
  */
 static int process_recovery_request(brain_immune_system_t* immune,
                                      const health_agent_message_t* msg) {
-    /* Map health recovery to exception recovery action */
-    nimcp_exception_recovery_action_t action;
+    tick_state_t* state = get_tick_state(immune);
+    nimcp_exception_recovery_action_t action = EXCEPTION_RECOVERY_NONE;
+    bool used_qa = false;
 
-    switch (msg->suggested_action) {
-        case HEALTH_RECOVERY_GC:
-            action = EXCEPTION_RECOVERY_GC;
-            break;
-        case HEALTH_RECOVERY_CHECKPOINT:
-            action = EXCEPTION_RECOVERY_EMERGENCY_SAVE;
-            break;
-        case HEALTH_RECOVERY_ROLLBACK:
-            action = EXCEPTION_RECOVERY_ROLLBACK;
-            break;
-        case HEALTH_RECOVERY_RESTART_THREAD:
-            action = EXCEPTION_RECOVERY_RESTART_THREAD;
-            break;
-        case HEALTH_RECOVERY_CLEAR_NAN:
-            action = EXCEPTION_RECOVERY_CLEAR_CACHE;
-            break;
-        case HEALTH_RECOVERY_REDUCE_LOAD:
-            action = EXCEPTION_RECOVERY_REDUCE_LOAD;
-            break;
-        case HEALTH_RECOVERY_QUARANTINE:
-            action = EXCEPTION_RECOVERY_QUARANTINE;
-            break;
-        case HEALTH_RECOVERY_EMERGENCY_SAVE:
-            action = EXCEPTION_RECOVERY_EMERGENCY_SAVE;
-            break;
-        case HEALTH_RECOVERY_FULL_RESET:
-            action = EXCEPTION_RECOVERY_GRACEFUL_SHUTDOWN;
-            break;
-        default:
-            action = EXCEPTION_RECOVERY_NONE;
+    /* ========== Enhanced: Use quantum annealing for critical decisions ========== */
+    if (state && state->qa_enabled && msg->severity >= HEALTH_SEVERITY_ERROR) {
+        /* Use quantum annealing to find optimal recovery action */
+        action = qa_select_recovery_action(state, msg);
+        used_qa = true;
+    }
+
+    /* Fallback: Map health recovery to exception recovery action */
+    if (!used_qa || action == EXCEPTION_RECOVERY_NONE) {
+        switch (msg->suggested_action) {
+            case HEALTH_RECOVERY_GC:
+                action = EXCEPTION_RECOVERY_GC;
+                break;
+            case HEALTH_RECOVERY_CHECKPOINT:
+                action = EXCEPTION_RECOVERY_EMERGENCY_SAVE;
+                break;
+            case HEALTH_RECOVERY_ROLLBACK:
+                action = EXCEPTION_RECOVERY_ROLLBACK;
+                break;
+            case HEALTH_RECOVERY_RESTART_THREAD:
+                action = EXCEPTION_RECOVERY_RESTART_THREAD;
+                break;
+            case HEALTH_RECOVERY_CLEAR_NAN:
+                action = EXCEPTION_RECOVERY_CLEAR_CACHE;
+                break;
+            case HEALTH_RECOVERY_REDUCE_LOAD:
+                action = EXCEPTION_RECOVERY_REDUCE_LOAD;
+                break;
+            case HEALTH_RECOVERY_QUARANTINE:
+                action = EXCEPTION_RECOVERY_QUARANTINE;
+                break;
+            case HEALTH_RECOVERY_EMERGENCY_SAVE:
+                action = EXCEPTION_RECOVERY_EMERGENCY_SAVE;
+                break;
+            case HEALTH_RECOVERY_FULL_RESET:
+                action = EXCEPTION_RECOVERY_GRACEFUL_SHUTDOWN;
+                break;
+            default:
+                action = EXCEPTION_RECOVERY_NONE;
+        }
+        used_qa = false;
     }
 
     if (action == EXCEPTION_RECOVERY_NONE) {
@@ -962,10 +1013,15 @@ static int process_recovery_request(brain_immune_system_t* immune,
     /* Execute recovery via exception system */
     int result = nimcp_exception_execute_recovery(NULL, action);
 
-    LOG_INFO("Recovery request executed: action=%s, result=%d",
-             nimcp_exception_recovery_action_to_string(action), result);
+    LOG_INFO("Recovery request processed: action=%s, execution=%s, method=%s",
+             nimcp_exception_recovery_action_to_string(action),
+             result == 0 ? "success" : "failed",
+             used_qa ? "quantum_annealing" : "direct_mapping");
 
-    return result;
+    /* Message was processed successfully even if recovery execution failed.
+     * Recovery may fail for valid reasons (no checkpoint, no thread to restart, etc.)
+     * The message processing is still considered successful. */
+    return 0;
 }
 
 /**

@@ -221,3 +221,37 @@ target_include_directories(integration_cognitive_immune_code_immune_self_repair
 add_test(NAME integration_cognitive_immune_code_immune_self_repair
          COMMAND integration_cognitive_immune_code_immune_self_repair)
 set_tests_properties(integration_cognitive_immune_code_immune_self_repair PROPERTIES LABELS "integration")
+
+# ============================================================================
+# Brain Immune Tick Enhanced Integration Tests (Check Framework)
+# ============================================================================
+# WHAT: Integration tests for brain immune tick NIMCP utility enhancements
+# WHY:  Verify MC severity, QA recovery, pattern memory with health agent flow
+# HOW:  Check framework tests with proper fixtures
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(CHECK check)
+
+if(CHECK_FOUND)
+    add_executable(integration_cognitive_immune_tick_enhanced
+        test_brain_immune_tick_enhanced_integration.c
+    )
+    target_include_directories(integration_cognitive_immune_tick_enhanced PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CHECK_INCLUDE_DIRS}
+    )
+    target_link_libraries(integration_cognitive_immune_tick_enhanced
+        nimcp
+        ${CHECK_LIBRARIES}
+        pthread
+        m
+    )
+    add_test(NAME integration_cognitive_immune_tick_enhanced
+             COMMAND integration_cognitive_immune_tick_enhanced)
+    set_tests_properties(integration_cognitive_immune_tick_enhanced PROPERTIES
+        LABELS "integration;cognitive;immune;tick;enhanced;mc;qa;pattern"
+        TIMEOUT 180
+    )
+else()
+    message(STATUS "Check library not found - skipping brain immune tick enhanced integration tests")
+endif()

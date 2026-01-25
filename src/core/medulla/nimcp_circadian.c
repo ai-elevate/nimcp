@@ -131,6 +131,7 @@ circadian_rhythm_t* circadian_create(const circadian_config_t* config)
 
     circadian_rhythm_t* rhythm = nimcp_calloc(1, sizeof(circadian_rhythm_t));
     if (!rhythm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "circadian_create: failed to allocate circadian rhythm system");
         NIMCP_LOGGING_ERROR("Failed to allocate circadian rhythm system");
         return NULL;
     }
@@ -157,6 +158,7 @@ circadian_rhythm_t* circadian_create(const circadian_config_t* config)
     /* Create mutex */
     rhythm->mutex = nimcp_platform_mutex_create();
     if (!rhythm->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "circadian_create: failed to create mutex");
         NIMCP_LOGGING_ERROR("Failed to create circadian mutex");
         nimcp_free(rhythm);
         return NULL;
@@ -280,6 +282,7 @@ circadian_phase_t circadian_get_phase(const circadian_rhythm_t* rhythm)
      */
 
     if (!rhythm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circadian_get_phase: rhythm is NULL");
         return CIRCADIAN_PHASE_NIGHT_DEEP;
     }
 
@@ -294,6 +297,7 @@ float circadian_get_cycle_position(const circadian_rhythm_t* rhythm)
      */
 
     if (!rhythm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circadian_get_cycle_position: rhythm is NULL");
         return 0.0f;
     }
 
@@ -356,7 +360,13 @@ float circadian_get_modulation(const circadian_rhythm_t* rhythm,
      * HOW:  Return pre-computed factor for current phase
      */
 
-    if (!rhythm || type >= CIRCADIAN_MODULATION_COUNT) {
+    if (!rhythm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circadian_get_modulation: rhythm is NULL");
+        return 0.5f;  /* Neutral value on error */
+    }
+
+    if (type >= CIRCADIAN_MODULATION_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "circadian_get_modulation: type out of range");
         return 0.5f;  /* Neutral value on error */
     }
 
@@ -426,10 +436,12 @@ int circadian_set_time_scale(circadian_rhythm_t* rhythm, float scale)
      */
 
     if (!rhythm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circadian_set_time_scale: rhythm is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (scale <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "circadian_set_time_scale: scale must be positive");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -453,6 +465,7 @@ float circadian_get_sleep_pressure(const circadian_rhythm_t* rhythm)
      */
 
     if (!rhythm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circadian_get_sleep_pressure: rhythm is NULL");
         return 0.0f;
     }
 
@@ -471,6 +484,7 @@ int circadian_connect_bio_async(circadian_rhythm_t* rhythm)
      */
 
     if (!rhythm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circadian_connect_bio_async: rhythm is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -504,6 +518,7 @@ int circadian_disconnect_bio_async(circadian_rhythm_t* rhythm)
      */
 
     if (!rhythm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circadian_disconnect_bio_async: rhythm is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -530,6 +545,7 @@ bool circadian_is_bio_async_connected(const circadian_rhythm_t* rhythm)
      */
 
     if (!rhythm) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "circadian_is_bio_async_connected: rhythm is NULL");
         return false;
     }
 

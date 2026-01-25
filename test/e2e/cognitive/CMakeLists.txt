@@ -1,10 +1,16 @@
 # ============================================================================
-# World Model E2E Tests
+# Cognitive E2E Tests
 # ============================================================================
-# WHAT: End-to-end tests for world model workflows
+# WHAT: End-to-end tests for cognitive workflows
 # WHY:  Verify complete cognitive workflows: training loops, prediction
-#       pipelines, counterfactual reasoning, and policy evaluation
+#       pipelines, counterfactual reasoning, exception handling, and policy evaluation
 # HOW:  GTest-based tests for realistic scenarios
+#
+# TESTS INCLUDED:
+# - World model workflows (DreamerV3/JEPA inspired)
+# - ToM exception handling
+# - WM bridges exception handling
+# - Predictive bridge exception handling
 # ============================================================================
 
 # Find test sources
@@ -56,3 +62,4 @@ message(STATUS "Added world model E2E tests")
 # Include subdirectories
 # ============================================================================
 add_subdirectory(neuro_symbolic)
+add_subdirectory(immune)

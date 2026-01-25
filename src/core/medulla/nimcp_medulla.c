@@ -392,6 +392,7 @@ medulla_t medulla_create(const medulla_config_t* config) {
     // Allocate structure
     medulla_t medulla = nimcp_calloc(1, sizeof(struct medulla_struct));
     if (!medulla) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "medulla_create: failed to allocate medulla structure");
         NIMCP_LOGGING_ERROR("Failed to allocate medulla structure");
         return NULL;
     }
@@ -424,6 +425,7 @@ medulla_t medulla_create(const medulla_config_t* config) {
     // Create mutex
     medulla->mutex = nimcp_platform_mutex_create();
     if (!medulla->mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "medulla_create: failed to create mutex");
         NIMCP_LOGGING_ERROR("Failed to create medulla mutex");
         nimcp_free(medulla);
         return NULL;
@@ -735,6 +737,7 @@ int medulla_connect_neuromodulators(medulla_t medulla, neuromodulator_system_t n
 
 float medulla_get_arousal_level(const medulla_t medulla) {
     if (!medulla) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_get_arousal_level: medulla is NULL");
         return -1.0f;
     }
 
@@ -785,6 +788,7 @@ int medulla_reduce_arousal(medulla_t medulla, float delta) {
 
 protection_level_t medulla_get_protection_level(const medulla_t medulla) {
     if (!medulla) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_get_protection_level: medulla is NULL");
         return PROTECTION_LEVEL_NORMAL;
     }
 
@@ -793,6 +797,7 @@ protection_level_t medulla_get_protection_level(const medulla_t medulla) {
 
 circadian_phase_t medulla_get_circadian_phase(const medulla_t medulla) {
     if (!medulla) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_get_circadian_phase: medulla is NULL");
         return CIRCADIAN_PHASE_MORNING;
     }
 
@@ -860,6 +865,7 @@ int medulla_disconnect_bio_async(medulla_t medulla) {
 
 bool medulla_is_bio_async_connected(const medulla_t medulla) {
     if (!medulla) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_is_bio_async_connected: medulla is NULL");
         return false;
     }
 

@@ -512,3 +512,37 @@ target_include_directories(unit_cognitive_immune_self_repair_bridge
 add_test(NAME unit_cognitive_immune_self_repair_bridge
          COMMAND unit_cognitive_immune_self_repair_bridge)
 set_tests_properties(unit_cognitive_immune_self_repair_bridge PROPERTIES LABELS "unit")
+
+# ============================================================================
+# Brain Immune Tick Enhanced Unit Tests (Check Framework)
+# ============================================================================
+# WHAT: Unit tests for brain immune tick NIMCP utility enhancements
+# WHY:  Verify MC severity, QA recovery, pattern memory, and numerical integration
+# HOW:  Check framework tests with proper fixtures
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(CHECK check)
+
+if(CHECK_FOUND)
+    add_executable(unit_cognitive_immune_tick_enhanced
+        test_brain_immune_tick_enhanced.c
+    )
+    target_include_directories(unit_cognitive_immune_tick_enhanced PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CHECK_INCLUDE_DIRS}
+    )
+    target_link_libraries(unit_cognitive_immune_tick_enhanced
+        nimcp
+        ${CHECK_LIBRARIES}
+        pthread
+        m
+    )
+    add_test(NAME unit_cognitive_immune_tick_enhanced
+             COMMAND unit_cognitive_immune_tick_enhanced)
+    set_tests_properties(unit_cognitive_immune_tick_enhanced PROPERTIES
+        LABELS "unit;cognitive;immune;tick;enhanced;mc;qa;pattern"
+        TIMEOUT 120
+    )
+else()
+    message(STATUS "Check library not found - skipping brain immune tick enhanced unit tests")
+endif()
