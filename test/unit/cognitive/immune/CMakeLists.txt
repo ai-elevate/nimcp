@@ -543,6 +543,30 @@ if(CHECK_FOUND)
         LABELS "unit;cognitive;immune;tick;enhanced;mc;qa;pattern"
         TIMEOUT 120
     )
+    # Brain Immune Integration Helper Unit Tests
+    # WHAT: Test the nimcp_immune_integration_* helper functions
+    # WHY:  Verify the full exception-immune setup helper works correctly
+    # HOW:  Check framework tests for create, tick, stats, diagnostics
+
+    add_executable(unit_cognitive_immune_integration_helper
+        test_brain_immune_integration.c
+    )
+    target_include_directories(unit_cognitive_immune_integration_helper PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CHECK_INCLUDE_DIRS}
+    )
+    target_link_libraries(unit_cognitive_immune_integration_helper
+        nimcp
+        ${CHECK_LIBRARIES}
+        pthread
+        m
+    )
+    add_test(NAME unit_cognitive_immune_integration_helper
+             COMMAND unit_cognitive_immune_integration_helper)
+    set_tests_properties(unit_cognitive_immune_integration_helper PROPERTIES
+        LABELS "unit;cognitive;immune;integration;helper"
+        TIMEOUT 120
+    )
 else()
     message(STATUS "Check library not found - skipping brain immune tick enhanced unit tests")
 endif()
