@@ -12,6 +12,9 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
+
+#define LOG_MODULE "ENERGY_FEP_BRIDGE"
 #include <math.h>
 #include <string.h>
 

@@ -1212,58 +1212,6 @@ unit_cognitive_personality_test_personality/fast:
 .PHONY : unit_cognitive_personality_test_personality/fast
 
 #=============================================================================
-# Target rules for targets named unit_cognitive_predictive_test_predictive
-
-# Build rule for target.
-unit_cognitive_predictive_test_predictive: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_predictive_test_predictive
-.PHONY : unit_cognitive_predictive_test_predictive
-
-# fast build rule for target.
-unit_cognitive_predictive_test_predictive/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_predictive_test_predictive.dir/build.make test/CMakeFiles/unit_cognitive_predictive_test_predictive.dir/build
-.PHONY : unit_cognitive_predictive_test_predictive/fast
-
-#=============================================================================
-# Target rules for targets named unit_cognitive_predictive_test_predictive_coverage
-
-# Build rule for target.
-unit_cognitive_predictive_test_predictive_coverage: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_predictive_test_predictive_coverage
-.PHONY : unit_cognitive_predictive_test_predictive_coverage
-
-# fast build rule for target.
-unit_cognitive_predictive_test_predictive_coverage/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_predictive_test_predictive_coverage.dir/build.make test/CMakeFiles/unit_cognitive_predictive_test_predictive_coverage.dir/build
-.PHONY : unit_cognitive_predictive_test_predictive_coverage/fast
-
-#=============================================================================
-# Target rules for targets named unit_cognitive_predictive_test_predictive_hierarchy
-
-# Build rule for target.
-unit_cognitive_predictive_test_predictive_hierarchy: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_predictive_test_predictive_hierarchy
-.PHONY : unit_cognitive_predictive_test_predictive_hierarchy
-
-# fast build rule for target.
-unit_cognitive_predictive_test_predictive_hierarchy/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_predictive_test_predictive_hierarchy.dir/build.make test/CMakeFiles/unit_cognitive_predictive_test_predictive_hierarchy.dir/build
-.PHONY : unit_cognitive_predictive_test_predictive_hierarchy/fast
-
-#=============================================================================
-# Target rules for targets named unit_cognitive_predictive_test_predictive_real
-
-# Build rule for target.
-unit_cognitive_predictive_test_predictive_real: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_predictive_test_predictive_real
-.PHONY : unit_cognitive_predictive_test_predictive_real
-
-# fast build rule for target.
-unit_cognitive_predictive_test_predictive_real/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/unit_cognitive_predictive_test_predictive_real.dir/build.make test/CMakeFiles/unit_cognitive_predictive_test_predictive_real.dir/build
-.PHONY : unit_cognitive_predictive_test_predictive_real/fast
-
-#=============================================================================
 # Target rules for targets named unit_cognitive_sleep_wake_test_sleep_wake
 
 # Build rule for target.
@@ -5450,19 +5398,6 @@ regression_core_topology_test_fractal_topology_backward_compat/fast:
 .PHONY : regression_core_topology_test_fractal_topology_backward_compat/fast
 
 #=============================================================================
-# Target rules for targets named regression_fault_tolerance_test_fault_tolerance_regression
-
-# Build rule for target.
-regression_fault_tolerance_test_fault_tolerance_regression: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_fault_tolerance_test_fault_tolerance_regression
-.PHONY : regression_fault_tolerance_test_fault_tolerance_regression
-
-# fast build rule for target.
-regression_fault_tolerance_test_fault_tolerance_regression/fast:
-	$(MAKE) $(MAKESILENT) -f test/CMakeFiles/regression_fault_tolerance_test_fault_tolerance_regression.dir/build.make test/CMakeFiles/regression_fault_tolerance_test_fault_tolerance_regression.dir/build
-.PHONY : regression_fault_tolerance_test_fault_tolerance_regression/fast
-
-#=============================================================================
 # Target rules for targets named regression_information_test_quantum_shannon_backward_compat
 
 # Build rule for target.
@@ -8414,6 +8349,19 @@ e2e_plasticity_eligibility_utils_quantum/fast:
 .PHONY : e2e_plasticity_eligibility_utils_quantum/fast
 
 #=============================================================================
+# Target rules for targets named e2e_plasticity_module_exception
+
+# Build rule for target.
+e2e_plasticity_module_exception: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_plasticity_module_exception
+.PHONY : e2e_plasticity_module_exception
+
+# fast build rule for target.
+e2e_plasticity_module_exception/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/plasticity/exception/CMakeFiles/e2e_plasticity_module_exception.dir/build.make test/e2e/plasticity/exception/CMakeFiles/e2e_plasticity_module_exception.dir/build
+.PHONY : e2e_plasticity_module_exception/fast
+
+#=============================================================================
 # Target rules for targets named e2e_test_kg_module_wiring
 
 # Build rule for target.
@@ -8960,6 +8908,58 @@ e2e_fault_tolerance_test_brain_state_manager_e2e/fast:
 .PHONY : e2e_fault_tolerance_test_brain_state_manager_e2e/fast
 
 #=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_fault_tolerance_exception_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_fault_tolerance_exception_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_fault_tolerance_exception_e2e
+.PHONY : e2e_fault_tolerance_test_fault_tolerance_exception_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_fault_tolerance_exception_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_fault_tolerance_exception_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_fault_tolerance_exception_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_fault_tolerance_exception_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_fault_tolerance_test_health_workflow_e2e
+
+# Build rule for target.
+e2e_fault_tolerance_test_health_workflow_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_fault_tolerance_test_health_workflow_e2e
+.PHONY : e2e_fault_tolerance_test_health_workflow_e2e
+
+# fast build rule for target.
+e2e_fault_tolerance_test_health_workflow_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_health_workflow_e2e.dir/build.make test/e2e/fault_tolerance/CMakeFiles/e2e_fault_tolerance_test_health_workflow_e2e.dir/build
+.PHONY : e2e_fault_tolerance_test_health_workflow_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_cognitive_test_predictive_bridge_exception_e2e
+
+# Build rule for target.
+e2e_cognitive_test_predictive_bridge_exception_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_cognitive_test_predictive_bridge_exception_e2e
+.PHONY : e2e_cognitive_test_predictive_bridge_exception_e2e
+
+# fast build rule for target.
+e2e_cognitive_test_predictive_bridge_exception_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_predictive_bridge_exception_e2e.dir/build.make test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_predictive_bridge_exception_e2e.dir/build
+.PHONY : e2e_cognitive_test_predictive_bridge_exception_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_cognitive_test_tom_exception_e2e
+
+# Build rule for target.
+e2e_cognitive_test_tom_exception_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_cognitive_test_tom_exception_e2e
+.PHONY : e2e_cognitive_test_tom_exception_e2e
+
+# fast build rule for target.
+e2e_cognitive_test_tom_exception_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_tom_exception_e2e.dir/build.make test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_tom_exception_e2e.dir/build
+.PHONY : e2e_cognitive_test_tom_exception_e2e/fast
+
+#=============================================================================
 # Target rules for targets named e2e_cognitive_test_wm_bridges_e2e
 
 # Build rule for target.
@@ -8984,6 +8984,32 @@ e2e_cognitive_test_world_model_e2e: cmake_check_build_system
 e2e_cognitive_test_world_model_e2e/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_world_model_e2e.dir/build.make test/e2e/cognitive/CMakeFiles/e2e_cognitive_test_world_model_e2e.dir/build
 .PHONY : e2e_cognitive_test_world_model_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_attention_exception
+
+# Build rule for target.
+e2e_attention_exception: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_attention_exception
+.PHONY : e2e_attention_exception
+
+# fast build rule for target.
+e2e_attention_exception/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/cognitive/attention/CMakeFiles/e2e_attention_exception.dir/build.make test/e2e/cognitive/attention/CMakeFiles/e2e_attention_exception.dir/build
+.PHONY : e2e_attention_exception/fast
+
+#=============================================================================
+# Target rules for targets named e2e_cognitive_memory_pr_exception
+
+# Build rule for target.
+e2e_cognitive_memory_pr_exception: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_cognitive_memory_pr_exception
+.PHONY : e2e_cognitive_memory_pr_exception
+
+# fast build rule for target.
+e2e_cognitive_memory_pr_exception/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/cognitive/memory/CMakeFiles/e2e_cognitive_memory_pr_exception.dir/build.make test/e2e/cognitive/memory/CMakeFiles/e2e_cognitive_memory_pr_exception.dir/build
+.PHONY : e2e_cognitive_memory_pr_exception/fast
 
 #=============================================================================
 # Target rules for targets named e2e_neuro_symbolic_test_collaborative_proof_e2e
@@ -9036,6 +9062,45 @@ e2e_neuro_symbolic_test_quantum_planning_e2e: cmake_check_build_system
 e2e_neuro_symbolic_test_quantum_planning_e2e/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/cognitive/neuro_symbolic/CMakeFiles/e2e_neuro_symbolic_test_quantum_planning_e2e.dir/build.make test/e2e/cognitive/neuro_symbolic/CMakeFiles/e2e_neuro_symbolic_test_quantum_planning_e2e.dir/build
 .PHONY : e2e_neuro_symbolic_test_quantum_planning_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_cognitive_immune_tick
+
+# Build rule for target.
+e2e_cognitive_immune_tick: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_cognitive_immune_tick
+.PHONY : e2e_cognitive_immune_tick
+
+# fast build rule for target.
+e2e_cognitive_immune_tick/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/cognitive/immune/CMakeFiles/e2e_cognitive_immune_tick.dir/build.make test/e2e/cognitive/immune/CMakeFiles/e2e_cognitive_immune_tick.dir/build
+.PHONY : e2e_cognitive_immune_tick/fast
+
+#=============================================================================
+# Target rules for targets named e2e_cognitive_immune_tick_enhanced
+
+# Build rule for target.
+e2e_cognitive_immune_tick_enhanced: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_cognitive_immune_tick_enhanced
+.PHONY : e2e_cognitive_immune_tick_enhanced
+
+# fast build rule for target.
+e2e_cognitive_immune_tick_enhanced/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/cognitive/immune/CMakeFiles/e2e_cognitive_immune_tick_enhanced.dir/build.make test/e2e/cognitive/immune/CMakeFiles/e2e_cognitive_immune_tick_enhanced.dir/build
+.PHONY : e2e_cognitive_immune_tick_enhanced/fast
+
+#=============================================================================
+# Target rules for targets named e2e_parietal_exception
+
+# Build rule for target.
+e2e_parietal_exception: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_parietal_exception
+.PHONY : e2e_parietal_exception
+
+# fast build rule for target.
+e2e_parietal_exception/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/cognitive/parietal/CMakeFiles/e2e_parietal_exception.dir/build.make test/e2e/cognitive/parietal/CMakeFiles/e2e_parietal_exception.dir/build
+.PHONY : e2e_parietal_exception/fast
 
 #=============================================================================
 # Target rules for targets named e2e_test_metabolic_processing
@@ -9413,6 +9478,32 @@ run_cortical_columns_e2e_tests: cmake_check_build_system
 run_cortical_columns_e2e_tests/fast:
 	$(MAKE) $(MAKESILENT) -f test/e2e/core/cortical_columns/CMakeFiles/run_cortical_columns_e2e_tests.dir/build.make test/e2e/core/cortical_columns/CMakeFiles/run_cortical_columns_e2e_tests.dir/build
 .PHONY : run_cortical_columns_e2e_tests/fast
+
+#=============================================================================
+# Target rules for targets named test_medulla_exception_e2e
+
+# Build rule for target.
+test_medulla_exception_e2e: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 test_medulla_exception_e2e
+.PHONY : test_medulla_exception_e2e
+
+# fast build rule for target.
+test_medulla_exception_e2e/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/core/medulla/CMakeFiles/test_medulla_exception_e2e.dir/build.make test/e2e/core/medulla/CMakeFiles/test_medulla_exception_e2e.dir/build
+.PHONY : test_medulla_exception_e2e/fast
+
+#=============================================================================
+# Target rules for targets named e2e_snn_bridge_exception
+
+# Build rule for target.
+e2e_snn_bridge_exception: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 e2e_snn_bridge_exception
+.PHONY : e2e_snn_bridge_exception
+
+# fast build rule for target.
+e2e_snn_bridge_exception/fast:
+	$(MAKE) $(MAKESILENT) -f test/e2e/snn/CMakeFiles/e2e_snn_bridge_exception.dir/build.make test/e2e/snn/CMakeFiles/e2e_snn_bridge_exception.dir/build
+.PHONY : e2e_snn_bridge_exception/fast
 
 #=============================================================================
 # Target rules for targets named unit_middleware_integration
@@ -11638,6 +11729,19 @@ integration_self_repair_bio_async/fast:
 .PHONY : integration_self_repair_bio_async/fast
 
 #=============================================================================
+# Target rules for targets named integration_health_module
+
+# Build rule for target.
+integration_health_module: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_health_module
+.PHONY : integration_health_module
+
+# fast build rule for target.
+integration_health_module/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/fault_tolerance/CMakeFiles/integration_health_module.dir/build.make test/integration/fault_tolerance/CMakeFiles/integration_health_module.dir/build
+.PHONY : integration_health_module/fast
+
+#=============================================================================
 # Target rules for targets named test_symbolic_logic_attachment
 
 # Build rule for target.
@@ -13393,6 +13497,19 @@ unit_cognitive_memory_test_fractal_exception_handling/fast:
 .PHONY : unit_cognitive_memory_test_fractal_exception_handling/fast
 
 #=============================================================================
+# Target rules for targets named unit_pr_memory_exception_handling
+
+# Build rule for target.
+unit_pr_memory_exception_handling: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_pr_memory_exception_handling
+.PHONY : unit_pr_memory_exception_handling
+
+# fast build rule for target.
+unit_pr_memory_exception_handling/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/memory/core/CMakeFiles/unit_pr_memory_exception_handling.dir/build.make test/unit/cognitive/memory/core/CMakeFiles/unit_pr_memory_exception_handling.dir/build
+.PHONY : unit_pr_memory_exception_handling/fast
+
+#=============================================================================
 # Target rules for targets named unit_cognitive_tom_substrate_bridge
 
 # Build rule for target.
@@ -13430,6 +13547,19 @@ unit_cognitive_tom_plasticity_bridge: cmake_check_build_system
 unit_cognitive_tom_plasticity_bridge/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/theory_of_mind/CMakeFiles/unit_cognitive_tom_plasticity_bridge.dir/build.make test/unit/cognitive/theory_of_mind/CMakeFiles/unit_cognitive_tom_plasticity_bridge.dir/build
 .PHONY : unit_cognitive_tom_plasticity_bridge/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_tom_exception_handling
+
+# Build rule for target.
+unit_cognitive_tom_exception_handling: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_tom_exception_handling
+.PHONY : unit_cognitive_tom_exception_handling
+
+# fast build rule for target.
+unit_cognitive_tom_exception_handling/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/theory_of_mind/CMakeFiles/unit_cognitive_tom_exception_handling.dir/build.make test/unit/cognitive/theory_of_mind/CMakeFiles/unit_cognitive_tom_exception_handling.dir/build
+.PHONY : unit_cognitive_tom_exception_handling/fast
 
 #=============================================================================
 # Target rules for targets named unit_parietal_number_sense
@@ -13768,6 +13898,19 @@ unit_mathematical_genius: cmake_check_build_system
 unit_mathematical_genius/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_mathematical_genius.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_mathematical_genius.dir/build
 .PHONY : unit_mathematical_genius/fast
+
+#=============================================================================
+# Target rules for targets named unit_parietal_exception_handling
+
+# Build rule for target.
+unit_parietal_exception_handling: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_parietal_exception_handling
+.PHONY : unit_parietal_exception_handling
+
+# fast build rule for target.
+unit_parietal_exception_handling/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/parietal/CMakeFiles/unit_parietal_exception_handling.dir/build.make test/unit/cognitive/parietal/CMakeFiles/unit_parietal_exception_handling.dir/build
+.PHONY : unit_parietal_exception_handling/fast
 
 #=============================================================================
 # Target rules for targets named unit_cognitive_meta_learning_snn_bridge
@@ -14719,6 +14862,71 @@ unit_test_quantum_math_engine/fast:
 .PHONY : unit_test_quantum_math_engine/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_predictive_test_predictive
+
+# Build rule for target.
+unit_cognitive_predictive_test_predictive: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_predictive_test_predictive
+.PHONY : unit_cognitive_predictive_test_predictive
+
+# fast build rule for target.
+unit_cognitive_predictive_test_predictive/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/predictive/CMakeFiles/unit_cognitive_predictive_test_predictive.dir/build.make test/unit/cognitive/predictive/CMakeFiles/unit_cognitive_predictive_test_predictive.dir/build
+.PHONY : unit_cognitive_predictive_test_predictive/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_predictive_test_predictive_bridge_exception
+
+# Build rule for target.
+unit_cognitive_predictive_test_predictive_bridge_exception: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_predictive_test_predictive_bridge_exception
+.PHONY : unit_cognitive_predictive_test_predictive_bridge_exception
+
+# fast build rule for target.
+unit_cognitive_predictive_test_predictive_bridge_exception/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/predictive/CMakeFiles/unit_cognitive_predictive_test_predictive_bridge_exception.dir/build.make test/unit/cognitive/predictive/CMakeFiles/unit_cognitive_predictive_test_predictive_bridge_exception.dir/build
+.PHONY : unit_cognitive_predictive_test_predictive_bridge_exception/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_predictive_test_predictive_coverage
+
+# Build rule for target.
+unit_cognitive_predictive_test_predictive_coverage: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_predictive_test_predictive_coverage
+.PHONY : unit_cognitive_predictive_test_predictive_coverage
+
+# fast build rule for target.
+unit_cognitive_predictive_test_predictive_coverage/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/predictive/CMakeFiles/unit_cognitive_predictive_test_predictive_coverage.dir/build.make test/unit/cognitive/predictive/CMakeFiles/unit_cognitive_predictive_test_predictive_coverage.dir/build
+.PHONY : unit_cognitive_predictive_test_predictive_coverage/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_predictive_test_predictive_hierarchy
+
+# Build rule for target.
+unit_cognitive_predictive_test_predictive_hierarchy: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_predictive_test_predictive_hierarchy
+.PHONY : unit_cognitive_predictive_test_predictive_hierarchy
+
+# fast build rule for target.
+unit_cognitive_predictive_test_predictive_hierarchy/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/predictive/CMakeFiles/unit_cognitive_predictive_test_predictive_hierarchy.dir/build.make test/unit/cognitive/predictive/CMakeFiles/unit_cognitive_predictive_test_predictive_hierarchy.dir/build
+.PHONY : unit_cognitive_predictive_test_predictive_hierarchy/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_predictive_test_predictive_real
+
+# Build rule for target.
+unit_cognitive_predictive_test_predictive_real: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_predictive_test_predictive_real
+.PHONY : unit_cognitive_predictive_test_predictive_real
+
+# fast build rule for target.
+unit_cognitive_predictive_test_predictive_real/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/predictive/CMakeFiles/unit_cognitive_predictive_test_predictive_real.dir/build.make test/unit/cognitive/predictive/CMakeFiles/unit_cognitive_predictive_test_predictive_real.dir/build
+.PHONY : unit_cognitive_predictive_test_predictive_real/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_bio_async_test
 
 # Build rule for target.
@@ -15031,6 +15239,32 @@ unit_cognitive_immune_self_repair_bridge/fast:
 .PHONY : unit_cognitive_immune_self_repair_bridge/fast
 
 #=============================================================================
+# Target rules for targets named unit_cognitive_immune_tick_enhanced
+
+# Build rule for target.
+unit_cognitive_immune_tick_enhanced: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_immune_tick_enhanced
+.PHONY : unit_cognitive_immune_tick_enhanced
+
+# fast build rule for target.
+unit_cognitive_immune_tick_enhanced/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_tick_enhanced.dir/build.make test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_tick_enhanced.dir/build
+.PHONY : unit_cognitive_immune_tick_enhanced/fast
+
+#=============================================================================
+# Target rules for targets named unit_cognitive_immune_integration_helper
+
+# Build rule for target.
+unit_cognitive_immune_integration_helper: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_cognitive_immune_integration_helper
+.PHONY : unit_cognitive_immune_integration_helper
+
+# fast build rule for target.
+unit_cognitive_immune_integration_helper/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_integration_helper.dir/build.make test/unit/cognitive/immune/CMakeFiles/unit_cognitive_immune_integration_helper.dir/build
+.PHONY : unit_cognitive_immune_integration_helper/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_immune_brain_immune
 
 # Build rule for target.
@@ -15148,6 +15382,19 @@ integration_cognitive_immune_code_immune_self_repair/fast:
 .PHONY : integration_cognitive_immune_code_immune_self_repair/fast
 
 #=============================================================================
+# Target rules for targets named integration_cognitive_immune_tick_enhanced
+
+# Build rule for target.
+integration_cognitive_immune_tick_enhanced: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_immune_tick_enhanced
+.PHONY : integration_cognitive_immune_tick_enhanced
+
+# fast build rule for target.
+integration_cognitive_immune_tick_enhanced/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/immune/CMakeFiles/integration_cognitive_immune_tick_enhanced.dir/build.make test/integration/cognitive/immune/CMakeFiles/integration_cognitive_immune_tick_enhanced.dir/build
+.PHONY : integration_cognitive_immune_tick_enhanced/fast
+
+#=============================================================================
 # Target rules for targets named regression_cognitive_immune_brain_immune
 
 # Build rule for target.
@@ -15185,6 +15432,19 @@ regression_cognitive_immune_code_immune: cmake_check_build_system
 regression_cognitive_immune_code_immune/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/immune/CMakeFiles/regression_cognitive_immune_code_immune.dir/build.make test/regression/cognitive/immune/CMakeFiles/regression_cognitive_immune_code_immune.dir/build
 .PHONY : regression_cognitive_immune_code_immune/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_immune_tick_enhanced
+
+# Build rule for target.
+regression_cognitive_immune_tick_enhanced: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_immune_tick_enhanced
+.PHONY : regression_cognitive_immune_tick_enhanced
+
+# fast build rule for target.
+regression_cognitive_immune_tick_enhanced/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/immune/CMakeFiles/regression_cognitive_immune_tick_enhanced.dir/build.make test/regression/cognitive/immune/CMakeFiles/regression_cognitive_immune_tick_enhanced.dir/build
+.PHONY : regression_cognitive_immune_tick_enhanced/fast
 
 #=============================================================================
 # Target rules for targets named integration_cognitive_wellbeing_enhanced
@@ -19711,6 +19971,19 @@ unit_utils_fault_tolerance_test_plasticity_anomaly_detection/fast:
 .PHONY : unit_utils_fault_tolerance_test_plasticity_anomaly_detection/fast
 
 #=============================================================================
+# Target rules for targets named unit_utils_fault_tolerance_test_fault_tolerance_exception
+
+# Build rule for target.
+unit_utils_fault_tolerance_test_fault_tolerance_exception: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_utils_fault_tolerance_test_fault_tolerance_exception
+.PHONY : unit_utils_fault_tolerance_test_fault_tolerance_exception
+
+# fast build rule for target.
+unit_utils_fault_tolerance_test_fault_tolerance_exception/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_fault_tolerance_exception.dir/build.make test/unit/utils/fault_tolerance/CMakeFiles/unit_utils_fault_tolerance_test_fault_tolerance_exception.dir/build
+.PHONY : unit_utils_fault_tolerance_test_fault_tolerance_exception/fast
+
+#=============================================================================
 # Target rules for targets named integration_utils_fault_tolerance_test_async_checkpoint_integration
 
 # Build rule for target.
@@ -20088,6 +20361,19 @@ integration_utils_fault_tolerance_test_plasticity_anomaly_integration/fast:
 .PHONY : integration_utils_fault_tolerance_test_plasticity_anomaly_integration/fast
 
 #=============================================================================
+# Target rules for targets named integration_utils_fault_tolerance_test_fault_tolerance_exception_integration
+
+# Build rule for target.
+integration_utils_fault_tolerance_test_fault_tolerance_exception_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_utils_fault_tolerance_test_fault_tolerance_exception_integration
+.PHONY : integration_utils_fault_tolerance_test_fault_tolerance_exception_integration
+
+# fast build rule for target.
+integration_utils_fault_tolerance_test_fault_tolerance_exception_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_fault_tolerance_exception_integration.dir/build.make test/integration/utils/fault_tolerance/CMakeFiles/integration_utils_fault_tolerance_test_fault_tolerance_exception_integration.dir/build
+.PHONY : integration_utils_fault_tolerance_test_fault_tolerance_exception_integration/fast
+
+#=============================================================================
 # Target rules for targets named regression_utils_fault_tolerance_test_checkpoint_format
 
 # Build rule for target.
@@ -20400,6 +20686,71 @@ regression_utils_fault_tolerance_test_module_recovery_regression/fast:
 .PHONY : regression_utils_fault_tolerance_test_module_recovery_regression/fast
 
 #=============================================================================
+# Target rules for targets named regression_utils_fault_tolerance_test_stdp_health_regression
+
+# Build rule for target.
+regression_utils_fault_tolerance_test_stdp_health_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_fault_tolerance_test_stdp_health_regression
+.PHONY : regression_utils_fault_tolerance_test_stdp_health_regression
+
+# fast build rule for target.
+regression_utils_fault_tolerance_test_stdp_health_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_stdp_health_regression.dir/build.make test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_stdp_health_regression.dir/build
+.PHONY : regression_utils_fault_tolerance_test_stdp_health_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_utils_fault_tolerance_test_plasticity_anomaly_regression
+
+# Build rule for target.
+regression_utils_fault_tolerance_test_plasticity_anomaly_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_fault_tolerance_test_plasticity_anomaly_regression
+.PHONY : regression_utils_fault_tolerance_test_plasticity_anomaly_regression
+
+# fast build rule for target.
+regression_utils_fault_tolerance_test_plasticity_anomaly_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_plasticity_anomaly_regression.dir/build.make test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_plasticity_anomaly_regression.dir/build
+.PHONY : regression_utils_fault_tolerance_test_plasticity_anomaly_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_utils_fault_tolerance_test_fault_tolerance_exception_regression
+
+# Build rule for target.
+regression_utils_fault_tolerance_test_fault_tolerance_exception_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_utils_fault_tolerance_test_fault_tolerance_exception_regression
+.PHONY : regression_utils_fault_tolerance_test_fault_tolerance_exception_regression
+
+# fast build rule for target.
+regression_utils_fault_tolerance_test_fault_tolerance_exception_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_fault_tolerance_exception_regression.dir/build.make test/regression/utils/fault_tolerance/CMakeFiles/regression_utils_fault_tolerance_test_fault_tolerance_exception_regression.dir/build
+.PHONY : regression_utils_fault_tolerance_test_fault_tolerance_exception_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_fault_tolerance
+
+# Build rule for target.
+regression_fault_tolerance: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_fault_tolerance
+.PHONY : regression_fault_tolerance
+
+# fast build rule for target.
+regression_fault_tolerance/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_fault_tolerance.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_fault_tolerance.dir/build
+.PHONY : regression_fault_tolerance/fast
+
+#=============================================================================
+# Target rules for targets named regression_health_stability
+
+# Build rule for target.
+regression_health_stability: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_health_stability
+.PHONY : regression_health_stability
+
+# fast build rule for target.
+regression_health_stability/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/fault_tolerance/CMakeFiles/regression_health_stability.dir/build.make test/regression/fault_tolerance/CMakeFiles/regression_health_stability.dir/build
+.PHONY : regression_health_stability/fast
+
+#=============================================================================
 # Target rules for targets named unit_utils_vcs_integration
 
 # Build rule for target.
@@ -20541,6 +20892,45 @@ unit_exception_test_macro_comprehensive: cmake_check_build_system
 unit_exception_test_macro_comprehensive/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/exception/CMakeFiles/unit_exception_test_macro_comprehensive.dir/build.make test/unit/exception/CMakeFiles/unit_exception_test_macro_comprehensive.dir/build
 .PHONY : unit_exception_test_macro_comprehensive/fast
+
+#=============================================================================
+# Target rules for targets named unit_health_agent_heartbeat
+
+# Build rule for target.
+unit_health_agent_heartbeat: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_health_agent_heartbeat
+.PHONY : unit_health_agent_heartbeat
+
+# fast build rule for target.
+unit_health_agent_heartbeat/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_health_agent_heartbeat.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_health_agent_heartbeat.dir/build
+.PHONY : unit_health_agent_heartbeat/fast
+
+#=============================================================================
+# Target rules for targets named unit_state_manager
+
+# Build rule for target.
+unit_state_manager: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_state_manager
+.PHONY : unit_state_manager
+
+# fast build rule for target.
+unit_state_manager/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_state_manager.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_state_manager.dir/build
+.PHONY : unit_state_manager/fast
+
+#=============================================================================
+# Target rules for targets named unit_training_state_manager
+
+# Build rule for target.
+unit_training_state_manager: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_training_state_manager
+.PHONY : unit_training_state_manager
+
+# fast build rule for target.
+unit_training_state_manager/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/fault_tolerance/CMakeFiles/unit_training_state_manager.dir/build.make test/unit/fault_tolerance/CMakeFiles/unit_training_state_manager.dir/build
+.PHONY : unit_training_state_manager/fast
 
 #=============================================================================
 # Target rules for targets named unit_brain_test_kg_module_wiring
@@ -21375,6 +21765,19 @@ integration_genius_bridges_exception/fast:
 .PHONY : integration_genius_bridges_exception/fast
 
 #=============================================================================
+# Target rules for targets named integration_parietal_exception
+
+# Build rule for target.
+integration_parietal_exception: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_parietal_exception
+.PHONY : integration_parietal_exception
+
+# fast build rule for target.
+integration_parietal_exception/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/parietal/CMakeFiles/integration_parietal_exception.dir/build.make test/integration/cognitive/parietal/CMakeFiles/integration_parietal_exception.dir/build
+.PHONY : integration_parietal_exception/fast
+
+#=============================================================================
 # Target rules for targets named integration_thalamic_substrate_bridges
 
 # Build rule for target.
@@ -21713,6 +22116,19 @@ integration_cognitive_attention_snn_plasticity/fast:
 .PHONY : integration_cognitive_attention_snn_plasticity/fast
 
 #=============================================================================
+# Target rules for targets named integration_cognitive_memory_pr_exception
+
+# Build rule for target.
+integration_cognitive_memory_pr_exception: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_memory_pr_exception
+.PHONY : integration_cognitive_memory_pr_exception
+
+# fast build rule for target.
+integration_cognitive_memory_pr_exception/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/memory/CMakeFiles/integration_cognitive_memory_pr_exception.dir/build.make test/integration/cognitive/memory/CMakeFiles/integration_cognitive_memory_pr_exception.dir/build
+.PHONY : integration_cognitive_memory_pr_exception/fast
+
+#=============================================================================
 # Target rules for targets named integration_cognitive_memory_snn_plasticity
 
 # Build rule for target.
@@ -21802,6 +22218,19 @@ integration_cognitive_tom_snn_plasticity: cmake_check_build_system
 integration_cognitive_tom_snn_plasticity/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/theory_of_mind/CMakeFiles/integration_cognitive_tom_snn_plasticity.dir/build.make test/integration/cognitive/theory_of_mind/CMakeFiles/integration_cognitive_tom_snn_plasticity.dir/build
 .PHONY : integration_cognitive_tom_snn_plasticity/fast
+
+#=============================================================================
+# Target rules for targets named integration_cognitive_tom_exception
+
+# Build rule for target.
+integration_cognitive_tom_exception: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_tom_exception
+.PHONY : integration_cognitive_tom_exception
+
+# fast build rule for target.
+integration_cognitive_tom_exception/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/theory_of_mind/CMakeFiles/integration_cognitive_tom_exception.dir/build.make test/integration/cognitive/theory_of_mind/CMakeFiles/integration_cognitive_tom_exception.dir/build
+.PHONY : integration_cognitive_tom_exception/fast
 
 #=============================================================================
 # Target rules for targets named integration_cognitive_introspection_connectivity_health
@@ -22272,6 +22701,19 @@ integration_hypergraph_knowledge/fast:
 .PHONY : integration_hypergraph_knowledge/fast
 
 #=============================================================================
+# Target rules for targets named integration_cognitive_predictive_test_predictive_bridge_exception_integration
+
+# Build rule for target.
+integration_cognitive_predictive_test_predictive_bridge_exception_integration: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_cognitive_predictive_test_predictive_bridge_exception_integration
+.PHONY : integration_cognitive_predictive_test_predictive_bridge_exception_integration
+
+# fast build rule for target.
+integration_cognitive_predictive_test_predictive_bridge_exception_integration/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/cognitive/predictive/CMakeFiles/integration_cognitive_predictive_test_predictive_bridge_exception_integration.dir/build.make test/integration/cognitive/predictive/CMakeFiles/integration_cognitive_predictive_test_predictive_bridge_exception_integration.dir/build
+.PHONY : integration_cognitive_predictive_test_predictive_bridge_exception_integration/fast
+
+#=============================================================================
 # Target rules for targets named regression_cognitive_emotion_performance
 
 # Build rule for target.
@@ -22649,6 +23091,19 @@ regression_cognitive_tom_snn_plasticity/fast:
 .PHONY : regression_cognitive_tom_snn_plasticity/fast
 
 #=============================================================================
+# Target rules for targets named regression_cognitive_tom_exception
+
+# Build rule for target.
+regression_cognitive_tom_exception: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_tom_exception
+.PHONY : regression_cognitive_tom_exception
+
+# fast build rule for target.
+regression_cognitive_tom_exception/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/theory_of_mind/CMakeFiles/regression_cognitive_tom_exception.dir/build.make test/regression/cognitive/theory_of_mind/CMakeFiles/regression_cognitive_tom_exception.dir/build
+.PHONY : regression_cognitive_tom_exception/fast
+
+#=============================================================================
 # Target rules for targets named regression_cognitive_memory_engram_backward_compat
 
 # Build rule for target.
@@ -22686,6 +23141,19 @@ regression_cognitive_memory_snn_plasticity: cmake_check_build_system
 regression_cognitive_memory_snn_plasticity/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/memory/CMakeFiles/regression_cognitive_memory_snn_plasticity.dir/build.make test/regression/cognitive/memory/CMakeFiles/regression_cognitive_memory_snn_plasticity.dir/build
 .PHONY : regression_cognitive_memory_snn_plasticity/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_memory_pr_exception
+
+# Build rule for target.
+regression_cognitive_memory_pr_exception: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_memory_pr_exception
+.PHONY : regression_cognitive_memory_pr_exception
+
+# fast build rule for target.
+regression_cognitive_memory_pr_exception/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/memory/CMakeFiles/regression_cognitive_memory_pr_exception.dir/build.make test/regression/cognitive/memory/CMakeFiles/regression_cognitive_memory_pr_exception.dir/build
+.PHONY : regression_cognitive_memory_pr_exception/fast
 
 #=============================================================================
 # Target rules for targets named regression_cognitive_epistemic_snn_plasticity
@@ -22818,6 +23286,19 @@ regression_genius_bridges_exception/fast:
 .PHONY : regression_genius_bridges_exception/fast
 
 #=============================================================================
+# Target rules for targets named regression_parietal_exception
+
+# Build rule for target.
+regression_parietal_exception: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_parietal_exception
+.PHONY : regression_parietal_exception
+
+# fast build rule for target.
+regression_parietal_exception/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/parietal/CMakeFiles/regression_parietal_exception.dir/build.make test/regression/cognitive/parietal/CMakeFiles/regression_parietal_exception.dir/build
+.PHONY : regression_parietal_exception/fast
+
+#=============================================================================
 # Target rules for targets named regression_imagination_fep
 
 # Build rule for target.
@@ -22920,6 +23401,19 @@ regression_energy_consistency: cmake_check_build_system
 regression_energy_consistency/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/neuro_symbolic/CMakeFiles/regression_energy_consistency.dir/build.make test/regression/cognitive/neuro_symbolic/CMakeFiles/regression_energy_consistency.dir/build
 .PHONY : regression_energy_consistency/fast
+
+#=============================================================================
+# Target rules for targets named regression_cognitive_predictive_test_predictive_bridge_exception_regression
+
+# Build rule for target.
+regression_cognitive_predictive_test_predictive_bridge_exception_regression: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_cognitive_predictive_test_predictive_bridge_exception_regression
+.PHONY : regression_cognitive_predictive_test_predictive_bridge_exception_regression
+
+# fast build rule for target.
+regression_cognitive_predictive_test_predictive_bridge_exception_regression/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/cognitive/predictive/CMakeFiles/regression_cognitive_predictive_test_predictive_bridge_exception_regression.dir/build.make test/regression/cognitive/predictive/CMakeFiles/regression_cognitive_predictive_test_predictive_bridge_exception_regression.dir/build
+.PHONY : regression_cognitive_predictive_test_predictive_bridge_exception_regression/fast
 
 #=============================================================================
 # Target rules for targets named integration_brain_regions_test_visual_cortex_integration
@@ -26432,6 +26926,19 @@ unit_plasticity_attention_test_quantum_attention/fast:
 .PHONY : unit_plasticity_attention_test_quantum_attention/fast
 
 #=============================================================================
+# Target rules for targets named unit_plasticity_attention_test_attention_exception_handling
+
+# Build rule for target.
+unit_plasticity_attention_test_attention_exception_handling: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_attention_test_attention_exception_handling
+.PHONY : unit_plasticity_attention_test_attention_exception_handling
+
+# fast build rule for target.
+unit_plasticity_attention_test_attention_exception_handling/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/attention/CMakeFiles/unit_plasticity_attention_test_attention_exception_handling.dir/build.make test/unit/plasticity/attention/CMakeFiles/unit_plasticity_attention_test_attention_exception_handling.dir/build
+.PHONY : unit_plasticity_attention_test_attention_exception_handling/fast
+
+#=============================================================================
 # Target rules for targets named unit_plasticity_heterosynaptic
 
 # Build rule for target.
@@ -26482,6 +26989,19 @@ unit_plasticity_exception_handling: cmake_check_build_system
 unit_plasticity_exception_handling/fast:
 	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/exception/CMakeFiles/unit_plasticity_exception_handling.dir/build.make test/unit/plasticity/exception/CMakeFiles/unit_plasticity_exception_handling.dir/build
 .PHONY : unit_plasticity_exception_handling/fast
+
+#=============================================================================
+# Target rules for targets named unit_plasticity_module_exception
+
+# Build rule for target.
+unit_plasticity_module_exception: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_plasticity_module_exception
+.PHONY : unit_plasticity_module_exception
+
+# fast build rule for target.
+unit_plasticity_module_exception/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/plasticity/exception/CMakeFiles/unit_plasticity_module_exception.dir/build.make test/unit/plasticity/exception/CMakeFiles/unit_plasticity_module_exception.dir/build
+.PHONY : unit_plasticity_module_exception/fast
 
 #=============================================================================
 # Target rules for targets named test_plasticity_bioasync_integration
@@ -26690,6 +27210,32 @@ integration_plasticity_exception: cmake_check_build_system
 integration_plasticity_exception/fast:
 	$(MAKE) $(MAKESILENT) -f test/integration/plasticity/exception/CMakeFiles/integration_plasticity_exception.dir/build.make test/integration/plasticity/exception/CMakeFiles/integration_plasticity_exception.dir/build
 .PHONY : integration_plasticity_exception/fast
+
+#=============================================================================
+# Target rules for targets named integration_plasticity_module_exception
+
+# Build rule for target.
+integration_plasticity_module_exception: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_plasticity_module_exception
+.PHONY : integration_plasticity_module_exception
+
+# fast build rule for target.
+integration_plasticity_module_exception/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/plasticity/exception/CMakeFiles/integration_plasticity_module_exception.dir/build.make test/integration/plasticity/exception/CMakeFiles/integration_plasticity_module_exception.dir/build
+.PHONY : integration_plasticity_module_exception/fast
+
+#=============================================================================
+# Target rules for targets named integration_attention_exception
+
+# Build rule for target.
+integration_attention_exception: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_attention_exception
+.PHONY : integration_attention_exception
+
+# fast build rule for target.
+integration_attention_exception/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/plasticity/exception/CMakeFiles/integration_attention_exception.dir/build.make test/integration/plasticity/exception/CMakeFiles/integration_attention_exception.dir/build
+.PHONY : integration_attention_exception/fast
 
 #=============================================================================
 # Target rules for targets named test_learning_stability
@@ -26924,6 +27470,32 @@ test_calcium_regression: cmake_check_build_system
 test_calcium_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/plasticity/calcium/CMakeFiles/test_calcium_regression.dir/build.make test/regression/plasticity/calcium/CMakeFiles/test_calcium_regression.dir/build
 .PHONY : test_calcium_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_plasticity_module_exception
+
+# Build rule for target.
+regression_plasticity_module_exception: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_plasticity_module_exception
+.PHONY : regression_plasticity_module_exception
+
+# fast build rule for target.
+regression_plasticity_module_exception/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/plasticity/exception/CMakeFiles/regression_plasticity_module_exception.dir/build.make test/regression/plasticity/exception/CMakeFiles/regression_plasticity_module_exception.dir/build
+.PHONY : regression_plasticity_module_exception/fast
+
+#=============================================================================
+# Target rules for targets named regression_attention_exception
+
+# Build rule for target.
+regression_attention_exception: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_attention_exception
+.PHONY : regression_attention_exception
+
+# fast build rule for target.
+regression_attention_exception/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/plasticity/exception/CMakeFiles/regression_attention_exception.dir/build.make test/regression/plasticity/exception/CMakeFiles/regression_attention_exception.dir/build
+.PHONY : regression_attention_exception/fast
 
 #=============================================================================
 # Target rules for targets named unit_perception_test_speech_cortex_pe
@@ -30293,6 +30865,19 @@ unit_snn_exception_handling/fast:
 .PHONY : unit_snn_exception_handling/fast
 
 #=============================================================================
+# Target rules for targets named unit_snn_bridge_exception
+
+# Build rule for target.
+unit_snn_bridge_exception: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 unit_snn_bridge_exception
+.PHONY : unit_snn_bridge_exception
+
+# fast build rule for target.
+unit_snn_bridge_exception/fast:
+	$(MAKE) $(MAKESILENT) -f test/unit/snn/exception/CMakeFiles/unit_snn_bridge_exception.dir/build.make test/unit/snn/exception/CMakeFiles/unit_snn_bridge_exception.dir/build
+.PHONY : unit_snn_bridge_exception/fast
+
+#=============================================================================
 # Target rules for targets named integration_snn_test_integration
 
 # Build rule for target.
@@ -30332,6 +30917,19 @@ integration_snn_plasticity/fast:
 .PHONY : integration_snn_plasticity/fast
 
 #=============================================================================
+# Target rules for targets named integration_snn_bridge_exception
+
+# Build rule for target.
+integration_snn_bridge_exception: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 integration_snn_bridge_exception
+.PHONY : integration_snn_bridge_exception
+
+# fast build rule for target.
+integration_snn_bridge_exception/fast:
+	$(MAKE) $(MAKESILENT) -f test/integration/snn/exception/CMakeFiles/integration_snn_bridge_exception.dir/build.make test/integration/snn/exception/CMakeFiles/integration_snn_bridge_exception.dir/build
+.PHONY : integration_snn_bridge_exception/fast
+
+#=============================================================================
 # Target rules for targets named regression_snn_test_regression
 
 # Build rule for target.
@@ -30369,6 +30967,19 @@ regression_snn_test_numerical_regression: cmake_check_build_system
 regression_snn_test_numerical_regression/fast:
 	$(MAKE) $(MAKESILENT) -f test/regression/snn/CMakeFiles/regression_snn_test_numerical_regression.dir/build.make test/regression/snn/CMakeFiles/regression_snn_test_numerical_regression.dir/build
 .PHONY : regression_snn_test_numerical_regression/fast
+
+#=============================================================================
+# Target rules for targets named regression_snn_bridge_exception
+
+# Build rule for target.
+regression_snn_bridge_exception: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 regression_snn_bridge_exception
+.PHONY : regression_snn_bridge_exception
+
+# fast build rule for target.
+regression_snn_bridge_exception/fast:
+	$(MAKE) $(MAKESILENT) -f test/regression/snn/exception/CMakeFiles/regression_snn_bridge_exception.dir/build.make test/regression/snn/exception/CMakeFiles/regression_snn_bridge_exception.dir/build
+.PHONY : regression_snn_bridge_exception/fast
 
 #=============================================================================
 # Target rules for targets named bench_benchmark_complex_vs_real_oscillations
@@ -32990,6 +33601,12 @@ help:
 	@echo "... cow_inference_server"
 	@echo "... cow_snapshot_learning"
 	@echo "... distributed_cow_demo"
+	@echo "... e2e_attention_exception"
+	@echo "... e2e_cognitive_immune_tick"
+	@echo "... e2e_cognitive_immune_tick_enhanced"
+	@echo "... e2e_cognitive_memory_pr_exception"
+	@echo "... e2e_cognitive_test_predictive_bridge_exception_e2e"
+	@echo "... e2e_cognitive_test_tom_exception_e2e"
 	@echo "... e2e_cognitive_test_wm_bridges_e2e"
 	@echo "... e2e_cognitive_test_world_model_e2e"
 	@echo "... e2e_core_brain_regions_hippocampus_test_hippocampus_e2e"
@@ -33010,6 +33627,7 @@ help:
 	@echo "... e2e_fault_tolerance_test_exception_recovery_scenarios_e2e"
 	@echo "... e2e_fault_tolerance_test_exception_resilience_e2e"
 	@echo "... e2e_fault_tolerance_test_exception_stress_e2e"
+	@echo "... e2e_fault_tolerance_test_fault_tolerance_exception_e2e"
 	@echo "... e2e_fault_tolerance_test_health_agent_active_cognitive_e2e"
 	@echo "... e2e_fault_tolerance_test_health_agent_behavioral_e2e"
 	@echo "... e2e_fault_tolerance_test_health_agent_connection_e2e"
@@ -33017,6 +33635,7 @@ help:
 	@echo "... e2e_fault_tolerance_test_health_agent_memory_e2e"
 	@echo "... e2e_fault_tolerance_test_health_agent_neural_e2e"
 	@echo "... e2e_fault_tolerance_test_health_self_repair_e2e"
+	@echo "... e2e_fault_tolerance_test_health_workflow_e2e"
 	@echo "... e2e_fault_tolerance_test_heartbeat_module_e2e"
 	@echo "... e2e_fault_tolerance_test_perception_cortical_health_e2e"
 	@echo "... e2e_fault_tolerance_test_plasticity_health_e2e"
@@ -33041,7 +33660,10 @@ help:
 	@echo "... e2e_neuro_symbolic_test_full_orchestrator_workflow_e2e"
 	@echo "... e2e_neuro_symbolic_test_gauss_sum_formula_e2e"
 	@echo "... e2e_neuro_symbolic_test_quantum_planning_e2e"
+	@echo "... e2e_parietal_exception"
 	@echo "... e2e_plasticity_eligibility_utils_quantum"
+	@echo "... e2e_plasticity_module_exception"
+	@echo "... e2e_snn_bridge_exception"
 	@echo "... e2e_test_amygdala_pipeline"
 	@echo "... e2e_test_asymmetric_swarm"
 	@echo "... e2e_test_attention_snn_plasticity_pipeline"
@@ -33236,6 +33858,7 @@ help:
 	@echo "... integration_async_test_wiring_diagram"
 	@echo "... integration_async_test_wiring_diagram_kg_sync"
 	@echo "... integration_async_test_wiring_diagram_validation"
+	@echo "... integration_attention_exception"
 	@echo "... integration_bio_async_cross_bridge"
 	@echo "... integration_biology_neurovascular_test_neurovascular_integration"
 	@echo "... integration_brain_bio_async_test"
@@ -33288,6 +33911,7 @@ help:
 	@echo "... integration_cognitive_immune_memory"
 	@echo "... integration_cognitive_immune_modules"
 	@echo "... integration_cognitive_immune_perception_immune"
+	@echo "... integration_cognitive_immune_tick_enhanced"
 	@echo "... integration_cognitive_introspection_auto_activity_history"
 	@echo "... integration_cognitive_introspection_connectivity_health"
 	@echo "... integration_cognitive_introspection_consciousness_metrics"
@@ -33296,6 +33920,7 @@ help:
 	@echo "... integration_cognitive_introspection_temporal_patterns"
 	@echo "... integration_cognitive_joy_test_joy_euphoria_integration"
 	@echo "... integration_cognitive_memory_engram"
+	@echo "... integration_cognitive_memory_pr_exception"
 	@echo "... integration_cognitive_memory_semantic"
 	@echo "... integration_cognitive_memory_snn_plasticity"
 	@echo "... integration_cognitive_mental_health_guardian_brain"
@@ -33304,6 +33929,7 @@ help:
 	@echo "... integration_cognitive_mirror_neurons_snn_plasticity"
 	@echo "... integration_cognitive_mirror_neurons_substrate"
 	@echo "... integration_cognitive_parietal"
+	@echo "... integration_cognitive_predictive_test_predictive_bridge_exception_integration"
 	@echo "... integration_cognitive_reasoning_snn_plasticity"
 	@echo "... integration_cognitive_salience_snn_plasticity"
 	@echo "... integration_cognitive_self_model_snn_plasticity"
@@ -33321,6 +33947,7 @@ help:
 	@echo "... integration_cognitive_test_predictive_attention_integration"
 	@echo "... integration_cognitive_test_salience_attention_integration"
 	@echo "... integration_cognitive_test_tier3_fep_bridges_integration"
+	@echo "... integration_cognitive_tom_exception"
 	@echo "... integration_cognitive_tom_snn_plasticity"
 	@echo "... integration_cognitive_wellbeing_enhanced"
 	@echo "... integration_cognitive_wellbeing_snn_plasticity"
@@ -33477,6 +34104,7 @@ help:
 	@echo "... integration_gpu_test_mixed_precision"
 	@echo "... integration_gpu_test_substrate_gpu_integration"
 	@echo "... integration_gpu_test_visual_processing_gpu"
+	@echo "... integration_health_module"
 	@echo "... integration_hemispheric_brain"
 	@echo "... integration_hypergraph_knowledge"
 	@echo "... integration_imagination_fep"
@@ -33539,6 +34167,7 @@ help:
 	@echo "... integration_optimization_test_cross_modal_integration"
 	@echo "... integration_optimization_test_dynamic_adaptation_integration"
 	@echo "... integration_optimization_test_multi_objective_integration"
+	@echo "... integration_parietal_exception"
 	@echo "... integration_parietal_fep"
 	@echo "... integration_parietal_test_parietal_fep_integration"
 	@echo "... integration_parietal_training"
@@ -33572,6 +34201,7 @@ help:
 	@echo "... integration_plasticity_metabolic_test_metabolic_integration"
 	@echo "... integration_plasticity_metaplasticity"
 	@echo "... integration_plasticity_metaplasticity_test_metaplasticity_integration"
+	@echo "... integration_plasticity_module_exception"
 	@echo "... integration_plasticity_neural"
 	@echo "... integration_plasticity_neuromodulators_test_neuromodulators_bio_async_integration"
 	@echo "... integration_plasticity_neuromodulators_test_phasic_tonic_integration"
@@ -33626,6 +34256,7 @@ help:
 	@echo "... integration_security_test_swarm_security"
 	@echo "... integration_self_repair"
 	@echo "... integration_self_repair_bio_async"
+	@echo "... integration_snn_bridge_exception"
 	@echo "... integration_snn_plasticity"
 	@echo "... integration_snn_test_bridge_integration"
 	@echo "... integration_snn_test_integration"
@@ -33659,6 +34290,7 @@ help:
 	@echo "... integration_utils_fault_tolerance_test_enhanced_fault_tolerance_integration"
 	@echo "... integration_utils_fault_tolerance_test_fast_recovery_integration"
 	@echo "... integration_utils_fault_tolerance_test_fault_event_bus_integration"
+	@echo "... integration_utils_fault_tolerance_test_fault_tolerance_exception_integration"
 	@echo "... integration_utils_fault_tolerance_test_fault_tolerance_integration"
 	@echo "... integration_utils_fault_tolerance_test_health_agent_behavioral_integration"
 	@echo "... integration_utils_fault_tolerance_test_health_agent_connection_integration"
@@ -33717,6 +34349,7 @@ help:
 	@echo "... regression_async_test_wiring_diagram"
 	@echo "... regression_async_test_wiring_diagram_kg_sync"
 	@echo "... regression_async_test_wiring_diagram_validation"
+	@echo "... regression_attention_exception"
 	@echo "... regression_bio_async_self_repair"
 	@echo "... regression_biology_neurovascular_test_neurovascular_regression"
 	@echo "... regression_brain_regions_test_cerebellum_backward_compat"
@@ -33767,6 +34400,7 @@ help:
 	@echo "... regression_cognitive_immune_brain_immune"
 	@echo "... regression_cognitive_immune_code_immune"
 	@echo "... regression_cognitive_immune_modules"
+	@echo "... regression_cognitive_immune_tick_enhanced"
 	@echo "... regression_cognitive_introspection_auto_activity_history"
 	@echo "... regression_cognitive_introspection_connectivity_health"
 	@echo "... regression_cognitive_introspection_consciousness_metrics"
@@ -33775,6 +34409,7 @@ help:
 	@echo "... regression_cognitive_introspection_temporal_patterns"
 	@echo "... regression_cognitive_joy_test_joy_euphoria_backward_compat"
 	@echo "... regression_cognitive_memory_engram_backward_compat"
+	@echo "... regression_cognitive_memory_pr_exception"
 	@echo "... regression_cognitive_memory_semantic_backward_compat"
 	@echo "... regression_cognitive_memory_snn_plasticity"
 	@echo "... regression_cognitive_meta_learning_snn_plasticity"
@@ -33783,6 +34418,7 @@ help:
 	@echo "... regression_cognitive_mirror_neurons_snn_plasticity"
 	@echo "... regression_cognitive_mirror_neurons_substrate"
 	@echo "... regression_cognitive_modules_api_test"
+	@echo "... regression_cognitive_predictive_test_predictive_bridge_exception_regression"
 	@echo "... regression_cognitive_reasoning_snn_plasticity"
 	@echo "... regression_cognitive_salience_snn_plasticity"
 	@echo "... regression_cognitive_self_model_snn_plasticity"
@@ -33794,6 +34430,7 @@ help:
 	@echo "... regression_cognitive_test_tier2_hub_bridges_regression"
 	@echo "... regression_cognitive_test_tier3_fep_bridges_regression"
 	@echo "... regression_cognitive_thalamic_routing"
+	@echo "... regression_cognitive_tom_exception"
 	@echo "... regression_cognitive_tom_snn_plasticity"
 	@echo "... regression_cognitive_wellbeing_enhanced"
 	@echo "... regression_cognitive_wellbeing_snn_plasticity"
@@ -33870,7 +34507,7 @@ help:
 	@echo "... regression_exception_test_exception_immune_regression"
 	@echo "... regression_exception_test_signal_exception_regression"
 	@echo "... regression_exception_typed_regression"
-	@echo "... regression_fault_tolerance_test_fault_tolerance_regression"
+	@echo "... regression_fault_tolerance"
 	@echo "... regression_fep_bridges"
 	@echo "... regression_game_theory"
 	@echo "... regression_game_theory_fep"
@@ -33885,6 +34522,7 @@ help:
 	@echo "... regression_gpu_test_multigpu_regression"
 	@echo "... regression_gpu_test_substrate_gpu_regression"
 	@echo "... regression_gpu_test_visual_processing_regression"
+	@echo "... regression_health_stability"
 	@echo "... regression_hemispheric_brain_regression"
 	@echo "... regression_imagination_fep"
 	@echo "... regression_information_test_quantum_shannon_backward_compat"
@@ -33953,6 +34591,7 @@ help:
 	@echo "... regression_optimization_test_cross_modal_backward_compat"
 	@echo "... regression_optimization_test_dynamic_adaptation_backward_compat"
 	@echo "... regression_optimization_test_multi_objective_backward_compat"
+	@echo "... regression_parietal_exception"
 	@echo "... regression_parietal_fep"
 	@echo "... regression_parietal_fep_orchestrator_bridge"
 	@echo "... regression_perception_test_lip_reading_backward_compat"
@@ -33980,6 +34619,7 @@ help:
 	@echo "... regression_plasticity_metabolic_test_metabolic_regression"
 	@echo "... regression_plasticity_metaplasticity"
 	@echo "... regression_plasticity_metaplasticity_test_metaplasticity_regression"
+	@echo "... regression_plasticity_module_exception"
 	@echo "... regression_plasticity_modules_test"
 	@echo "... regression_plasticity_neural"
 	@echo "... regression_plasticity_neuromodulators_test_neuromodulators_bio_async_regression"
@@ -34049,6 +34689,7 @@ help:
 	@echo "... regression_security_test_shell_detector"
 	@echo "... regression_security_test_supply_chain"
 	@echo "... regression_security_test_validation_performance"
+	@echo "... regression_snn_bridge_exception"
 	@echo "... regression_snn_test_bridge_regression"
 	@echo "... regression_snn_test_numerical_regression"
 	@echo "... regression_snn_test_regression"
@@ -34076,6 +34717,7 @@ help:
 	@echo "... regression_utils_fault_tolerance_test_enhanced_fault_tolerance_regression"
 	@echo "... regression_utils_fault_tolerance_test_fast_recovery_regression"
 	@echo "... regression_utils_fault_tolerance_test_fault_event_bus_regression"
+	@echo "... regression_utils_fault_tolerance_test_fault_tolerance_exception_regression"
 	@echo "... regression_utils_fault_tolerance_test_health_agent_behavioral_regression"
 	@echo "... regression_utils_fault_tolerance_test_health_agent_connection_regression"
 	@echo "... regression_utils_fault_tolerance_test_health_agent_consistency_regression"
@@ -34086,9 +34728,11 @@ help:
 	@echo "... regression_utils_fault_tolerance_test_lockfree_metrics_regression"
 	@echo "... regression_utils_fault_tolerance_test_module_recovery_regression"
 	@echo "... regression_utils_fault_tolerance_test_perception_cortical_health_regression"
+	@echo "... regression_utils_fault_tolerance_test_plasticity_anomaly_regression"
 	@echo "... regression_utils_fault_tolerance_test_recovery_cache_regression"
 	@echo "... regression_utils_fault_tolerance_test_recovery_pool_regression"
 	@echo "... regression_utils_fault_tolerance_test_state_manager_regression"
+	@echo "... regression_utils_fault_tolerance_test_stdp_health_regression"
 	@echo "... regression_utils_fault_tolerance_test_substrate_health_regression"
 	@echo "... regression_utils_fault_tolerance_test_symbolic_logic_health_regression"
 	@echo "... regression_utils_fault_tolerance_test_thalamic_middleware_health_regression"
@@ -34157,6 +34801,7 @@ help:
 	@echo "... test_lgss_unit"
 	@echo "... test_medulla_cerebellum_bridge_integration"
 	@echo "... test_medulla_cerebellum_bridge_regression"
+	@echo "... test_medulla_exception_e2e"
 	@echo "... test_medulla_exception_integration"
 	@echo "... test_medulla_exception_regression"
 	@echo "... test_networking_exception_integration"
@@ -34467,6 +35112,7 @@ help:
 	@echo "... unit_cognitive_immune_exhaustion"
 	@echo "... unit_cognitive_immune_heal_bridge"
 	@echo "... unit_cognitive_immune_integrated_self_repair"
+	@echo "... unit_cognitive_immune_integration_helper"
 	@echo "... unit_cognitive_immune_memory_integration"
 	@echo "... unit_cognitive_immune_memory_subsystem_integration"
 	@echo "... unit_cognitive_immune_mucosal"
@@ -34476,6 +35122,7 @@ help:
 	@echo "... unit_cognitive_immune_plasticity_modulation"
 	@echo "... unit_cognitive_immune_reasoning_bridge"
 	@echo "... unit_cognitive_immune_self_repair_bridge"
+	@echo "... unit_cognitive_immune_tick_enhanced"
 	@echo "... unit_cognitive_immune_tolerance"
 	@echo "... unit_cognitive_immune_trained_immunity"
 	@echo "... unit_cognitive_immune_vaccine"
@@ -34522,6 +35169,7 @@ help:
 	@echo "... unit_cognitive_omni_test_omni_world_model"
 	@echo "... unit_cognitive_personality_test_personality"
 	@echo "... unit_cognitive_predictive_test_predictive"
+	@echo "... unit_cognitive_predictive_test_predictive_bridge_exception"
 	@echo "... unit_cognitive_predictive_test_predictive_coverage"
 	@echo "... unit_cognitive_predictive_test_predictive_hierarchy"
 	@echo "... unit_cognitive_predictive_test_predictive_real"
@@ -34614,6 +35262,7 @@ help:
 	@echo "... unit_cognitive_test_temporal_replay"
 	@echo "... unit_cognitive_test_tom_social_bridge"
 	@echo "... unit_cognitive_test_working_memory_immune"
+	@echo "... unit_cognitive_tom_exception_handling"
 	@echo "... unit_cognitive_tom_plasticity_bridge"
 	@echo "... unit_cognitive_tom_snn_bridge"
 	@echo "... unit_cognitive_tom_substrate_bridge"
@@ -34955,6 +35604,7 @@ help:
 	@echo "... unit_gpu_test_training_kernels"
 	@echo "... unit_habenula_test_adapter"
 	@echo "... unit_habenula_test_core"
+	@echo "... unit_health_agent_heartbeat"
 	@echo "... unit_information_test_quantum_shannon"
 	@echo "... unit_information_test_shannon"
 	@echo "... unit_integration_adapters_chemistry_test_calcium_adapter"
@@ -35129,6 +35779,7 @@ help:
 	@echo "... unit_parietal_conceptual_blending"
 	@echo "... unit_parietal_counterfactual"
 	@echo "... unit_parietal_equation_manipulation"
+	@echo "... unit_parietal_exception_handling"
 	@echo "... unit_parietal_fep_bridge"
 	@echo "... unit_parietal_hypothesis_generation"
 	@echo "... unit_parietal_insight_discovery"
@@ -35170,6 +35821,7 @@ help:
 	@echo "... unit_plasticity_adaptive_test_adaptive_routing"
 	@echo "... unit_plasticity_astrocyte"
 	@echo "... unit_plasticity_astrocyte_test_astrocyte_plasticity"
+	@echo "... unit_plasticity_attention_test_attention_exception_handling"
 	@echo "... unit_plasticity_attention_test_attention_pe"
 	@echo "... unit_plasticity_attention_test_quantum_attention"
 	@echo "... unit_plasticity_axon_bridge"
@@ -35200,6 +35852,7 @@ help:
 	@echo "... unit_plasticity_metabolic"
 	@echo "... unit_plasticity_metabolic_test_metabolic_plasticity"
 	@echo "... unit_plasticity_metaplasticity_test_extended_metaplasticity"
+	@echo "... unit_plasticity_module_exception"
 	@echo "... unit_plasticity_neural_coordinator"
 	@echo "... unit_plasticity_neuromodulator_immune"
 	@echo "... unit_plasticity_neuromodulators_sleep_bridge"
@@ -35243,6 +35896,7 @@ help:
 	@echo "... unit_plasticity_triplet_stdp"
 	@echo "... unit_portia_exception_handling"
 	@echo "... unit_portia_immune_bridges"
+	@echo "... unit_pr_memory_exception_handling"
 	@echo "... unit_python_test_python_memory_safety"
 	@echo "... unit_quantum_bridges"
 	@echo "... unit_quantum_exception_handling"
@@ -35303,6 +35957,7 @@ help:
 	@echo "... unit_security_test_shell_detector"
 	@echo "... unit_security_test_supply_chain"
 	@echo "... unit_shannon_monitor_bio_async"
+	@echo "... unit_snn_bridge_exception"
 	@echo "... unit_snn_exception_handling"
 	@echo "... unit_snn_test_snn_bio_async"
 	@echo "... unit_snn_test_snn_config"
@@ -35311,6 +35966,7 @@ help:
 	@echo "... unit_snn_test_snn_network"
 	@echo "... unit_snn_test_snn_numerical_stability"
 	@echo "... unit_snn_test_snn_training"
+	@echo "... unit_state_manager"
 	@echo "... unit_swarm_exception_handling"
 	@echo "... unit_swarm_immune_bridges"
 	@echo "... unit_swarm_sleep_bridges"
@@ -35326,6 +35982,7 @@ help:
 	@echo "... unit_test_training_integration_hub"
 	@echo "... unit_test_training_symbolic_logic_hub_bridge"
 	@echo "... unit_training_exception_handling"
+	@echo "... unit_training_state_manager"
 	@echo "... unit_training_test_adv_gs"
 	@echo "... unit_training_test_amp_distributed"
 	@echo "... unit_training_test_auto_architecture_nas"
@@ -35361,6 +36018,7 @@ help:
 	@echo "... unit_utils_fault_tolerance_test_distributed_fault_tolerance"
 	@echo "... unit_utils_fault_tolerance_test_fast_recovery"
 	@echo "... unit_utils_fault_tolerance_test_fault_event_bus"
+	@echo "... unit_utils_fault_tolerance_test_fault_tolerance_exception"
 	@echo "... unit_utils_fault_tolerance_test_graceful_degradation"
 	@echo "... unit_utils_fault_tolerance_test_health_agent_behavioral_functions"
 	@echo "... unit_utils_fault_tolerance_test_health_agent_connection_functions"
