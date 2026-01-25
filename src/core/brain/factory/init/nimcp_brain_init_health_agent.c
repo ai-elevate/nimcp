@@ -60,6 +60,12 @@ extern void nimcp_health_agent_default_config(void* config);
 extern int nimcp_health_agent_connect_brain(nimcp_health_agent_t* agent, void* brain);
 extern int nimcp_health_agent_connect_immune(nimcp_health_agent_t* agent, void* immune);
 
+/* Brain immune tick orchestrator initialization */
+extern int brain_immune_tick_init(void* immune, const void* config);
+extern void brain_immune_tick_default_config(void* config);
+extern int brain_immune_tick_connect_health_agent(void* immune, nimcp_health_agent_t* agent);
+extern void brain_immune_tick_shutdown(void* immune);
+
 /* Brain probe functions */
 typedef struct {
     bool enable_probe_monitoring;
@@ -154,6 +160,21 @@ bool nimcp_brain_factory_init_health_agent_subsystem(brain_t brain) {
         result = nimcp_health_agent_connect_immune(agent, brain->immune_system);
         if (result == 0) {
             NIMCP_LOGGING_INFO("Health agent connected to brain immune system");
+
+            /* Initialize the tick orchestrator for the immune system
+             * This enables brain_immune_tick() to process exceptions and health messages */
+            result = brain_immune_tick_init(brain->immune_system, NULL);  /* NULL = defaults */
+            if (result == 0) {
+                NIMCP_LOGGING_INFO("Brain immune tick orchestrator initialized");
+
+                /* Connect health agent to tick orchestrator for bidirectional communication */
+                result = brain_immune_tick_connect_health_agent(brain->immune_system, agent);
+                if (result == 0) {
+                    NIMCP_LOGGING_INFO("Health agent connected to immune tick orchestrator");
+                }
+            } else {
+                NIMCP_LOGGING_WARN("Failed to initialize brain immune tick orchestrator");
+            }
         }
     }
 
@@ -182,6 +203,11 @@ bool nimcp_brain_factory_init_health_agent_subsystem(brain_t brain) {
  */
 void nimcp_brain_factory_destroy_health_agent_subsystem(brain_t brain) {
     if (!brain) return;
+
+    /* Shutdown tick orchestrator first (before stopping agent thread) */
+    if (brain->immune_system && brain->immune_enabled) {
+        brain_immune_tick_shutdown(brain->immune_system);
+    }
 
     if (brain->health_agent && brain->health_agent_owns_agent) {
         /* Stop the agent if running */
