@@ -76,6 +76,9 @@
 #include "core/cortical_columns/nimcp_cortical_immune.h"
 #include "core/cortical_columns/nimcp_cortical_column.h"
 
+/* Brain Immune Tick Integration */
+#include "cognitive/immune/nimcp_brain_immune_tick.h"
+
 /* Phase 5: Cognitive module integration for real API calls
  * Note: Cannot include full headers due to type conflicts (metric_type_t, cognitive_state_t)
  * Forward-declare the specific functions we need from the cognitive modules */
@@ -1752,7 +1755,9 @@ static void* agent_thread_main(void* arg) {
     uint64_t last_metacog_us = get_timestamp_us();
     uint64_t last_wellbeing_us = get_timestamp_us();
     uint64_t last_neural_us = get_timestamp_us();  /* Phase 5.5: SNN/LNN check timing */
+    uint64_t last_immune_tick_us = get_timestamp_us();  /* Immune tick timing */
     uint32_t check_interval_us = agent->config.check_interval_ms * 1000;
+    uint32_t immune_tick_interval_us = BRAIN_IMMUNE_TICK_DEFAULT_INTERVAL_MS * 1000;
 
     while (!atomic_load(&agent->stop_requested)) {
         uint64_t now_us = get_timestamp_us();
@@ -1893,6 +1898,15 @@ static void* agent_thread_main(void* arg) {
                 atomic_load(&agent->consistency_check_pending)) {
                 agent_run_consistency_checks(agent);
             }
+        }
+
+        /* ========== BRAIN IMMUNE TICK INTEGRATION ========== */
+
+        /* Run immune system tick if connected (processes exceptions & health messages) */
+        if (agent->immune && (now_us - last_immune_tick_us >= immune_tick_interval_us)) {
+            last_immune_tick_us = now_us;
+            uint64_t delta_ms = immune_tick_interval_us / 1000;
+            brain_immune_tick(agent->immune, delta_ms);
         }
 
         /* Sleep for a short period */
@@ -2040,6 +2054,17 @@ void nimcp_health_agent_get_stats(const nimcp_health_agent_t* agent,
 }
 
 uint32_t nimcp_health_agent_pending_messages(const nimcp_health_agent_t* agent) {
+    if (!validate_agent(agent)) return 0;
+    return msg_queue_size(&agent->msg_queue);
+}
+
+bool nimcp_health_agent_dequeue_message(nimcp_health_agent_t* agent,
+                                         health_agent_message_t* msg) {
+    if (!validate_agent(agent) || !msg) return false;
+    return msg_queue_pop(&agent->msg_queue, msg);
+}
+
+uint32_t nimcp_health_agent_get_queue_depth(const nimcp_health_agent_t* agent) {
     if (!validate_agent(agent)) return 0;
     return msg_queue_size(&agent->msg_queue);
 }

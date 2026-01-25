@@ -54,3 +54,40 @@ gtest_discover_tests(integration_plasticity_exception
 #     TIMEOUT 300
 #     LABELS "integration;plasticity;exception;immune"
 # )
+
+# =============================================================================
+# Plasticity Module Exception Integration Tests
+# =============================================================================
+# WHAT: Integration tests for NIMCP_THROW_TO_IMMUNE cross-module exception handling
+# WHY:  Test neuromodulator-STDP interaction and exception recovery
+# HOW:  Test complete exception flow from plasticity modules to immune system
+#
+# @author NIMCP Development Team
+# @date 2026-01-25
+# =============================================================================
+
+add_executable(integration_plasticity_module_exception
+    test_plasticity_module_exception_integration.cpp
+)
+
+target_include_directories(integration_plasticity_module_exception
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(integration_plasticity_module_exception
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_compile_features(integration_plasticity_module_exception PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_plasticity_module_exception
+    PROPERTIES
+        TIMEOUT 300
+        LABELS "integration;plasticity;exception;neuromodulators;stdp;immune"
+)

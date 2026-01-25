@@ -31,7 +31,10 @@
  * HOW:  Clinical neuroscience parameter values
  */
 void snn_mental_health_config_default(snn_mental_health_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_mental_health_config_default: null config pointer");
+        return;
+    }
 
     /* Stability monitoring */
     config->stability_threshold = 0.6f;      /* 60% minimum stability */
@@ -129,7 +132,10 @@ snn_mental_health_bridge_t* snn_mental_health_bridge_create(
  * HOW:  Disconnect, free memory
  */
 void snn_mental_health_bridge_destroy(snn_mental_health_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_mental_health_bridge_destroy: null bridge pointer");
+        return;
+    }
 
     /* Disconnect bio-async if connected */
     if (bridge->base.bio_async_enabled) {
@@ -180,7 +186,11 @@ int snn_mental_health_bridge_connect_bio_async(snn_mental_health_bridge_t* bridg
  * HOW:  Unregister from router
  */
 int snn_mental_health_bridge_disconnect_bio_async(snn_mental_health_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_mental_health_bridge_disconnect_bio_async: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->base.bio_async_enabled) return 0;
 
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_async_enabled = false;
@@ -194,7 +204,11 @@ int snn_mental_health_bridge_disconnect_bio_async(snn_mental_health_bridge_t* br
  * HOW:  Return flag
  */
 bool snn_mental_health_bridge_is_bio_async_connected(const snn_mental_health_bridge_t* bridge) {
-    return bridge ? bridge->base.bio_async_enabled : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_mental_health_bridge_is_bio_async_connected: null bridge pointer");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }
 
 //=============================================================================
@@ -270,7 +284,14 @@ int snn_mental_health_bridge_update(snn_mental_health_bridge_t* bridge, float dt
  * HOW:  Combine firing rate, synchrony, variability
  */
 float snn_mental_health_compute_stability(snn_mental_health_bridge_t* bridge) {
-    if (!bridge || !bridge->monitor_pop) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_mental_health_compute_stability: null bridge pointer");
+        return 0.0f;
+    }
+    if (!bridge->monitor_pop) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_mental_health_compute_stability: monitor population not configured");
+        return 0.0f;
+    }
 
     /* Get current metrics */
     float rate = snn_network_get_population_rate(
@@ -326,7 +347,10 @@ float snn_mental_health_compute_stability(snn_mental_health_bridge_t* bridge) {
 snn_dysregulation_type_t snn_mental_health_detect_dysregulation(
     snn_mental_health_bridge_t* bridge
 ) {
-    if (!bridge) return SNN_DYSREGULATION_NONE;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_mental_health_detect_dysregulation: null bridge pointer");
+        return SNN_DYSREGULATION_NONE;
+    }
 
     float rate = bridge->state.firing_rate;
     float synchrony = bridge->state.synchrony;
@@ -364,7 +388,10 @@ snn_dysregulation_type_t snn_mental_health_detect_dysregulation(
 snn_mental_health_risk_t snn_mental_health_assess_risk(
     snn_mental_health_bridge_t* bridge
 ) {
-    if (!bridge) return SNN_MENTAL_HEALTH_RISK_NONE;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_mental_health_assess_risk: null bridge pointer");
+        return SNN_MENTAL_HEALTH_RISK_NONE;
+    }
 
     float stability = bridge->state.stability_index;
 
@@ -388,7 +415,10 @@ snn_mental_health_risk_t snn_mental_health_assess_risk(
  * HOW:  Weighted combination of deviations
  */
 float snn_mental_health_compute_risk_score(snn_mental_health_bridge_t* bridge) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_mental_health_compute_risk_score: null bridge pointer");
+        return 0.0f;
+    }
 
     /* Risk is inverse of stability */
     float risk = 1.0f - bridge->state.stability_index;
@@ -470,7 +500,11 @@ int snn_mental_health_stop_intervention(snn_mental_health_bridge_t* bridge) {
  * HOW:  Return cached value
  */
 float snn_mental_health_get_stability(const snn_mental_health_bridge_t* bridge) {
-    return bridge ? bridge->state.stability_index : 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_mental_health_get_stability: null bridge pointer");
+        return 0.0f;
+    }
+    return bridge->state.stability_index;
 }
 
 /**
@@ -479,7 +513,11 @@ float snn_mental_health_get_stability(const snn_mental_health_bridge_t* bridge) 
  * HOW:  Return cached level
  */
 snn_mental_health_risk_t snn_mental_health_get_risk_level(const snn_mental_health_bridge_t* bridge) {
-    return bridge ? bridge->state.risk_level : SNN_MENTAL_HEALTH_RISK_NONE;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_mental_health_get_risk_level: null bridge pointer");
+        return SNN_MENTAL_HEALTH_RISK_NONE;
+    }
+    return bridge->state.risk_level;
 }
 
 /**
@@ -488,7 +526,11 @@ snn_mental_health_risk_t snn_mental_health_get_risk_level(const snn_mental_healt
  * HOW:  Return cached score
  */
 float snn_mental_health_get_risk_score(const snn_mental_health_bridge_t* bridge) {
-    return bridge ? bridge->state.risk_score : 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_mental_health_get_risk_score: null bridge pointer");
+        return 0.0f;
+    }
+    return bridge->state.risk_score;
 }
 
 /**
@@ -499,7 +541,11 @@ float snn_mental_health_get_risk_score(const snn_mental_health_bridge_t* bridge)
 snn_dysregulation_type_t snn_mental_health_get_dysregulation_type(
     const snn_mental_health_bridge_t* bridge
 ) {
-    return bridge ? bridge->state.dysregulation_type : SNN_DYSREGULATION_NONE;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_mental_health_get_dysregulation_type: null bridge pointer");
+        return SNN_DYSREGULATION_NONE;
+    }
+    return bridge->state.dysregulation_type;
 }
 
 /**
@@ -508,7 +554,11 @@ snn_dysregulation_type_t snn_mental_health_get_dysregulation_type(
  * HOW:  Return flag
  */
 bool snn_mental_health_is_intervention_active(const snn_mental_health_bridge_t* bridge) {
-    return bridge ? bridge->state.intervention_active : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_mental_health_is_intervention_active: null bridge pointer");
+        return false;
+    }
+    return bridge->state.intervention_active;
 }
 
 /**
@@ -565,7 +615,10 @@ int snn_mental_health_get_stats(
  * HOW:  Zero counters
  */
 void snn_mental_health_reset_stats(snn_mental_health_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_mental_health_reset_stats: null bridge pointer");
+        return;
+    }
 
     bridge->state.update_count = 0;
     bridge->state.intervention_count = 0;

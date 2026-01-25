@@ -159,6 +159,7 @@ tom_snn_bridge_t* tom_snn_create(const tom_snn_config_t* config) {
 
     /* Initialize base bridge */
     if (bridge_base_init(&bridge->base, 0, "tom_snn") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize bridge base in tom_snn_create");
         nimcp_free(bridge);
         return NULL;
     }
@@ -175,6 +176,7 @@ tom_snn_bridge_t* tom_snn_create(const tom_snn_config_t* config) {
 
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create SNN network in tom_snn_create");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
@@ -188,6 +190,7 @@ tom_snn_bridge_t* tom_snn_create(const tom_snn_config_t* config) {
 
     if (!bridge->encoding_buffer || !bridge->output_buffer ||
         !bridge->inference_buffer || !bridge->prev_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate buffers in tom_snn_create");
         tom_snn_destroy(bridge);
         return NULL;
     }

@@ -231,7 +231,7 @@ TEST_F(SNNAttentionBridgeTest, BioAsyncConnect) {
     // Connection may fail if router not available, that's OK
     int ret = snn_attention_bridge_connect_bio_async(bridge);
     // Don't assert success, just check it doesn't crash
-    EXPECT_TRUE(ret == 0 || ret == -1);
+    EXPECT_TRUE(ret <= 0);  // 0 = success, negative = router not available
 }
 
 // Test 14: Bio-async disconnect

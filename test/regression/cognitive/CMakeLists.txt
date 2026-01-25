@@ -257,3 +257,13 @@ gtest_discover_tests(regression_cognitive_world_model
 # Neuro-Symbolic Mathematics Regression Tests
 # ============================================================================
 add_subdirectory(neuro_symbolic)
+
+# ============================================================================
+# Predictive Bridge Exception Regression Tests
+# ============================================================================
+# WHAT: Regression tests for predictive bridge API contract stability
+# WHY:  Ensure exception handling behavior does not regress across versions
+# HOW:  Test error codes, return values, and API contracts
+# ============================================================================
+
+add_subdirectory(predictive)

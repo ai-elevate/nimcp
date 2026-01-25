@@ -8,6 +8,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/exception/nimcp_exception_immune.h"
 #include <string.h>
 
 struct predictive_thalamic_bridge {
@@ -38,8 +39,13 @@ predictive_thalamic_bridge_t* predictive_thalamic_bridge_create(void* predictive
         return NULL;
 
     }
-    if (bridge_base_init(&bridge->base, 0, "predictive_thalamic") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "predictive_thalamic") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize bridge base in predictive_thalamic_bridge_create");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Mutex is NULL after bridge_base_init in predictive_thalamic_bridge_create");
         nimcp_free(bridge);
         return NULL;
     }

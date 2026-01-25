@@ -582,8 +582,8 @@ checkpoint_options_t checkpoint_default_options(void) {
 
 bool checkpoint_save(brain_t brain, const char* path) {
     // Guard: NULL checks using API exception macros
-    NIMCP_API_CHECK_NULL(brain, NIMCP_ERROR_NULL_POINTER, "checkpoint_save: NULL brain");
-    NIMCP_API_CHECK_NULL(path, NIMCP_ERROR_NULL_POINTER, "checkpoint_save: NULL path");
+    NIMCP_API_CHECK_NULL_RET_FALSE(brain, "checkpoint_save: NULL brain");
+    NIMCP_API_CHECK_NULL_RET_FALSE(path, "checkpoint_save: NULL path");
 
     // Use default options
     checkpoint_options_t options = checkpoint_default_options();
@@ -592,8 +592,8 @@ bool checkpoint_save(brain_t brain, const char* path) {
 
 bool checkpoint_save_ex(brain_t brain, const char* path, const checkpoint_options_t* options) {
     // Guard: NULL checks using API exception macros
-    NIMCP_API_CHECK_NULL(brain, NIMCP_ERROR_NULL_POINTER, "checkpoint_save_ex: NULL brain");
-    NIMCP_API_CHECK_NULL(path, NIMCP_ERROR_NULL_POINTER, "checkpoint_save_ex: NULL path");
+    NIMCP_API_CHECK_NULL_RET_FALSE(brain, "checkpoint_save_ex: NULL brain");
+    NIMCP_API_CHECK_NULL_RET_FALSE(path, "checkpoint_save_ex: NULL path");
 
     // Use default options if not provided
     checkpoint_options_t opts;
@@ -693,7 +693,7 @@ bool checkpoint_save_incremental(brain_t brain, const char* incr_path, const cha
 
 bool checkpoint_validate(const char* path) {
     // Guard: NULL check using API exception macro
-    NIMCP_API_CHECK_NULL(path, NIMCP_ERROR_NULL_POINTER, "checkpoint_validate: NULL path");
+    NIMCP_API_CHECK_NULL_RET_FALSE(path, "checkpoint_validate: NULL path");
 
     // Try to open file
     FILE* fp = fopen(path, "rb");
@@ -752,8 +752,8 @@ bool checkpoint_validate(const char* path) {
 
 bool checkpoint_load(brain_t* brain, const char* path) {
     // Guard: NULL checks using API exception macros
-    NIMCP_API_CHECK_NULL(brain, NIMCP_ERROR_NULL_POINTER, "checkpoint_load: NULL brain output parameter");
-    NIMCP_API_CHECK_NULL(path, NIMCP_ERROR_NULL_POINTER, "checkpoint_load: NULL path");
+    NIMCP_API_CHECK_NULL_RET_FALSE(brain, "checkpoint_load: NULL brain output parameter");
+    NIMCP_API_CHECK_NULL_RET_FALSE(path, "checkpoint_load: NULL path");
 
     *brain = NULL;
 
@@ -823,9 +823,9 @@ bool checkpoint_load(brain_t* brain, const char* path) {
 
 bool checkpoint_list(const char* dir, checkpoint_info_t** list, uint32_t* count) {
     // Guard: NULL checks using API exception macros
-    NIMCP_API_CHECK_NULL(dir, NIMCP_ERROR_NULL_POINTER, "checkpoint_list: NULL dir");
-    NIMCP_API_CHECK_NULL(list, NIMCP_ERROR_NULL_POINTER, "checkpoint_list: NULL list");
-    NIMCP_API_CHECK_NULL(count, NIMCP_ERROR_NULL_POINTER, "checkpoint_list: NULL count");
+    NIMCP_API_CHECK_NULL_RET_FALSE(dir, "checkpoint_list: NULL dir");
+    NIMCP_API_CHECK_NULL_RET_FALSE(list, "checkpoint_list: NULL list");
+    NIMCP_API_CHECK_NULL_RET_FALSE(count, "checkpoint_list: NULL count");
 
     *list = NULL;
     *count = 0;
@@ -914,10 +914,10 @@ bool checkpoint_list(const char* dir, checkpoint_info_t** list, uint32_t* count)
 
 bool checkpoint_cleanup_old(const char* dir, uint32_t keep_count) {
     // Guard: NULL check using API exception macro
-    NIMCP_API_CHECK_NULL(dir, NIMCP_ERROR_NULL_POINTER, "checkpoint_cleanup_old: NULL directory");
+    NIMCP_API_CHECK_NULL_RET_FALSE(dir, "checkpoint_cleanup_old: NULL directory");
 
     // Safety: Never delete if keep_count is 0
-    NIMCP_API_CHECK(keep_count > 0, NIMCP_ERROR_INVALID_PARAM, "keep_count must be > 0");
+    NIMCP_API_CHECK_RET_FALSE(keep_count > 0, NIMCP_ERROR_INVALID_PARAM, "keep_count must be > 0");
 
     // List checkpoints
     checkpoint_info_t* list = NULL;
@@ -979,8 +979,8 @@ bool checkpoint_cleanup_old(const char* dir, uint32_t keep_count) {
 
 bool recovery_auto_restore(brain_t* brain, const char* checkpoint_dir) {
     // Guard: NULL checks using API exception macros
-    NIMCP_API_CHECK_NULL(brain, NIMCP_ERROR_NULL_POINTER, "recovery_auto_restore: NULL brain");
-    NIMCP_API_CHECK_NULL(checkpoint_dir, NIMCP_ERROR_NULL_POINTER, "recovery_auto_restore: NULL checkpoint_dir");
+    NIMCP_API_CHECK_NULL_RET_FALSE(brain, "recovery_auto_restore: NULL brain");
+    NIMCP_API_CHECK_NULL_RET_FALSE(checkpoint_dir, "recovery_auto_restore: NULL checkpoint_dir");
 
     *brain = NULL;
 
@@ -1022,8 +1022,8 @@ bool recovery_auto_restore(brain_t* brain, const char* checkpoint_dir) {
 
 bool recovery_rollback(brain_t brain, const char* checkpoint_path) {
     // Guard: NULL checks using API exception macros
-    NIMCP_API_CHECK_NULL(brain, NIMCP_ERROR_NULL_POINTER, "recovery_rollback: NULL brain");
-    NIMCP_API_CHECK_NULL(checkpoint_path, NIMCP_ERROR_NULL_POINTER, "recovery_rollback: NULL checkpoint_path");
+    NIMCP_API_CHECK_NULL_RET_FALSE(brain, "recovery_rollback: NULL brain");
+    NIMCP_API_CHECK_NULL_RET_FALSE(checkpoint_path, "recovery_rollback: NULL checkpoint_path");
 
     NIMCP_LOGGING_INFO("In-place rollback from: %s", checkpoint_path);
 
@@ -1102,9 +1102,9 @@ bool recovery_rollback(brain_t brain, const char* checkpoint_path) {
 
 bool recovery_partial(brain_t* brain, const char* path, int* recovery_level) {
     // Guard: NULL checks using API exception macros
-    NIMCP_API_CHECK_NULL(brain, NIMCP_ERROR_NULL_POINTER, "recovery_partial: NULL brain");
-    NIMCP_API_CHECK_NULL(path, NIMCP_ERROR_NULL_POINTER, "recovery_partial: NULL path");
-    NIMCP_API_CHECK_NULL(recovery_level, NIMCP_ERROR_NULL_POINTER, "recovery_partial: NULL recovery_level");
+    NIMCP_API_CHECK_NULL_RET_FALSE(brain, "recovery_partial: NULL brain");
+    NIMCP_API_CHECK_NULL_RET_FALSE(path, "recovery_partial: NULL path");
+    NIMCP_API_CHECK_NULL_RET_FALSE(recovery_level, "recovery_partial: NULL recovery_level");
 
     *brain = NULL;
     *recovery_level = 0;

@@ -63,7 +63,10 @@ static const float PHONEME_FORMANTS[44][2] = {
  * HOW:  Literature-based parameter values from STG studies
  */
 void snn_speech_config_default(snn_speech_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_config_default: null config pointer");
+        return;
+    }
 
     /* Encoding configuration */
     config->encoding_method = SNN_ENCODE_POPULATION;
@@ -240,7 +243,10 @@ snn_speech_bridge_t* snn_speech_bridge_create(
  * HOW:  Disconnect, free all buffers, destroy encoder/decoder
  */
 void snn_speech_bridge_destroy(snn_speech_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_destroy: null bridge pointer");
+        return;
+    }
 
     /* Disconnect bio-async if connected */
     if (bridge->base.bio_async_enabled) {
@@ -291,7 +297,10 @@ void snn_speech_bridge_destroy(snn_speech_bridge_t* bridge) {
  * HOW:  Register with router as BIO_MODULE_SNN_SPEECH
  */
 int snn_speech_bridge_connect_bio_async(snn_speech_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_connect_bio_async: null bridge pointer");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -318,7 +327,11 @@ int snn_speech_bridge_connect_bio_async(snn_speech_bridge_t* bridge) {
  * HOW:  Unregister from router
  */
 int snn_speech_bridge_disconnect_bio_async(snn_speech_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_disconnect_bio_async: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->base.bio_async_enabled) return 0;
 
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_async_enabled = false;
@@ -332,7 +345,11 @@ int snn_speech_bridge_disconnect_bio_async(snn_speech_bridge_t* bridge) {
  * HOW:  Return flag
  */
 bool snn_speech_bridge_is_bio_async_connected(const snn_speech_bridge_t* bridge) {
-    return bridge ? bridge->base.bio_async_enabled : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_is_bio_async_connected: null bridge pointer");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }
 
 //=============================================================================
@@ -346,7 +363,12 @@ bool snn_speech_bridge_is_bio_async_connected(const snn_speech_bridge_t* bridge)
  */
 int snn_speech_bridge_init_tuning_curves(snn_speech_bridge_t* bridge) {
     /* Guard: Validate bridge */
-    if (!bridge || !bridge->phoneme_tuning_curves) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_init_tuning_curves: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->phoneme_tuning_curves) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_speech_bridge_init_tuning_curves: tuning curves not allocated");
         return -1;
     }
 
@@ -383,7 +405,16 @@ int snn_speech_bridge_compute_population_activity(
     float* activities_out
 ) {
     /* Guard: Validate inputs */
-    if (!bridge || !features || !activities_out) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_compute_population_activity: null bridge pointer");
+        return -1;
+    }
+    if (!features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_compute_population_activity: null features pointer");
+        return -1;
+    }
+    if (!activities_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_compute_population_activity: null activities_out pointer");
         return -1;
     }
 
@@ -436,13 +467,20 @@ int snn_speech_bridge_encode_phoneme(
     snn_spike_train_t** spike_trains
 ) {
     /* Guard: Validate inputs */
-    if (!bridge || !spike_trains) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_encode_phoneme: null bridge pointer");
+        NIMCP_LOGGING_ERROR("Null parameters to encode_phoneme");
+        return -1;
+    }
+    if (!spike_trains) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_encode_phoneme: null spike_trains pointer");
         NIMCP_LOGGING_ERROR("Null parameters to encode_phoneme");
         return -1;
     }
 
     /* Validate phoneme */
     if (phoneme >= bridge->config.num_phonemes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_speech_bridge_encode_phoneme: invalid phoneme index");
         NIMCP_LOGGING_ERROR("Invalid phoneme: %u", phoneme);
         return -1;
     }
@@ -521,7 +559,16 @@ int snn_speech_bridge_encode_sequence(
     snn_spike_train_t** spike_trains
 ) {
     /* Guard: Validate inputs */
-    if (!bridge || !phonemes || !spike_trains) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_encode_sequence: null bridge pointer");
+        return -1;
+    }
+    if (!phonemes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_encode_sequence: null phonemes pointer");
+        return -1;
+    }
+    if (!spike_trains) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_encode_sequence: null spike_trains pointer");
         return -1;
     }
 
@@ -636,7 +683,16 @@ int snn_speech_bridge_encode_phonological_buffer(
     snn_spike_train_t** spike_trains
 ) {
     /* Guard: Validate inputs */
-    if (!bridge || !buffer || !spike_trains) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_encode_phonological_buffer: null bridge pointer");
+        return -1;
+    }
+    if (!buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_encode_phonological_buffer: null buffer pointer");
+        return -1;
+    }
+    if (!spike_trains) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_encode_phonological_buffer: null spike_trains pointer");
         return -1;
     }
 
@@ -735,7 +791,16 @@ int snn_speech_bridge_decode_phoneme(
     float* confidence_out
 ) {
     /* Guard: Validate inputs */
-    if (!bridge || !spike_trains || !phoneme_out) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_decode_phoneme: null bridge pointer");
+        return -1;
+    }
+    if (!spike_trains) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_decode_phoneme: null spike_trains pointer");
+        return -1;
+    }
+    if (!phoneme_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_decode_phoneme: null phoneme_out pointer");
         return -1;
     }
 
@@ -796,7 +861,20 @@ int snn_speech_bridge_decode_sequence(
     uint32_t* num_decoded
 ) {
     /* Guard: Validate inputs */
-    if (!bridge || !spike_trains || !phonemes_out || !num_decoded) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_decode_sequence: null bridge pointer");
+        return -1;
+    }
+    if (!spike_trains) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_decode_sequence: null spike_trains pointer");
+        return -1;
+    }
+    if (!phonemes_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_decode_sequence: null phonemes_out pointer");
+        return -1;
+    }
+    if (!num_decoded) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_decode_sequence: null num_decoded pointer");
         return -1;
     }
 
@@ -844,7 +922,16 @@ int snn_speech_bridge_decode_features(
     phoneme_features_t* features_out
 ) {
     /* Guard: Validate inputs */
-    if (!bridge || !spike_trains || !features_out) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_decode_features: null bridge pointer");
+        return -1;
+    }
+    if (!spike_trains) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_decode_features: null spike_trains pointer");
+        return -1;
+    }
+    if (!features_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_decode_features: null features_out pointer");
         return -1;
     }
 
@@ -903,7 +990,12 @@ int snn_speech_bridge_decode_features(
  */
 int snn_speech_bridge_update(snn_speech_bridge_t* bridge, float dt) {
     /* Guard: Validate bridge */
-    if (!bridge || !bridge->connected) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_update: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_speech_bridge_update: bridge not connected");
         return -1;
     }
 
@@ -930,7 +1022,14 @@ int snn_speech_bridge_get_encode_stats(
     const snn_speech_bridge_t* bridge,
     snn_speech_encode_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_get_encode_stats: null bridge pointer");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_get_encode_stats: null stats pointer");
+        return -1;
+    }
     *stats = bridge->encode_stats;
     return 0;
 }
@@ -944,7 +1043,14 @@ int snn_speech_bridge_get_decode_stats(
     const snn_speech_bridge_t* bridge,
     snn_speech_decode_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_get_decode_stats: null bridge pointer");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_get_decode_stats: null stats pointer");
+        return -1;
+    }
     *stats = bridge->decode_stats;
     return 0;
 }
@@ -958,8 +1064,18 @@ float snn_speech_bridge_get_phoneme_spike_rate(
     const snn_speech_bridge_t* bridge,
     phoneme_t phoneme
 ) {
-    if (!bridge || !bridge->spike_input_buffer) return -1.0f;
-    if (phoneme >= bridge->config.num_phonemes) return -1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_get_phoneme_spike_rate: null bridge pointer");
+        return -1.0f;
+    }
+    if (!bridge->spike_input_buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_speech_bridge_get_phoneme_spike_rate: input buffer not allocated");
+        return -1.0f;
+    }
+    if (phoneme >= bridge->config.num_phonemes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_speech_bridge_get_phoneme_spike_rate: invalid phoneme index");
+        return -1.0f;
+    }
 
     uint32_t start = phoneme * bridge->config.neurons_per_phoneme;
     float sum = 0.0f;
@@ -979,7 +1095,11 @@ float snn_speech_bridge_get_phoneme_spike_rate(
  * HOW:  Return connected flag
  */
 bool snn_speech_bridge_is_active(const snn_speech_bridge_t* bridge) {
-    return bridge ? bridge->connected : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_is_active: null bridge pointer");
+        return false;
+    }
+    return bridge->connected;
 }
 
 //=============================================================================
@@ -992,7 +1112,10 @@ bool snn_speech_bridge_is_active(const snn_speech_bridge_t* bridge) {
  * HOW:  Zero all counters
  */
 void snn_speech_bridge_reset_stats(snn_speech_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_speech_bridge_reset_stats: null bridge pointer");
+        return;
+    }
 
     memset(&bridge->encode_stats, 0, sizeof(snn_speech_encode_stats_t));
     memset(&bridge->decode_stats, 0, sizeof(snn_speech_decode_stats_t));

@@ -242,3 +242,13 @@ add_subdirectory(health)
 
 # Neuro-Symbolic Mathematics Integration Tests (Mathesis-Inspired)
 add_subdirectory(neuro_symbolic)
+
+# ============================================================================
+# Predictive Bridge Exception Integration Tests
+# ============================================================================
+# WHAT: Integration tests for predictive bridge exception propagation and recovery
+# WHY:  Verify cross-bridge exception handling and recovery scenarios
+# HOW:  Test multi-bridge workflows with exception injection
+# ============================================================================
+
+add_subdirectory(predictive)

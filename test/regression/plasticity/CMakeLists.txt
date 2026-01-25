@@ -385,3 +385,8 @@ gtest_discover_tests(regression_plasticity_eligibility_utils_quantum
         TIMEOUT 600
         LABELS "regression;plasticity;eligibility;utils;quantum"
 )
+
+# ============================================================================
+# Exception Handling Regression Tests
+# ============================================================================
+add_subdirectory(exception)

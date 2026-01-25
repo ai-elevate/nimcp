@@ -18,7 +18,10 @@
 #define BIO_MODULE_SNN_INTROSPECTION_BRIDGE 0x0627
 
 void snn_introspection_config_default(snn_introspection_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_introspection_config_default: null config pointer");
+        return;
+    }
     config->phi_rate_min = 20.0f;
     config->phi_rate_max = 120.0f;
     config->consciousness_threshold = 0.5f;
@@ -67,7 +70,10 @@ snn_introspection_bridge_t* snn_introspection_bridge_create(
 }
 
 void snn_introspection_bridge_destroy(snn_introspection_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_introspection_bridge_destroy: null bridge pointer");
+        return;
+    }
     if (bridge->base.bio_async_enabled) {
         snn_introspection_bridge_disconnect_bio_async(bridge);
     }
@@ -102,14 +108,22 @@ int snn_introspection_bridge_connect_bio_async(snn_introspection_bridge_t* bridg
 }
 
 int snn_introspection_bridge_disconnect_bio_async(snn_introspection_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_introspection_bridge_disconnect_bio_async: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->base.bio_async_enabled) return 0;
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool snn_introspection_bridge_is_bio_async_connected(const snn_introspection_bridge_t* bridge) {
-    return bridge ? bridge->base.bio_async_enabled : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_introspection_bridge_is_bio_async_connected: null bridge pointer");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }
 
 int snn_introspection_bridge_update(snn_introspection_bridge_t* bridge, float dt) {
@@ -138,7 +152,10 @@ int snn_introspection_bridge_update(snn_introspection_bridge_t* bridge, float dt
 }
 
 float snn_introspection_estimate_phi(snn_introspection_bridge_t* bridge, float spike_rate) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_introspection_estimate_phi: null bridge pointer");
+        return 0.0f;
+    }
 
     float min_rate = bridge->config.phi_rate_min;
     float max_rate = bridge->config.phi_rate_max;
@@ -187,7 +204,11 @@ int snn_introspection_detect_patterns(snn_introspection_bridge_t* bridge, const 
 }
 
 bool snn_introspection_check_consciousness(const snn_introspection_bridge_t* bridge) {
-    return bridge ? bridge->state.consciousness_detected : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_introspection_check_consciousness: null bridge pointer");
+        return false;
+    }
+    return bridge->state.consciousness_detected;
 }
 
 int snn_introspection_bridge_get_state(const snn_introspection_bridge_t* bridge, snn_introspection_state_t* state) {
@@ -204,11 +225,19 @@ int snn_introspection_bridge_get_state(const snn_introspection_bridge_t* bridge,
 }
 
 float snn_introspection_get_phi(const snn_introspection_bridge_t* bridge) {
-    return bridge ? bridge->state.phi_estimate : 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_introspection_get_phi: null bridge pointer");
+        return 0.0f;
+    }
+    return bridge->state.phi_estimate;
 }
 
 float snn_introspection_get_uncertainty(const snn_introspection_bridge_t* bridge) {
-    return bridge ? bridge->state.uncertainty_level : 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_introspection_get_uncertainty: null bridge pointer");
+        return 0.0f;
+    }
+    return bridge->state.uncertainty_level;
 }
 
 int snn_introspection_get_stats(const snn_introspection_bridge_t* bridge, uint32_t* pattern_matches, uint32_t* consciousness_detections, float* avg_phi) {
@@ -223,7 +252,10 @@ int snn_introspection_get_stats(const snn_introspection_bridge_t* bridge, uint32
 }
 
 void snn_introspection_reset_stats(snn_introspection_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_introspection_reset_stats: null bridge pointer");
+        return;
+    }
     bridge->state.pattern_matches = 0;
     bridge->state.consciousness_detected = false;
     bridge->state.phi_estimate = 0.0f;

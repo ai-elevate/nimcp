@@ -12,6 +12,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/exception/nimcp_exception_immune.h"
 
 #include <string.h>
 #include <math.h>
@@ -148,6 +149,7 @@ predictive_plasticity_bridge_t* predictive_plasticity_create(
 
     /* Initialize bridge base */
     if (bridge_base_init(&bridge->base, 0, "predictive_plasticity") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize bridge base in predictive_plasticity_create");
         nimcp_free(bridge);
         return NULL;
     }
@@ -156,6 +158,7 @@ predictive_plasticity_bridge_t* predictive_plasticity_create(
     bridge->max_synapses = bridge->config.max_synapses;
     bridge->synapses = nimcp_calloc(bridge->max_synapses, sizeof(synapse_entry_t));
     if (!bridge->synapses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate synapses in predictive_plasticity_create");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;

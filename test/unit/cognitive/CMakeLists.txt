@@ -1934,3 +1934,13 @@ add_subdirectory(health)
 # ============================================================================
 
 add_subdirectory(neuro_symbolic)
+
+# ============================================================================
+# Predictive Bridge Exception Tests
+# ============================================================================
+# WHAT: Unit tests for predictive bridge exception handling
+# WHY:  Verify NIMCP_THROW_TO_IMMUNE exception handling for all predictive bridges
+# HOW:  Test NULL pointer, allocation failure, and bio-async checks
+# ============================================================================
+
+add_subdirectory(predictive)

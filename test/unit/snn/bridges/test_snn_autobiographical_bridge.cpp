@@ -92,7 +92,7 @@ TEST_F(SNNAutobiographicalBridgeTest, BioAsyncConnect) {
     ASSERT_NE(bridge, nullptr);
 
     int ret = snn_autobiographical_bridge_connect_bio_async(bridge);
-    EXPECT_TRUE(ret == 0 || ret == -1);
+    EXPECT_TRUE(ret <= 0);  // 0 = success, negative = router not available
 }
 
 TEST_F(SNNAutobiographicalBridgeTest, BioAsyncDisconnect) {

@@ -98,14 +98,24 @@ int snn_reasoning_bridge_connect_bio_async(snn_reasoning_bridge_t* bridge) {
 }
 
 int snn_reasoning_bridge_disconnect_bio_async(snn_reasoning_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_reasoning_bridge_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->base.bio_async_enabled) return 0;
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool snn_reasoning_bridge_is_bio_async_connected(const snn_reasoning_bridge_t* bridge) {
-    return bridge ? bridge->base.bio_async_enabled : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_reasoning_bridge_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }
 
 int snn_reasoning_bridge_process(

@@ -111,3 +111,10 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_numerical_regression.cpp)
 
     message(STATUS "  Added SNN numerical regression test: test_snn_numerical_regression")
 endif()
+
+# ============================================================================
+# Include Subdirectories
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/exception)
+    add_subdirectory(exception)
+endif()

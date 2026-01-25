@@ -155,3 +155,7 @@ set_tests_properties(e2e_fault_tolerance_test_exception_e2e_comprehensive PROPER
 # Brain State Manager E2E Tests (Phase 8: System-Wide Health Integration)
 add_e2e_fault_tolerance_test(test_brain_state_manager_e2e)
 set_tests_properties(e2e_fault_tolerance_test_brain_state_manager_e2e PROPERTIES TIMEOUT 600)
+
+# Fault Tolerance Exception Handling E2E Tests (NIMCP_THROW_TO_IMMUNE)
+add_e2e_fault_tolerance_test(test_fault_tolerance_exception_e2e)
+set_tests_properties(e2e_fault_tolerance_test_fault_tolerance_exception_e2e PROPERTIES TIMEOUT 600)

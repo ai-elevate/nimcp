@@ -18,7 +18,10 @@
 #define BIO_MODULE_SNN_GLOBAL_WORKSPACE_BRIDGE 0x062B
 
 void snn_global_workspace_config_default(snn_global_workspace_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_global_workspace_config_default: null config pointer");
+        return;
+    }
     config->competition_rate_threshold = 30.0f;
     config->broadcast_encoding_gain = 2.0f;
     config->ignition_rate_threshold = 50.0f;
@@ -63,7 +66,10 @@ snn_global_workspace_bridge_t* snn_global_workspace_bridge_create(const snn_glob
 }
 
 void snn_global_workspace_bridge_destroy(snn_global_workspace_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_global_workspace_bridge_destroy: null bridge pointer");
+        return;
+    }
     if (bridge->base.bio_async_enabled) {
         snn_global_workspace_bridge_disconnect_bio_async(bridge);
     }
@@ -110,7 +116,11 @@ int snn_global_workspace_bridge_disconnect_bio_async(snn_global_workspace_bridge
 }
 
 bool snn_global_workspace_bridge_is_bio_async_connected(const snn_global_workspace_bridge_t* bridge) {
-    return bridge ? bridge->base.bio_async_enabled : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_global_workspace_bridge_is_bio_async_connected: null bridge pointer");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }
 
 int snn_global_workspace_bridge_update(snn_global_workspace_bridge_t* bridge, float dt) {
@@ -159,7 +169,10 @@ int snn_global_workspace_bridge_submit_competition(snn_global_workspace_bridge_t
 }
 
 float snn_global_workspace_compute_competition_strength(const snn_global_workspace_bridge_t* bridge, float spike_rate) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_global_workspace_compute_competition_strength: null bridge pointer");
+        return 0.0f;
+    }
     float threshold = bridge->config.competition_rate_threshold;
     float strength = (spike_rate - threshold) / threshold;
     if (strength < 0.0f) strength = 0.0f;
@@ -183,15 +196,27 @@ int snn_global_workspace_bridge_get_state(const snn_global_workspace_bridge_t* b
 }
 
 float snn_global_workspace_get_broadcast_rate(const snn_global_workspace_bridge_t* bridge) {
-    return bridge ? bridge->state.current_broadcast_rate : 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_global_workspace_get_broadcast_rate: null bridge pointer");
+        return 0.0f;
+    }
+    return bridge->state.current_broadcast_rate;
 }
 
 float snn_global_workspace_get_competition_strength(const snn_global_workspace_bridge_t* bridge) {
-    return bridge ? bridge->state.competition_strength : 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_global_workspace_get_competition_strength: null bridge pointer");
+        return 0.0f;
+    }
+    return bridge->state.competition_strength;
 }
 
 bool snn_global_workspace_is_broadcasting(const snn_global_workspace_bridge_t* bridge) {
-    return bridge ? bridge->state.is_broadcasting : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_global_workspace_is_broadcasting: null bridge pointer");
+        return false;
+    }
+    return bridge->state.is_broadcasting;
 }
 
 int snn_global_workspace_get_stats(const snn_global_workspace_bridge_t* bridge, uint32_t* broadcast_count, uint32_t* wins, float* avg_strength) {
@@ -207,7 +232,10 @@ int snn_global_workspace_get_stats(const snn_global_workspace_bridge_t* bridge, 
 }
 
 void snn_global_workspace_reset_stats(snn_global_workspace_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_global_workspace_reset_stats: null bridge pointer");
+        return;
+    }
     bridge->state.broadcast_count = 0;
     bridge->state.competition_wins = 0;
 }

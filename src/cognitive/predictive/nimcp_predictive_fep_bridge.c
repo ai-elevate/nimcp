@@ -23,6 +23,7 @@
 #include "utils/thread/nimcp_thread.h"
 #include "utils/validation/nimcp_common.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/exception/nimcp_exception_immune.h"
 
 #include <string.h>
 #include <math.h>
@@ -84,9 +85,14 @@ predictive_fep_bridge_t* predictive_fep_bridge_create(
     }
 
     /* Create mutex */
-    if (bridge_base_init(&bridge->base, 0, "predictive_fep") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "predictive_fep") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize bridge base in predictive_fep_bridge_create");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Mutex is NULL after bridge_base_init in predictive_fep_bridge_create");
         nimcp_free(bridge);
         return NULL;
     }

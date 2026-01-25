@@ -46,7 +46,7 @@ TEST_F(SNNRoutingBridgeTest, ConfigDefaults) {
     snn_routing_config_default(&config);
 
     EXPECT_FLOAT_EQ(config.attention_threshold, 0.1f);
-    EXPECT_EQ(config.default_priority, NIMCP_PRIORITY_NORMAL);
+    EXPECT_EQ(config.default_priority, NIMCP_PRIORITY_HIGH);
     EXPECT_TRUE(config.enable_burst_routing);
     EXPECT_TRUE(config.enable_selective_routing);
 }

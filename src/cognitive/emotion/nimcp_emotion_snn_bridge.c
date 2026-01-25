@@ -141,6 +141,7 @@ emotion_snn_bridge_t* emotion_snn_create(const emotion_snn_config_t* config) {
 
     /* Initialize bridge base infrastructure (includes mutex) */
     if (bridge_base_init(&bridge->base, 0, "emotion_snn") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize bridge base in emotion_snn_create");
         nimcp_free(bridge);
         return NULL;
     }
@@ -158,6 +159,7 @@ emotion_snn_bridge_t* emotion_snn_create(const emotion_snn_config_t* config) {
 
     bridge->snn = snn_network_create(&snn_config);
     if (!bridge->snn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to create SNN network in emotion_snn_create");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
@@ -200,6 +202,7 @@ emotion_snn_bridge_t* emotion_snn_create(const emotion_snn_config_t* config) {
 
     if (!bridge->input_buffer || !bridge->hidden_buffer ||
         !bridge->output_buffer || !bridge->va_buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate buffers in emotion_snn_create");
         emotion_snn_destroy(bridge);
         return NULL;
     }
@@ -748,7 +751,10 @@ void emotion_snn_reset_stats(emotion_snn_bridge_t* bridge) {
 //=============================================================================
 
 int emotion_snn_connect_bio_async(emotion_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL in emotion_snn_connect_bio_async");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->config.enable_bio_async) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -762,7 +768,10 @@ int emotion_snn_connect_bio_async(emotion_snn_bridge_t* bridge) {
 }
 
 int emotion_snn_disconnect_bio_async(emotion_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL in emotion_snn_disconnect_bio_async");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 

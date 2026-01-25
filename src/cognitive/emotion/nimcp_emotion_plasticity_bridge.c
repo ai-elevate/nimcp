@@ -260,6 +260,7 @@ emotion_plasticity_bridge_t* emotion_plasticity_create(
 
     /* Initialize bridge base infrastructure (includes mutex) */
     if (bridge_base_init(&bridge->base, 0, "emotion_plasticity") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize bridge base in emotion_plasticity_create");
         nimcp_free(bridge);
         return NULL;
     }
@@ -884,7 +885,10 @@ int emotion_plasticity_set_arousal_modulation(
 //=============================================================================
 
 int emotion_plasticity_connect_bio_async(emotion_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL in emotion_plasticity_connect_bio_async");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->config.enable_bio_async) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -895,7 +899,10 @@ int emotion_plasticity_connect_bio_async(emotion_plasticity_bridge_t* bridge) {
 }
 
 int emotion_plasticity_disconnect_bio_async(emotion_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL in emotion_plasticity_disconnect_bio_async");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;

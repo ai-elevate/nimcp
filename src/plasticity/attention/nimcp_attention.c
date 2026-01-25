@@ -664,11 +664,13 @@ attention_head_t attention_head_create(const attention_head_config_t* config)
      * WHY:  Early return prevents allocation if invalid
      */
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "attention_head_create: config is NULL");
         NIMCP_LOGGING_ERROR("Attention head config is NULL");
         return NULL;
     }
 
     if (config->input_dim == 0 || config->output_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "attention_head_create: invalid dimensions");
         NIMCP_LOGGING_ERROR("Invalid dimensions in attention head config");
         return NULL;
     }
@@ -678,6 +680,7 @@ attention_head_t attention_head_create(const attention_head_config_t* config)
      */
     attention_head_t head = nimcp_malloc(sizeof(struct attention_head_struct));
     if (!head) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_head_create: failed to allocate head");
         NIMCP_LOGGING_ERROR("Failed to allocate attention head");
         return NULL;
     }
@@ -708,6 +711,7 @@ attention_head_t attention_head_create(const attention_head_config_t* config)
      */
     if (!head->query_weights || !head->key_weights ||
         !head->value_weights || !head->output_weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "attention_head_create: failed to allocate weights");
         attention_head_destroy(head);
         return NULL;
     }
@@ -959,6 +963,7 @@ multihead_attention_t multihead_attention_create(const multihead_attention_confi
      * WHY:  Early return prevents allocation if invalid
      */
     if (!attention_validate_config(config)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multihead_attention_create: invalid config");
         NIMCP_LOGGING_ERROR("Invalid multihead attention config");
         return NULL;
     }
@@ -968,6 +973,7 @@ multihead_attention_t multihead_attention_create(const multihead_attention_confi
      */
     multihead_attention_t mha = nimcp_malloc(sizeof(struct multihead_attention_struct));
     if (!mha) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "multihead_attention_create: failed to allocate mha");
         NIMCP_LOGGING_ERROR("Failed to allocate multihead attention");
         return NULL;
     }
@@ -991,6 +997,7 @@ multihead_attention_t multihead_attention_create(const multihead_attention_confi
      */
     mha->heads = nimcp_malloc(config->num_heads * sizeof(attention_head_t));
     if (!mha->heads) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "multihead_attention_create: failed to allocate heads array");
         nimcp_free(mha);
         return NULL;
     }
@@ -1017,6 +1024,7 @@ multihead_attention_t multihead_attention_create(const multihead_attention_confi
          * WHY:  Early cleanup if any head fails
          */
         if (!mha->heads[i]) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "multihead_attention_create: failed to create head %u", i);
             multihead_attention_destroy(mha);
             return NULL;
         }

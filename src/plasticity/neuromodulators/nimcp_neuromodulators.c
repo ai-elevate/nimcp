@@ -1165,7 +1165,14 @@ bool neuromodulator_get_levels(neuromodulator_system_t system, neuromodulator_po
      * THREAD SAFETY: Acquires read lock (allows parallel readers)
      * PERFORMANCE: Multiple threads can read simultaneously
      */
-    if (!system || !pool) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_get_levels: system is NULL");
+        return false;
+    }
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_get_levels: pool is NULL");
+        return false;
+    }
 
     /* Ensure pool has tensor storage */
     if (!pool->concentrations) {
@@ -1435,7 +1442,10 @@ float neuromodulator_release_dopamine(neuromodulator_system_t system, float rewa
      * @param predicted_reward Expected reward (0-1)
      * @return Reward prediction error
      */
-    if (!system) return 0.0F;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_release_dopamine: system is NULL");
+        return 0.0F;
+    }
 
     /* WHAT: Compute reward prediction error (read-only, no lock needed)
      * WHY:  RPE drives learning - positive for better than expected,
@@ -1661,7 +1671,10 @@ float neuromodulator_release_serotonin(neuromodulator_system_t system, float pun
      * COMPLEXITY: O(1)
      * THREAD SAFETY: Write lock for concentration, atomic for counter
      */
-    if (!system) return 0.0F;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_release_serotonin: system is NULL");
+        return 0.0F;
+    }
 
     /* WHAT: Acquire write lock for concentration modification
      * WHY:  Prevent race conditions on read-modify-write
@@ -1718,7 +1731,10 @@ float neuromodulator_release_acetylcholine(neuromodulator_system_t system, float
      * COMPLEXITY: O(1)
      * THREAD SAFETY: Write lock for concentration, atomic for counter
      */
-    if (!system) return 0.0F;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_release_acetylcholine: system is NULL");
+        return 0.0F;
+    }
 
     /* WHAT: Acquire write lock for concentration modification
      * WHY:  Prevent race conditions on read-modify-write
@@ -1756,7 +1772,10 @@ float neuromodulator_release_norepinephrine(neuromodulator_system_t system, floa
      * COMPLEXITY: O(1)
      * THREAD SAFETY: Write lock for concentration, atomic for counter
      */
-    if (!system) return 0.0F;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_release_norepinephrine: system is NULL");
+        return 0.0F;
+    }
 
     /* WHAT: Combine threat and uncertainty (read-only, no lock needed)
      * WHY:  Both trigger arousal/vigilance response
@@ -1829,7 +1848,18 @@ bool neuromodulator_compute_effects(neuromodulator_system_t system,
      * PERFORMANCE: Called per synapse, must be extremely fast
      * OPTIMIZATION: All operations are floating-point, no branches
      */
-    if (!system || !receptors || !effects) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_compute_effects: system is NULL");
+        return false;
+    }
+    if (!receptors) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_compute_effects: receptors is NULL");
+        return false;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_compute_effects: effects is NULL");
+        return false;
+    }
 
     /* WHAT: Get current global concentrations
      * WHY:  Source signal for local modulation
@@ -2058,7 +2088,10 @@ bool neuromodulator_release_from_ethics(neuromodulator_system_t system, float go
      *
      * COMPLEXITY: O(1)
      */
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_release_from_ethics: system is NULL");
+        return false;
+    }
 
     /* WHAT: Map golden rule score to reward/punishment
      * WHY:  Positive ethics should feel rewarding, negative aversive
@@ -2108,7 +2141,14 @@ float neuromodulator_get_learning_weight(neuromodulator_system_t system,
      *
      * COMPLEXITY: O(1)
      */
-    if (!system || !receptors) return 0.5F;  // Default moderate weight
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_get_learning_weight: system is NULL");
+        return 0.5F;
+    }
+    if (!receptors) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_get_learning_weight: receptors is NULL");
+        return 0.5F;  // Default moderate weight
+    }
 
     float da = system->concentrations[NEUROMOD_DOPAMINE];
     float ach = system->concentrations[NEUROMOD_ACETYLCHOLINE];
@@ -2141,7 +2181,14 @@ bool neuromodulator_get_stats(neuromodulator_system_t system, neuromodulator_sta
      * WHY:  Monitor performance, debug, analyze behavior
      * COMPLEXITY: O(1)
      */
-    if (!system || !stats) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_get_stats: system is NULL");
+        return false;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_get_stats: stats is NULL");
+        return false;
+    }
 
     stats->current_dopamine = system->concentrations[NEUROMOD_DOPAMINE];
     stats->current_serotonin = system->concentrations[NEUROMOD_SEROTONIN];
@@ -2179,7 +2226,10 @@ bool neuromodulator_reset(neuromodulator_system_t system) {
      * WHY:  For testing, or simulating "sleep" (homeostatic reset)
      * COMPLEXITY: O(1)
      */
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_reset: system is NULL");
+        return false;
+    }
 
     memcpy(system->concentrations, system->baselines, sizeof(system->concentrations));
 
@@ -2200,7 +2250,10 @@ bool neuromodulator_set_sleep_state(neuromodulator_system_t system,
      */
 
     /* Guard: Validate input */
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_set_sleep_state: system is NULL");
+        return false;
+    }
 
     /* Acquire write lock for state modification */
     nimcp_platform_rwlock_wrlock(&system->rwlock);
@@ -2218,7 +2271,10 @@ sleep_state_t neuromodulator_get_sleep_state(neuromodulator_system_t system) {
      */
 
     /* Guard: Validate input */
-    if (!system) return SLEEP_STATE_AWAKE;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_get_sleep_state: system is NULL");
+        return SLEEP_STATE_AWAKE;
+    }
 
     /* Acquire read lock for state query */
     nimcp_platform_rwlock_rdlock(&system->rwlock);

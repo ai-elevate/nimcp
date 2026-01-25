@@ -2988,6 +2988,12 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/core/CMakeLists.txt)
     add_subdirectory(core)
 endif()
 
+# Include SNN E2E test subdirectory (bridge exception handling)
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/snn/CMakeLists.txt)
+    message(STATUS "Adding SNN E2E tests (Bridge exception handling)...")
+    add_subdirectory(snn)
+endif()
+
 message(STATUS "")
 message(STATUS "E2E Test Execution:")
 message(STATUS "  All E2E tests:   ctest -L e2e")

@@ -127,6 +127,39 @@ extern "C" {
         } \
     } while (0)
 
+/**
+ * @brief Check for NULL pointer and return false (for bool-returning functions)
+ *
+ * @param ptr Pointer to check
+ * @param msg Error message
+ */
+#define NIMCP_API_CHECK_NULL_RET_FALSE(ptr, msg) \
+    do { \
+        if (!(ptr)) { \
+            LOG_ERROR("%s", (msg)); \
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "%s", (msg)); \
+            NIMCP_API_SET_ERROR("%s", (msg)); \
+            return false; \
+        } \
+    } while (0)
+
+/**
+ * @brief Check condition and return false (for bool-returning functions)
+ *
+ * @param cond Condition to check
+ * @param code Error code for exception
+ * @param msg Error message
+ */
+#define NIMCP_API_CHECK_RET_FALSE(cond, code, msg) \
+    do { \
+        if (!(cond)) { \
+            LOG_ERROR("%s", (msg)); \
+            NIMCP_THROW_TO_IMMUNE((code), "%s", (msg)); \
+            NIMCP_API_SET_ERROR("%s", (msg)); \
+            return false; \
+        } \
+    } while (0)
+
 /* ============================================================================
  * Condition Check Macros
  * ============================================================================ */

@@ -54,3 +54,54 @@ gtest_discover_tests(unit_snn_exception_handling
 #     TIMEOUT 120
 #     LABELS "unit;snn;exception"
 # )
+
+# =============================================================================
+# SNN Bridge Exception Unit Tests
+# =============================================================================
+# WHAT: Test NIMCP_THROW_TO_IMMUNE exception handling for SNN bridge bio_async functions
+# WHY:  Verify proper error reporting to immune system for NULL pointer conditions
+# HOW:  Test disconnect_bio_async and is_bio_async_connected functions
+#
+# BRIDGES TESTED:
+# - nimcp_snn_curiosity_bridge
+# - nimcp_snn_empathetic_bridge
+# - nimcp_snn_free_energy_bridge
+# - nimcp_snn_grief_bridge
+# - nimcp_snn_joy_bridge
+# - nimcp_snn_love_bridge
+# - nimcp_snn_medulla_bridge
+# - nimcp_snn_reasoning_bridge
+# =============================================================================
+
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_bridge_exception.cpp)
+    add_executable(unit_snn_bridge_exception
+        test_snn_bridge_exception.cpp
+    )
+
+    target_include_directories(unit_snn_bridge_exception
+        PRIVATE
+            ${CMAKE_SOURCE_DIR}/include
+            ${CMAKE_SOURCE_DIR}/include/snn
+            ${CMAKE_SOURCE_DIR}/test
+    )
+
+    target_link_libraries(unit_snn_bridge_exception
+        PRIVATE
+            nimcp_snn
+            nimcp
+            GTest::gtest
+            GTest::gtest_main
+            Threads::Threads
+            m
+    )
+
+    target_compile_features(unit_snn_bridge_exception PRIVATE cxx_std_17)
+
+    gtest_discover_tests(unit_snn_bridge_exception
+        PROPERTIES
+            TIMEOUT 120
+            LABELS "unit;snn;bridges;exception"
+    )
+
+    message(STATUS "  Added SNN bridge exception unit test: test_snn_bridge_exception")
+endif()

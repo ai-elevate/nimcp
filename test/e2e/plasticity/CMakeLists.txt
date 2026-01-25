@@ -2,3 +2,4 @@
 
 # Add subdirectories
 add_subdirectory(eligibility)
+add_subdirectory(exception)

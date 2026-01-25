@@ -561,11 +561,13 @@ TEST_F(EmotionSNNBridgeTest, BioAsyncConnectDisconnect) {
 }
 
 TEST_F(EmotionSNNBridgeTest, BioAsyncConnectNull) {
-    EXPECT_EQ(emotion_snn_connect_bio_async(nullptr), -1);
+    // Returns NIMCP error code (positive) or -1 for null bridge
+    EXPECT_NE(emotion_snn_connect_bio_async(nullptr), 0);
 }
 
 TEST_F(EmotionSNNBridgeTest, BioAsyncDisconnectNull) {
-    EXPECT_EQ(emotion_snn_disconnect_bio_async(nullptr), -1);
+    // Returns NIMCP error code (positive) or -1 for null bridge
+    EXPECT_NE(emotion_snn_disconnect_bio_async(nullptr), 0);
 }
 
 TEST_F(EmotionSNNBridgeTest, BioAsyncIsConnectedNull) {

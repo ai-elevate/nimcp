@@ -16,6 +16,7 @@
 #include "core/brain/nimcp_brain_internal.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/exception/nimcp_exception_immune.h"
 
 #define LOG_MODULE "utils_fast_recovery"
 
@@ -95,6 +96,7 @@ static fast_recovery_status_t action_clear_nan(brain_t brain)
 {
     // Guard: Brain is required for this operation
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "action_clear_nan: brain is NULL");
         return FAST_RECOVERY_NOT_APPLICABLE;
     }
 
@@ -149,6 +151,7 @@ static fast_recovery_status_t action_clip_gradients(brain_t brain)
 {
     // Guard: Brain is required for this operation
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "action_clip_gradients: brain is NULL");
         return FAST_RECOVERY_NOT_APPLICABLE;
     }
 
@@ -229,6 +232,7 @@ static fast_recovery_status_t action_clear_cache(brain_t brain)
 {
     // Guard: Brain is required for this operation
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "action_clear_cache: brain is NULL");
         return FAST_RECOVERY_NOT_APPLICABLE;
     }
 
@@ -309,6 +313,7 @@ static fast_recovery_status_t action_reset_state(brain_t brain)
 {
     // Guard: Brain is required for this operation
     if (!brain) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "action_reset_state: brain is NULL");
         return FAST_RECOVERY_NOT_APPLICABLE;
     }
 
@@ -402,7 +407,11 @@ static fast_recovery_status_t action_trigger_gc(brain_t brain)
 
 fast_recovery_type_t fast_recovery_is_applicable(const fast_recovery_context_t* context)
 {
-    NIMCP_API_CHECK_NULL(context, NIMCP_ERROR_NULL_POINTER, "fast_recovery_is_applicable: NULL context");
+    if (!context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "fast_recovery_is_applicable: NULL context");
+        return FAST_RECOVERY_NONE;
+    }
 
     // Quick flag-based matching (very fast)
     if (context->is_numeric_error) {
@@ -723,7 +732,7 @@ uint32_t fast_recovery_get_typical_latency_us(fast_recovery_type_t type)
 
 bool fast_recovery_validate_result(const fast_recovery_result_t* result)
 {
-    NIMCP_API_CHECK_NULL(result, NIMCP_ERROR_NULL_POINTER, "fast_recovery_validate_result: NULL result");
+    NIMCP_API_CHECK_NULL_RET_FALSE(result, "fast_recovery_validate_result: NULL result");
 
     // Validate enum values
     if (result->type >= FAST_RECOVERY_TYPE_COUNT) {

@@ -163,7 +163,7 @@ TEST_F(SNNReasoningBridgeTest, BioAsyncConnect) {
     bridge = snn_reasoning_bridge_create(&config, snn, reasoning);
     ASSERT_NE(bridge, nullptr);
     int ret = snn_reasoning_bridge_connect_bio_async(bridge);
-    EXPECT_TRUE(ret == 0 || ret == -1);
+    EXPECT_TRUE(ret <= 0);  // 0 = success, negative = router not available
 }
 
 TEST_F(SNNReasoningBridgeTest, ProcessFunction) {

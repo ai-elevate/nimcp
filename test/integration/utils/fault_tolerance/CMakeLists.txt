@@ -126,3 +126,8 @@ set_tests_properties(integration_utils_fault_tolerance_test_stdp_health_integrat
 add_ft_integration_test(test_plasticity_anomaly_integration)
 set_tests_properties(integration_utils_fault_tolerance_test_plasticity_anomaly_integration
                      PROPERTIES TIMEOUT 180)
+
+# Fault Tolerance Exception Handling Integration Tests (NIMCP_THROW_TO_IMMUNE)
+add_ft_integration_test(test_fault_tolerance_exception_integration)
+set_tests_properties(integration_utils_fault_tolerance_test_fault_tolerance_exception_integration
+                     PROPERTIES TIMEOUT 180)

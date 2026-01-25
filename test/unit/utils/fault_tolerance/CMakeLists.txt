@@ -118,3 +118,7 @@ set_tests_properties(unit_utils_fault_tolerance_test_stdp_health_metrics PROPERT
 # Plasticity Anomaly Detection Tests (Plasticity Health Monitoring)
 add_fault_tolerance_test(test_plasticity_anomaly_detection)
 set_tests_properties(unit_utils_fault_tolerance_test_plasticity_anomaly_detection PROPERTIES TIMEOUT 120)
+
+# Fault Tolerance Exception Handling Tests (NIMCP_THROW_TO_IMMUNE)
+add_fault_tolerance_test(test_fault_tolerance_exception)
+set_tests_properties(unit_utils_fault_tolerance_test_fault_tolerance_exception PROPERTIES TIMEOUT 120)

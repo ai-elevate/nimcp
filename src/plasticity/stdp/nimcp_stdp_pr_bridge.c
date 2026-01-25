@@ -92,7 +92,10 @@ stdp_pr_bridge_config_t stdp_pr_bridge_default_config(void) {
 }
 
 bool stdp_pr_bridge_validate_config(const stdp_pr_bridge_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_bridge_validate_config: config is NULL");
+        return false;
+    }
 
     if (config->resonance_lr_min < 0.0f || config->resonance_lr_max < config->resonance_lr_min) {
         return false;
@@ -156,7 +159,10 @@ stdp_pr_bridge_t stdp_pr_bridge_create(const stdp_pr_bridge_config_t* config) {
 }
 
 void stdp_pr_bridge_destroy(stdp_pr_bridge_t bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        /* Silent return for destroy - idempotent operation */
+        return;
+    }
 
     if (bridge->mutex_initialized) {
         nimcp_platform_mutex_destroy(&bridge->base.mutex);
@@ -165,7 +171,10 @@ void stdp_pr_bridge_destroy(stdp_pr_bridge_t bridge) {
 }
 
 bool stdp_pr_bridge_is_connected(stdp_pr_bridge_t bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     return bridge->initialized;
 }
 
@@ -343,7 +352,11 @@ int stdp_pr_notify_burst(stdp_pr_bridge_t bridge,
 int stdp_pr_notify_batch(stdp_pr_bridge_t bridge,
                          const stdp_pr_forward_effect_t* events,
                          size_t count) {
-    if (!bridge || !events || count == 0) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_notify_batch: bridge is NULL");
+        return 0;
+    }
+    if (!events || count == 0) return 0;
 
     int applied = 0;
     for (size_t i = 0; i < count; i++) {
@@ -668,7 +681,10 @@ int stdp_pr_bridge_update(stdp_pr_bridge_t bridge, float dt_ms) {
 }
 
 float stdp_pr_bridge_get_coherence(stdp_pr_bridge_t bridge) {
-    if (!bridge) return -1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_bridge_get_coherence: bridge is NULL");
+        return -1.0f;
+    }
 
     nimcp_platform_mutex_lock(&bridge->base.mutex);
     float coherence = bridge->state.bridge_coherence;

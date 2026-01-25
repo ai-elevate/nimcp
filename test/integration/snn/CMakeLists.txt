@@ -115,3 +115,10 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/test_snn_plasticity_integration.cpp)
 
     message(STATUS "  Added SNN plasticity integration test: test_snn_plasticity_integration")
 endif()
+
+# ============================================================================
+# Include Subdirectories
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/exception)
+    add_subdirectory(exception)
+endif()

@@ -69,7 +69,10 @@ struct medulla_immune_bridge {
 //=============================================================================
 
 void medulla_immune_default_config(medulla_immune_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_immune_default_config: config is NULL");
+        return;
+    }
 
     memset(config, 0, sizeof(medulla_immune_config_t));
 
@@ -104,9 +107,8 @@ medulla_immune_bridge_t medulla_immune_create(
     /* Allocate bridge */
     medulla_immune_bridge_t bridge = nimcp_malloc(sizeof(struct medulla_immune_bridge));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "medulla_immune_create: failed to allocate bridge");
         NIMCP_LOGGING_ERROR("Failed to allocate medulla-immune bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
         return NULL;
     }
 
@@ -125,8 +127,13 @@ medulla_immune_bridge_t medulla_immune_create(
     bridge->immune = immune;
 
     /* Create mutex */
-    if (bridge_base_init(&bridge->base, 0, "medulla_immune") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "medulla_immune") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "medulla_immune_create: failed to initialize bridge base");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "medulla_immune_create: failed to create mutex");
         NIMCP_LOGGING_ERROR("Failed to create bridge mutex");
         nimcp_free(bridge);
         return NULL;
@@ -565,6 +572,9 @@ int medulla_immune_disconnect_bio_async(medulla_immune_bridge_t bridge) {
 }
 
 bool medulla_immune_is_bio_async_connected(medulla_immune_bridge_t bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->bio_async_connected;
 }

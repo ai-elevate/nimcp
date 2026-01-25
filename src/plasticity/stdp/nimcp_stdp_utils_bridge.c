@@ -180,6 +180,7 @@ stdp_utils_ctx_t stdp_utils_create(const stdp_utils_config_t* config) {
 }
 
 void stdp_utils_destroy(stdp_utils_ctx_t ctx) {
+    /* Silent return for destroy - idempotent operation */
     if (!ctx) return;
 
     /* Flush any remaining metrics */
@@ -204,7 +205,10 @@ void stdp_utils_destroy(stdp_utils_ctx_t ctx) {
 }
 
 void stdp_utils_reset(stdp_utils_ctx_t ctx) {
-    if (!ctx) return;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_reset: ctx is NULL");
+        return;
+    }
 
     /* Clear spike buffer */
     if (ctx->spike_buffer) {
@@ -373,7 +377,10 @@ bool stdp_utils_find_spike_pairs(
  *===========================================================================*/
 
 void stdp_utils_record_ltp(stdp_utils_ctx_t ctx, float weight_change, float timing_delta) {
-    if (!ctx) return;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_record_ltp: ctx is NULL");
+        return;
+    }
 
     ctx->current_metrics.total_ltp_events++;
 
@@ -402,7 +409,10 @@ void stdp_utils_record_ltp(stdp_utils_ctx_t ctx, float weight_change, float timi
 }
 
 void stdp_utils_record_ltd(stdp_utils_ctx_t ctx, float weight_change, float timing_delta) {
-    if (!ctx) return;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_record_ltd: ctx is NULL");
+        return;
+    }
 
     ctx->current_metrics.total_ltd_events++;
 
@@ -433,7 +443,11 @@ void stdp_utils_update_weight_stats(
     const float* weights,
     uint32_t num_weights
 ) {
-    if (!ctx || !weights || num_weights == 0) return;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_update_weight_stats: ctx is NULL");
+        return;
+    }
+    if (!weights || num_weights == 0) return;
 
     /* Compute statistics */
     double sum = 0.0;
@@ -490,7 +504,11 @@ bool stdp_utils_get_metrics(stdp_utils_ctx_t ctx, stdp_metrics_t* metrics) {
 }
 
 int32_t stdp_utils_flush_metrics(stdp_utils_ctx_t ctx) {
-    if (!ctx || !ctx->metrics_collector) return 0;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_flush_metrics: ctx is NULL");
+        return 0;
+    }
+    if (!ctx->metrics_collector) return 0;
     return nimcp_metrics_flush(ctx->metrics_collector);
 }
 
@@ -554,7 +572,11 @@ stdp_synapse_t* stdp_utils_alloc_synapse(stdp_utils_ctx_t ctx) {
 }
 
 void stdp_utils_free_synapse(stdp_utils_ctx_t ctx, stdp_synapse_t* synapse) {
-    if (!ctx || !synapse || !ctx->synapse_pool) return;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_free_synapse: ctx is NULL");
+        return;
+    }
+    if (!synapse || !ctx->synapse_pool) return;
 
     simple_synapse_pool_t* pool = ctx->synapse_pool;
     /* Calculate index from pointer offset */
@@ -624,7 +646,11 @@ void stdp_utils_rk4_trace_update(
     float dt,
     float spike_contribution
 ) {
-    if (!trace || tau <= 0.0f || dt <= 0.0f) return;
+    if (!trace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_rk4_trace_update: trace is NULL");
+        return;
+    }
+    if (tau <= 0.0f || dt <= 0.0f) return;
 
     /* Use RK4 for accurate exponential decay */
     trace_params_t params = { .tau = tau };
@@ -643,7 +669,11 @@ void stdp_utils_rk4_trace_batch(
     float dt,
     const uint8_t* spike_mask
 ) {
-    if (!traces || !taus || num_traces == 0 || dt <= 0.0f) return;
+    if (!traces) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_rk4_trace_batch: traces is NULL");
+        return;
+    }
+    if (!taus || num_traces == 0 || dt <= 0.0f) return;
 
     for (uint32_t i = 0; i < num_traces; i++) {
         trace_params_t params = { .tau = taus[i] };

@@ -19,7 +19,10 @@
 #define BIO_MODULE_SNN_META_LEARNING_BRIDGE 0x062A
 
 void snn_meta_learning_config_default(snn_meta_learning_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_meta_learning_config_default: null config pointer");
+        return;
+    }
     config->meta_learning_rate = NIMCP_DEFAULT_LEARNING_RATE;
     config->adaptation_threshold = 0.65f;
     config->integration_time_window_ms = 500.0f;
@@ -65,7 +68,10 @@ snn_meta_learning_bridge_t* snn_meta_learning_bridge_create(
 }
 
 void snn_meta_learning_bridge_destroy(snn_meta_learning_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_meta_learning_bridge_destroy: null bridge pointer");
+        return;
+    }
     if (bridge->base.bio_async_enabled) {
         snn_meta_learning_bridge_disconnect_bio_async(bridge);
     }
@@ -100,14 +106,22 @@ int snn_meta_learning_bridge_connect_bio_async(snn_meta_learning_bridge_t* bridg
 }
 
 int snn_meta_learning_bridge_disconnect_bio_async(snn_meta_learning_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_meta_learning_bridge_disconnect_bio_async: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->base.bio_async_enabled) return 0;
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool snn_meta_learning_bridge_is_bio_async_connected(const snn_meta_learning_bridge_t* bridge) {
-    return bridge ? bridge->base.bio_async_enabled : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_meta_learning_bridge_is_bio_async_connected: null bridge pointer");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }
 
 int snn_meta_learning_bridge_update(snn_meta_learning_bridge_t* bridge, float dt) {
@@ -145,7 +159,10 @@ int snn_meta_learning_bridge_update(snn_meta_learning_bridge_t* bridge, float dt
 }
 
 float snn_meta_learning_compute_adaptation(snn_meta_learning_bridge_t* bridge, float spike_rate) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_meta_learning_compute_adaptation: null bridge pointer");
+        return 0.0f;
+    }
 
     float normalized = spike_rate / bridge->config.max_encoding_rate;
     if (normalized < 0.0f) normalized = 0.0f;
@@ -190,7 +207,11 @@ int snn_meta_learning_update_efficiency(snn_meta_learning_bridge_t* bridge, cons
 }
 
 bool snn_meta_learning_check_adaptation_active(const snn_meta_learning_bridge_t* bridge) {
-    return bridge ? bridge->state.adaptation_active : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_meta_learning_check_adaptation_active: null bridge pointer");
+        return false;
+    }
+    return bridge->state.adaptation_active;
 }
 
 int snn_meta_learning_bridge_get_state(const snn_meta_learning_bridge_t* bridge, snn_meta_learning_state_t* state) {
@@ -207,11 +228,19 @@ int snn_meta_learning_bridge_get_state(const snn_meta_learning_bridge_t* bridge,
 }
 
 float snn_meta_learning_get_adaptation_level(const snn_meta_learning_bridge_t* bridge) {
-    return bridge ? bridge->state.adaptation_level : 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_meta_learning_get_adaptation_level: null bridge pointer");
+        return 0.0f;
+    }
+    return bridge->state.adaptation_level;
 }
 
 float snn_meta_learning_get_efficiency(const snn_meta_learning_bridge_t* bridge) {
-    return bridge ? bridge->state.learning_efficiency : 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_meta_learning_get_efficiency: null bridge pointer");
+        return 0.0f;
+    }
+    return bridge->state.learning_efficiency;
 }
 
 int snn_meta_learning_get_stats(const snn_meta_learning_bridge_t* bridge, uint32_t* update_count, uint32_t* adaptation_detections, float* avg_adaptation) {
@@ -226,7 +255,10 @@ int snn_meta_learning_get_stats(const snn_meta_learning_bridge_t* bridge, uint32
 }
 
 void snn_meta_learning_reset_stats(snn_meta_learning_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_meta_learning_reset_stats: null bridge pointer");
+        return;
+    }
     bridge->state.meta_updates_count = 0;
     bridge->state.adaptation_active = false;
     bridge->state.adaptation_level = 0.0f;

@@ -131,6 +131,7 @@ tom_plasticity_bridge_t* tom_plasticity_create(
 
     /* Initialize base bridge */
     if (bridge_base_init(&bridge->base, 0, "tom_plasticity") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize bridge base in tom_plasticity_create");
         nimcp_free(bridge);
         return NULL;
     }
@@ -139,6 +140,7 @@ tom_plasticity_bridge_t* tom_plasticity_create(
     bridge->max_synapses = bridge->config.max_synapses;
     bridge->synapses = nimcp_calloc(bridge->max_synapses, sizeof(tom_plasticity_synapse_t));
     if (!bridge->synapses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Failed to allocate synapses in tom_plasticity_create");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;

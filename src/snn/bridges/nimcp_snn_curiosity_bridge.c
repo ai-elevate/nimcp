@@ -109,7 +109,12 @@ int snn_curiosity_bridge_disconnect_bio_async(snn_curiosity_bridge_t* bridge) {
 }
 
 bool snn_curiosity_bridge_is_bio_async_connected(const snn_curiosity_bridge_t* bridge) {
-    return bridge ? bridge->base.bio_async_enabled : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_curiosity_bridge_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }
 
 int snn_curiosity_bridge_update(snn_curiosity_bridge_t* bridge, float dt) {

@@ -91,7 +91,7 @@ TEST_F(SNNEmpatheticBridgeTest, BioAsyncConnect) {
     ASSERT_NE(bridge, nullptr);
 
     int ret = snn_empathetic_bridge_connect_bio_async(bridge);
-    EXPECT_TRUE(ret == 0 || ret == -1);
+    EXPECT_TRUE(ret <= 0);  // 0 = success, negative = router not available
 }
 
 TEST_F(SNNEmpatheticBridgeTest, BioAsyncDisconnect) {

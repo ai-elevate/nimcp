@@ -153,7 +153,7 @@ TEST_F(SNNMemoryBridgeTest, BioAsyncConnect) {
     bridge = snn_memory_bridge_create(&config, snn, wm);
     ASSERT_NE(bridge, nullptr);
     int ret = snn_memory_bridge_connect_bio_async(bridge);
-    EXPECT_TRUE(ret == 0 || ret == -1);
+    EXPECT_TRUE(ret <= 0);  // 0 = success, negative = router not available
 }
 
 TEST_F(SNNMemoryBridgeTest, BioAsyncDisconnect) {

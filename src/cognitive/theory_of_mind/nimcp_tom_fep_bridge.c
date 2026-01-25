@@ -63,8 +63,13 @@ tom_fep_bridge_t* tom_fep_bridge_create(const tom_fep_config_t* config) {
         tom_fep_bridge_default_config(&bridge->config);
     }
 
-    if (bridge_base_init(&bridge->base, 0, "tom_fep") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "tom_fep") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Failed to initialize bridge base in tom_fep_bridge_create");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "Mutex is NULL after bridge_base_init in tom_fep_bridge_create");
         nimcp_free(bridge);
         return NULL;
     }

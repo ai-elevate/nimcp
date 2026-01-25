@@ -458,7 +458,7 @@ TEST_F(SNNTrainingIntegrationBridgeTest, BioAsyncConnect) {
 
     // Bio-async may or may not be available
     int ret = snn_training_integration_connect_bio_async(bridge);
-    EXPECT_TRUE(ret == 0 || ret == -1);
+    EXPECT_TRUE(ret <= 0);  // 0 = success, negative = router not available
 }
 
 TEST_F(SNNTrainingIntegrationBridgeTest, BioAsyncDisconnect) {

@@ -76,7 +76,8 @@ TEST_F(SNNSpeechBridgeTest, BioAsyncConnection) {
 }
 
 TEST_F(SNNSpeechBridgeTest, StatisticsTracking) {
-    EXPECT_TRUE(config.enable_bio_async);
+    // Bio-async is disabled by default
+    EXPECT_FALSE(config.enable_bio_async);
 }
 
 TEST_F(SNNSpeechBridgeTest, UpdateCycle) {

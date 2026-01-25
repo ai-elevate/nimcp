@@ -54,6 +54,16 @@ static struct {
 static nimcp_exception_immune_stats_t g_stats = {0};
 
 /* ============================================================================
+ * Thread-Local Reentry Guard
+ * ============================================================================
+ * WHAT: Prevents recursive calls to immune presentation
+ * WHY:  If the immune system itself throws an exception during processing,
+ *       recursive presentation could cause infinite loops or deadlocks
+ * HOW:  Thread-local flag checked at function entry, blocks reentrant calls
+ */
+static _Thread_local bool tl_in_immune_context = false;
+
+/* ============================================================================
  * Recovery Context
  * ============================================================================
  * WHAT: Holds references to systems needed for recovery actions
@@ -431,10 +441,22 @@ int nimcp_exception_present_to_immune(
 ) {
     if (!ex) return -1;
 
+    /* Reentry guard - prevent recursive immune calls that could cause
+     * infinite loops or deadlocks if the immune system itself errors */
+    if (tl_in_immune_context) {
+        LOG_WARNING("Reentrant immune call blocked: code=%d", ex->code);
+        ex->presented_to_immune = true;
+        ex->antigen_id = 0;  /* Indicate reentry-blocked */
+        return 0;
+    }
+
     if (ex->presented_to_immune) {
         /* Already presented */
         return 0;
     }
+
+    /* Set reentry guard */
+    tl_in_immune_context = true;
 
     uint64_t start_time = get_timestamp_us();
 
@@ -468,6 +490,8 @@ int nimcp_exception_present_to_immune(
             response->memory_formed = false;
         }
 
+        /* Clear reentry guard */
+        tl_in_immune_context = false;
         return 0;
     }
 
@@ -489,6 +513,8 @@ int nimcp_exception_present_to_immune(
 
     if (result != 0) {
         LOG_WARNING("Failed to present exception to immune system: code=%d", ex->code);
+        /* Clear reentry guard */
+        tl_in_immune_context = false;
         return -1;
     }
 #else
@@ -537,6 +563,8 @@ int nimcp_exception_present_to_immune(
         }
     }
 
+    /* Clear reentry guard */
+    tl_in_immune_context = false;
     return 0;
 }
 

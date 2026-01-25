@@ -15,6 +15,7 @@
 #include "utils/logging/nimcp_logging.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/exception/nimcp_exception_immune.h"
 
 #define LOG_MODULE "utils_health_monitor"
 #include "utils/thread/nimcp_thread.h"
@@ -120,6 +121,7 @@ static metric_history_t* create_metric_history(uint32_t capacity) {
 
     history->values = (double*)nimcp_calloc(capacity, sizeof(double));
     if (!history->values) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "create_metric_history: failed to allocate %u values", capacity);
         nimcp_free(history);
         return NULL;
     }
@@ -769,12 +771,14 @@ static void* monitoring_thread_func(void* arg) {
 
 health_monitor_t health_monitor_create(const char* brain_id) {
     if (!brain_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_monitor_create: brain_id is NULL");
         NIMCP_LOGGING_ERROR("Cannot create health monitor: NULL brain_id");
         return NULL;
     }
 
     health_monitor_t monitor = (health_monitor_t)nimcp_calloc(1, sizeof(struct health_monitor_internal));
     if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "health_monitor_create: failed to allocate monitor");
         NIMCP_LOGGING_ERROR("Failed to allocate health monitor");
         return NULL;
     }
@@ -788,6 +792,7 @@ health_monitor_t health_monitor_create(const char* brain_id) {
 
     // Initialize mutex
     if (nimcp_mutex_init(&monitor->mutex, NULL) != NIMCP_SUCCESS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "health_monitor_create: failed to initialize mutex");
         NIMCP_LOGGING_ERROR("Failed to initialize monitor mutex");
         nimcp_free(monitor);
         return NULL;
@@ -799,6 +804,7 @@ health_monitor_t health_monitor_create(const char* brain_id) {
     metric_history_t* err_hist = create_metric_history(HEALTH_MONITOR_WINDOW_SIZE);
 
     if (!mem_hist || !lat_hist || !err_hist) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "health_monitor_create: failed to allocate metric histories");
         NIMCP_LOGGING_ERROR("Failed to allocate metric histories");
         if (mem_hist) nimcp_free(mem_hist);
         if (lat_hist) nimcp_free(lat_hist);
@@ -853,7 +859,10 @@ void health_monitor_destroy(health_monitor_t monitor) {
 }
 
 bool health_monitor_start(health_monitor_t monitor) {
-    if (!monitor) return false;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_monitor_start: monitor is NULL");
+        return false;
+    }
 
     if (monitor->running) {
         NIMCP_LOGGING_WARN("Health monitor already running");
@@ -865,6 +874,7 @@ bool health_monitor_start(health_monitor_t monitor) {
     // Create monitoring thread
     if (nimcp_thread_create(&monitor->monitor_thread, monitoring_thread_func, monitor,
                             NULL) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_OPERATION_FAILED, "health_monitor_start: failed to create monitoring thread");
         NIMCP_LOGGING_ERROR("Failed to create monitoring thread");
         monitor->running = false;
         return false;
@@ -875,7 +885,10 @@ bool health_monitor_start(health_monitor_t monitor) {
 }
 
 bool health_monitor_stop(health_monitor_t monitor) {
-    if (!monitor) return false;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_monitor_stop: monitor is NULL");
+        return false;
+    }
 
     if (!monitor->running) {
         return true;
@@ -1074,7 +1087,14 @@ bool health_monitor_get_status(
     health_monitor_t monitor,
     health_status_snapshot_t* status
 ) {
-    if (!monitor || !status) return false;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_monitor_get_status: monitor is NULL");
+        return false;
+    }
+    if (!status) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_monitor_get_status: status is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&monitor->mutex);
 
@@ -1109,7 +1129,10 @@ bool health_monitor_get_status(
 }
 
 float health_monitor_get_score(health_monitor_t monitor) {
-    if (!monitor) return -1.0F;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_monitor_get_score: monitor is NULL");
+        return -1.0F;
+    }
 
     nimcp_mutex_lock(&monitor->mutex);
     float score = monitor->last_status.score;
@@ -1123,7 +1146,10 @@ bool health_monitor_is_healthy(health_monitor_t monitor) {
 }
 
 health_status_t health_monitor_get_status_level(health_monitor_t monitor) {
-    if (!monitor) return HEALTH_UNKNOWN;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_monitor_get_status_level: monitor is NULL");
+        return HEALTH_UNKNOWN;
+    }
 
     nimcp_mutex_lock(&monitor->mutex);
     health_status_t status = monitor->last_status.status;
@@ -1137,7 +1163,18 @@ int32_t health_monitor_detect_anomalies(
     anomaly_t* anomalies,
     uint32_t max_anomalies
 ) {
-    if (!monitor || !anomalies || max_anomalies == 0) return -1;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_monitor_detect_anomalies: monitor is NULL");
+        return -1;
+    }
+    if (!anomalies) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_monitor_detect_anomalies: anomalies is NULL");
+        return -1;
+    }
+    if (max_anomalies == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_monitor_detect_anomalies: max_anomalies is 0");
+        return -1;
+    }
 
     nimcp_mutex_lock(&monitor->mutex);
 
@@ -1157,7 +1194,10 @@ bool health_monitor_predict_failure(
     health_monitor_t monitor,
     uint32_t* time_to_failure_sec
 ) {
-    if (!monitor) return false;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_monitor_predict_failure: monitor is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&monitor->mutex);
 
@@ -1209,7 +1249,10 @@ bool health_monitor_predict_failure(
 }
 
 uint32_t health_monitor_clear_resolved_anomalies(health_monitor_t monitor) {
-    if (!monitor) return 0;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_monitor_clear_resolved_anomalies: monitor is NULL");
+        return 0;
+    }
 
     nimcp_mutex_lock(&monitor->mutex);
 
@@ -1239,7 +1282,10 @@ uint32_t health_monitor_get_anomaly_count(
     health_monitor_t monitor,
     anomaly_type_t type
 ) {
-    if (!monitor) return 0;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_monitor_get_anomaly_count: monitor is NULL");
+        return 0;
+    }
 
     nimcp_mutex_lock(&monitor->mutex);
 
@@ -1256,7 +1302,10 @@ uint32_t health_monitor_get_anomaly_count(
 }
 
 bool health_monitor_establish_baseline(health_monitor_t monitor) {
-    if (!monitor) return false;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_monitor_establish_baseline: monitor is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&monitor->mutex);
 
@@ -1273,7 +1322,10 @@ bool health_monitor_establish_baseline(health_monitor_t monitor) {
 }
 
 bool health_monitor_reset_baseline(health_monitor_t monitor) {
-    if (!monitor) return false;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_monitor_reset_baseline: monitor is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&monitor->mutex);
     monitor->baseline_established = false;
@@ -1287,7 +1339,14 @@ bool health_monitor_set_anomaly_threshold(
     health_monitor_t monitor,
     double z_score_threshold
 ) {
-    if (!monitor || z_score_threshold < 0) return false;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_monitor_set_anomaly_threshold: monitor is NULL");
+        return false;
+    }
+    if (z_score_threshold < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_monitor_set_anomaly_threshold: z_score_threshold is negative");
+        return false;
+    }
 
     nimcp_mutex_lock(&monitor->mutex);
     monitor->anomaly_threshold = z_score_threshold;
@@ -1297,7 +1356,14 @@ bool health_monitor_set_anomaly_threshold(
 }
 
 bool health_monitor_set_interval(health_monitor_t monitor, uint32_t interval_ms) {
-    if (!monitor || interval_ms == 0) return false;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_monitor_set_interval: monitor is NULL");
+        return false;
+    }
+    if (interval_ms == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_monitor_set_interval: interval_ms is 0");
+        return false;
+    }
 
     nimcp_mutex_lock(&monitor->mutex);
     monitor->monitoring_interval_ms = interval_ms;
@@ -1434,7 +1500,18 @@ int32_t health_monitor_export_json(
     char* json_buffer,
     size_t buffer_size
 ) {
-    if (!monitor || !json_buffer || buffer_size == 0) return -1;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_monitor_export_json: monitor is NULL");
+        return -1;
+    }
+    if (!json_buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_monitor_export_json: json_buffer is NULL");
+        return -1;
+    }
+    if (buffer_size == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "health_monitor_export_json: buffer_size is 0");
+        return -1;
+    }
 
     nimcp_mutex_lock(&monitor->mutex);
 
@@ -1483,7 +1560,18 @@ bool health_monitor_get_operation_stats(
     const char* operation,
     operation_metric_t* stats
 ) {
-    if (!monitor || !operation || !stats) return false;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_monitor_get_operation_stats: monitor is NULL");
+        return false;
+    }
+    if (!operation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_monitor_get_operation_stats: operation is NULL");
+        return false;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_monitor_get_operation_stats: stats is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&monitor->mutex);
 
@@ -1503,7 +1591,14 @@ bool health_monitor_get_memory_stats(
     health_monitor_t monitor,
     memory_metric_t* stats
 ) {
-    if (!monitor || !stats) return false;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_monitor_get_memory_stats: monitor is NULL");
+        return false;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "health_monitor_get_memory_stats: stats is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(&monitor->mutex);
     *stats = monitor->memory;

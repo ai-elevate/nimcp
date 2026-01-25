@@ -28,3 +28,8 @@ endif()
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/cortical_columns/CMakeLists.txt)
     add_subdirectory(cortical_columns)
 endif()
+
+# Include Medulla Oblongata E2E tests
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/medulla/CMakeLists.txt)
+    add_subdirectory(medulla)
+endif()
