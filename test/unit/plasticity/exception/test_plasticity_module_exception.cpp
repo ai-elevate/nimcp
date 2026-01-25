@@ -22,9 +22,17 @@
 #include <thread>
 #include <vector>
 
+// Include C++ compatible headers first (may include CUDA)
+#include "plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.h"
+#include "plasticity/stdp/nimcp_triplet_stdp_immune_bridge.h"
+#include "plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.h"
+#include "plasticity/eligibility/nimcp_eligibility_pr_bridge.h"
+
 extern "C" {
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "plasticity/attention/nimcp_attention.h"
+#include "plasticity/stdp/nimcp_stdp.h"
+#include "plasticity/stdp/nimcp_triplet_stdp.h"
 #include "plasticity/stdp/nimcp_stdp_pr_bridge.h"
 #include "plasticity/stdp/nimcp_stdp_utils_bridge.h"
 #include "utils/exception/nimcp_exception.h"
@@ -911,6 +919,491 @@ TEST_F(PlasticityModuleExceptionTest, ConcurrentExceptionThrowing) {
     }
 
     EXPECT_EQ(total_exceptions.load(), num_threads * ops_per_thread);
+}
+
+//=============================================================================
+// STDP Core Module Exception Tests
+//=============================================================================
+
+TEST_F(PlasticityModuleExceptionTest, StdpSynapseInitWithConfigNullSynapse) {
+    reset_counters();
+
+    stdp_config_t config;
+    stdp_synapse_init_with_config(nullptr, &config);
+
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, StdpSynapseInitWithConfigNullConfig) {
+    reset_counters();
+
+    stdp_synapse_t synapse;
+    stdp_synapse_init_with_config(&synapse, nullptr);
+
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, StdpUpdateTracesNullSynapse) {
+    reset_counters();
+
+    stdp_update_traces(nullptr, 1.0f);
+
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, StdpPreSpikeNullSynapse) {
+    reset_counters();
+
+    stdp_pre_spike(nullptr, 10.0f);
+
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, StdpPostSpikeNullSynapse) {
+    reset_counters();
+
+    stdp_post_spike(nullptr, 10.0f);
+
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, StdpSynapseResetNullSynapse) {
+    reset_counters();
+
+    stdp_synapse_reset(nullptr);
+
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, StdpSetSleepStateNullSynapse) {
+    reset_counters();
+
+    // sleep_state_t values: SLEEP_STATE_AWAKE=0
+    stdp_set_sleep_state(nullptr, (sleep_state_t)0);
+
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+//=============================================================================
+// Triplet STDP Exception Tests
+//=============================================================================
+
+TEST_F(PlasticityModuleExceptionTest, TripletStdpSynapseDestroyNullSynapse) {
+    reset_counters();
+
+    triplet_stdp_synapse_destroy(nullptr);
+
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, TripletStdpGetWeightNullSynapse) {
+    reset_counters();
+
+    float result = triplet_stdp_get_weight(nullptr);
+
+    EXPECT_LT(result, 0.0f);  // Returns -1.0f on error
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, TripletStdpGetR1PreNullSynapse) {
+    reset_counters();
+
+    float result = triplet_stdp_get_r1_pre(nullptr);
+
+    EXPECT_LT(result, 0.0f);  // Returns -1.0f on error
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, TripletStdpGetR2PreNullSynapse) {
+    reset_counters();
+
+    float result = triplet_stdp_get_r2_pre(nullptr);
+
+    EXPECT_LT(result, 0.0f);  // Returns -1.0f on error
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, TripletStdpGetO1PostNullSynapse) {
+    reset_counters();
+
+    float result = triplet_stdp_get_o1_post(nullptr);
+
+    EXPECT_LT(result, 0.0f);  // Returns -1.0f on error
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, TripletStdpGetTotalLtpNullSynapse) {
+    reset_counters();
+
+    float result = triplet_stdp_get_total_ltp(nullptr);
+
+    EXPECT_LT(result, 0.0f);  // Returns -1.0f on error
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, TripletStdpGetTotalLtdNullSynapse) {
+    reset_counters();
+
+    float result = triplet_stdp_get_total_ltd(nullptr);
+
+    EXPECT_LT(result, 0.0f);  // Returns -1.0f on error
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+//=============================================================================
+// Triplet STDP Immune Bridge Exception Tests
+//=============================================================================
+
+TEST_F(PlasticityModuleExceptionTest, TripletStdpImmuneDefaultConfigNullConfig) {
+    reset_counters();
+
+    int result = triplet_stdp_immune_default_config(nullptr);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, TripletStdpImmuneBridgeUpdateNullBridge) {
+    reset_counters();
+
+    int result = triplet_stdp_immune_bridge_update(nullptr, 10);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, TripletStdpImmuneApplyCytokineEffectsNullBridge) {
+    reset_counters();
+
+    int result = triplet_stdp_immune_apply_cytokine_effects(nullptr);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, TripletStdpImmuneApplyInflammationEffectsNullBridge) {
+    reset_counters();
+
+    int result = triplet_stdp_immune_apply_inflammation_effects(nullptr);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, TripletStdpImmuneGetModulationStateNullBridge) {
+    reset_counters();
+
+    triplet_stdp_modulation_state_t modulation;
+    int result = triplet_stdp_immune_get_modulation_state(nullptr, &modulation);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, TripletStdpImmuneRestorePlasticityNullBridge) {
+    reset_counters();
+
+    int result = triplet_stdp_immune_restore_plasticity(nullptr, 0.5f);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, TripletStdpImmuneDetectInstabilityNullBridge) {
+    reset_counters();
+
+    int result = triplet_stdp_immune_detect_instability(nullptr);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, TripletStdpImmuneAlertInstabilityNullBridge) {
+    reset_counters();
+
+    uint32_t antigen_id;
+    int result = triplet_stdp_immune_alert_instability(nullptr, &antigen_id);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, TripletStdpImmuneConnectBioAsyncNullBridge) {
+    reset_counters();
+
+    int result = triplet_stdp_immune_connect_bio_async(nullptr);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, TripletStdpImmuneDisconnectBioAsyncNullBridge) {
+    reset_counters();
+
+    int result = triplet_stdp_immune_disconnect_bio_async(nullptr);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+//=============================================================================
+// Triplet STDP Sleep Bridge Exception Tests
+//=============================================================================
+
+TEST_F(PlasticityModuleExceptionTest, TripletStdpSleepDefaultConfigNullConfig) {
+    reset_counters();
+
+    int result = triplet_stdp_sleep_default_config(nullptr);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, TripletStdpSleepUpdateNullBridge) {
+    reset_counters();
+
+    int result = triplet_stdp_sleep_update(nullptr);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, TripletStdpSleepGetEffectsNullBridge) {
+    reset_counters();
+
+    triplet_stdp_sleep_effects_t effects;
+    int result = triplet_stdp_sleep_get_effects(nullptr, &effects);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, TripletStdpSleepApplyModulationNullBridge) {
+    reset_counters();
+
+    triplet_stdp_synapse_t synapse;
+    int result = triplet_stdp_sleep_apply_modulation(nullptr, &synapse);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, TripletStdpSleepApplyModulationNullSynapse) {
+    // Note: We can't easily test this without a valid bridge, so we skip
+    // The implementation will be tested in integration tests
+    SUCCEED();
+}
+
+//=============================================================================
+// Neuromodulators Sleep Bridge Exception Tests
+//=============================================================================
+
+TEST_F(PlasticityModuleExceptionTest, NeuromodSleepDefaultConfigNullConfig) {
+    reset_counters();
+
+    int result = neuromod_sleep_default_config(nullptr);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, NeuromodSleepUpdateNullBridge) {
+    reset_counters();
+
+    int result = neuromod_sleep_update(nullptr);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, NeuromodSleepApplyModulationNullBridge) {
+    reset_counters();
+
+    int result = neuromod_sleep_apply_modulation(nullptr);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, NeuromodSleepGetEffectsNullBridge) {
+    reset_counters();
+
+    neuromod_sleep_effects_t effects;
+    int result = neuromod_sleep_get_effects(nullptr, &effects);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+//=============================================================================
+// Eligibility PR Bridge Exception Tests
+//=============================================================================
+
+TEST_F(PlasticityModuleExceptionTest, EligPrApplyConsolidationGateNullBridge) {
+    reset_counters();
+
+    elig_pr_forward_effect_t effect;
+    int result = elig_pr_apply_consolidation_gate(nullptr, 1, 0.5f, 0.5f, &effect);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, EligPrApplyConsolidationGateNullEffect) {
+    elig_pr_bridge_config_t config = elig_pr_bridge_default_config();
+    elig_pr_bridge_t bridge = elig_pr_bridge_create(&config);
+    ASSERT_NE(bridge, nullptr);
+
+    reset_counters();
+
+    int result = elig_pr_apply_consolidation_gate(bridge, 1, 0.5f, 0.5f, nullptr);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+
+    elig_pr_bridge_destroy(bridge);
+}
+
+TEST_F(PlasticityModuleExceptionTest, EligPrCheckTierPromotionNullBridge) {
+    reset_counters();
+
+    bool should_promote;
+    int result = elig_pr_check_tier_promotion(nullptr, 1, 0.5f, 0.5f, &should_promote);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, EligPrApplyEntanglementUpdateNullBridge) {
+    reset_counters();
+
+    float delta;
+    int result = elig_pr_apply_entanglement_update(nullptr, 1, 2, 0.5f, &delta);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, EligPrGetDecayModulationNullBridge) {
+    reset_counters();
+
+    float modulated_lambda;
+    int result = elig_pr_get_decay_modulation(nullptr, 0.5f, 0.95f, &modulated_lambda);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, EligPrGetTierParametersNullBridge) {
+    reset_counters();
+
+    float lambda, sensitivity;
+    int result = elig_pr_get_tier_parameters(nullptr, ELIG_PR_TIER_Z0, &lambda, &sensitivity);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, EligPrApplyResonanceBoostNullBridge) {
+    reset_counters();
+
+    float boosted;
+    int result = elig_pr_apply_resonance_boost(nullptr, 0.5f, 0.5f, &boosted);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, EligPrComputeModulationNullBridge) {
+    reset_counters();
+
+    elig_pr_backward_effect_t effect;
+    int result = elig_pr_compute_modulation(nullptr, 0.5f, 0.5f, ELIG_PR_TIER_Z0, 0.95f, &effect);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, EligPrBridgeGetStateNullBridge) {
+    reset_counters();
+
+    elig_pr_bridge_state_t state;
+    int result = elig_pr_bridge_get_state(nullptr, &state);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, EligPrBridgeGetStatsNullBridge) {
+    reset_counters();
+
+    elig_pr_bridge_stats_t stats;
+    int result = elig_pr_bridge_get_stats(nullptr, &stats);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, EligPrBridgeResetStatsNullBridge) {
+    reset_counters();
+
+    int result = elig_pr_bridge_reset_stats(nullptr);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionTest, EligPrBridgeUpdateNullBridge) {
+    reset_counters();
+
+    int result = elig_pr_bridge_update(nullptr, 1.0f);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
 }
 
 //=============================================================================

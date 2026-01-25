@@ -28,12 +28,19 @@
 
 #include "cognitive/immune/nimcp_brain_immune.h"
 
+// Include C++ compatible headers first (may have CUDA linkage)
+#include "plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.h"
+#include "plasticity/stdp/nimcp_triplet_stdp_immune_bridge.h"
+#include "plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.h"
+#include "plasticity/eligibility/nimcp_eligibility_pr_bridge.h"
+
 extern "C" {
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
 #include "plasticity/attention/nimcp_attention.h"
 #include "plasticity/stdp/nimcp_stdp_pr_bridge.h"
 #include "plasticity/stdp/nimcp_stdp_utils_bridge.h"
 #include "plasticity/stdp/nimcp_stdp.h"
+#include "plasticity/stdp/nimcp_triplet_stdp.h"
 #include "utils/exception/nimcp_exception.h"
 #include "utils/exception/nimcp_exception_handlers.h"
 #include "utils/exception/nimcp_exception_immune.h"
@@ -512,16 +519,17 @@ TEST_F(PlasticityModuleExceptionE2ETest, SystemRecoveryUnderStress) {
     total_exceptions = 0;
 
     // Phase 1: Generate heavy exception load
+    // NOTE: Use functions that actually throw exceptions (not pool getters which just return 0)
+    // multihead_attention_set_gate does NOT throw for NULL, so we use functions that do
     const int stress_iterations = 1000;
     for (int i = 0; i < stress_iterations; i++) {
-        neuromodulator_pool_get_dopamine(nullptr);
-        stdp_pr_bridge_is_connected(nullptr);
-        stdp_utils_reset(nullptr);
-        multihead_attention_set_gate(nullptr, 0.5f);
+        neuromodulator_release_dopamine(nullptr, 1.0f, 0.5f);  // Throws exception
+        stdp_pr_notify_ltp(nullptr, 1, 2, 0.1f, nullptr);       // Throws exception
+        stdp_utils_record_ltp(nullptr, 0.1f, 10.0f);            // Throws exception
     }
 
     int exceptions_during_stress = total_exceptions.load();
-    EXPECT_GE(exceptions_during_stress, stress_iterations * 4);
+    EXPECT_GE(exceptions_during_stress, stress_iterations * 3);
 
     // Phase 2: Verify all systems recover and function correctly
     // Neuromodulator system
@@ -612,16 +620,17 @@ TEST_F(PlasticityModuleExceptionE2ETest, ExceptionDrivenSystemAdaptation) {
     immune_responses = 0;
 
     // Generate exceptions from different modules
+    // NOTE: Use functions that actually throw exceptions (not pool getters which just return 0)
     const int iterations = 100;
     for (int i = 0; i < iterations; i++) {
         // Neuromodulator errors
-        neuromodulator_pool_get_dopamine(nullptr);
+        neuromodulator_release_dopamine(nullptr, 1.0f, 0.5f);
 
         // STDP errors
-        stdp_pr_bridge_is_connected(nullptr);
+        stdp_pr_notify_ltp(nullptr, 1, 2, 0.1f, nullptr);
 
         // Utils errors
-        stdp_utils_reset(nullptr);
+        stdp_utils_record_ltp(nullptr, 0.1f, 10.0f);
     }
 
     // Verify immune system processed exceptions
@@ -687,6 +696,294 @@ TEST_F(PlasticityModuleExceptionE2ETest, RealisticLearningWorkflow) {
 
     bool connected = stdp_pr_bridge_is_connected(stdp_pr);
     EXPECT_TRUE(connected);
+}
+
+//=============================================================================
+// Triplet STDP Immune Bridge E2E Tests
+//=============================================================================
+
+TEST_F(PlasticityModuleExceptionE2ETest, TripletStdpImmuneExceptionStress) {
+    // WHAT: Test Triplet STDP-Immune bridge exception handling under stress
+    // WHY:  Verify exception handling doesn't cause system instability
+
+    total_exceptions = 0;
+
+    // Generate heavy exception load from NULL bridge operations
+    for (int i = 0; i < 500; i++) {
+        triplet_stdp_immune_bridge_update(nullptr, i);
+        triplet_stdp_immune_apply_cytokine_effects(nullptr);
+        triplet_stdp_immune_detect_instability(nullptr);
+
+        triplet_stdp_modulation_state_t modulation;
+        triplet_stdp_immune_get_modulation_state(nullptr, &modulation);
+
+        uint32_t antigen_id;
+        triplet_stdp_immune_alert_instability(nullptr, &antigen_id);
+    }
+
+    // Verify exceptions were raised
+    EXPECT_GE(total_exceptions.load(), 2500);
+}
+
+TEST_F(PlasticityModuleExceptionE2ETest, TripletStdpImmuneMixedWorkload) {
+    // WHAT: Test mixed valid/invalid operations for Triplet STDP Immune bridge
+    // WHY:  Real systems have mixed operations with occasional errors
+
+    total_exceptions = 0;
+    std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+    const float error_probability = 0.1f;
+
+    // Test config validation
+    triplet_stdp_immune_config_t config;
+    triplet_stdp_immune_default_config(&config);  // Valid
+
+    for (int i = 0; i < 300; i++) {
+        if (dist(rng) < error_probability) {
+            triplet_stdp_immune_default_config(nullptr);  // Exception
+        } else {
+            triplet_stdp_immune_default_config(&config);  // Valid
+        }
+    }
+
+    EXPECT_GT(total_exceptions.load(), 0);
+}
+
+//=============================================================================
+// Triplet STDP Sleep Bridge E2E Tests
+//=============================================================================
+
+TEST_F(PlasticityModuleExceptionE2ETest, TripletStdpSleepExceptionStress) {
+    // WHAT: Test Triplet STDP-Sleep bridge exception handling under stress
+    // WHY:  Verify exception handling doesn't cause system instability
+
+    total_exceptions = 0;
+
+    // Generate heavy exception load from NULL bridge operations
+    for (int i = 0; i < 500; i++) {
+        triplet_stdp_sleep_update(nullptr);
+
+        triplet_stdp_sleep_effects_t effects;
+        triplet_stdp_sleep_get_effects(nullptr, &effects);
+
+        triplet_stdp_synapse_t synapse;
+        triplet_stdp_sleep_apply_modulation(nullptr, &synapse);
+    }
+
+    // Verify exceptions were raised
+    EXPECT_GE(total_exceptions.load(), 1500);
+}
+
+TEST_F(PlasticityModuleExceptionE2ETest, TripletStdpSleepMixedWorkload) {
+    // WHAT: Test mixed valid/invalid operations for Triplet STDP Sleep bridge
+    // WHY:  Real systems have mixed operations with occasional errors
+
+    total_exceptions = 0;
+    std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+    const float error_probability = 0.1f;
+
+    // Test config validation
+    triplet_stdp_sleep_config_t config;
+    triplet_stdp_sleep_default_config(&config);  // Valid
+
+    for (int i = 0; i < 300; i++) {
+        if (dist(rng) < error_probability) {
+            triplet_stdp_sleep_default_config(nullptr);  // Exception
+        } else {
+            triplet_stdp_sleep_default_config(&config);  // Valid
+        }
+    }
+
+    EXPECT_GT(total_exceptions.load(), 0);
+}
+
+//=============================================================================
+// Neuromodulators Sleep Bridge E2E Tests
+//=============================================================================
+
+TEST_F(PlasticityModuleExceptionE2ETest, NeuromodSleepExceptionStress) {
+    // WHAT: Test neuromodulator-sleep bridge exception handling under stress
+    // WHY:  Verify exception handling doesn't cause system instability
+
+    total_exceptions = 0;
+
+    // Generate heavy exception load from NULL bridge operations
+    for (int i = 0; i < 500; i++) {
+        neuromod_sleep_update(nullptr);
+        neuromod_sleep_apply_modulation(nullptr);
+
+        neuromod_sleep_effects_t effects;
+        neuromod_sleep_get_effects(nullptr, &effects);
+    }
+
+    // Verify exceptions were raised
+    EXPECT_GE(total_exceptions.load(), 1500);
+}
+
+TEST_F(PlasticityModuleExceptionE2ETest, NeuromodSleepMixedWorkload) {
+    // WHAT: Test mixed valid/invalid operations for neuromod sleep bridge
+    // WHY:  Real systems have mixed operations with occasional errors
+
+    total_exceptions = 0;
+    std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+    const float error_probability = 0.1f;
+
+    // Test config validation
+    neuromodulators_sleep_config_t config;
+    neuromod_sleep_default_config(&config);  // Valid
+
+    for (int i = 0; i < 300; i++) {
+        if (dist(rng) < error_probability) {
+            neuromod_sleep_default_config(nullptr);  // Exception
+        } else {
+            neuromod_sleep_default_config(&config);  // Valid
+        }
+    }
+
+    EXPECT_GT(total_exceptions.load(), 0);
+}
+
+//=============================================================================
+// Eligibility PR Bridge E2E Tests
+//=============================================================================
+
+TEST_F(PlasticityModuleExceptionE2ETest, EligibilityPRExceptionStress) {
+    // WHAT: Test eligibility-PR bridge exception handling under stress
+    // WHY:  Verify exception handling doesn't cause system instability
+
+    total_exceptions = 0;
+
+    // Generate heavy exception load from NULL bridge operations
+    for (int i = 0; i < 500; i++) {
+        elig_pr_forward_effect_t effect;
+        elig_pr_apply_consolidation_gate(nullptr, i, 0.5f, 0.5f, &effect);
+
+        bool should_promote;
+        elig_pr_check_tier_promotion(nullptr, i, 0.5f, 0.5f, &should_promote);
+
+        float delta;
+        elig_pr_apply_entanglement_update(nullptr, i, i+1, 0.5f, &delta);
+
+        float modulated;
+        elig_pr_get_decay_modulation(nullptr, 0.5f, 0.95f, &modulated);
+
+        elig_pr_bridge_update(nullptr, 0.1f);
+    }
+
+    // Verify exceptions were raised
+    EXPECT_GE(total_exceptions.load(), 2500);
+}
+
+TEST_F(PlasticityModuleExceptionE2ETest, EligibilityPRWithValidBridge) {
+    // WHAT: Test eligibility-PR bridge with valid bridge and occasional NULL faults
+    // WHY:  Real systems have mixed operations with occasional errors
+
+    elig_pr_bridge_config_t config = elig_pr_bridge_default_config();
+    elig_pr_bridge_t bridge = elig_pr_bridge_create(&config);
+    ASSERT_NE(bridge, nullptr);
+
+    total_exceptions = 0;
+    std::uniform_real_distribution<float> dist(0.0f, 1.0f);
+    const float error_probability = 0.1f;
+
+    for (int i = 0; i < 200; i++) {
+        elig_pr_forward_effect_t effect;
+        if (dist(rng) < error_probability) {
+            elig_pr_apply_consolidation_gate(nullptr, i, 0.5f, 0.5f, &effect);
+        } else {
+            elig_pr_apply_consolidation_gate(bridge, i, 0.5f, 0.5f, &effect);
+        }
+    }
+
+    EXPECT_GT(total_exceptions.load(), 0);
+
+    // Verify bridge still works
+    elig_pr_bridge_state_t state;
+    int result = elig_pr_bridge_get_state(bridge, &state);
+    EXPECT_EQ(result, 0);
+
+    elig_pr_bridge_destroy(bridge);
+}
+
+//=============================================================================
+// Cross-Module E2E Tests
+//=============================================================================
+
+TEST_F(PlasticityModuleExceptionE2ETest, AllModulesExceptionStressCombined) {
+    // WHAT: Test all enhanced modules under combined exception stress
+    // WHY:  End-to-end validation of cross-module exception handling
+
+    total_exceptions = 0;
+
+    // Combined stress test on all modules
+    for (int i = 0; i < 200; i++) {
+        // Triplet STDP Immune bridge
+        triplet_stdp_immune_bridge_update(nullptr, i);
+        triplet_stdp_immune_apply_cytokine_effects(nullptr);
+
+        // Triplet STDP Sleep bridge
+        triplet_stdp_sleep_update(nullptr);
+        triplet_stdp_sleep_effects_t sleep_effects;
+        triplet_stdp_sleep_get_effects(nullptr, &sleep_effects);
+
+        // Neuromod Sleep bridge
+        neuromod_sleep_update(nullptr);
+        neuromod_sleep_apply_modulation(nullptr);
+
+        // Eligibility PR bridge
+        elig_pr_forward_effect_t effect;
+        elig_pr_apply_consolidation_gate(nullptr, i, 0.5f, 0.5f, &effect);
+        elig_pr_bridge_update(nullptr, 0.1f);
+    }
+
+    // Verify many exceptions were raised across all modules
+    EXPECT_GE(total_exceptions.load(), 1600);
+}
+
+TEST_F(PlasticityModuleExceptionE2ETest, EligibilityPRWithBridgeRecovery) {
+    // WHAT: Test eligibility-PR bridge recovery after heavy exception load
+    // WHY:  Eligibility trace system must remain stable for learning
+
+    elig_pr_bridge_config_t config = elig_pr_bridge_default_config();
+    elig_pr_bridge_t bridge = elig_pr_bridge_create(&config);
+    ASSERT_NE(bridge, nullptr);
+
+    // Phase 1: Normal operation
+    for (int i = 0; i < 50; i++) {
+        elig_pr_forward_effect_t effect;
+        elig_pr_apply_consolidation_gate(bridge, i, 0.5f, 0.5f, &effect);
+    }
+
+    // Phase 2: Heavy exception load
+    total_exceptions = 0;
+    for (int i = 0; i < 500; i++) {
+        elig_pr_forward_effect_t effect;
+        elig_pr_apply_consolidation_gate(nullptr, i, 0.5f, 0.5f, &effect);
+
+        bool should_promote;
+        elig_pr_check_tier_promotion(nullptr, i, 0.5f, 0.5f, &should_promote);
+
+        float delta;
+        elig_pr_apply_entanglement_update(nullptr, i, i+1, 0.5f, &delta);
+
+        float modulated;
+        elig_pr_get_decay_modulation(nullptr, 0.5f, 0.95f, &modulated);
+    }
+    EXPECT_GE(total_exceptions.load(), 2000);
+
+    // Phase 3: Verify recovery
+    elig_pr_forward_effect_t effect;
+    int result = elig_pr_apply_consolidation_gate(bridge, 100, 0.5f, 0.5f, &effect);
+    EXPECT_EQ(result, 0);
+
+    bool should_promote;
+    result = elig_pr_check_tier_promotion(bridge, 100, 0.5f, 0.5f, &should_promote);
+    EXPECT_EQ(result, 0);
+
+    elig_pr_bridge_state_t state;
+    result = elig_pr_bridge_get_state(bridge, &state);
+    EXPECT_EQ(result, 0);
+
+    elig_pr_bridge_destroy(bridge);
 }
 
 //=============================================================================

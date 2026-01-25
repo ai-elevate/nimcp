@@ -23,7 +23,12 @@
 #include <chrono>
 #include <vector>
 
+// Include C++ compatible headers first (may include CUDA)
 #include "cognitive/immune/nimcp_brain_immune.h"
+#include "plasticity/neuromodulators/nimcp_neuromodulators_sleep_bridge.h"
+#include "plasticity/stdp/nimcp_triplet_stdp_immune_bridge.h"
+#include "plasticity/stdp/nimcp_triplet_stdp_sleep_bridge.h"
+#include "plasticity/eligibility/nimcp_eligibility_pr_bridge.h"
 
 extern "C" {
 #include "plasticity/neuromodulators/nimcp_neuromodulators.h"
@@ -31,6 +36,7 @@ extern "C" {
 #include "plasticity/stdp/nimcp_stdp_pr_bridge.h"
 #include "plasticity/stdp/nimcp_stdp_utils_bridge.h"
 #include "plasticity/stdp/nimcp_stdp.h"
+#include "plasticity/stdp/nimcp_triplet_stdp.h"
 #include "utils/exception/nimcp_exception.h"
 #include "utils/exception/nimcp_exception_handlers.h"
 #include "utils/exception/nimcp_exception_immune.h"
@@ -626,6 +632,194 @@ TEST_F(PlasticityModuleExceptionIntegrationTest, BatchExceptionImmuneProcessing)
 
     EXPECT_GE(exception_count.load(), batch_size);
     EXPECT_GE(immune_presentation_count.load(), batch_size);
+}
+
+//=============================================================================
+// Triplet STDP Immune Bridge Integration Tests
+//=============================================================================
+
+TEST_F(PlasticityModuleExceptionIntegrationTest, TripletStdpImmuneExceptionFlow) {
+    // WHAT: Test triplet STDP immune bridge exception flow to immune system
+    // WHY:  Verify exception handling works across triplet-immune integration
+
+    reset_counters();
+
+    // Trigger NULL bridge exceptions
+    triplet_stdp_immune_bridge_update(nullptr, 10);
+    triplet_stdp_immune_apply_cytokine_effects(nullptr);
+    triplet_stdp_immune_apply_inflammation_effects(nullptr);
+
+    EXPECT_GE(exception_count.load(), 3);
+    EXPECT_GE(immune_presentation_count.load(), 3);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionIntegrationTest, TripletStdpImmuneConfigException) {
+    // WHAT: Test default config exception for triplet STDP immune bridge
+    // WHY:  Configuration functions must validate inputs
+
+    reset_counters();
+
+    int result = triplet_stdp_immune_default_config(nullptr);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+//=============================================================================
+// Triplet STDP Sleep Bridge Integration Tests
+//=============================================================================
+
+TEST_F(PlasticityModuleExceptionIntegrationTest, TripletStdpSleepExceptionFlow) {
+    // WHAT: Test triplet STDP sleep bridge exception flow
+    // WHY:  Verify sleep modulation exceptions are properly handled
+
+    reset_counters();
+
+    triplet_stdp_sleep_update(nullptr);
+    triplet_stdp_sleep_effects_t effects;
+    triplet_stdp_sleep_get_effects(nullptr, &effects);
+    triplet_stdp_synapse_t synapse;
+    triplet_stdp_sleep_apply_modulation(nullptr, &synapse);
+
+    EXPECT_GE(exception_count.load(), 3);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionIntegrationTest, TripletStdpSleepConfigException) {
+    // WHAT: Test default config exception for triplet STDP sleep bridge
+    // WHY:  Configuration must be validated
+
+    reset_counters();
+
+    int result = triplet_stdp_sleep_default_config(nullptr);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+}
+
+//=============================================================================
+// Neuromodulators Sleep Bridge Integration Tests
+//=============================================================================
+
+TEST_F(PlasticityModuleExceptionIntegrationTest, NeuromodSleepExceptionFlow) {
+    // WHAT: Test neuromodulator sleep bridge exception flow
+    // WHY:  Verify sleep-neuromodulator integration handles errors
+
+    reset_counters();
+
+    neuromod_sleep_update(nullptr);
+    neuromod_sleep_apply_modulation(nullptr);
+    neuromod_sleep_effects_t effects;
+    neuromod_sleep_get_effects(nullptr, &effects);
+
+    EXPECT_GE(exception_count.load(), 3);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionIntegrationTest, NeuromodSleepConfigException) {
+    // WHAT: Test default config exception for neuromodulator sleep bridge
+    // WHY:  Configuration validation is essential
+
+    reset_counters();
+
+    int result = neuromod_sleep_default_config(nullptr);
+
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+}
+
+//=============================================================================
+// Eligibility PR Bridge Integration Tests
+//=============================================================================
+
+TEST_F(PlasticityModuleExceptionIntegrationTest, EligibilityPRExceptionFlow) {
+    // WHAT: Test eligibility-PR bridge exception flow
+    // WHY:  Verify eligibility trace errors are properly reported
+
+    reset_counters();
+
+    elig_pr_forward_effect_t forward_effect;
+    elig_pr_apply_consolidation_gate(nullptr, 1, 0.5f, 0.5f, &forward_effect);
+
+    bool should_promote;
+    elig_pr_check_tier_promotion(nullptr, 1, 0.5f, 0.5f, &should_promote);
+
+    float delta;
+    elig_pr_apply_entanglement_update(nullptr, 1, 2, 0.5f, &delta);
+
+    float modulated_lambda;
+    elig_pr_get_decay_modulation(nullptr, 0.5f, 0.95f, &modulated_lambda);
+
+    EXPECT_GE(exception_count.load(), 4);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+}
+
+TEST_F(PlasticityModuleExceptionIntegrationTest, EligibilityPRBridgeStateException) {
+    // WHAT: Test bridge state/stats exception handling
+    // WHY:  State queries must validate inputs
+
+    reset_counters();
+
+    elig_pr_bridge_state_t state;
+    elig_pr_bridge_get_state(nullptr, &state);
+
+    elig_pr_bridge_stats_t stats;
+    elig_pr_bridge_get_stats(nullptr, &stats);
+
+    elig_pr_bridge_reset_stats(nullptr);
+    elig_pr_bridge_update(nullptr, 1.0f);
+
+    EXPECT_GE(exception_count.load(), 4);
+}
+
+TEST_F(PlasticityModuleExceptionIntegrationTest, EligibilityPRBridgeWithValidBridge) {
+    // WHAT: Test exception handling with valid bridge but NULL outputs
+    // WHY:  Both bridge and output parameters must be valid
+
+    elig_pr_bridge_config_t config = elig_pr_bridge_default_config();
+    elig_pr_bridge_t bridge = elig_pr_bridge_create(&config);
+    ASSERT_NE(bridge, nullptr);
+
+    reset_counters();
+
+    // Valid bridge, NULL output
+    int result = elig_pr_apply_consolidation_gate(bridge, 1, 0.5f, 0.5f, nullptr);
+    EXPECT_EQ(result, -1);
+    EXPECT_GE(exception_count.load(), 1);
+    EXPECT_EQ(last_error_code.load(), NIMCP_ERROR_NULL_POINTER);
+
+    elig_pr_bridge_destroy(bridge);
+}
+
+//=============================================================================
+// Cross-Module Exception Integration Tests
+//=============================================================================
+
+TEST_F(PlasticityModuleExceptionIntegrationTest, MultiModuleExceptionBatch) {
+    // WHAT: Test exceptions from multiple newly enhanced modules
+    // WHY:  Verify cross-module exception handling works correctly
+
+    reset_counters();
+
+    const int iterations = 5;
+    for (int i = 0; i < iterations; i++) {
+        // Triplet STDP immune
+        triplet_stdp_immune_bridge_update(nullptr, 10);
+
+        // Triplet STDP sleep
+        triplet_stdp_sleep_update(nullptr);
+
+        // Neuromod sleep
+        neuromod_sleep_update(nullptr);
+
+        // Eligibility PR
+        elig_pr_bridge_update(nullptr, 1.0f);
+    }
+
+    // Should have 4 * iterations exceptions
+    EXPECT_GE(exception_count.load(), 4 * iterations);
 }
 
 //=============================================================================

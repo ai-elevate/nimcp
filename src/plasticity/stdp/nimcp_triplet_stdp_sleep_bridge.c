@@ -170,6 +170,7 @@ int triplet_stdp_sleep_default_config(triplet_stdp_sleep_config_t* config) {
      */
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config in default_config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_sleep_default_config: config is NULL");
         return -1;
     }
 
@@ -300,8 +301,14 @@ int triplet_stdp_sleep_update(triplet_stdp_sleep_bridge_t bridge) {
      * WHY:  For systems without callback support
      * HOW:  Query sleep system, recompute factors
      */
-    if (!bridge || !bridge->sleep_system) {
-        NIMCP_LOGGING_ERROR("NULL pointer in sleep_update");
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("NULL bridge in sleep_update");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_sleep_update: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->sleep_system) {
+        NIMCP_LOGGING_ERROR("NULL sleep_system in sleep_update");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_sleep_update: sleep_system is NULL");
         return -1;
     }
 
@@ -319,8 +326,14 @@ int triplet_stdp_sleep_get_effects(
      * WHY:  Apply to synapses
      * HOW:  Copy effects structure
      */
-    if (!bridge || !effects) {
-        NIMCP_LOGGING_ERROR("NULL pointer in get_effects");
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("NULL bridge in get_effects");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_sleep_get_effects: bridge is NULL");
+        return -1;
+    }
+    if (!effects) {
+        NIMCP_LOGGING_ERROR("NULL effects in get_effects");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_sleep_get_effects: effects is NULL");
         return -1;
     }
 
@@ -371,8 +384,14 @@ int triplet_stdp_sleep_apply_modulation(
      * WHY:  Realize sleep effects on plasticity
      * HOW:  Update synapse time constants and amplitudes (future implementation)
      */
-    if (!bridge || !synapse) {
-        NIMCP_LOGGING_ERROR("NULL pointer in apply_modulation");
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("NULL bridge in apply_modulation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_sleep_apply_modulation: bridge is NULL");
+        return -1;
+    }
+    if (!synapse) {
+        NIMCP_LOGGING_ERROR("NULL synapse in apply_modulation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_sleep_apply_modulation: synapse is NULL");
         return -1;
     }
 

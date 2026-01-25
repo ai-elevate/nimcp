@@ -78,8 +78,12 @@ void stdp_synapse_init(stdp_synapse_t* synapse) {
 void stdp_synapse_init_with_config(stdp_synapse_t* synapse, const stdp_config_t* config) {
     LOG_DEBUG("Initializing STDP synapse with config");
 
-    if (!synapse || !config) {
-        LOG_ERROR("NULL pointer passed to stdp_synapse_init_with_config");
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_synapse_init_with_config: synapse is NULL");
+        return;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_synapse_init_with_config: config is NULL");
         return;
     }
 
@@ -145,7 +149,10 @@ void stdp_synapse_init_with_config(stdp_synapse_t* synapse, const stdp_config_t*
 
 void stdp_update_traces(stdp_synapse_t* synapse, float dt) {
     /* Guard clause: NULL synapse */
-    if (!synapse) return;
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_update_traces: synapse is NULL");
+        return;
+    }
 
     /* Validate dt parameter
      * WHAT: Ensure time step is positive and finite
@@ -195,6 +202,11 @@ void stdp_update_traces(stdp_synapse_t* synapse, float dt) {
 
 float stdp_pre_spike(stdp_synapse_t* synapse, float current_time) {
     (void)current_time;  /* Unused - kept for API consistency */
+
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pre_spike: synapse is NULL");
+        return 0.0F;
+    }
 
     /* Get sleep modulation factors */
     float lr_factor = stdp_sleep_get_lr_factor(synapse->current_sleep_state);
@@ -264,6 +276,11 @@ float stdp_pre_spike(stdp_synapse_t* synapse, float current_time) {
 
 float stdp_post_spike(stdp_synapse_t* synapse, float current_time) {
     (void)current_time;  /* Unused - kept for API consistency */
+
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_post_spike: synapse is NULL");
+        return 0.0F;
+    }
 
     /* Get sleep modulation factors */
     float lr_factor = stdp_sleep_get_lr_factor(synapse->current_sleep_state);
@@ -337,6 +354,10 @@ float stdp_post_spike(stdp_synapse_t* synapse, float current_time) {
 
 float stdp_get_da_modulation_factor(const stdp_synapse_t* synapse,
                                      neuromodulator_system_t neuromod) {
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_get_da_modulation_factor: synapse is NULL");
+        return 1.0F;
+    }
     if (!synapse->enable_da_modulation || neuromod == NULL) {
         return 1.0F;  /* No modulation */
     }
@@ -359,6 +380,11 @@ float stdp_get_da_modulation_factor(const stdp_synapse_t* synapse,
 float stdp_apply_modulated_weight_change(stdp_synapse_t* synapse,
                                          float base_weight_change,
                                          neuromodulator_system_t neuromod) {
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_apply_modulated_weight_change: synapse is NULL");
+        return 0.0F;
+    }
+
     /* Get dopamine modulation factor */
     float modulation = stdp_get_da_modulation_factor(synapse, neuromod);
 
@@ -425,6 +451,11 @@ float stdp_pre_spike_modulated(stdp_synapse_t* synapse,
                                 neuromodulator_system_t neuromod) {
     (void)current_time;  /* Unused - kept for API consistency */
 
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pre_spike_modulated: synapse is NULL");
+        return 0.0F;
+    }
+
     /* Get sleep modulation factors */
     float lr_factor = stdp_sleep_get_lr_factor(synapse->current_sleep_state);
     float ratio_factor = stdp_sleep_get_ratio_factor(synapse->current_sleep_state);
@@ -450,6 +481,11 @@ float stdp_post_spike_modulated(stdp_synapse_t* synapse,
                                  float current_time,
                                  neuromodulator_system_t neuromod) {
     (void)current_time;  /* Unused - kept for API consistency */
+
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_post_spike_modulated: synapse is NULL");
+        return 0.0F;
+    }
 
     /* Get sleep modulation factors */
     float lr_factor = stdp_sleep_get_lr_factor(synapse->current_sleep_state);
@@ -481,7 +517,10 @@ void stdp_set_sleep_state(stdp_synapse_t* synapse, sleep_state_t state) {
      * WHY:  Sleep state modulates learning rate, LTP/LTD ratio, timing windows
      * HOW:  Set current_sleep_state field, will be queried during next spike
      */
-    if (!synapse) return;
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_set_sleep_state: synapse is NULL");
+        return;
+    }
 
     /* P2 fix: Validate sleep state bounds to prevent array index overflow
      * WHY:  Sleep bridge uses state as array index; invalid state = UB
@@ -495,7 +534,10 @@ void stdp_set_sleep_state(stdp_synapse_t* synapse, sleep_state_t state) {
 
 void stdp_synapse_reset(stdp_synapse_t* synapse) {
     /* Defensive null check */
-    if (!synapse) return;
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_synapse_reset: synapse is NULL");
+        return;
+    }
 
     /* Reset traces */
     synapse->pre_trace = 0.0F;
@@ -522,6 +564,7 @@ void stdp_synapse_reset(stdp_synapse_t* synapse) {
 void stdp_synapse_print_stats(const stdp_synapse_t* synapse) {
     /* Defensive null check */
     if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_synapse_print_stats: synapse is NULL");
         printf("STDP Synapse Statistics: NULL synapse\n");
         return;
     }
@@ -577,7 +620,10 @@ void stdp_synapse_print_stats(const stdp_synapse_t* synapse) {
  * @return 1 if self-knowledge found, 0 if not found or error
  */
 int stdp_query_self_knowledge(kg_reader_t* kg) {
-    if (!kg) return 0;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_query_self_knowledge: kg is NULL");
+        return 0;
+    }
 
     /* Query our own entity from the knowledge graph */
     const kg_entity_t* self = kg_reader_get_entity(kg, "STDP_Module");
@@ -794,7 +840,14 @@ int stdp_state_serialize(void* module_state, uint8_t* buffer, size_t* size) {
  * @return 0 on success, negative on error
  */
 int stdp_state_deserialize(void* module_state, const uint8_t* buffer, size_t size) {
-    if (!module_state || !buffer) return -1;
+    if (!module_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_state_deserialize: module_state is NULL");
+        return -1;
+    }
+    if (!buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_state_deserialize: buffer is NULL");
+        return -1;
+    }
 
     size_t required_size = stdp_state_get_size(module_state);
     if (size < required_size) {

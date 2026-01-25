@@ -148,7 +148,12 @@ int elig_pr_apply_consolidation_gate(elig_pr_bridge_t bridge,
                                      float eligibility,
                                      float reward_signal,
                                      elig_pr_forward_effect_t* effect) {
-    if (!bridge || !effect) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pr_apply_consolidation_gate: bridge is NULL");
+        return -1;
+    }
+    if (!effect) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pr_apply_consolidation_gate: effect is NULL");
         return -1;
     }
 
@@ -198,7 +203,12 @@ int elig_pr_check_tier_promotion(elig_pr_bridge_t bridge,
                                  float eligibility,
                                  float reward_signal,
                                  bool* should_promote) {
-    if (!bridge || !should_promote) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pr_check_tier_promotion: bridge is NULL");
+        return -1;
+    }
+    if (!should_promote) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pr_check_tier_promotion: should_promote is NULL");
         return -1;
     }
 
@@ -234,7 +244,12 @@ int elig_pr_apply_entanglement_update(elig_pr_bridge_t bridge,
                                       uint64_t source_id, uint64_t target_id,
                                       float eligibility,
                                       float* entangle_delta) {
-    if (!bridge || !entangle_delta) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pr_apply_entanglement_update: bridge is NULL");
+        return -1;
+    }
+    if (!entangle_delta) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pr_apply_entanglement_update: entangle_delta is NULL");
         return -1;
     }
 
@@ -260,7 +275,12 @@ int elig_pr_get_decay_modulation(elig_pr_bridge_t bridge,
                                  float consolidation,
                                  float base_lambda,
                                  float* modulated_lambda) {
-    if (!bridge || !modulated_lambda) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pr_get_decay_modulation: bridge is NULL");
+        return -1;
+    }
+    if (!modulated_lambda) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pr_get_decay_modulation: modulated_lambda is NULL");
         return -1;
     }
 
@@ -329,7 +349,12 @@ int elig_pr_apply_resonance_boost(elig_pr_bridge_t bridge,
                                   float resonance,
                                   float base_eligibility,
                                   float* boosted_eligibility) {
-    if (!bridge || !boosted_eligibility) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pr_apply_resonance_boost: bridge is NULL");
+        return -1;
+    }
+    if (!boosted_eligibility) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pr_apply_resonance_boost: boosted_eligibility is NULL");
         return -1;
     }
 
@@ -359,7 +384,12 @@ int elig_pr_compute_modulation(elig_pr_bridge_t bridge,
                                elig_pr_memory_tier_t tier,
                                float base_lambda,
                                elig_pr_backward_effect_t* effect) {
-    if (!bridge || !effect) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pr_compute_modulation: bridge is NULL");
+        return -1;
+    }
+    if (!effect) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pr_compute_modulation: effect is NULL");
         return -1;
     }
 
@@ -408,7 +438,12 @@ int elig_pr_compute_modulation(elig_pr_bridge_t bridge,
 //=============================================================================
 
 int elig_pr_bridge_get_state(elig_pr_bridge_t bridge, elig_pr_bridge_state_t* state) {
-    if (!bridge || !state) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pr_bridge_get_state: bridge is NULL");
+        return -1;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pr_bridge_get_state: state is NULL");
         return -1;
     }
 
@@ -417,7 +452,12 @@ int elig_pr_bridge_get_state(elig_pr_bridge_t bridge, elig_pr_bridge_state_t* st
 }
 
 int elig_pr_bridge_get_stats(elig_pr_bridge_t bridge, elig_pr_bridge_stats_t* stats) {
-    if (!bridge || !stats) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pr_bridge_get_stats: bridge is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pr_bridge_get_stats: stats is NULL");
         return -1;
     }
 

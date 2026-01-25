@@ -167,7 +167,10 @@ void triplet_stdp_synapse_destroy(triplet_stdp_synapse_t* synapse) {
      * WHY:  Proper cleanup to prevent memory leaks
      * HOW:  Free structure (spinlock is embedded, no separate destroy needed)
      */
-    if (!synapse) return;
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_synapse_destroy: synapse is NULL");
+        return;
+    }
 
     /* Spinlock is embedded in struct - no separate destroy needed
      * (unlike mutex which was dynamically allocated)
@@ -595,37 +598,58 @@ int triplet_stdp_register_callback(
  * ============================================================================ */
 
 float triplet_stdp_get_weight(const triplet_stdp_synapse_t* synapse) {
-    if (!synapse) return -1.0f;
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_get_weight: synapse is NULL");
+        return -1.0f;
+    }
     return synapse->weight;
 }
 
 float triplet_stdp_get_r1_pre(const triplet_stdp_synapse_t* synapse) {
-    if (!synapse) return -1.0f;
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_get_r1_pre: synapse is NULL");
+        return -1.0f;
+    }
     return synapse->r1_pre;
 }
 
 float triplet_stdp_get_r2_pre(const triplet_stdp_synapse_t* synapse) {
-    if (!synapse) return -1.0f;
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_get_r2_pre: synapse is NULL");
+        return -1.0f;
+    }
     return synapse->r2_pre;
 }
 
 float triplet_stdp_get_o1_post(const triplet_stdp_synapse_t* synapse) {
-    if (!synapse) return -1.0f;
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_get_o1_post: synapse is NULL");
+        return -1.0f;
+    }
     return synapse->o1_post;
 }
 
 float triplet_stdp_get_o2_post(const triplet_stdp_synapse_t* synapse) {
-    if (!synapse) return -1.0f;
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_get_o2_post: synapse is NULL");
+        return -1.0f;
+    }
     return synapse->o2_post;
 }
 
 float triplet_stdp_get_total_ltp(const triplet_stdp_synapse_t* synapse) {
-    if (!synapse) return -1.0f;
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_get_total_ltp: synapse is NULL");
+        return -1.0f;
+    }
     return synapse->total_ltp_pairwise + synapse->total_ltp_triplet;
 }
 
 float triplet_stdp_get_total_ltd(const triplet_stdp_synapse_t* synapse) {
-    if (!synapse) return -1.0f;
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_get_total_ltd: synapse is NULL");
+        return -1.0f;
+    }
     return synapse->total_ltd_pairwise + synapse->total_ltd_triplet;
 }
 
@@ -635,6 +659,7 @@ void triplet_stdp_print_stats(const triplet_stdp_synapse_t* synapse) {
      * HOW:  Print weight, traces, statistics
      */
     if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_print_stats: synapse is NULL");
         printf("NULL synapse\n");
         return;
     }

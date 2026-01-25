@@ -28,6 +28,7 @@ int triplet_stdp_immune_default_config(triplet_stdp_immune_config_t* config) {
      */
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config in default_config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_immune_default_config: config is NULL");
         return -1;
     }
 
@@ -162,8 +163,14 @@ int triplet_stdp_immune_apply_cytokine_effects(triplet_stdp_immune_bridge_t brid
      * WHY:  Cytokines suppress triplet plasticity
      * HOW:  Query immune system, compute modulation factors
      */
-    if (!bridge || !bridge->immune_system) {
+    if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL pointer in apply_cytokine_effects");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_immune_apply_cytokine_effects: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->immune_system) {
+        NIMCP_LOGGING_ERROR("NULL immune_system in apply_cytokine_effects");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_immune_apply_cytokine_effects: immune_system is NULL");
         return -1;
     }
 
@@ -209,8 +216,14 @@ int triplet_stdp_immune_apply_inflammation_effects(triplet_stdp_immune_bridge_t 
      * WHY:  Chronic inflammation reduces triplet plasticity
      * HOW:  Map inflammation level to suppression factors
      */
-    if (!bridge || !bridge->immune_system) {
-        NIMCP_LOGGING_ERROR("NULL pointer in apply_inflammation_effects");
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("NULL bridge in apply_inflammation_effects");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_immune_apply_inflammation_effects: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->immune_system) {
+        NIMCP_LOGGING_ERROR("NULL immune_system in apply_inflammation_effects");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_immune_apply_inflammation_effects: immune_system is NULL");
         return -1;
     }
 
@@ -264,8 +277,14 @@ int triplet_stdp_immune_get_modulation_state(
      * WHY:  Apply to synapses during updates
      * HOW:  Combine cytokine and inflammation effects
      */
-    if (!bridge || !modulation) {
-        NIMCP_LOGGING_ERROR("NULL pointer in get_modulation_state");
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("NULL bridge in get_modulation_state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_immune_get_modulation_state: bridge is NULL");
+        return -1;
+    }
+    if (!modulation) {
+        NIMCP_LOGGING_ERROR("NULL modulation in get_modulation_state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_immune_get_modulation_state: modulation is NULL");
         return -1;
     }
 
@@ -312,6 +331,7 @@ int triplet_stdp_immune_restore_plasticity(
      */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in restore_plasticity");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_immune_restore_plasticity: bridge is NULL");
         return -1;
     }
 
@@ -343,6 +363,7 @@ int triplet_stdp_immune_detect_instability(triplet_stdp_immune_bridge_t bridge) 
      */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in detect_instability");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_immune_detect_instability: bridge is NULL");
         return -1;
     }
 
@@ -362,8 +383,14 @@ int triplet_stdp_immune_alert_instability(
      * WHY:  Abnormal triplet dynamics require immune response
      * HOW:  Create antigen from instability signature
      */
-    if (!bridge || !antigen_id) {
-        NIMCP_LOGGING_ERROR("NULL pointer in alert_instability");
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("NULL bridge in alert_instability");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_immune_alert_instability: bridge is NULL");
+        return -1;
+    }
+    if (!antigen_id) {
+        NIMCP_LOGGING_ERROR("NULL antigen_id in alert_instability");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_immune_alert_instability: antigen_id is NULL");
         return -1;
     }
 
@@ -390,6 +417,7 @@ int triplet_stdp_immune_bridge_update(
      */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in update");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_immune_bridge_update: bridge is NULL");
         return -1;
     }
 
@@ -432,6 +460,7 @@ float triplet_stdp_immune_get_triplet_capacity_reduction(
 int triplet_stdp_immune_connect_bio_async(triplet_stdp_immune_bridge_t bridge) {
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Cannot connect to bio-async: NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_immune_connect_bio_async: bridge is NULL");
         return -1;
     }
 
@@ -461,6 +490,7 @@ int triplet_stdp_immune_connect_bio_async(triplet_stdp_immune_bridge_t bridge) {
 int triplet_stdp_immune_disconnect_bio_async(triplet_stdp_immune_bridge_t bridge) {
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Cannot disconnect from bio-async: NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_immune_disconnect_bio_async: bridge is NULL");
         return -1;
     }
 

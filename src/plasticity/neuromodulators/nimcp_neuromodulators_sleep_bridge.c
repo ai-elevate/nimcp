@@ -109,6 +109,7 @@ static void neuromod_on_sleep_state_change(sleep_state_t new_state, void* user_d
 int neuromod_sleep_default_config(neuromodulators_sleep_config_t* config) {
     if (!config) {
         NIMCP_LOGGING_ERROR("neuromod_sleep_default_config: NULL config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_sleep_default_config: config is NULL");
         return -1;
     }
 
@@ -256,6 +257,7 @@ void neuromod_sleep_bridge_destroy(neuromod_sleep_bridge_t bridge) {
 int neuromod_sleep_update(neuromod_sleep_bridge_t bridge) {
     if (!bridge) {
         NIMCP_LOGGING_ERROR("neuromod_sleep_update: NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_sleep_update: bridge is NULL");
         return -1;
     }
 
@@ -331,6 +333,7 @@ int neuromod_sleep_update(neuromod_sleep_bridge_t bridge) {
 int neuromod_sleep_apply_modulation(neuromod_sleep_bridge_t bridge) {
     if (!bridge) {
         NIMCP_LOGGING_ERROR("neuromod_sleep_apply_modulation: NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_sleep_apply_modulation: bridge is NULL");
         return -1;
     }
 
@@ -387,11 +390,13 @@ int neuromod_sleep_get_effects(
 {
     if (!bridge) {
         NIMCP_LOGGING_ERROR("neuromod_sleep_get_effects: NULL bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_sleep_get_effects: bridge is NULL");
         return -1;
     }
 
     if (!effects) {
         NIMCP_LOGGING_ERROR("neuromod_sleep_get_effects: NULL effects");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_sleep_get_effects: effects is NULL");
         return -1;
     }
 
