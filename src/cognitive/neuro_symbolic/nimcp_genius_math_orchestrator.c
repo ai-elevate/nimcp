@@ -25,7 +25,10 @@
 #include "utils/memory/nimcp_memory.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include "async/nimcp_bio_router.h"
+
+#define LOG_MODULE "GENIUS_MATH_ORCHESTRATOR"
 #include <math.h>
 #include <string.h>
 

@@ -2132,6 +2132,7 @@ set(NIMCP_CORE_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/nimcp_auto_architecture.c    # NAS: architecture search (evolutionary, RL, DARTS, pruning)
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/integration/nimcp_training_integration_hub.c  # Training integration hub for inter-module communication
     ${CMAKE_CURRENT_SOURCE_DIR}/../training/integration/nimcp_training_symbolic_logic_hub_bridge.c  # Symbolic logic + training hub bridge
+    ${CMAKE_CURRENT_SOURCE_DIR}/../training/integration/nimcp_training_state_manager.c  # Phase 8: State manager for training checkpointing
 
     # NOTE: nimcp_training_plasticity_bridge_bioasync_handlers.c is included via #include
     # in nimcp_training_plasticity_bridge.c, not compiled separately (uses internal types)

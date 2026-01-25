@@ -104,3 +104,39 @@ gtest_discover_tests(regression_cognitive_memory_snn_plasticity
         LABELS "regression;cognitive;memory;snn;plasticity"
         TIMEOUT 180
 )
+
+# ============================================================================
+# PR Memory Exception Handling Regression Tests
+# ============================================================================
+# WHAT: Regression tests for PR memory system exception handling
+# WHY:  Ensure exception handling behavior remains stable across versions
+# HOW:  Test error codes, return values, and edge cases
+# ============================================================================
+
+add_executable(regression_cognitive_memory_pr_exception
+    test_pr_memory_exception_regression.cpp
+)
+
+target_link_libraries(regression_cognitive_memory_pr_exception
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(regression_cognitive_memory_pr_exception
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_cognitive_memory_pr_exception PRIVATE cxx_std_17)
+
+gtest_discover_tests(regression_cognitive_memory_pr_exception
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;cognitive;memory;pr_memory;exception"
+        TIMEOUT 180
+)

@@ -863,3 +863,36 @@ gtest_discover_tests(unit_mathematical_genius
         LABELS "unit;cognitive;parietal;mathematical-genius"
         TIMEOUT 120
 )
+
+#=============================================================================
+# Parietal Core Exception Handling Tests
+#=============================================================================
+
+add_executable(unit_parietal_exception_handling
+    test_parietal_exception_handling.cpp
+)
+
+target_link_libraries(unit_parietal_exception_handling
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(unit_parietal_exception_handling
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(unit_parietal_exception_handling PRIVATE cxx_std_17)
+
+gtest_discover_tests(unit_parietal_exception_handling
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "unit;cognitive;parietal;exception-handling"
+        TIMEOUT 120
+)

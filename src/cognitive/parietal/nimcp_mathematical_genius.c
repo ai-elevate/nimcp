@@ -15,7 +15,10 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include "async/nimcp_bio_router.h"
+
+#define LOG_MODULE "MATH_GENIUS"
 #include <math.h>
 #include <string.h>
 #include <stdlib.h>

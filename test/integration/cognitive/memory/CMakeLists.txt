@@ -1,6 +1,42 @@
 # ============================================================================
 # Cognitive Memory Integration Tests
 # ============================================================================
+# Memory Integration Testing
+
+# ============================================================================
+# PR Memory Exception Handling Integration Tests
+# ============================================================================
+# Tests exception handling across PR memory modules (pr_memory_node, procedural, prospective)
+
+add_executable(integration_cognitive_memory_pr_exception
+    test_pr_memory_exception_integration.cpp
+)
+
+target_link_libraries(integration_cognitive_memory_pr_exception
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(integration_cognitive_memory_pr_exception
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+
+target_compile_features(integration_cognitive_memory_pr_exception PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_cognitive_memory_pr_exception
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;cognitive;memory;pr_memory;exception"
+        TIMEOUT 120
+)
+
+# ============================================================================
 # Working Memory - SNN - Plasticity Integration Testing
 
 # ============================================================================

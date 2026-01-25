@@ -1025,6 +1025,11 @@ if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/utils/fault_tolerance")
     add_subdirectory(regression/utils/fault_tolerance)
 endif()
 
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/regression/fault_tolerance/CMakeLists.txt")
+    message(STATUS "Adding fault tolerance stability regression tests...")
+    add_subdirectory(regression/fault_tolerance)
+endif()
+
 # Utils VCS Integration Tests
 # ============================================================================
 
@@ -1055,6 +1060,14 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/exception")
     message(STATUS "Adding exception macro integration unit tests...")
     add_subdirectory(unit/exception)
+endif()
+
+# Fault Tolerance Unit Tests (Phase 8)
+# ============================================================================
+
+if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/unit/fault_tolerance/CMakeLists.txt")
+    message(STATUS "Adding fault tolerance unit tests...")
+    add_subdirectory(unit/fault_tolerance)
 endif()
 
 # Brain Unit Tests

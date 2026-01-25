@@ -61,5 +61,8 @@ message(STATUS "Added world model E2E tests")
 # ============================================================================
 # Include subdirectories
 # ============================================================================
+add_subdirectory(attention)
+add_subdirectory(memory)
 add_subdirectory(neuro_symbolic)
 add_subdirectory(immune)
+add_subdirectory(parietal)

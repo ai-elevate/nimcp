@@ -12,7 +12,10 @@
 #include "cognitive/neuro_symbolic/nimcp_hypergraph.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
-#include "utils/exception/nimcp_exception_immune.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "utils/logging/nimcp_logging.h"
+
+#define LOG_MODULE "HYPERGRAPH"
 #include <string.h>
 #include <math.h>
 

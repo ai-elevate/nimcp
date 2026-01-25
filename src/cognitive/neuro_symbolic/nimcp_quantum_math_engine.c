@@ -15,7 +15,9 @@
 #include "utils/logging/nimcp_logging.h"
 #include "utils/time/nimcp_time.h"
 #include "utils/thread/nimcp_thread.h"
-#include "utils/exception/nimcp_exception_immune.h"
+#include "utils/exception/nimcp_exception_macros.h"
+
+#define LOG_MODULE "QUANTUM_MATH_ENGINE"
 #include "async/nimcp_bio_router.h"
 #include <math.h>
 #include <string.h>

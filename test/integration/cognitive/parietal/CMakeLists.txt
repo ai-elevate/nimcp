@@ -131,3 +131,36 @@ gtest_discover_tests(integration_genius_bridges_exception
         LABELS "integration;cognitive;parietal;genius;exception-handling"
         TIMEOUT 180
 )
+
+# ----------------------------------------------------------------------------
+# Parietal Core Exception Handling Integration Test
+# Tests exception propagation from parietal modules to immune system
+# ----------------------------------------------------------------------------
+add_executable(integration_parietal_exception
+    test_parietal_exception_integration.cpp
+)
+
+target_link_libraries(integration_parietal_exception
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(integration_parietal_exception
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test/utils
+)
+
+target_compile_features(integration_parietal_exception PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_parietal_exception
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "integration;cognitive;parietal;exception-handling;immune"
+        TIMEOUT 180
+)

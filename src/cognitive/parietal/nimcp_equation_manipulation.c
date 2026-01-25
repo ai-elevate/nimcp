@@ -466,7 +466,14 @@ static expr_node_t* parse_expr(parser_state_t* p) {
 }
 
 expr_node_t* equation_parse(equation_engine_t* eq, const char* expr_string) {
-    if (!eq || !expr_string) return NULL;
+    if (!eq) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "equation_parse: eq is NULL");
+        return NULL;
+    }
+    if (!expr_string) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "equation_parse: expr_string is NULL");
+        return NULL;
+    }
 
     nimcp_mutex_lock(eq->lock);
 
@@ -560,7 +567,14 @@ const char* equation_to_string(
  * ============================================================================ */
 
 expr_node_t* equation_simplify(equation_engine_t* eq, const expr_node_t* node) {
-    if (!eq || !node) return NULL;
+    if (!eq) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "equation_simplify: eq is NULL");
+        return NULL;
+    }
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "equation_simplify: node is NULL");
+        return NULL;
+    }
 
     nimcp_mutex_lock(eq->lock);
 
@@ -906,7 +920,18 @@ expr_node_t* equation_differentiate(
     const expr_node_t* node,
     const char* var_name
 ) {
-    if (!eq || !node || !var_name) return NULL;
+    if (!eq) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "equation_differentiate: eq is NULL");
+        return NULL;
+    }
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "equation_differentiate: node is NULL");
+        return NULL;
+    }
+    if (!var_name) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "equation_differentiate: var_name is NULL");
+        return NULL;
+    }
 
     nimcp_mutex_lock(eq->lock);
 
@@ -1047,7 +1072,14 @@ float equation_evaluate(
     const variable_binding_t* bindings,
     uint32_t num_bindings
 ) {
-    if (!eq || !node) return NAN;
+    if (!eq) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "equation_evaluate: eq is NULL");
+        return NAN;
+    }
+    if (!node) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "equation_evaluate: node is NULL");
+        return NAN;
+    }
 
     nimcp_mutex_lock(eq->lock);
 
@@ -1230,7 +1262,14 @@ int equation_set_fatigue(equation_engine_t* eq, float level) {
  * ============================================================================ */
 
 int equation_get_stats(const equation_engine_t* eq, equation_stats_t* stats) {
-    if (!eq || !stats) return -1;
+    if (!eq) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "equation_get_stats: eq is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "equation_get_stats: stats is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(((equation_engine_t*)eq)->lock);
 

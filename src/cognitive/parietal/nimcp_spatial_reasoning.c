@@ -411,8 +411,19 @@ rotation_result_t spatial_rotate_and_compare(
 ) {
     rotation_result_t result = {0};
 
-    if (!sr || !object_a || !object_b) {
-        result.confidence = 0.0f;
+    if (!sr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_rotate_and_compare: sr is NULL");
+        result.confidence = -1.0f;
+        return result;
+    }
+    if (!object_a) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_rotate_and_compare: object_a is NULL");
+        result.confidence = -1.0f;
+        return result;
+    }
+    if (!object_b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_rotate_and_compare: object_b is NULL");
+        result.confidence = -1.0f;
         return result;
     }
 
@@ -467,7 +478,14 @@ uint64_t spatial_mental_rotate(
     vec3_t axis,
     float angle_degrees
 ) {
-    if (!sr || !object) return 0;
+    if (!sr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_mental_rotate: sr is NULL");
+        return 0;
+    }
+    if (!object) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_mental_rotate: object is NULL");
+        return 0;
+    }
 
     nimcp_mutex_lock(sr->lock);
 
@@ -608,7 +626,10 @@ vec3_t spatial_ego_to_allocentric(
     vec3_t local_pos,
     const observer_pose_t* observer
 ) {
-    if (!sr) return local_pos;
+    if (!sr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_ego_to_allocentric: sr is NULL");
+        return (vec3_t){0, 0, 0};
+    }
 
     nimcp_mutex_lock(sr->lock);
 
@@ -647,7 +668,14 @@ vec3_t spatial_allocentric_to_ego(
  * ============================================================================ */
 
 uint32_t spatial_add_object(spatial_reasoning_t* sr, const spatial_object_t* object) {
-    if (!sr || !object) return 0;
+    if (!sr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_add_object: sr is NULL");
+        return 0;
+    }
+    if (!object) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_add_object: object is NULL");
+        return 0;
+    }
 
     nimcp_mutex_lock(sr->lock);
 
@@ -761,7 +789,11 @@ int spatial_update_position(spatial_reasoning_t* sr, uint32_t object_id, vec3_t 
 }
 
 spatial_object_t* spatial_find_nearest(spatial_reasoning_t* sr, vec3_t query_pos) {
-    if (!sr || !sr->kd_root) return NULL;
+    if (!sr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_find_nearest: sr is NULL");
+        return NULL;
+    }
+    if (!sr->kd_root) return NULL;
 
     nimcp_mutex_lock(sr->lock);
 
@@ -1027,7 +1059,14 @@ int spatial_set_fatigue(spatial_reasoning_t* sr, float level) {
  * ============================================================================ */
 
 int spatial_get_stats(const spatial_reasoning_t* sr, spatial_stats_t* stats) {
-    if (!sr || !stats) return -1;
+    if (!sr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_get_stats: sr is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_get_stats: stats is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(((spatial_reasoning_t*)sr)->lock);
 

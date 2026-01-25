@@ -633,7 +633,10 @@ int parietal_connect_to_region(parietal_lobe_t* parietal, uint32_t target_region
 }
 
 int parietal_attach_immune(parietal_lobe_t* parietal, code_immune_system_t* immune) {
-    if (!parietal) return -1;
+    if (!parietal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_attach_immune: parietal is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(parietal->lock);
     parietal->immune = immune;
@@ -643,7 +646,10 @@ int parietal_attach_immune(parietal_lobe_t* parietal, code_immune_system_t* immu
 }
 
 int parietal_attach_thalamus(parietal_lobe_t* parietal, thalamic_router_t* thalamus) {
-    if (!parietal) return -1;
+    if (!parietal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_attach_thalamus: parietal is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(parietal->lock);
     parietal->thalamus = thalamus;
@@ -653,7 +659,10 @@ int parietal_attach_thalamus(parietal_lobe_t* parietal, thalamic_router_t* thala
 }
 
 int parietal_attach_substrate(parietal_lobe_t* parietal, substrate_interface_t* substrate) {
-    if (!parietal) return -1;
+    if (!parietal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_attach_substrate: parietal is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(parietal->lock);
     parietal->substrate = substrate;
@@ -663,7 +672,10 @@ int parietal_attach_substrate(parietal_lobe_t* parietal, substrate_interface_t* 
 }
 
 int parietal_attach_fep(parietal_lobe_t* parietal, fep_brain_t* fep) {
-    if (!parietal) return -1;
+    if (!parietal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_attach_fep: parietal is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(parietal->lock);
     parietal->fep = fep;
@@ -673,7 +685,10 @@ int parietal_attach_fep(parietal_lobe_t* parietal, fep_brain_t* fep) {
 }
 
 int parietal_attach_working_memory(parietal_lobe_t* parietal, working_memory_t* wm) {
-    if (!parietal) return -1;
+    if (!parietal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_attach_working_memory: parietal is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(parietal->lock);
     parietal->working_memory = wm;
@@ -683,7 +698,10 @@ int parietal_attach_working_memory(parietal_lobe_t* parietal, working_memory_t* 
 }
 
 int parietal_attach_logic_gates(parietal_lobe_t* parietal, logic_gate_network_t* logic) {
-    if (!parietal) return -1;
+    if (!parietal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_attach_logic_gates: parietal is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(parietal->lock);
     parietal->logic_gates = logic;
@@ -693,7 +711,10 @@ int parietal_attach_logic_gates(parietal_lobe_t* parietal, logic_gate_network_t*
 }
 
 int parietal_attach_training(parietal_lobe_t* parietal, training_engine_t* training) {
-    if (!parietal) return -1;
+    if (!parietal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_attach_training: parietal is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(parietal->lock);
     parietal->training = training;
@@ -703,7 +724,10 @@ int parietal_attach_training(parietal_lobe_t* parietal, training_engine_t* train
 }
 
 int parietal_attach_perception(parietal_lobe_t* parietal, perception_system_t* perception) {
-    if (!parietal) return -1;
+    if (!parietal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_attach_perception: parietal is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(parietal->lock);
     parietal->perception = perception;
@@ -713,7 +737,10 @@ int parietal_attach_perception(parietal_lobe_t* parietal, perception_system_t* p
 }
 
 int parietal_attach_sleep(parietal_lobe_t* parietal, sleep_system_t* sleep) {
-    if (!parietal) return -1;
+    if (!parietal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_attach_sleep: parietal is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(parietal->lock);
     parietal->sleep = sleep;
@@ -731,9 +758,16 @@ parietal_result_t parietal_process(parietal_lobe_t* parietal,
     parietal_result_t result;
     memset(&result, 0, sizeof(result));
 
-    if (!parietal || !request) {
+    if (!parietal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_process: parietal is NULL");
         result.success = false;
-        strcpy(result.error_message, "Invalid parameters");
+        strcpy(result.error_message, "parietal is NULL");
+        return result;
+    }
+    if (!request) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_process: request is NULL");
+        result.success = false;
+        strcpy(result.error_message, "request is NULL");
         return result;
     }
 
@@ -1712,7 +1746,14 @@ int parietal_lobe_quantum_vqe(parietal_lobe_t* parietal,
  * ============================================================================ */
 
 int parietal_get_stats(const parietal_lobe_t* parietal, parietal_stats_t* stats) {
-    if (!parietal || !stats) return -1;
+    if (!parietal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_get_stats: parietal is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "parietal_get_stats: stats is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(((parietal_lobe_t*)parietal)->lock);
 

@@ -12,8 +12,11 @@
 #include "cognitive/neuro_symbolic/nimcp_energy_consistency.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
-#include "utils/exception/nimcp_exception_immune.h"
+#include "utils/exception/nimcp_exception_macros.h"
+#include "utils/logging/nimcp_logging.h"
 #include "async/nimcp_bio_router.h"
+
+#define LOG_MODULE "ENERGY_CONSISTENCY"
 #include <string.h>
 #include <stdio.h>
 #include <math.h>

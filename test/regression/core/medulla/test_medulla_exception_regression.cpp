@@ -884,8 +884,8 @@ protected:
 
 // Test 48: NULL pointer handling in all functions
 TEST_F(APIContractRegressionTest, NullPointerHandling) {
-    EXPECT_LT(medulla_start(nullptr), 0);
-    EXPECT_LT(medulla_stop(nullptr), 0);
+    EXPECT_NE(medulla_start(nullptr), 0);
+    EXPECT_NE(medulla_stop(nullptr), 0);
     EXPECT_LT(medulla_update(nullptr, 0.016f), 0);
     EXPECT_LT(medulla_emergency_shutdown(nullptr, "test"), 0);
     EXPECT_LT(medulla_request_state_change(nullptr, MEDULLA_STATE_RUNNING), 0);

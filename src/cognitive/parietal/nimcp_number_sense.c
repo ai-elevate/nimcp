@@ -249,7 +249,17 @@ number_estimate_t number_sense_estimate(
 ) {
     number_estimate_t result = {0};
 
-    if (!ns || !input || input_size == 0) {
+    if (!ns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "number_sense_estimate: ns is NULL");
+        result.confidence = -1.0f;
+        return result;
+    }
+    if (!input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "number_sense_estimate: input is NULL");
+        result.confidence = -1.0f;
+        return result;
+    }
+    if (input_size == 0) {
         result.confidence = 0.0f;
         return result;
     }
@@ -405,7 +415,8 @@ number_comparison_t number_sense_compare(
     number_comparison_t result = {0};
 
     if (!ns) {
-        result.confidence = 0.0f;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "number_sense_compare: ns is NULL");
+        result.confidence = -1.0f;
         return result;
     }
 
@@ -481,7 +492,8 @@ approx_arithmetic_t number_sense_approximate_add(
     approx_arithmetic_t result = {0};
 
     if (!ns) {
-        result.confidence = 0.0f;
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "number_sense_approximate_add: ns is NULL");
+        result.confidence = -1.0f;
         return result;
     }
 
@@ -706,7 +718,14 @@ int number_sense_get_stats(
     const number_sense_t* ns,
     number_sense_stats_t* stats
 ) {
-    if (!ns || !stats) return -1;
+    if (!ns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "number_sense_get_stats: ns is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "number_sense_get_stats: stats is NULL");
+        return -1;
+    }
 
     /* Cast away const for lock - safe because we only read */
     nimcp_mutex_lock(((number_sense_t*)ns)->lock);

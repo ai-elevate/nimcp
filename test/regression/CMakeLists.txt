@@ -23,3 +23,11 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/bio_async/CMakeLists.txt)
     add_subdirectory(bio_async)
 endif()
 
+# =============================================================================
+# Fault Tolerance Regression Tests (Phase 8)
+# =============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/fault_tolerance/CMakeLists.txt)
+    message(STATUS "Adding Fault Tolerance Regression tests...")
+    add_subdirectory(fault_tolerance)
+endif()
+

@@ -98,6 +98,35 @@ static inline bool exec_has_gpu_mc(void) { return false; }
 
 #define LOG_MODULE "cognitive.executive"
 
+//=============================================================================
+// Health Agent Integration (Phase 8: Heartbeat for Long Operations)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for executive (set via executive_set_health_agent) */
+static nimcp_health_agent_t* g_exec_health_agent = NULL;
+
+/**
+ * @brief Set health agent for executive heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+void executive_set_health_agent(nimcp_health_agent_t* agent) {
+    g_exec_health_agent = agent;
+}
+
+/**
+ * @brief Send heartbeat during executive operations
+ */
+static inline void exec_heartbeat(const char* operation, float progress) {
+    if (g_exec_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_exec_health_agent, operation, progress);
+    }
+}
+
 // Forward declarations for static helpers
 static inline uint64_t exec_get_time_ms(void);
 

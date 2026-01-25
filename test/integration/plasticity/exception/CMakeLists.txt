@@ -91,3 +91,40 @@ gtest_discover_tests(integration_plasticity_module_exception
         TIMEOUT 300
         LABELS "integration;plasticity;exception;neuromodulators;stdp;immune"
 )
+
+# =============================================================================
+# Multi-Attention Exception Integration Tests
+# =============================================================================
+# WHAT: Integration tests for multi-attention exception handling with immune system
+# WHY:  Test end-to-end exception flow from attention modules to immune system
+# HOW:  Test exception paths, recovery, concurrent handling, and stats
+#
+# @author NIMCP Development Team
+# @date 2026-01-25
+# =============================================================================
+
+add_executable(integration_attention_exception
+    test_attention_exception_integration.cpp
+)
+
+target_include_directories(integration_attention_exception
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(integration_attention_exception
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_compile_features(integration_attention_exception PRIVATE cxx_std_17)
+
+gtest_discover_tests(integration_attention_exception
+    PROPERTIES
+        TIMEOUT 300
+        LABELS "integration;plasticity;attention;exception;immune"
+)

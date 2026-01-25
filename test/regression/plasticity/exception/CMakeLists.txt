@@ -42,3 +42,40 @@ gtest_discover_tests(regression_plasticity_module_exception
         TIMEOUT 600
         LABELS "regression;plasticity;exception;neuromodulators;attention;stdp"
 )
+
+# =============================================================================
+# Multi-Attention Exception Regression Tests
+# =============================================================================
+# WHAT: Regression tests for multi-attention exception handling stability
+# WHY:  Ensure API contracts remain stable and error handling consistent
+# HOW:  Test NULL handling, boundary conditions, long-running stability
+#
+# @author NIMCP Development Team
+# @date 2026-01-25
+# =============================================================================
+
+add_executable(regression_attention_exception
+    test_attention_exception_regression.cpp
+)
+
+target_include_directories(regression_attention_exception
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+)
+
+target_link_libraries(regression_attention_exception
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_compile_features(regression_attention_exception PRIVATE cxx_std_17)
+
+gtest_discover_tests(regression_attention_exception
+    PROPERTIES
+        TIMEOUT 600
+        LABELS "regression;plasticity;attention;exception"
+)

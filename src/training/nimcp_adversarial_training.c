@@ -30,6 +30,7 @@
 #include "training/nimcp_adversarial_training.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/thread/nimcp_thread.h"
+#include "utils/logging/nimcp_logging.h"
 #include "api/nimcp_api_exception.h"
 #include "utils/exception/nimcp_exception.h"
 #include "utils/exception/nimcp_exception_macros.h"
@@ -37,6 +38,37 @@
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
+
+#define LOG_MODULE "ADV_TRAINING"
+
+//=============================================================================
+// Health Agent Integration (Phase 8: Heartbeat for Long Operations)
+//=============================================================================
+struct nimcp_health_agent;
+typedef struct nimcp_health_agent nimcp_health_agent_t;
+extern void nimcp_health_agent_heartbeat_ex(nimcp_health_agent_t* agent,
+                                             const char* operation,
+                                             float progress);
+
+/** Global health agent for adversarial training (set via adv_set_health_agent) */
+static nimcp_health_agent_t* g_adv_health_agent = NULL;
+
+/**
+ * @brief Set health agent for adversarial training heartbeats
+ * @param agent Health agent (can be NULL to disable)
+ */
+void adv_set_health_agent(nimcp_health_agent_t* agent) {
+    g_adv_health_agent = agent;
+}
+
+/**
+ * @brief Send heartbeat during adversarial training operations
+ */
+static inline void adv_heartbeat(const char* operation, float progress) {
+    if (g_adv_health_agent) {
+        nimcp_health_agent_heartbeat_ex(g_adv_health_agent, operation, progress);
+    }
+}
 
 //=============================================================================
 // Internal Constants
@@ -424,6 +456,9 @@ int adv_pgd(
 
     /* PGD iterations */
     for (uint32_t step = 0; step < num_steps; step++) {
+        /* Heartbeat progress during PGD attack */
+        adv_heartbeat("pgd_attack", (float)(step + 1) / (float)num_steps);
+
         /* Forward pass */
         nimcp_tensor_t* logits = forward_fn(model, adv_input);
         if (!logits) {

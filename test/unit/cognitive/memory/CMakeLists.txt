@@ -3,6 +3,9 @@
 # Substrate bridge tests
 add_subdirectory(substrate)
 
+# Core memory tests (PR memory node, procedural, prospective)
+add_subdirectory(core)
+
 # ============================================================================
 # Working Memory - SNN Bridge Tests
 # ============================================================================

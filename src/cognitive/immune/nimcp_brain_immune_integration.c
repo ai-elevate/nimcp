@@ -16,10 +16,12 @@
 #include "cognitive/immune/nimcp_brain_immune_tick.h"
 #include "utils/exception/nimcp_exception.h"
 #include "utils/exception/nimcp_exception_handlers.h"
-#include "utils/exception/nimcp_exception_immune.h"
+#include "utils/exception/nimcp_exception_macros.h"
 #include "utils/logging/nimcp_logging.h"
 #include "utils/memory/nimcp_memory.h"
 #include "utils/time/nimcp_time.h"
+
+#define LOG_MODULE "IMMUNE_INTEGRATION"
 
 #include <string.h>
 #include <stdio.h>

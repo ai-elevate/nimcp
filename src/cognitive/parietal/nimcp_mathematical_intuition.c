@@ -350,7 +350,17 @@ detected_pattern_t math_detect_pattern(
     result.type = PATTERN_UNKNOWN;
     result.sequence_length = length;
 
-    if (!mi || !sequence || length < 2) {
+    if (!mi) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "math_detect_pattern: mi is NULL");
+        result.confidence = -1.0f;
+        return result;
+    }
+    if (!sequence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "math_detect_pattern: sequence is NULL");
+        result.confidence = -1.0f;
+        return result;
+    }
+    if (length < 2) {
         return result;
     }
 
@@ -529,7 +539,14 @@ float math_extrapolate(
     const detected_pattern_t* pattern,
     uint32_t index
 ) {
-    if (!mi || !pattern) return 0.0f;
+    if (!mi) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "math_extrapolate: mi is NULL");
+        return 0.0f;
+    }
+    if (!pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "math_extrapolate: pattern is NULL");
+        return 0.0f;
+    }
 
     switch (pattern->type) {
         case PATTERN_CONSTANT:
@@ -825,7 +842,17 @@ symmetry_result_t math_detect_symmetry(
 ) {
     symmetry_result_t result = {0};
 
-    if (!mi || !points || num_points < 2) {
+    if (!mi) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "math_detect_symmetry: mi is NULL");
+        result.confidence = -1.0f;
+        return result;
+    }
+    if (!points) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "math_detect_symmetry: points is NULL");
+        result.confidence = -1.0f;
+        return result;
+    }
+    if (num_points < 2) {
         return result;
     }
 
@@ -1022,7 +1049,11 @@ analogy_result_t math_solve_analogy(
 ) {
     analogy_result_t result = {0};
 
-    if (!mi) return result;
+    if (!mi) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "math_solve_analogy: mi is NULL");
+        result.confidence = -1.0f;
+        return result;
+    }
 
     nimcp_mutex_lock(mi->lock);
 
@@ -1130,7 +1161,14 @@ int math_intuition_set_fatigue(math_intuition_t* mi, float level) {
  * ============================================================================ */
 
 int math_intuition_get_stats(const math_intuition_t* mi, math_intuition_stats_t* stats) {
-    if (!mi || !stats) return -1;
+    if (!mi) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "math_intuition_get_stats: mi is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "math_intuition_get_stats: stats is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(((math_intuition_t*)mi)->lock);
 

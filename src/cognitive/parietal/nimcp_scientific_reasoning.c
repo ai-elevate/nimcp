@@ -346,7 +346,11 @@ uint32_t scientific_buckingham_pi(
     float** pi_groups,
     uint32_t max_groups
 ) {
-    if (!sr || !quantities || !pi_groups || num_quantities < 2) {
+    if (!sr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scientific_buckingham_pi: sr is NULL");
+        return 0;
+    }
+    if (!quantities || !pi_groups || num_quantities < 2) {
         return 0;
     }
 
@@ -425,7 +429,12 @@ hypothesis_t scientific_create_hypothesis(
 ) {
     hypothesis_t h = {0};
 
-    if (!sr || !description) {
+    if (!sr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scientific_create_hypothesis: sr is NULL");
+        return h;
+    }
+    if (!description) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scientific_create_hypothesis: description is NULL");
         return h;
     }
 
@@ -460,7 +469,15 @@ float scientific_update_hypothesis(
     const data_sample_t* samples,
     uint32_t num_samples
 ) {
-    if (!sr || !hypothesis || !samples || num_samples == 0) {
+    if (!sr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scientific_update_hypothesis: sr is NULL");
+        return -1.0f;
+    }
+    if (!hypothesis) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scientific_update_hypothesis: hypothesis is NULL");
+        return -1.0f;
+    }
+    if (!samples || num_samples == 0) {
         return 0.0f;
     }
 
@@ -915,7 +932,14 @@ int scientific_set_sleep_deprivation(scientific_reasoning_t* sr, float level) {
  * ============================================================================ */
 
 int scientific_get_stats(const scientific_reasoning_t* sr, scientific_stats_t* stats) {
-    if (!sr || !stats) return -1;
+    if (!sr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scientific_get_stats: sr is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "scientific_get_stats: stats is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(((scientific_reasoning_t*)sr)->lock);
 

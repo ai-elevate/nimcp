@@ -73,3 +73,39 @@ gtest_discover_tests(regression_genius_bridges_exception
         LABELS "regression;cognitive;parietal;genius;exception-handling"
         TIMEOUT 300
 )
+
+# ============================================================================
+# Parietal Core Exception Handling Regression Tests
+# ============================================================================
+# WHAT: Verify API contract stability for exception handling in parietal modules
+# WHY:  Ensure error codes, return values, and exception messages remain stable
+# HOW:  Test all exception-throwing functions for consistent behavior
+
+add_executable(regression_parietal_exception
+    test_parietal_exception_regression.cpp
+)
+
+target_link_libraries(regression_parietal_exception
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_include_directories(regression_parietal_exception
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+)
+
+target_compile_features(regression_parietal_exception PRIVATE cxx_std_17)
+target_compile_definitions(regression_parietal_exception PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(regression_parietal_exception
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;cognitive;parietal;exception-handling"
+        TIMEOUT 300
+)

@@ -69,3 +69,26 @@ set_tests_properties(integration_self_repair_bio_async PROPERTIES
     LABELS "integration;fault_tolerance;self-repair;bio-async"
     TIMEOUT 120
 )
+
+# Health Module Integration Tests (Phase 8: System-Wide Health Integration)
+add_executable(integration_health_module
+    test_health_module_integration.cpp
+)
+target_link_libraries(integration_health_module
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+)
+target_include_directories(integration_health_module
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME integration_health_module
+         COMMAND integration_health_module)
+set_tests_properties(integration_health_module PROPERTIES
+    LABELS "integration;fault_tolerance;health;phase8"
+    TIMEOUT 180
+)
