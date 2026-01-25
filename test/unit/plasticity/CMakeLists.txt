@@ -539,6 +539,31 @@ gtest_discover_tests(unit_plasticity_pink_noise_enhancements
 )
 
 # ============================================================================
+# Pink Noise Exception Handling Tests
+# ============================================================================
+# WHAT: Unit tests for NIMCP_THROW_TO_IMMUNE exception handling in Pink Noise
+# WHY:  Ensure errors are properly reported to the brain immune system
+# HOW:  Test all NULL pointer and invalid parameter paths
+# ============================================================================
+
+add_executable(unit_plasticity_pink_noise_exception_handling
+    noise/test_pink_noise_exception_handling.cpp
+)
+target_link_libraries(unit_plasticity_pink_noise_exception_handling
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(unit_plasticity_pink_noise_exception_handling PRIVATE cxx_std_17)
+gtest_discover_tests(unit_plasticity_pink_noise_exception_handling
+    PROPERTIES LABELS "unit;plasticity;noise;pink;exception"
+    TIMEOUT 60
+)
+
+# ============================================================================
 # Plasticity Bridge Tests (Phase 1)
 # ============================================================================
 # WHAT: Unit tests for neural component-plasticity bridges

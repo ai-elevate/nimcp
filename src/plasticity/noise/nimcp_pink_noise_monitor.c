@@ -143,6 +143,8 @@ pink_noise_monitor_t* pink_monitor_create(const pink_monitor_config_t* config) {
     monitor->frequency_bins = nimcp_calloc(config->window_size / 2, sizeof(float));
 
     if (!monitor->sample_buffer || !monitor->power_spectrum || !monitor->frequency_bins) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "pink_monitor_create: failed to allocate buffers");
         pink_monitor_destroy(monitor);
         return NULL;
     }
@@ -170,7 +172,11 @@ int pink_monitor_connect(
     pink_noise_monitor_t* monitor,
     pink_noise_generator_t generator
 ) {
-    if (!monitor) return -1;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_monitor_connect: monitor is NULL");
+        return -1;
+    }
     monitor->generator = generator;
     return 0;
 }
@@ -180,7 +186,11 @@ int pink_monitor_connect(
 //=============================================================================
 
 int pink_monitor_update(pink_noise_monitor_t* monitor, float sample) {
-    if (!monitor) return -1;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_monitor_update: monitor is NULL");
+        return -1;
+    }
 
     // Store sample in buffer
     monitor->sample_buffer[monitor->buffer_index] = sample;
@@ -280,7 +290,16 @@ int pink_monitor_get_quality(
     const pink_noise_monitor_t* monitor,
     pink_monitor_quality_t* quality
 ) {
-    if (!monitor || !quality) return -1;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_monitor_get_quality: monitor is NULL");
+        return -1;
+    }
+    if (!quality) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_monitor_get_quality: quality is NULL");
+        return -1;
+    }
 
     memset(quality, 0, sizeof(pink_monitor_quality_t));
     quality->current_alpha = monitor->current_alpha;
@@ -296,7 +315,16 @@ int pink_monitor_get_quality(
 }
 
 int pink_monitor_recalculate(pink_noise_monitor_t* monitor) {
-    if (!monitor || !monitor->buffer_full) return -1;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_monitor_recalculate: monitor is NULL");
+        return -1;
+    }
+    if (!monitor->buffer_full) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "pink_monitor_recalculate: buffer not yet full");
+        return -1;
+    }
 
     compute_power_spectrum(monitor->sample_buffer, monitor->power_spectrum,
                           monitor->config.window_size);
@@ -310,7 +338,11 @@ int pink_monitor_recalculate(pink_noise_monitor_t* monitor) {
 }
 
 int pink_monitor_reset(pink_noise_monitor_t* monitor) {
-    if (!monitor) return -1;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_monitor_reset: monitor is NULL");
+        return -1;
+    }
 
     memset(monitor->sample_buffer, 0, monitor->config.window_size * sizeof(float));
     memset(monitor->power_spectrum, 0, monitor->config.window_size * sizeof(float));
@@ -336,7 +368,11 @@ int pink_monitor_set_callback(
     pink_monitor_alert_fn callback,
     void* user_data
 ) {
-    if (!monitor) return -1;
+    if (!monitor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_monitor_set_callback: monitor is NULL");
+        return -1;
+    }
     monitor->config.alert_callback = callback;
     monitor->config.alert_user_data = user_data;
     monitor->config.enable_alerts = (callback != NULL);

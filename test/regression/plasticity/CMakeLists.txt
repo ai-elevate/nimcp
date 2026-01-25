@@ -309,6 +309,32 @@ gtest_discover_tests(regression_plasticity_pink_noise
 )
 
 # ============================================================================
+# Pink Noise + Fractal Regression Tests
+# ============================================================================
+# WHAT: Regression tests for Pink Noise and Fractal modules
+# WHY:  Ensure backward compatibility and stable behavior
+# HOW:  Test API stability, output ranges, performance baselines
+# ============================================================================
+
+add_executable(regression_plasticity_pink_noise_fractal
+    noise/test_pink_noise_fractal_regression.cpp
+)
+target_link_libraries(regression_plasticity_pink_noise_fractal
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(regression_plasticity_pink_noise_fractal PRIVATE cxx_std_17)
+gtest_discover_tests(regression_plasticity_pink_noise_fractal
+    PROPERTIES
+        TIMEOUT 600
+        LABELS "regression;plasticity;noise;pink;fractal"
+)
+
+# ============================================================================
 # Phase 1 Bridges Regression Tests
 # ============================================================================
 # WHAT: Regression tests for Phase 1 bridges (dendrite, synapse, axon, glial-immune)

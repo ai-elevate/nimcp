@@ -394,7 +394,16 @@ int pink_quantum_generate_sample(
     pink_quantum_bridge_t* bridge,
     float* sample
 ) {
-    if (!bridge || !sample) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_quantum_generate_sample: bridge is NULL");
+        return -1;
+    }
+    if (!sample) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_quantum_generate_sample: sample is NULL");
+        return -1;
+    }
 
     float result = 0.0f;
 
@@ -462,7 +471,21 @@ int pink_quantum_generate_batch(
     float* samples,
     uint32_t num_samples
 ) {
-    if (!bridge || !samples || num_samples == 0) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_quantum_generate_batch: bridge is NULL");
+        return -1;
+    }
+    if (!samples) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_quantum_generate_batch: samples is NULL");
+        return -1;
+    }
+    if (num_samples == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "pink_quantum_generate_batch: num_samples is 0");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < num_samples; i++) {
         int result = pink_quantum_generate_sample(bridge, &samples[i]);
@@ -480,7 +503,11 @@ int pink_quantum_set_method(
     pink_quantum_bridge_t* bridge,
     pink_quantum_method_t method
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_quantum_set_method: bridge is NULL");
+        return -1;
+    }
     bridge->config.method = method;
     return 0;
 }
@@ -489,7 +516,11 @@ int pink_quantum_set_enabled(
     pink_quantum_bridge_t* bridge,
     bool enabled
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_quantum_set_enabled: bridge is NULL");
+        return -1;
+    }
     bridge->using_classical = !enabled;
     return 0;
 }
@@ -500,7 +531,11 @@ bool pink_quantum_is_enabled(const pink_quantum_bridge_t* bridge) {
 }
 
 int pink_quantum_restart_annealing(pink_quantum_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_quantum_restart_annealing: bridge is NULL");
+        return -1;
+    }
 
     // Reinitialize magnitudes and phases (matching create sequence)
     for (uint32_t i = 0; i < bridge->num_frequencies; i++) {
@@ -521,7 +556,16 @@ int pink_quantum_get_stats(
     const pink_quantum_bridge_t* bridge,
     pink_quantum_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_quantum_get_stats: bridge is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_quantum_get_stats: stats is NULL");
+        return -1;
+    }
 
     memset(stats, 0, sizeof(pink_quantum_stats_t));
     stats->quantum_operations = bridge->quantum_operations;
@@ -537,7 +581,11 @@ int pink_quantum_get_stats(
 }
 
 int pink_quantum_reset_stats(pink_quantum_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_quantum_reset_stats: bridge is NULL");
+        return -1;
+    }
     bridge->quantum_operations = 0;
     bridge->classical_fallbacks = 0;
     return 0;
@@ -547,7 +595,11 @@ int pink_quantum_reset(
     pink_quantum_bridge_t* bridge,
     uint32_t new_seed
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_quantum_reset: bridge is NULL");
+        return -1;
+    }
 
     bridge->rng_state = (new_seed != 0) ? new_seed : bridge->config.seed;
     if (bridge->rng_state == 0) bridge->rng_state = 42;
@@ -585,7 +637,11 @@ int pink_quantum_connect_memory_manager(
     pink_quantum_bridge_t* bridge,
     unified_mem_manager_t mem_manager
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_quantum_connect_memory_manager: bridge is NULL");
+        return -1;
+    }
 
     // Store the memory manager
     bridge->mem_manager = mem_manager;

@@ -430,6 +430,7 @@ bool pink_noise_validate_config(const pink_noise_config_t* config) {
     // Guard: NULL config
     if (!config) {
         set_error("Configuration is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_validate_config: config is NULL");
         return false;
     }
 
@@ -472,8 +473,7 @@ pink_noise_generator_t pink_noise_create(const pink_noise_config_t* config) {
     // Guard: NULL config
     if (!config) {
         set_error("Configuration is NULL");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "config is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_create: config is NULL");
         return NULL;
     }
 
@@ -489,8 +489,7 @@ pink_noise_generator_t pink_noise_create(const pink_noise_config_t* config) {
     // Guard: Allocation failed
     if (!gen) {
         set_error("Failed to allocate generator");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "gen is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pink_noise_create: allocation failed");
         return NULL;
     }
 
@@ -540,6 +539,7 @@ pink_noise_generator_t pink_noise_create(const pink_noise_config_t* config) {
 void pink_noise_destroy(pink_noise_generator_t generator) {
     // Guard: NULL generator (safe to call)
     if (!generator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_destroy: generator is NULL");
         return;
     }
 
@@ -556,12 +556,14 @@ bool pink_noise_generate_sample(pink_noise_generator_t generator, float* sample)
     // Guard: NULL generator
     if (!generator) {
         set_error("Generator is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_generate_sample: generator is NULL");
         return false;
     }
 
     // Guard: NULL sample pointer
     if (!sample) {
         set_error("Sample pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_generate_sample: sample is NULL");
         return false;
     }
 
@@ -595,12 +597,14 @@ bool pink_noise_generate(pink_noise_generator_t generator, float* samples, uint3
     // Guard: NULL generator
     if (!generator) {
         set_error("Generator is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_generate: generator is NULL");
         return false;
     }
 
     // Guard: NULL samples array
     if (!samples) {
         set_error("Samples array is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_generate: samples is NULL");
         return false;
     }
 
@@ -629,6 +633,7 @@ bool pink_noise_reset(pink_noise_generator_t generator, uint32_t new_seed) {
     // Guard: NULL generator
     if (!generator) {
         set_error("Generator is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_reset: generator is NULL");
         return false;
     }
 
@@ -817,12 +822,14 @@ bool pink_noise_compute_stats(const float* samples, uint32_t num_samples, float 
     // Guard: NULL samples
     if (!samples) {
         set_error("Samples array is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_compute_stats: samples is NULL");
         return false;
     }
 
     // Guard: NULL stats
     if (!stats) {
         set_error("Stats pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_compute_stats: stats is NULL");
         return false;
     }
 
@@ -880,6 +887,13 @@ bool pink_noise_compute_stats(const float* samples, uint32_t num_samples, float 
 }
 
 bool pink_noise_validate(const float* samples, uint32_t num_samples, float sample_rate, float expected_alpha, float tolerance) {
+    // Guard: NULL samples
+    if (!samples) {
+        set_error("Samples array is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_validate: samples is NULL");
+        return false;
+    }
+
     // Guard: Invalid tolerance
     if (tolerance <= 0.0F) {
         set_error("Tolerance must be positive");
@@ -913,12 +927,14 @@ bool pink_noise_modulate(pink_noise_generator_t generator, float base_level, flo
     // Guard: NULL generator
     if (!generator) {
         set_error("Generator is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_modulate: generator is NULL");
         return false;
     }
 
     // Guard: NULL output
     if (!output) {
         set_error("Output pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_modulate: output is NULL");
         return false;
     }
 
@@ -943,12 +959,14 @@ bool pink_noise_modulate_multiplicative(pink_noise_generator_t generator, float 
     // Guard: NULL generator
     if (!generator) {
         set_error("Generator is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_modulate_multiplicative: generator is NULL");
         return false;
     }
 
     // Guard: NULL output
     if (!output) {
         set_error("Output pointer is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_modulate_multiplicative: output is NULL");
         return false;
     }
 
@@ -1010,8 +1028,17 @@ bool pink_noise_save(pink_noise_generator_t generator, FILE* file) {
     // WHY: Enable persistence for neuromodulator state
     // HOW: Binary serialization (TODO: full implementation)
 
-    if (!generator || !file) {
-        set_error("Invalid generator or file handle");
+    // Guard: NULL generator
+    if (!generator) {
+        set_error("Generator is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_save: generator is NULL");
+        return false;
+    }
+
+    // Guard: NULL file handle
+    if (!file) {
+        set_error("File handle is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_save: file is NULL");
         return false;
     }
 
@@ -1036,9 +1063,7 @@ pink_noise_generator_t pink_noise_load(FILE* file) {
 
     if (!file) {
         set_error("Invalid file handle");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "file is NULL");
-
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_load: file is NULL");
         return NULL;
     }
 

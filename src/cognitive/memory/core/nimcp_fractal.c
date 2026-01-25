@@ -433,8 +433,20 @@ int fractal_hurst_rs(
     fractal_result_t* result
 ) {
     /* Validate inputs */
-    if (!samples || !result) {
+    if (!samples) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "fractal_hurst_rs: samples is NULL");
         return FRACTAL_ERROR_NULL_PTR;
+    }
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "fractal_hurst_rs: result is NULL");
+        return FRACTAL_ERROR_NULL_PTR;
+    }
+    if (count < FRACTAL_MIN_SAMPLES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "fractal_hurst_rs: insufficient samples");
+        return FRACTAL_ERROR_INSUFFICIENT;
     }
     if (!validate_input(samples, count, FRACTAL_MIN_SAMPLES)) {
         return FRACTAL_ERROR_INSUFFICIENT;
@@ -467,6 +479,8 @@ int fractal_hurst_rs(
     float* log_rs = (float*)malloc(cfg.num_scales * sizeof(float));
 
     if (!scales || !log_scales || !log_rs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "fractal_hurst_rs: allocation failure");
         free(scales);
         free(log_scales);
         free(log_rs);
@@ -577,8 +591,20 @@ int fractal_dfa(
     fractal_result_t* result
 ) {
     /* Validate inputs */
-    if (!samples || !result) {
+    if (!samples) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "fractal_dfa: samples is NULL");
         return FRACTAL_ERROR_NULL_PTR;
+    }
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "fractal_dfa: result is NULL");
+        return FRACTAL_ERROR_NULL_PTR;
+    }
+    if (count < FRACTAL_MIN_SAMPLES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "fractal_dfa: insufficient samples");
+        return FRACTAL_ERROR_INSUFFICIENT;
     }
     if (!validate_input(samples, count, FRACTAL_MIN_SAMPLES)) {
         return FRACTAL_ERROR_INSUFFICIENT;
@@ -611,6 +637,8 @@ int fractal_dfa(
     /* Integrate signal: y(k) = sum_{i=1}^{k} (x(i) - mean) */
     float* y = (float*)malloc(count * sizeof(float));
     if (!y) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "fractal_dfa: allocation failure for integrated signal");
         return FRACTAL_ERROR_ALLOC;
     }
 
@@ -632,6 +660,8 @@ int fractal_dfa(
     float* x_seg = (float*)malloc(max_scale * sizeof(float));
 
     if (!scales || !log_scales || !log_fluct || !coeffs || !x_seg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "fractal_dfa: allocation failure for working arrays");
         free(y);
         free(scales);
         free(log_scales);
@@ -772,8 +802,20 @@ int fractal_spectral_exponent_config(
     fractal_result_t* result
 ) {
     /* Validate inputs */
-    if (!samples || !result) {
+    if (!samples) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "fractal_spectral_exponent: samples is NULL");
         return FRACTAL_ERROR_NULL_PTR;
+    }
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "fractal_spectral_exponent: result is NULL");
+        return FRACTAL_ERROR_NULL_PTR;
+    }
+    if (count < FRACTAL_MIN_SAMPLES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "fractal_spectral_exponent: insufficient samples");
+        return FRACTAL_ERROR_INSUFFICIENT;
     }
     if (!validate_input(samples, count, FRACTAL_MIN_SAMPLES)) {
         return FRACTAL_ERROR_INSUFFICIENT;
@@ -800,6 +842,8 @@ int fractal_spectral_exponent_config(
     /* Create FFT plan */
     fft_plan_t* plan = fft_plan_create(fft_size, FFT_REAL);
     if (!plan) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "fractal_spectral_exponent: FFT plan allocation failure");
         return FRACTAL_ERROR_ALLOC;
     }
 
@@ -812,6 +856,8 @@ int fractal_spectral_exponent_config(
     float* psd = (float*)malloc((fft_size / 2 + 1) * sizeof(float));
 
     if (!windowed || !spectrum || !psd) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "fractal_spectral_exponent: allocation failure for FFT arrays");
         fft_plan_destroy(plan);
         free(windowed);
         free(spectrum);
@@ -868,6 +914,8 @@ int fractal_spectral_exponent_config(
     float* log_p = (float*)malloc(fit_count * sizeof(float));
 
     if (!log_f || !log_p) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "fractal_spectral_exponent: allocation failure for log arrays");
         fft_plan_destroy(plan);
         free(windowed);
         free(spectrum);
@@ -942,8 +990,20 @@ int fractal_box_dimension(
     fractal_result_t* result
 ) {
     /* Validate inputs */
-    if (!samples || !result) {
+    if (!samples) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "fractal_box_dimension: samples is NULL");
         return FRACTAL_ERROR_NULL_PTR;
+    }
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "fractal_box_dimension: result is NULL");
+        return FRACTAL_ERROR_NULL_PTR;
+    }
+    if (count < FRACTAL_MIN_SAMPLES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "fractal_box_dimension: insufficient samples");
+        return FRACTAL_ERROR_INSUFFICIENT;
     }
     if (!validate_input(samples, count, FRACTAL_MIN_SAMPLES)) {
         return FRACTAL_ERROR_INSUFFICIENT;
@@ -994,6 +1054,8 @@ int fractal_box_dimension(
     float* log_n = (float*)malloc(num_scales * sizeof(float));
 
     if (!scales || !log_eps || !log_n) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "fractal_box_dimension: allocation failure for scale arrays");
         free(scales);
         free(log_eps);
         free(log_n);
@@ -1027,6 +1089,8 @@ int fractal_box_dimension(
         /* For large grids, this could be optimized with a hash set */
         bool* occupied = (bool*)calloc(num_x_boxes * num_y_boxes, sizeof(bool));
         if (!occupied) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+                "fractal_box_dimension: allocation failure for occupied array");
             free(scales);
             free(log_eps);
             free(log_n);
@@ -1098,13 +1162,27 @@ float fractal_lacunarity(
     size_t count,
     size_t box_size
 ) {
-    if (!samples || count == 0 || box_size == 0 || box_size > count) {
+    if (!samples) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "fractal_lacunarity: samples is NULL");
+        return -1.0f;
+    }
+    if (count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "fractal_lacunarity: count is zero");
+        return -1.0f;
+    }
+    if (box_size == 0 || box_size > count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "fractal_lacunarity: invalid box_size");
         return -1.0f;
     }
 
     /* Number of sliding window positions */
     size_t num_windows = count - box_size + 1;
     if (num_windows < 2) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "fractal_lacunarity: insufficient windows");
         return -1.0f;
     }
 
@@ -1151,8 +1229,30 @@ int fractal_lacunarity_curve(
     float* lacunarities,
     size_t num_scales
 ) {
-    if (!samples || !scales || !lacunarities || num_scales == 0) {
+    if (!samples) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "fractal_lacunarity_curve: samples is NULL");
         return FRACTAL_ERROR_NULL_PTR;
+    }
+    if (!scales) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "fractal_lacunarity_curve: scales is NULL");
+        return FRACTAL_ERROR_NULL_PTR;
+    }
+    if (!lacunarities) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "fractal_lacunarity_curve: lacunarities is NULL");
+        return FRACTAL_ERROR_NULL_PTR;
+    }
+    if (num_scales == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "fractal_lacunarity_curve: num_scales is zero");
+        return FRACTAL_ERROR_NULL_PTR;
+    }
+    if (count < FRACTAL_MIN_SAMPLES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "fractal_lacunarity_curve: insufficient samples");
+        return FRACTAL_ERROR_INSUFFICIENT;
     }
     if (!validate_input(samples, count, FRACTAL_MIN_SAMPLES)) {
         return FRACTAL_ERROR_INSUFFICIENT;
@@ -1178,6 +1278,8 @@ int fractal_lacunarity_curve(
     /* Generate scales */
     size_t* scale_vals = (size_t*)malloc(num_scales * sizeof(size_t));
     if (!scale_vals) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "fractal_lacunarity_curve: allocation failure for scale_vals");
         return FRACTAL_ERROR_ALLOC;
     }
 
@@ -1206,22 +1308,40 @@ int fractal_multifractal_spectrum(
     multifractal_spectrum_t** spectrum
 ) {
     /* Validate inputs */
-    if (!samples || !spectrum) {
+    if (!samples) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "fractal_multifractal_spectrum: samples is NULL");
         return FRACTAL_ERROR_NULL_PTR;
+    }
+    if (!spectrum) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "fractal_multifractal_spectrum: spectrum output is NULL");
+        return FRACTAL_ERROR_NULL_PTR;
+    }
+    if (count < FRACTAL_MIN_SAMPLES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "fractal_multifractal_spectrum: insufficient samples");
+        return FRACTAL_ERROR_INSUFFICIENT;
     }
     if (!validate_input(samples, count, FRACTAL_MIN_SAMPLES)) {
         return FRACTAL_ERROR_INSUFFICIENT;
     }
     if (q_steps < 3 || q_steps > FRACTAL_MAX_Q_VALUES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "fractal_multifractal_spectrum: invalid q_steps value");
         return FRACTAL_ERROR_PARAM;
     }
     if (q_min >= q_max) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "fractal_multifractal_spectrum: q_min must be less than q_max");
         return FRACTAL_ERROR_PARAM;
     }
 
     /* Allocate spectrum structure */
     multifractal_spectrum_t* mf = (multifractal_spectrum_t*)calloc(1, sizeof(multifractal_spectrum_t));
     if (!mf) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "fractal_multifractal_spectrum: allocation failure for spectrum struct");
         return FRACTAL_ERROR_ALLOC;
     }
 
@@ -1235,6 +1355,8 @@ int fractal_multifractal_spectrum(
 
     if (!mf->q_values || !mf->tau_q || !mf->h_q || !mf->D_q ||
         !mf->f_alpha || !mf->alpha) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "fractal_multifractal_spectrum: allocation failure for spectrum arrays");
         multifractal_spectrum_destroy(mf);
         return FRACTAL_ERROR_ALLOC;
     }
@@ -1249,6 +1371,8 @@ int fractal_multifractal_spectrum(
     float mean = compute_mean(samples, count);
     float* y = (float*)malloc(count * sizeof(float));
     if (!y) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "fractal_multifractal_spectrum: allocation failure for integrated signal");
         multifractal_spectrum_destroy(mf);
         return FRACTAL_ERROR_ALLOC;
     }
@@ -1271,6 +1395,8 @@ int fractal_multifractal_spectrum(
     float* x_seg = (float*)malloc(max_scale * sizeof(float));
 
     if (!scales || !log_scales || !log_fq || !coeffs || !x_seg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "fractal_multifractal_spectrum: allocation failure for working arrays");
         free(y);
         free(scales);
         free(log_scales);
@@ -1563,7 +1689,14 @@ int fractal_analyze(
     const fractal_config_t* config,
     fractal_result_t* result
 ) {
-    if (!samples || !result) {
+    if (!samples) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "fractal_analyze: samples is NULL");
+        return FRACTAL_ERROR_NULL_PTR;
+    }
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "fractal_analyze: result is NULL");
         return FRACTAL_ERROR_NULL_PTR;
     }
     if (!fractal_validate_signal(samples, count)) {

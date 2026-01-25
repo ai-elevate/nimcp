@@ -20,7 +20,10 @@ static inline float clamp(float value, float min, float max) {
 }
 
 int pink_noise_fep_bridge_default_config(pink_noise_fep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_fep_bridge_default_config: config is NULL");
+        return -1;
+    }
     config->precision_amplitude_gain = 0.5f;
     config->free_energy_alpha_gain = 0.2f;
     config->base_amplitude = 0.05f;
@@ -68,7 +71,14 @@ void pink_noise_fep_bridge_destroy(pink_noise_fep_bridge_t* bridge) {
 }
 
 int pink_noise_fep_bridge_connect_fep(pink_noise_fep_bridge_t* bridge, fep_system_t* fep) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_fep_bridge_connect_fep: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_fep_bridge_connect_fep: fep is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -76,7 +86,14 @@ int pink_noise_fep_bridge_connect_fep(pink_noise_fep_bridge_t* bridge, fep_syste
 }
 
 int pink_noise_fep_bridge_connect_noise(pink_noise_fep_bridge_t* bridge, pink_noise_generator_t generator) {
-    if (!bridge || !generator) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_fep_bridge_connect_noise: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!generator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_fep_bridge_connect_noise: generator is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->noise_generator = generator;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -84,7 +101,10 @@ int pink_noise_fep_bridge_connect_noise(pink_noise_fep_bridge_t* bridge, pink_no
 }
 
 int pink_noise_fep_bridge_disconnect(pink_noise_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_fep_bridge_disconnect: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->noise_generator = NULL;
@@ -119,7 +139,10 @@ float pink_noise_fep_compute_uncertainty_from_noise(const pink_noise_fep_bridge_
 }
 
 int pink_noise_fep_bridge_update(pink_noise_fep_bridge_t* bridge, uint64_t delta_ms) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_fep_bridge_update: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->fep_system) {
@@ -151,7 +174,14 @@ int pink_noise_fep_bridge_update(pink_noise_fep_bridge_t* bridge, uint64_t delta
 }
 
 int pink_noise_fep_bridge_get_stats(const pink_noise_fep_bridge_t* bridge, pink_noise_fep_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_fep_bridge_get_stats: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_fep_bridge_get_stats: stats is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(pink_noise_fep_stats_t));
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -159,13 +189,19 @@ int pink_noise_fep_bridge_get_stats(const pink_noise_fep_bridge_t* bridge, pink_
 }
 
 int pink_noise_fep_bridge_connect_bio_async(pink_noise_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_fep_bridge_connect_bio_async: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 int pink_noise_fep_bridge_disconnect_bio_async(pink_noise_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_fep_bridge_disconnect_bio_async: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     bridge->base.bio_async_enabled = false;
     return 0;
 }

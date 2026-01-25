@@ -241,6 +241,32 @@ gtest_discover_tests(integration_plasticity_pink_noise
 )
 
 # ============================================================================
+# Pink Noise + Fractal Integration Tests
+# ============================================================================
+# WHAT: Integration tests for Pink Noise + Fractal Analysis modules
+# WHY:  Verify that generated pink noise exhibits correct fractal properties
+# HOW:  Generate pink noise, analyze with fractal methods, validate consistency
+# ============================================================================
+
+add_executable(integration_plasticity_pink_noise_fractal
+    noise/test_pink_noise_fractal_integration.cpp
+)
+target_link_libraries(integration_plasticity_pink_noise_fractal
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(integration_plasticity_pink_noise_fractal PRIVATE cxx_std_17)
+gtest_discover_tests(integration_plasticity_pink_noise_fractal
+    PROPERTIES
+        TIMEOUT 300
+        LABELS "integration;plasticity;noise;pink;fractal"
+)
+
+# ============================================================================
 # Phase 1 Bridges Integration Tests
 # ============================================================================
 # WHAT: Integration tests for Phase 1 bridges (dendrite, synapse, axon, glial-immune)

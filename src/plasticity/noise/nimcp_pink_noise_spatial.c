@@ -335,8 +335,18 @@ pink_spatial_config_t pink_spatial_network_config(const char* network_type) {
 //=============================================================================
 
 pink_spatial_t* pink_spatial_create(const pink_spatial_config_t* config) {
-    if (!config || config->num_regions == 0) return NULL;
-    if (config->num_regions > PINK_SPATIAL_MAX_REGIONS) return NULL;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_spatial_create: config is NULL");
+        return NULL;
+    }
+    if (config->num_regions == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "pink_spatial_create: num_regions is 0");
+        return NULL;
+    }
+    if (config->num_regions > PINK_SPATIAL_MAX_REGIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "pink_spatial_create: num_regions exceeds max");
+        return NULL;
+    }
 
     pink_spatial_t* spatial = nimcp_calloc(1, sizeof(pink_spatial_t));
     if (!spatial) {
@@ -363,6 +373,7 @@ pink_spatial_t* pink_spatial_create(const pink_spatial_config_t* config) {
 
     if (!spatial->distance_matrix || !spatial->correlation_matrix ||
         !spatial->cholesky_matrix) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pink_spatial_create: matrix allocation failed");
         pink_spatial_destroy(spatial);
         return NULL;
     }
@@ -422,7 +433,10 @@ void pink_spatial_destroy(pink_spatial_t* spatial) {
 //=============================================================================
 
 int pink_spatial_compute_correlations(pink_spatial_t* spatial) {
-    if (!spatial) return -1;
+    if (!spatial) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_spatial_compute_correlations: spatial is NULL");
+        return -1;
+    }
 
     uint32_t n = spatial->config.num_regions;
     uint32_t stride = spatial->matrix_capacity;
@@ -490,7 +504,14 @@ int pink_spatial_set_correlation_matrix(
     pink_spatial_t* spatial,
     const float* matrix
 ) {
-    if (!spatial || !matrix) return -1;
+    if (!spatial) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_spatial_set_correlation_matrix: spatial is NULL");
+        return -1;
+    }
+    if (!matrix) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_spatial_set_correlation_matrix: matrix is NULL");
+        return -1;
+    }
 
     uint32_t n = spatial->config.num_regions;
     uint32_t stride = spatial->matrix_capacity;
@@ -518,7 +539,10 @@ int pink_spatial_set_correlation_matrix(
 //=============================================================================
 
 int pink_spatial_step(pink_spatial_t* spatial) {
-    if (!spatial) return -1;
+    if (!spatial) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_spatial_step: spatial is NULL");
+        return -1;
+    }
 
     uint32_t n = spatial->config.num_regions;
     uint32_t stride = spatial->matrix_capacity;
@@ -570,7 +594,14 @@ int pink_spatial_get_all(
     const pink_spatial_t* spatial,
     float* values
 ) {
-    if (!spatial || !values) return -1;
+    if (!spatial) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_spatial_get_all: spatial is NULL");
+        return -1;
+    }
+    if (!values) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_spatial_get_all: values is NULL");
+        return -1;
+    }
     memcpy(values, spatial->current_values,
            spatial->config.num_regions * sizeof(float));
     return 0;
@@ -609,8 +640,14 @@ int pink_spatial_add_region(
     float alpha,
     float amplitude
 ) {
-    if (!spatial) return -1;
-    if (spatial->config.num_regions >= PINK_SPATIAL_MAX_REGIONS) return -1;
+    if (!spatial) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_spatial_add_region: spatial is NULL");
+        return -1;
+    }
+    if (spatial->config.num_regions >= PINK_SPATIAL_MAX_REGIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "pink_spatial_add_region: max regions reached");
+        return -1;
+    }
 
     uint32_t idx = spatial->config.num_regions;
     uint32_t new_count = idx + 1;
@@ -646,7 +683,10 @@ int pink_spatial_add_region(
 }
 
 int pink_spatial_reset(pink_spatial_t* spatial, uint32_t new_seed) {
-    if (!spatial) return -1;
+    if (!spatial) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_spatial_reset: spatial is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < spatial->config.num_regions; i++) {
         uint32_t seed = (new_seed != 0) ? new_seed + i : spatial->config.seed + i;
@@ -667,7 +707,10 @@ int pink_spatial_connect_memory_manager(
     pink_spatial_t* spatial,
     unified_mem_manager_t mem_manager
 ) {
-    if (!spatial) return -1;
+    if (!spatial) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_spatial_connect_memory_manager: spatial is NULL");
+        return -1;
+    }
 
     // Store the memory manager
     spatial->mem_manager = mem_manager;

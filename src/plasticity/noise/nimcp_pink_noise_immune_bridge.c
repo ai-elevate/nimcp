@@ -132,7 +132,10 @@ int pink_immune_bridge_connect_immune(
     pink_immune_bridge_t* bridge,
     brain_immune_system_t* immune
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_immune_bridge_connect_immune: bridge is NULL");
+        return -1;
+    }
     bridge->immune_system = immune;
     NIMCP_LOGGING_DEBUG("Connected to brain immune system");
     return 0;
@@ -142,14 +145,20 @@ int pink_immune_bridge_connect_generator(
     pink_immune_bridge_t* bridge,
     pink_noise_generator_t generator
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_immune_bridge_connect_generator: bridge is NULL");
+        return -1;
+    }
     bridge->noise_generator = generator;
     NIMCP_LOGGING_DEBUG("Connected to pink noise generator");
     return 0;
 }
 
 int pink_immune_bridge_disconnect(pink_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_immune_bridge_disconnect: bridge is NULL");
+        return -1;
+    }
     bridge->immune_system = NULL;
     bridge->noise_generator = NULL;
     return 0;
@@ -165,7 +174,10 @@ int pink_immune_bridge_update_immune_state(pink_immune_bridge_t* bridge) {
      * WHY:  Keep bridge synchronized with immune
      * HOW:  Read cytokine levels and inflammation
      */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_immune_bridge_update_immune_state: bridge is NULL");
+        return -1;
+    }
 
     // In a full implementation, we would read from the immune system
     // For now, use the manually set values
@@ -181,9 +193,18 @@ int pink_immune_bridge_set_cytokine(
     pink_immune_cytokine_t cytokine,
     float level
 ) {
-    if (!bridge) return -1;
-    if (cytokine >= PINK_CYTOKINE_COUNT) return -1;
-    if (level < 0.0f || level > 1.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_immune_bridge_set_cytokine: bridge is NULL");
+        return -1;
+    }
+    if (cytokine >= PINK_CYTOKINE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "pink_immune_bridge_set_cytokine: invalid cytokine");
+        return -1;
+    }
+    if (level < 0.0f || level > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "pink_immune_bridge_set_cytokine: level out of range");
+        return -1;
+    }
 
     bridge->immune_state.levels[cytokine] = level;
     return 0;
@@ -193,8 +214,14 @@ int pink_immune_bridge_set_inflammation(
     pink_immune_bridge_t* bridge,
     pink_inflammation_level_t level
 ) {
-    if (!bridge) return -1;
-    if (level > PINK_INFLAMMATION_STORM) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_immune_bridge_set_inflammation: bridge is NULL");
+        return -1;
+    }
+    if (level > PINK_INFLAMMATION_STORM) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "pink_immune_bridge_set_inflammation: invalid level");
+        return -1;
+    }
 
     bridge->immune_state.inflammation = level;
     return 0;
@@ -206,7 +233,10 @@ int pink_immune_bridge_compute_effects(pink_immune_bridge_t* bridge) {
      * WHY:  Determine how immune affects noise
      * HOW:  Combine cytokine and inflammation effects
      */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_immune_bridge_compute_effects: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_immune_modulation) {
         bridge->effects.amplitude_modifier = 1.0f;
         bridge->effects.alpha_modifier = 0.0f;
@@ -269,7 +299,10 @@ int pink_immune_bridge_compute_feedback(
      * WHAT: Compute signals to send to immune system
      * WHY:  Inform immune about neural state abnormalities
      */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_immune_bridge_compute_feedback: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_noise_feedback) return 0;
 
     // Compute alpha deviation
@@ -298,7 +331,10 @@ int pink_immune_bridge_update(
      * WHAT: Full update cycle
      * WHY:  Single call for complete bidirectional update
      */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_immune_bridge_update: bridge is NULL");
+        return -1;
+    }
 
     (void)delta_ms;  // May be used for time-dependent effects
 
@@ -349,7 +385,14 @@ int pink_immune_bridge_get_feedback(
     const pink_immune_bridge_t* bridge,
     pink_immune_feedback_t* feedback
 ) {
-    if (!bridge || !feedback) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_immune_bridge_get_feedback: bridge is NULL");
+        return -1;
+    }
+    if (!feedback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_immune_bridge_get_feedback: feedback is NULL");
+        return -1;
+    }
     memcpy(feedback, &bridge->feedback, sizeof(pink_immune_feedback_t));
     return 0;
 }
@@ -362,7 +405,14 @@ int pink_immune_bridge_get_stats(
     const pink_immune_bridge_t* bridge,
     pink_immune_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_immune_bridge_get_stats: bridge is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_immune_bridge_get_stats: stats is NULL");
+        return -1;
+    }
 
     memset(stats, 0, sizeof(pink_immune_stats_t));
     stats->total_updates = bridge->update_count;
@@ -374,7 +424,10 @@ int pink_immune_bridge_get_stats(
 }
 
 int pink_immune_bridge_reset(pink_immune_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_immune_bridge_reset: bridge is NULL");
+        return -1;
+    }
 
     memset(&bridge->immune_state, 0, sizeof(pink_immune_state_t));
     bridge->effects.amplitude_modifier = 1.0f;

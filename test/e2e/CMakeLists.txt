@@ -832,6 +832,40 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_pink_noise_pipeline.cpp)
 endif()
 
 # ============================================================================
+# Pink Noise + Fractal Pipeline E2E Test
+# ============================================================================
+# WHAT: E2E tests for Pink Noise + Fractal Analysis integration
+# WHY:  Verify complete noise generation and fractal analysis pipeline
+# HOW:  Test neural criticality, synaptic modulation, memory consolidation,
+#       sleep stage characterization, and complete simulation workflows
+# ============================================================================
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_pink_noise_fractal_pipeline.cpp)
+    add_executable(e2e_test_pink_noise_fractal_pipeline
+        ${CMAKE_CURRENT_SOURCE_DIR}/e2e_test_pink_noise_fractal_pipeline.cpp
+    )
+    target_include_directories(e2e_test_pink_noise_fractal_pipeline PRIVATE
+        ${E2E_INCLUDE_DIRS}
+        ${CMAKE_SOURCE_DIR}/include/plasticity/noise
+        ${CMAKE_SOURCE_DIR}/include/cognitive/memory/core
+    )
+    target_link_libraries(e2e_test_pink_noise_fractal_pipeline PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+    )
+    target_compile_features(e2e_test_pink_noise_fractal_pipeline PRIVATE cxx_std_17)
+    gtest_discover_tests(e2e_test_pink_noise_fractal_pipeline
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        PROPERTIES
+            LABELS "e2e;plasticity;noise;pink;fractal"
+            TIMEOUT 300
+    )
+    message(STATUS "  Added Pink Noise + Fractal E2E test: e2e_test_pink_noise_fractal_pipeline")
+endif()
+
+# ============================================================================
 # Enhanced Curiosity Pipeline E2E Test
 # ============================================================================
 # WHAT: E2E tests for Enhanced Curiosity System (10 enhancements)

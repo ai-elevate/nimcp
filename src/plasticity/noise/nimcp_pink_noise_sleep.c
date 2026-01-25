@@ -96,20 +96,37 @@ void pink_sleep_destroy(pink_sleep_bridge_t* bridge) {
 }
 
 int pink_sleep_set_stage(pink_sleep_bridge_t* bridge, pink_sleep_stage_t stage) {
-    if (!bridge || stage >= PINK_SLEEP_COUNT) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_sleep_set_stage: bridge is NULL");
+        return -1;
+    }
+    if (stage >= PINK_SLEEP_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "pink_sleep_set_stage: invalid stage value");
+        return -1;
+    }
     bridge->current_stage = stage;
     bridge->stage_duration = 0;
     return 0;
 }
 
 int pink_sleep_set_arousal(pink_sleep_bridge_t* bridge, float arousal) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_sleep_set_arousal: bridge is NULL");
+        return -1;
+    }
     bridge->arousal_level = fmaxf(0.0f, fminf(1.0f, arousal));
     return 0;
 }
 
 int pink_sleep_step(pink_sleep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_sleep_step: bridge is NULL");
+        return -1;
+    }
 
     pink_sleep_stage_params_t* target = &bridge->config.stages[bridge->current_stage];
     float rate = bridge->config.transition_rate;

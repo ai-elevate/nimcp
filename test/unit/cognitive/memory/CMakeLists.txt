@@ -53,3 +53,28 @@ target_link_libraries(unit_cognitive_memory_test_memory_sleep_bridge
 target_compile_features(unit_cognitive_memory_test_memory_sleep_bridge PRIVATE cxx_std_17)
 gtest_discover_tests(unit_cognitive_memory_test_memory_sleep_bridge
     PROPERTIES LABELS "unit;cognitive;memory;sleep")
+
+# ============================================================================
+# Fractal Analysis Exception Handling Tests
+# ============================================================================
+# WHAT: Unit tests for NIMCP_THROW_TO_IMMUNE exception handling in Fractal module
+# WHY:  Ensure errors are properly reported to the brain immune system
+# HOW:  Test all NULL pointer and invalid parameter paths
+# ============================================================================
+
+add_executable(unit_cognitive_memory_test_fractal_exception_handling
+    test_fractal_exception_handling.cpp
+)
+target_link_libraries(unit_cognitive_memory_test_fractal_exception_handling
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+target_compile_features(unit_cognitive_memory_test_fractal_exception_handling PRIVATE cxx_std_17)
+gtest_discover_tests(unit_cognitive_memory_test_fractal_exception_handling
+    PROPERTIES LABELS "unit;cognitive;memory;fractal;exception"
+    TIMEOUT 60
+)

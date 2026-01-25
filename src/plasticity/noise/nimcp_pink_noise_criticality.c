@@ -232,7 +232,10 @@ int criticality_update(criticality_analyzer_t* ca, float sample) {
      * WHAT: Process new sample, detect avalanches, update metrics
      * WHY:  Continuous criticality monitoring
      */
-    if (!ca) return -1;
+    if (!ca) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "criticality_update: ca is NULL");
+        return -1;
+    }
 
     // Update history
     ca->history[ca->history_index] = sample;
@@ -344,7 +347,10 @@ int criticality_connect_generator(
     /**
      * WHAT: Connect to pink noise generator
      */
-    if (!ca) return -1;
+    if (!ca) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "criticality_connect_generator: ca is NULL");
+        return -1;
+    }
     ca->noise_generator = generator;
     return 0;
 }
@@ -388,7 +394,22 @@ int criticality_generate_avalanche(
      * WHAT: Generate synthetic avalanche with power-law statistics
      * WHY:  Simulate neural avalanche dynamics
      */
-    if (!ca || !output || !num_generated || max_samples == 0) return -1;
+    if (!ca) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "criticality_generate_avalanche: ca is NULL");
+        return -1;
+    }
+    if (!output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "criticality_generate_avalanche: output is NULL");
+        return -1;
+    }
+    if (!num_generated) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "criticality_generate_avalanche: num_generated is NULL");
+        return -1;
+    }
+    if (max_samples == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "criticality_generate_avalanche: max_samples is 0");
+        return -1;
+    }
 
     // Generate power-law distributed size
     float u = (float)rand() / (float)RAND_MAX;
@@ -417,7 +438,18 @@ int criticality_get_avalanches(
     uint32_t max_count,
     uint32_t* count
 ) {
-    if (!ca || !avalanches || !count) return -1;
+    if (!ca) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "criticality_get_avalanches: ca is NULL");
+        return -1;
+    }
+    if (!avalanches) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "criticality_get_avalanches: avalanches is NULL");
+        return -1;
+    }
+    if (!count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "criticality_get_avalanches: count is NULL");
+        return -1;
+    }
 
     *count = (ca->num_avalanches < max_count) ? ca->num_avalanches : max_count;
     memcpy(avalanches, ca->avalanches, *count * sizeof(avalanche_event_t));
@@ -433,7 +465,14 @@ int criticality_get_stats(
     const criticality_analyzer_t* ca,
     criticality_stats_t* stats
 ) {
-    if (!ca || !stats) return -1;
+    if (!ca) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "criticality_get_stats: ca is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "criticality_get_stats: stats is NULL");
+        return -1;
+    }
 
     memset(stats, 0, sizeof(criticality_stats_t));
 
@@ -459,7 +498,10 @@ int criticality_get_stats(
 }
 
 int criticality_reset(criticality_analyzer_t* ca) {
-    if (!ca) return -1;
+    if (!ca) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "criticality_reset: ca is NULL");
+        return -1;
+    }
 
     memset(ca->history, 0, sizeof(ca->history));
     ca->history_index = 0;

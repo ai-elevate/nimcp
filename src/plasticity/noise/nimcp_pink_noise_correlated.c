@@ -181,6 +181,7 @@ pink_noise_correlated_t* pink_noise_correlated_create(
 
     }
     if (config->num_channels == 0 || config->num_channels > PINK_NOISE_MAX_CHANNELS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "pink_noise_correlated_create: invalid num_channels");
         NIMCP_LOGGING_ERROR("Invalid channel count: %u", config->num_channels);
         return NULL;
     }
@@ -257,7 +258,10 @@ int pink_noise_correlated_step(pink_noise_correlated_t* cn) {
      * WHY:  Streaming correlated noise generation
      * HOW:  Generate independent → apply Cholesky → filter to pink
      */
-    if (!cn) return -1;
+    if (!cn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_correlated_step: cn is NULL");
+        return -1;
+    }
 
     uint32_t n = cn->config.num_channels;
 
@@ -301,7 +305,14 @@ int pink_noise_correlated_get_all(
     /**
      * WHAT: Get all channel values
      */
-    if (!cn || !values) return -1;
+    if (!cn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_correlated_get_all: cn is NULL");
+        return -1;
+    }
+    if (!values) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_correlated_get_all: values is NULL");
+        return -1;
+    }
 
     memcpy(values, cn->current_values, cn->config.num_channels * sizeof(float));
     return 0;
@@ -335,7 +346,18 @@ int pink_noise_correlated_generate_batch(
     /**
      * WHAT: Generate batch of correlated samples
      */
-    if (!cn || !outputs || num_samples == 0) return -1;
+    if (!cn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_correlated_generate_batch: cn is NULL");
+        return -1;
+    }
+    if (!outputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_correlated_generate_batch: outputs is NULL");
+        return -1;
+    }
+    if (num_samples == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "pink_noise_correlated_generate_batch: num_samples is 0");
+        return -1;
+    }
 
     for (uint32_t s = 0; s < num_samples; s++) {
         int result = pink_noise_correlated_step(cn);
@@ -365,10 +387,22 @@ int pink_noise_correlated_set_correlation(
      * WHAT: Update single correlation coefficient
      * WHY:  Dynamic correlation adjustment
      */
-    if (!cn) return -1;
-    if (channel_i >= cn->config.num_channels) return -1;
-    if (channel_j >= cn->config.num_channels) return -1;
-    if (correlation < -1.0f || correlation > 1.0f) return -1;
+    if (!cn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_correlated_set_correlation: cn is NULL");
+        return -1;
+    }
+    if (channel_i >= cn->config.num_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "pink_noise_correlated_set_correlation: invalid channel_i");
+        return -1;
+    }
+    if (channel_j >= cn->config.num_channels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "pink_noise_correlated_set_correlation: invalid channel_j");
+        return -1;
+    }
+    if (correlation < -1.0f || correlation > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "pink_noise_correlated_set_correlation: correlation out of range");
+        return -1;
+    }
 
     uint32_t n = cn->config.num_channels;
     cn->config.correlation_matrix[channel_i * PINK_NOISE_MAX_CHANNELS + channel_j] = correlation;
@@ -391,7 +425,14 @@ int pink_noise_correlated_set_matrix(
     /**
      * WHAT: Set full correlation matrix
      */
-    if (!cn || !matrix) return -1;
+    if (!cn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_correlated_set_matrix: cn is NULL");
+        return -1;
+    }
+    if (!matrix) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_correlated_set_matrix: matrix is NULL");
+        return -1;
+    }
 
     uint32_t n = cn->config.num_channels;
     memcpy(cn->config.correlation_matrix, matrix, n * n * sizeof(float));
@@ -416,7 +457,14 @@ int pink_noise_correlated_get_stats(
     /**
      * WHAT: Get correlation statistics
      */
-    if (!cn || !stats) return -1;
+    if (!cn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_correlated_get_stats: cn is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_correlated_get_stats: stats is NULL");
+        return -1;
+    }
 
     memset(stats, 0, sizeof(pink_noise_correlated_stats_t));
     memcpy(stats->measured_correlations, cn->config.correlation_matrix,
@@ -433,7 +481,10 @@ int pink_noise_correlated_reset(
     /**
      * WHAT: Reset all channels
      */
-    if (!cn) return -1;
+    if (!cn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_correlated_reset: cn is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < cn->config.num_channels; i++) {
         uint32_t seed = (new_seed == 0) ? cn->config.seed + i : new_seed + i;

@@ -197,6 +197,7 @@ brainstem_coupling_t* brainstem_coupling_create(const brainstem_coupling_config_
     );
     if (!coupling->bottom_up_buffer) {
         NIMCP_LOGGING_ERROR("Failed to allocate bottom-up buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brainstem_coupling_create: failed to allocate bottom_up_buffer");
         nimcp_free(coupling);
         return NULL;
     }
@@ -209,6 +210,7 @@ brainstem_coupling_t* brainstem_coupling_create(const brainstem_coupling_config_
     );
     if (!coupling->top_down_buffer) {
         NIMCP_LOGGING_ERROR("Failed to allocate top-down buffer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brainstem_coupling_create: failed to allocate top_down_buffer");
         nimcp_free(coupling->bottom_up_buffer);
         nimcp_free(coupling);
         return NULL;
@@ -222,6 +224,7 @@ brainstem_coupling_t* brainstem_coupling_create(const brainstem_coupling_config_
     );
     if (!coupling->registered_modules) {
         NIMCP_LOGGING_ERROR("Failed to allocate module registry");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brainstem_coupling_create: failed to allocate registered_modules");
         nimcp_free(coupling->top_down_buffer);
         nimcp_free(coupling->bottom_up_buffer);
         nimcp_free(coupling);
@@ -246,6 +249,7 @@ brainstem_coupling_t* brainstem_coupling_create(const brainstem_coupling_config_
     coupling->mutex = nimcp_platform_mutex_create();
     if (!coupling->mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "brainstem_coupling_create: failed to create mutex");
         nimcp_free(coupling->registered_modules);
         nimcp_free(coupling->top_down_buffer);
         nimcp_free(coupling->bottom_up_buffer);
@@ -303,11 +307,13 @@ int brainstem_coupling_send_bottom_up(
      */
     if (!coupling || !payload) {
         NIMCP_LOGGING_ERROR("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_coupling_send_bottom_up: invalid parameters");
         return -1;
     }
 
     if (payload->type >= BRAINSTEM_BOTTOM_UP_COUNT) {
         NIMCP_LOGGING_ERROR("Invalid signal type: %d", payload->type);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brainstem_coupling_send_bottom_up: invalid signal type");
         return -1;
     }
 
@@ -353,11 +359,13 @@ int brainstem_coupling_send_top_down(
      */
     if (!coupling || !payload) {
         NIMCP_LOGGING_ERROR("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_coupling_send_top_down: invalid parameters");
         return -1;
     }
 
     if (payload->type >= BRAINSTEM_TOP_DOWN_COUNT) {
         NIMCP_LOGGING_ERROR("Invalid signal type: %d", payload->type);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "brainstem_coupling_send_top_down: invalid signal type");
         return -1;
     }
 
@@ -400,6 +408,7 @@ int brainstem_coupling_register_module(
      */
     if (!coupling) {
         NIMCP_LOGGING_ERROR("Coupling is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_coupling_register_module: coupling is NULL");
         return -1;
     }
 
@@ -441,6 +450,7 @@ int brainstem_coupling_unregister_module(
      */
     if (!coupling) {
         NIMCP_LOGGING_ERROR("Coupling is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_coupling_unregister_module: coupling is NULL");
         return -1;
     }
 
@@ -616,6 +626,7 @@ int brainstem_coupling_connect_bio_async(brainstem_coupling_t* coupling) {
      */
     if (!coupling) {
         NIMCP_LOGGING_ERROR("Coupling is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_coupling_connect_bio_async: coupling is NULL");
         return -1;
     }
 
@@ -639,6 +650,7 @@ int brainstem_coupling_disconnect_bio_async(brainstem_coupling_t* coupling) {
      */
     if (!coupling) {
         NIMCP_LOGGING_ERROR("Coupling is NULL");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_coupling_disconnect_bio_async: coupling is NULL");
         return -1;
     }
 
@@ -675,6 +687,7 @@ int brainstem_coupling_get_stats(
      */
     if (!coupling || !out_stats) {
         NIMCP_LOGGING_ERROR("Invalid parameters");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "brainstem_coupling_get_stats: invalid parameters");
         return -1;
     }
 

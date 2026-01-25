@@ -143,6 +143,8 @@ fractal_config_t topology_default_fractal_config(void) {
 bool topology_validate_config(const topology_config_t* config) {
     // Guard: NULL input
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "topology_validate_config: config is NULL");
         set_error("Configuration is NULL");
         return false;
     }
@@ -364,12 +366,16 @@ bool topology_generate_scale_free(
 ) {
     // Guard: NULL network
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "topology_generate_scale_free: network is NULL");
         set_error("Network is NULL");
         return false;
     }
 
     // Guard: NULL config
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "topology_generate_scale_free: config is NULL");
         set_error("Configuration is NULL");
         return false;
     }
@@ -411,6 +417,8 @@ bool topology_generate_scale_free(
 
     // Guard: Degree allocation failed
     if (!degrees) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "topology_generate_scale_free: failed to allocate degree array");
         return false;  // Error message already set
     }
 
@@ -506,12 +514,16 @@ bool topology_generate_fractal(
 ) {
     // Guard: NULL network
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "topology_generate_fractal: network is NULL");
         set_error("Network is NULL");
         return false;
     }
 
     // Guard: NULL config
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "topology_generate_fractal: config is NULL");
         set_error("Configuration is NULL");
         return false;
     }
@@ -667,12 +679,16 @@ bool topology_generate(
 
     // Guard: NULL network
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "topology_generate: network is NULL");
         set_error("Network is NULL");
         return false;
     }
 
     // Guard: NULL config
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "topology_generate: config is NULL");
         set_error("Configuration is NULL");
         return false;
     }
@@ -1146,7 +1162,15 @@ bool topology_compute_stats(
     topology_stats_t* stats
 ) {
     // Guard: NULL inputs
-    if (!network || !stats) {
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "topology_compute_stats: network is NULL");
+        set_error("NULL network or stats pointer");
+        return false;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "topology_compute_stats: stats is NULL");
         set_error("NULL network or stats pointer");
         return false;
     }
@@ -1210,6 +1234,8 @@ bool topology_is_small_world(
 ) {
     // Guard: NULL network
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "topology_is_small_world: network is NULL");
         set_error("Network is NULL");
         return false;
     }
@@ -1241,6 +1267,8 @@ bool topology_fit_power_law(
 ) {
     // Guard: NULL network
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "topology_fit_power_law: network is NULL");
         set_error("Network is NULL");
         return false;
     }
@@ -1351,13 +1379,29 @@ bool topology_identify_hubs(
     uint32_t* num_hubs
 ) {
     // Guard: NULL inputs
-    if (!network || !hub_indices || !num_hubs) {
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "topology_identify_hubs: network is NULL");
+        set_error("NULL pointer in hub identification");
+        return false;
+    }
+    if (!hub_indices) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "topology_identify_hubs: hub_indices is NULL");
+        set_error("NULL pointer in hub identification");
+        return false;
+    }
+    if (!num_hubs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "topology_identify_hubs: num_hubs is NULL");
         set_error("NULL pointer in hub identification");
         return false;
     }
 
     // Guard: Invalid percentile
     if (percentile < 0.0F || percentile > 1.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "topology_identify_hubs: percentile out of range");
         set_error("Percentile must be between 0.0 and 1.0");
         return false;
     }
@@ -1366,6 +1410,8 @@ bool topology_identify_hubs(
     // Convert network to graph for centrality analysis
     NimcpGraph* graph = nimcp_graph_create();
     if (!graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "topology_identify_hubs: failed to create graph");
         set_error("Failed to create graph for hub identification");
         return false;
     }
@@ -1454,7 +1500,15 @@ bool topology_compute_betweenness(
     float* centrality
 ) {
     // Guard: NULL inputs
-    if (!network || !centrality) {
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "topology_compute_betweenness: network is NULL");
+        set_error("NULL network or centrality pointer");
+        return false;
+    }
+    if (!centrality) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "topology_compute_betweenness: centrality is NULL");
         set_error("NULL network or centrality pointer");
         return false;
     }
@@ -1463,6 +1517,8 @@ bool topology_compute_betweenness(
     // Convert network to graph
     NimcpGraph* graph = nimcp_graph_create();
     if (!graph) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "topology_compute_betweenness: failed to create graph");
         set_error("Failed to create graph for betweenness centrality");
         return false;
     }

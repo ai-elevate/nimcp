@@ -53,6 +53,8 @@ bool fractal_cognitive_init(neural_network_t network, fractal_cognitive_cache_t 
     // Allocate centrality scores
     cache->centrality_scores = (float*)nimcp_malloc(N * sizeof(float));
     if (!cache->centrality_scores) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "fractal_cognitive_init: failed to allocate centrality_scores");
         fractal_cognitive_free(cache);
         return false;
     }
@@ -66,6 +68,8 @@ bool fractal_cognitive_init(neural_network_t network, fractal_cognitive_cache_t 
     // Allocate and compute normalized degrees
     cache->degree_normalized = (float*)nimcp_malloc(N * sizeof(float));
     if (!cache->degree_normalized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "fractal_cognitive_init: failed to allocate degree_normalized");
         fractal_cognitive_free(cache);
         return false;
     }
@@ -171,7 +175,15 @@ uint32_t fractal_nearest_hub(neural_network_t network,
                               const fractal_cognitive_cache_t *cache,
                               uint32_t neuron_index,
                               uint32_t *distance_out) {
-    if (!network || !cache || !cache->valid) {
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "fractal_nearest_hub: network is NULL");
+        if (distance_out) *distance_out = UINT32_MAX;
+        return UINT32_MAX;
+    }
+    if (!cache || !cache->valid) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "fractal_nearest_hub: cache is NULL or invalid");
         if (distance_out) *distance_out = UINT32_MAX;
         return UINT32_MAX;
     }
@@ -309,12 +321,20 @@ bool fractal_get_neurons_at_level(const fractal_cognitive_cache_t *cache,
                                    float tolerance,
                                    uint32_t **neurons_out,
                                    uint32_t *count_out) {
-    if (!cache || !cache->valid || !neurons_out || !count_out) {
+    if (!cache || !cache->valid) {
         NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
-
-                "fractal_get_neurons_at_level: invalid parameters");
-
-            return false;
+            "fractal_get_neurons_at_level: cache is NULL or invalid");
+        return false;
+    }
+    if (!neurons_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "fractal_get_neurons_at_level: neurons_out is NULL");
+        return false;
+    }
+    if (!count_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "fractal_get_neurons_at_level: count_out is NULL");
+        return false;
     }
 
     uint32_t N = cache->stats.num_neurons;
@@ -337,6 +357,8 @@ bool fractal_get_neurons_at_level(const fractal_cognitive_cache_t *cache,
     // Allocate output array
     *neurons_out = (uint32_t*)nimcp_malloc(count * sizeof(uint32_t));
     if (!*neurons_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "fractal_get_neurons_at_level: failed to allocate neurons_out");
         *count_out = 0;
         return false;
     }

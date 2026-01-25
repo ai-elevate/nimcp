@@ -83,6 +83,7 @@ pink_noise_multiscale_t* pink_noise_multiscale_create(
 
     }
     if (config->num_scales == 0 || config->num_scales > PINK_NOISE_MAX_SCALES) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "pink_noise_multiscale_create: invalid num_scales");
         NIMCP_LOGGING_ERROR("Invalid number of scales: %u", config->num_scales);
         return NULL;
     }
@@ -150,7 +151,10 @@ int pink_noise_multiscale_step(pink_noise_multiscale_t* ms) {
      * WHY:  Advance the hierarchical noise system
      * HOW:  Generate raw → apply inter-scale coupling
      */
-    if (!ms) return -1;
+    if (!ms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_multiscale_step: ms is NULL");
+        return -1;
+    }
 
     // Step 1: Generate raw noise at each scale
     for (uint32_t i = 0; i < ms->config.num_scales; i++) {
@@ -235,7 +239,18 @@ int pink_noise_multiscale_generate_batch(
      * WHY:  Efficient batch generation
      * HOW:  Loop calling step, store results
      */
-    if (!ms || !outputs || num_samples == 0) return -1;
+    if (!ms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_multiscale_generate_batch: ms is NULL");
+        return -1;
+    }
+    if (!outputs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_multiscale_generate_batch: outputs is NULL");
+        return -1;
+    }
+    if (num_samples == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "pink_noise_multiscale_generate_batch: num_samples is 0");
+        return -1;
+    }
 
     for (uint32_t s = 0; s < num_samples; s++) {
         int result = pink_noise_multiscale_step(ms);
@@ -265,9 +280,22 @@ int pink_noise_multiscale_set_coupling(
      * WHAT: Adjust inter-scale coupling
      * WHY:  Dynamic modulation of hierarchical influence
      */
-    if (!ms || scale_index >= ms->config.num_scales) return -1;
-    if (coupling_up < 0.0f || coupling_up > 1.0f) return -1;
-    if (coupling_down < 0.0f || coupling_down > 1.0f) return -1;
+    if (!ms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_multiscale_set_coupling: ms is NULL");
+        return -1;
+    }
+    if (scale_index >= ms->config.num_scales) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "pink_noise_multiscale_set_coupling: invalid scale_index");
+        return -1;
+    }
+    if (coupling_up < 0.0f || coupling_up > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "pink_noise_multiscale_set_coupling: coupling_up out of range");
+        return -1;
+    }
+    if (coupling_down < 0.0f || coupling_down > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "pink_noise_multiscale_set_coupling: coupling_down out of range");
+        return -1;
+    }
 
     ms->config.scales[scale_index].coupling_up = coupling_up;
     ms->config.scales[scale_index].coupling_down = coupling_down;
@@ -283,8 +311,18 @@ int pink_noise_multiscale_set_amplitude(
      * WHAT: Set amplitude at specific scale
      * WHY:  Dynamic modulation based on task demands
      */
-    if (!ms || scale_index >= ms->config.num_scales) return -1;
-    if (amplitude < 0.0f) return -1;
+    if (!ms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_multiscale_set_amplitude: ms is NULL");
+        return -1;
+    }
+    if (scale_index >= ms->config.num_scales) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "pink_noise_multiscale_set_amplitude: invalid scale_index");
+        return -1;
+    }
+    if (amplitude < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAMETER, "pink_noise_multiscale_set_amplitude: negative amplitude");
+        return -1;
+    }
 
     ms->config.scales[scale_index].amplitude = amplitude;
     return 0;
@@ -302,7 +340,14 @@ int pink_noise_multiscale_get_stats(
      * WHAT: Compute statistics for multi-scale noise
      * WHY:  Validate hierarchical noise quality
      */
-    if (!ms || !stats) return -1;
+    if (!ms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_multiscale_get_stats: ms is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_multiscale_get_stats: stats is NULL");
+        return -1;
+    }
 
     memset(stats, 0, sizeof(pink_noise_multiscale_stats_t));
 
@@ -332,7 +377,10 @@ int pink_noise_multiscale_reset(
      * WHAT: Reset all scales to initial state
      * WHY:  Start fresh for new trial
      */
-    if (!ms) return -1;
+    if (!ms) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pink_noise_multiscale_reset: ms is NULL");
+        return -1;
+    }
 
     for (uint32_t i = 0; i < ms->config.num_scales; i++) {
         uint32_t seed = (new_seed == 0) ? ms->config.seed + i : new_seed + i;

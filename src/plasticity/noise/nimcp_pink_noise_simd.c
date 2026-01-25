@@ -235,6 +235,8 @@ pink_simd_generator_t* pink_simd_create(const pink_simd_config_t* config) {
     gen->octave_counters = nimcp_calloc(num_octaves, sizeof(uint32_t));
 
     if (!gen->octave_values || !gen->output_buffer || !gen->octave_counters) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY,
+            "pink_simd_create: failed to allocate buffers");
         pink_simd_destroy(gen);
         return NULL;
     }
@@ -269,7 +271,21 @@ int pink_simd_generate_batch(
     float* output,
     uint32_t num_samples
 ) {
-    if (!gen || !output || num_samples == 0) return -1;
+    if (!gen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_simd_generate_batch: gen is NULL");
+        return -1;
+    }
+    if (!output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_simd_generate_batch: output is NULL");
+        return -1;
+    }
+    if (num_samples == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+            "pink_simd_generate_batch: num_samples is 0");
+        return -1;
+    }
 
 #if defined(HAVE_AVX2)
     if (gen->active_simd == PINK_SIMD_AVX2) {
@@ -312,7 +328,11 @@ float pink_simd_generate_sample(pink_simd_generator_t* gen) {
 }
 
 int pink_simd_reset(pink_simd_generator_t* gen, uint32_t new_seed) {
-    if (!gen) return -1;
+    if (!gen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_simd_reset: gen is NULL");
+        return -1;
+    }
 
     uint32_t seed = (new_seed != 0) ? new_seed : gen->config.seed;
     for (uint32_t i = 0; i < 8; i++) {
@@ -327,7 +347,16 @@ int pink_simd_reset(pink_simd_generator_t* gen, uint32_t new_seed) {
 }
 
 int pink_simd_get_stats(const pink_simd_generator_t* gen, pink_simd_stats_t* stats) {
-    if (!gen || !stats) return -1;
+    if (!gen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_simd_get_stats: gen is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+            "pink_simd_get_stats: stats is NULL");
+        return -1;
+    }
 
     memset(stats, 0, sizeof(pink_simd_stats_t));
     stats->total_samples = gen->total_samples;
