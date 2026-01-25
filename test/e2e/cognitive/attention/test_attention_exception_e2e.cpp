@@ -343,7 +343,8 @@ TEST_F(AttentionExceptionE2ETest, LongRunningPipelineWithOccasionalFailures) {
     }
 
     // Verify statistics
-    int expected_failures = num_iterations / failure_interval;
+    // Failures occur at i=50, 100, 150, ..., 450 (skipping i=0 due to i > 0 check)
+    int expected_failures = (num_iterations - 1) / failure_interval;
     EXPECT_EQ(failed_passes, expected_failures) << "Should have exact number of failures";
     EXPECT_EQ(successful_passes, num_iterations - expected_failures)
         << "Remaining should be successes";
