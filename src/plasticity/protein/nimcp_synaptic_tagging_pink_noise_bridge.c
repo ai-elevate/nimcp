@@ -15,11 +15,8 @@ static float clamp(float v, float min, float max) { return v < min ? min : (v > 
 tag_pink_noise_bridge_t* tag_pink_noise_create(const tag_pink_noise_config_t* config) {
     tag_pink_noise_bridge_t* bridge = nimcp_calloc(1, sizeof(tag_pink_noise_bridge_t));
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tag_pink_noise_create: failed to allocate bridge");
         return NULL;
-
     }
 
     bridge->config = config ? *config : tag_pink_noise_default_config();
@@ -31,7 +28,11 @@ tag_pink_noise_bridge_t* tag_pink_noise_create(const tag_pink_noise_config_t* co
     nc.seed = bridge->config.seed;
 
     bridge->noise_gen = pink_noise_create(&nc);
-    if (!bridge->noise_gen) { nimcp_free(bridge); return NULL; }
+    if (!bridge->noise_gen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "tag_pink_noise_create: failed to create noise generator");
+        nimcp_free(bridge);
+        return NULL;
+    }
 
     bridge->noise_connected = true;
     bridge->is_enabled = bridge->config.enabled;
@@ -50,14 +51,27 @@ void tag_pink_noise_destroy(tag_pink_noise_bridge_t* bridge) {
 }
 
 int tag_pink_noise_connect(tag_pink_noise_bridge_t* bridge, void* state) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tag_pink_noise_connect: bridge is NULL");
+        return -1;
+    }
     bridge->tagging_state = state;
     bridge->tag_connected = (state != NULL);
     return 0;
 }
 
 int tag_pink_noise_update(tag_pink_noise_bridge_t* bridge) {
-    if (!bridge || !bridge->is_enabled || !bridge->noise_gen) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tag_pink_noise_update: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->is_enabled) {
+        return -1;  /* Not an error, just disabled */
+    }
+    if (!bridge->noise_gen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "tag_pink_noise_update: noise_gen is NULL");
+        return -1;
+    }
 
     float amp = bridge->config.noise_amplitude;
 
@@ -86,7 +100,10 @@ float tag_pink_noise_get_capture_prob(const tag_pink_noise_bridge_t* bridge) {
 }
 
 int tag_pink_noise_reset(tag_pink_noise_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tag_pink_noise_reset: bridge is NULL");
+        return -1;
+    }
     bridge->tag_noise = bridge->capture_noise = bridge->prp_noise = 0.0f;
     bridge->noisy_tag_decay = 0.1f;
     bridge->noisy_capture_prob = 0.5f;

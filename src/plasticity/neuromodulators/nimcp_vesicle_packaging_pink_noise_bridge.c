@@ -137,6 +137,7 @@ vesicle_pink_noise_bridge_t* vesicle_pink_noise_create(const vesicle_pink_noise_
 
     // Validate configuration
     if (!vesicle_pink_noise_validate_config(cfg)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vesicle_pink_noise_create: invalid configuration");
         return NULL;
     }
 
@@ -145,8 +146,7 @@ vesicle_pink_noise_bridge_t* vesicle_pink_noise_create(const vesicle_pink_noise_
         sizeof(vesicle_pink_noise_bridge_t)
     );
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vesicle_pink_noise_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -159,6 +159,7 @@ vesicle_pink_noise_bridge_t* vesicle_pink_noise_create(const vesicle_pink_noise_
     if (cfg->modulation_targets & VESICLE_NOISE_RRP_SIZE) {
         bridge->rrp_generator = pink_noise_create(&cfg->rrp_noise_config);
         if (!bridge->rrp_generator) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vesicle_pink_noise_create: failed to create rrp_generator");
             vesicle_pink_noise_destroy(bridge);
             return NULL;
         }
@@ -167,6 +168,7 @@ vesicle_pink_noise_bridge_t* vesicle_pink_noise_create(const vesicle_pink_noise_
     if (cfg->modulation_targets & VESICLE_NOISE_RELEASE_PROB) {
         bridge->pr_generator = pink_noise_create(&cfg->pr_noise_config);
         if (!bridge->pr_generator) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vesicle_pink_noise_create: failed to create pr_generator");
             vesicle_pink_noise_destroy(bridge);
             return NULL;
         }
@@ -175,6 +177,7 @@ vesicle_pink_noise_bridge_t* vesicle_pink_noise_create(const vesicle_pink_noise_
     if (cfg->modulation_targets & VESICLE_NOISE_QUANTAL_SIZE) {
         bridge->quantal_generator = pink_noise_create(&cfg->quantal_noise_config);
         if (!bridge->quantal_generator) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vesicle_pink_noise_create: failed to create quantal_generator");
             vesicle_pink_noise_destroy(bridge);
             return NULL;
         }
@@ -183,6 +186,7 @@ vesicle_pink_noise_bridge_t* vesicle_pink_noise_create(const vesicle_pink_noise_
     if (cfg->modulation_targets & VESICLE_NOISE_REFILL_RATE) {
         bridge->refill_generator = pink_noise_create(&cfg->refill_noise_config);
         if (!bridge->refill_generator) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vesicle_pink_noise_create: failed to create refill_generator");
             vesicle_pink_noise_destroy(bridge);
             return NULL;
         }
@@ -204,10 +208,12 @@ vesicle_pink_noise_bridge_t* vesicle_pink_noise_create(const vesicle_pink_noise_
     if (cfg->enable_threading) {
         bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
         if (!bridge->base.mutex) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vesicle_pink_noise_create: failed to allocate mutex");
             vesicle_pink_noise_destroy(bridge);
             return NULL;
         }
         if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "vesicle_pink_noise_create: failed to initialize mutex");
             bridge->base.mutex = NULL;
             vesicle_pink_noise_destroy(bridge);
             return NULL;
@@ -265,7 +271,12 @@ void vesicle_pink_noise_destroy(vesicle_pink_noise_bridge_t* bridge) {
  */
 nimcp_error_t vesicle_pink_noise_connect_pool(vesicle_pink_noise_bridge_t* bridge,
                                                vesicle_pool_state_t* pool) {
-    if (!bridge || !pool) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pink_noise_connect_pool: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pink_noise_connect_pool: pool is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -286,6 +297,7 @@ nimcp_error_t vesicle_pink_noise_connect_pool(vesicle_pink_noise_bridge_t* bridg
  */
 nimcp_error_t vesicle_pink_noise_disconnect_pool(vesicle_pink_noise_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pink_noise_disconnect_pool: bridge is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -326,6 +338,7 @@ bool vesicle_pink_noise_is_connected(const vesicle_pink_noise_bridge_t* bridge) 
 nimcp_error_t vesicle_pink_noise_update(vesicle_pink_noise_bridge_t* bridge,
                                          uint64_t current_time_us) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pink_noise_update: bridge is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -397,6 +410,7 @@ nimcp_error_t vesicle_pink_noise_update(vesicle_pink_noise_bridge_t* bridge,
  */
 nimcp_error_t vesicle_pink_noise_apply_modulation(vesicle_pink_noise_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pink_noise_apply_modulation: bridge is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -405,6 +419,7 @@ nimcp_error_t vesicle_pink_noise_apply_modulation(vesicle_pink_noise_bridge_t* b
     }
 
     if (!bridge->connected || !bridge->pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "vesicle_pink_noise_apply_modulation: bridge not connected to pool");
         return NIMCP_ERROR_INVALID_STATE;
     }
 
@@ -528,6 +543,7 @@ nimcp_error_t vesicle_pink_noise_update_and_apply(vesicle_pink_noise_bridge_t* b
  */
 nimcp_error_t vesicle_pink_noise_enable(vesicle_pink_noise_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pink_noise_enable: bridge is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -547,6 +563,7 @@ nimcp_error_t vesicle_pink_noise_enable(vesicle_pink_noise_bridge_t* bridge) {
  */
 nimcp_error_t vesicle_pink_noise_disable(vesicle_pink_noise_bridge_t* bridge) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pink_noise_disable: bridge is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -582,11 +599,13 @@ bool vesicle_pink_noise_is_enabled(const vesicle_pink_noise_bridge_t* bridge) {
 nimcp_error_t vesicle_pink_noise_set_targets(vesicle_pink_noise_bridge_t* bridge,
                                               uint32_t targets) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pink_noise_set_targets: bridge is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
     // Validate targets
     if (targets & ~VESICLE_NOISE_ALL) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vesicle_pink_noise_set_targets: invalid targets");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -625,7 +644,12 @@ uint32_t vesicle_pink_noise_get_targets(const vesicle_pink_noise_bridge_t* bridg
  */
 nimcp_error_t vesicle_pink_noise_get_state(const vesicle_pink_noise_bridge_t* bridge,
                                             vesicle_noise_state_t* state) {
-    if (!bridge || !state) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pink_noise_get_state: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pink_noise_get_state: state is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -645,7 +669,12 @@ nimcp_error_t vesicle_pink_noise_get_state(const vesicle_pink_noise_bridge_t* br
  */
 nimcp_error_t vesicle_pink_noise_get_stats(const vesicle_pink_noise_bridge_t* bridge,
                                             vesicle_pink_noise_stats_t* stats) {
-    if (!bridge || !stats) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pink_noise_get_stats: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pink_noise_get_stats: stats is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -690,10 +719,12 @@ nimcp_error_t vesicle_pink_noise_set_strength(vesicle_pink_noise_bridge_t* bridg
                                                vesicle_noise_target_t target,
                                                float strength) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pink_noise_set_strength: bridge is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
     if (strength < 0.0f || strength > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vesicle_pink_noise_set_strength: strength out of range");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -731,7 +762,12 @@ nimcp_error_t vesicle_pink_noise_set_strength(vesicle_pink_noise_bridge_t* bridg
 nimcp_error_t vesicle_pink_noise_get_strength(const vesicle_pink_noise_bridge_t* bridge,
                                                vesicle_noise_target_t target,
                                                float* strength) {
-    if (!bridge || !strength) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pink_noise_get_strength: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!strength) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pink_noise_get_strength: strength is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -765,6 +801,7 @@ nimcp_error_t vesicle_pink_noise_get_strength(const vesicle_pink_noise_bridge_t*
 nimcp_error_t vesicle_pink_noise_reset_generators(vesicle_pink_noise_bridge_t* bridge,
                                                    uint32_t new_seed) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pink_noise_reset_generators: bridge is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 

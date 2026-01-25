@@ -19,7 +19,10 @@
 #define BIO_MODULE_SNN_EMOTION_BRIDGE 0x0620
 
 void snn_emotion_config_default(snn_emotion_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotion_config_default: null config pointer");
+        return;
+    }
 
     config->arousal_rate_min = 5.0f;
     config->arousal_rate_max = 100.0f;
@@ -76,7 +79,10 @@ snn_emotion_bridge_t* snn_emotion_bridge_create(
 }
 
 void snn_emotion_bridge_destroy(snn_emotion_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotion_bridge_destroy: null bridge pointer");
+        return;
+    }
 
     if (bridge->base.bio_async_enabled) {
         snn_emotion_bridge_disconnect_bio_async(bridge);
@@ -89,7 +95,10 @@ void snn_emotion_bridge_destroy(snn_emotion_bridge_t* bridge) {
 }
 
 int snn_emotion_bridge_connect_bio_async(snn_emotion_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotion_bridge_connect_bio_async: null bridge pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -111,18 +120,29 @@ int snn_emotion_bridge_connect_bio_async(snn_emotion_bridge_t* bridge) {
 }
 
 int snn_emotion_bridge_disconnect_bio_async(snn_emotion_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotion_bridge_disconnect_bio_async: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->base.bio_async_enabled) return 0;
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool snn_emotion_bridge_is_bio_async_connected(const snn_emotion_bridge_t* bridge) {
-    return bridge ? bridge->base.bio_async_enabled : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotion_bridge_is_bio_async_connected: null bridge pointer");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }
 
 int snn_emotion_bridge_update(snn_emotion_bridge_t* bridge, float dt) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotion_bridge_update: null bridge pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     bridge->last_update_time += dt;
     if (bridge->last_update_time < bridge->config.update_interval_ms) {
@@ -157,7 +177,10 @@ int snn_emotion_decode_from_spikes(
     float* valence_out,
     float* arousal_out
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotion_decode_from_spikes: null bridge pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     float pos_rate = 0.0f, neg_rate = 0.0f, arousal_rate = 0.0f;
 
@@ -188,7 +211,14 @@ int snn_emotion_detect_theta(
     snn_emotion_bridge_t* bridge,
     snn_theta_state_t* theta_state
 ) {
-    if (!bridge || !theta_state) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotion_detect_theta: null bridge pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!theta_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotion_detect_theta: null theta_state pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     theta_state->frequency = bridge->config.theta_frequency;
     theta_state->amplitude = bridge->state.decoded_arousal * 0.8f;
@@ -201,7 +231,10 @@ int snn_emotion_detect_theta(
 }
 
 int snn_emotion_modulate_populations(snn_emotion_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotion_modulate_populations: null bridge pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     float arousal_mod = 1.0f + bridge->state.decoded_arousal *
                         (bridge->config.arousal_boost_factor - 1.0f);
@@ -217,7 +250,10 @@ int snn_emotion_encode_to_spikes(
     float valence,
     float arousal
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotion_encode_to_spikes: null bridge pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
     return 0;
 }
 
@@ -225,21 +261,40 @@ int snn_emotion_bridge_get_state(
     const snn_emotion_bridge_t* bridge,
     snn_emotion_state_t* state
 ) {
-    if (!bridge || !state) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotion_bridge_get_state: null bridge pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotion_bridge_get_state: null state pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
     *state = bridge->state;
     return 0;
 }
 
 float snn_emotion_get_decoded_valence(const snn_emotion_bridge_t* bridge) {
-    return bridge ? bridge->state.decoded_valence : 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotion_get_decoded_valence: null bridge pointer");
+        return 0.0f;
+    }
+    return bridge->state.decoded_valence;
 }
 
 float snn_emotion_get_decoded_arousal(const snn_emotion_bridge_t* bridge) {
-    return bridge ? bridge->state.decoded_arousal : 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotion_get_decoded_arousal: null bridge pointer");
+        return 0.0f;
+    }
+    return bridge->state.decoded_arousal;
 }
 
 bool snn_emotion_is_theta_synchronized(const snn_emotion_bridge_t* bridge) {
-    return bridge ? bridge->state.theta.is_synchronized : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotion_is_theta_synchronized: null bridge pointer");
+        return false;
+    }
+    return bridge->state.theta.is_synchronized;
 }
 
 int snn_emotion_get_stats(
@@ -248,7 +303,10 @@ int snn_emotion_get_stats(
     float* avg_valence,
     float* avg_arousal
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotion_get_stats: null bridge pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (sync_count) *sync_count = bridge->state.sync_count;
     if (avg_valence) *avg_valence = bridge->state.avg_valence;
     if (avg_arousal) *avg_arousal = bridge->state.avg_arousal;
@@ -256,7 +314,10 @@ int snn_emotion_get_stats(
 }
 
 void snn_emotion_reset_stats(snn_emotion_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotion_reset_stats: null bridge pointer");
+        return;
+    }
     bridge->state.sync_count = 0;
     bridge->state.avg_valence = 0.0f;
     bridge->state.avg_arousal = 0.0f;

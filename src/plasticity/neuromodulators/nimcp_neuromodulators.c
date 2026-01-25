@@ -832,11 +832,8 @@ neuromodulator_system_t neuromodulator_system_create(const neuromodulator_config
      * WHY:  Early return prevents nested if
      */
     if (!system) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neuromodulator_system_create: failed to allocate system");
         return NULL;
-
     }
 
     /* WHAT: Initialize reader-writer lock using NIMCP platform abstraction
@@ -847,6 +844,7 @@ neuromodulator_system_t neuromodulator_system_create(const neuromodulator_config
      */
     int rwlock_result = nimcp_platform_rwlock_init(&system->rwlock);
     if (rwlock_result != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neuromodulator_system_create: failed to init rwlock");
         nimcp_free(system);
         return NULL;
     }
@@ -1222,12 +1220,18 @@ float neuromodulator_get_level(neuromodulator_system_t system, neuromodulator_ty
     /* WHAT: Guard clause - validate system
      * WHY:  Prevent null pointer dereference
      */
-    if (!system) return 0.0F;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_get_level: system is NULL");
+        return 0.0F;
+    }
 
     /* WHAT: Guard clause - validate type
      * WHY:  Prevent array out of bounds access
      */
-    if (type >= NEUROMOD_COUNT) return 0.0F;
+    if (type >= NEUROMOD_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromodulator_get_level: invalid type");
+        return 0.0F;
+    }
 
     /* WHAT: Return current concentration
      * WHY:  Direct access to concentration array
@@ -1241,8 +1245,14 @@ bool neuromodulator_set_level(neuromodulator_system_t system, neuromodulator_typ
      * WHY:  For testing, manual control, or external simulation
      * COMPLEXITY: O(1)
      */
-    if (!system) return false;
-    if (type >= NEUROMOD_COUNT) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_set_level: system is NULL");
+        return false;
+    }
+    if (type >= NEUROMOD_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromodulator_set_level: invalid type");
+        return false;
+    }
 
     /* WHAT: Clamp to [0, 1] range
      * WHY:  Biological constraint - concentrations cannot be negative
@@ -1270,8 +1280,14 @@ bool neuromodulator_update(neuromodulator_system_t system, float dt) {
      * @param dt Time step in seconds
      * @return true on success
      */
-    if (!system) return false;
-    if (dt < 0) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromodulator_update: system is NULL");
+        return false;
+    }
+    if (dt < 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "neuromodulator_update: invalid dt");
+        return false;
+    }
 
     /* WHAT: Acquire write lock for exclusive modification access
      * WHY:  Prevent concurrent readers from seeing partial updates

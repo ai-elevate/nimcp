@@ -40,7 +40,8 @@ snn_curiosity_bridge_t* snn_curiosity_bridge_create(const snn_curiosity_config_t
 
     snn_curiosity_bridge_t* bridge = nimcp_malloc(sizeof(snn_curiosity_bridge_t));
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate SNN-curiosity bridge");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(snn_curiosity_bridge_t),
+                          "snn_curiosity_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -71,7 +72,11 @@ void snn_curiosity_bridge_destroy(snn_curiosity_bridge_t* bridge) {
 }
 
 int snn_curiosity_bridge_connect_bio_async(snn_curiosity_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_curiosity_bridge_connect_bio_async: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -92,7 +97,12 @@ int snn_curiosity_bridge_connect_bio_async(snn_curiosity_bridge_t* bridge) {
 }
 
 int snn_curiosity_bridge_disconnect_bio_async(snn_curiosity_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_curiosity_bridge_disconnect_bio_async: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!bridge->base.bio_async_enabled) return 0;
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_async_enabled = false;
     return 0;
@@ -103,7 +113,11 @@ bool snn_curiosity_bridge_is_bio_async_connected(const snn_curiosity_bridge_t* b
 }
 
 int snn_curiosity_bridge_update(snn_curiosity_bridge_t* bridge, float dt) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_curiosity_bridge_update: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     bridge->last_update_time += dt;
     if (bridge->last_update_time < bridge->config.update_interval_ms) return 0;
@@ -136,22 +150,42 @@ int snn_curiosity_bridge_update(snn_curiosity_bridge_t* bridge, float dt) {
 }
 
 int snn_curiosity_bridge_encode_novelty(snn_curiosity_bridge_t* bridge, float novelty) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
-    if (!bridge->novelty_pop) return SNN_ERROR_INVALID_STATE;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_curiosity_bridge_encode_novelty: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!bridge->novelty_pop) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                             "snn_curiosity_bridge_encode_novelty: novelty population not configured");
+        return SNN_ERROR_INVALID_STATE;
+    }
 
     return 0;
 }
 
 int snn_curiosity_bridge_trigger_exploration(snn_curiosity_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
-    if (!bridge->exploration_pop) return SNN_ERROR_INVALID_STATE;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_curiosity_bridge_trigger_exploration: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!bridge->exploration_pop) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                             "snn_curiosity_bridge_trigger_exploration: exploration population not configured");
+        return SNN_ERROR_INVALID_STATE;
+    }
 
     bridge->state.exploration_count++;
     return 0;
 }
 
 int snn_curiosity_bridge_apply_habituation(snn_curiosity_bridge_t* bridge, float dt) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_curiosity_bridge_apply_habituation: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     float decay_factor = expf(-bridge->config.habituation_rate * dt / 1000.0f);
     bridge->habituation_accumulator *= decay_factor;
@@ -176,7 +210,16 @@ float snn_curiosity_compute_curiosity_level(const snn_curiosity_bridge_t* bridge
 }
 
 int snn_curiosity_bridge_get_state(const snn_curiosity_bridge_t* bridge, snn_curiosity_state_t* state) {
-    if (!bridge || !state) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_curiosity_bridge_get_state: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_curiosity_bridge_get_state: state is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -202,7 +245,11 @@ bool snn_curiosity_is_novel(const snn_curiosity_bridge_t* bridge) {
 }
 
 int snn_curiosity_get_stats(const snn_curiosity_bridge_t* bridge, uint32_t* novelty_events, uint32_t* exploration_count, float* avg_novelty) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_curiosity_get_stats: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (novelty_events) *novelty_events = bridge->state.novelty_events;
     if (exploration_count) *exploration_count = bridge->state.exploration_count;
     if (avg_novelty) {

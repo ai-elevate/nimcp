@@ -16,7 +16,10 @@
 //=============================================================================
 
 void snn_buffer_config_default(snn_buffer_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_config_default: null config pointer");
+        return;
+    }
 
     memset(config, 0, sizeof(snn_buffer_config_t));
 
@@ -151,7 +154,10 @@ snn_buffer_bridge_t* snn_buffer_bridge_create(
 }
 
 void snn_buffer_bridge_destroy(snn_buffer_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_bridge_destroy: null bridge pointer");
+        return;
+    }
 
     /* Disconnect bio-async if connected */
     if (bridge->base.bio_async_enabled) {
@@ -179,7 +185,10 @@ void snn_buffer_bridge_destroy(snn_buffer_bridge_t* bridge) {
 }
 
 int snn_buffer_bridge_connect_bio_async(snn_buffer_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_bridge_connect_bio_async: null bridge pointer");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bridge->base.bio_async_enabled = true;
@@ -189,7 +198,10 @@ int snn_buffer_bridge_connect_bio_async(snn_buffer_bridge_t* bridge) {
 }
 
 int snn_buffer_bridge_disconnect_bio_async(snn_buffer_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_bridge_disconnect_bio_async: null bridge pointer");
+        return -1;
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     bridge->base.bio_async_enabled = false;
@@ -199,7 +211,11 @@ int snn_buffer_bridge_disconnect_bio_async(snn_buffer_bridge_t* bridge) {
 }
 
 bool snn_buffer_bridge_is_bio_async_connected(const snn_buffer_bridge_t* bridge) {
-    return bridge && bridge->base.bio_async_enabled;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_bridge_is_bio_async_connected: null bridge pointer");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }
 
 //=============================================================================
@@ -215,12 +231,22 @@ int snn_buffer_bridge_process(
     uint32_t* n_out_actual
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_bridge_process: null bridge pointer");
+        return -1;
+    }
     if (!spikes_in || n_spikes == 0) {
         if (n_out_actual) *n_out_actual = 0;
         return 0;
     }
-    if (!spikes_out || !n_out_actual) return -1;
+    if (!spikes_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_bridge_process: null spikes_out pointer");
+        return -1;
+    }
+    if (!n_out_actual) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_bridge_process: null n_out_actual pointer");
+        return -1;
+    }
 
     uint32_t n_output = 0;
 
@@ -256,7 +282,10 @@ int snn_buffer_bridge_process(
 }
 
 int snn_buffer_bridge_update(snn_buffer_bridge_t* bridge, float dt) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_bridge_update: null bridge pointer");
+        return -1;
+    }
 
     bridge->last_update_time += dt;
 
@@ -286,7 +315,18 @@ int snn_buffer_bridge_get_window(
     uint32_t capacity,
     uint32_t* n_spikes_actual
 ) {
-    if (!bridge || !spikes_out || !n_spikes_actual) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_bridge_get_window: null bridge pointer");
+        return -1;
+    }
+    if (!spikes_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_bridge_get_window: null spikes_out pointer");
+        return -1;
+    }
+    if (!n_spikes_actual) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_bridge_get_window: null n_spikes_actual pointer");
+        return -1;
+    }
     if (buffer_id >= bridge->n_buffers) return -1;
 
     /* For now, return all buffered spikes */
@@ -306,7 +346,10 @@ int snn_buffer_bridge_clear_buffer(
     snn_buffer_bridge_t* bridge,
     uint32_t buffer_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_bridge_clear_buffer: null bridge pointer");
+        return -1;
+    }
     if (buffer_id >= bridge->n_buffers) return -1;
 
     circular_buffer_clear(bridge->buffers[buffer_id]);
@@ -314,7 +357,10 @@ int snn_buffer_bridge_clear_buffer(
 }
 
 void snn_buffer_bridge_clear_all(snn_buffer_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_bridge_clear_all: null bridge pointer");
+        return;
+    }
 
     for (uint32_t i = 0; i < bridge->n_buffers; i++) {
         circular_buffer_clear(bridge->buffers[i]);
@@ -330,7 +376,14 @@ int snn_buffer_bridge_add_delayed_spike(
     const snn_spike_t* spike,
     float delay_ms
 ) {
-    if (!bridge || !spike) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_bridge_add_delayed_spike: null bridge pointer");
+        return -1;
+    }
+    if (!spike) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_bridge_add_delayed_spike: null spike pointer");
+        return -1;
+    }
     if (!bridge->config.enable_delay_lines) return -1;
 
     /* Store delayed spike */
@@ -353,7 +406,18 @@ int snn_buffer_bridge_deliver_delayed_spikes(
     uint32_t capacity,
     uint32_t* n_delivered
 ) {
-    if (!bridge || !spikes_out || !n_delivered) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_bridge_deliver_delayed_spikes: null bridge pointer");
+        return -1;
+    }
+    if (!spikes_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_bridge_deliver_delayed_spikes: null spikes_out pointer");
+        return -1;
+    }
+    if (!n_delivered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_bridge_deliver_delayed_spikes: null n_delivered pointer");
+        return -1;
+    }
 
     uint32_t delivered = 0;
 
@@ -388,7 +452,14 @@ int snn_buffer_bridge_detect_pattern(
     uint32_t min_pattern_length,
     bool* pattern_detected
 ) {
-    if (!bridge || !pattern_detected) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_bridge_detect_pattern: null bridge pointer");
+        return -1;
+    }
+    if (!pattern_detected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_bridge_detect_pattern: null pattern_detected pointer");
+        return -1;
+    }
     if (buffer_id >= bridge->n_buffers) return -1;
 
     /* Simplified pattern detection: check if buffer has repeating ISIs */
@@ -408,14 +479,24 @@ int snn_buffer_bridge_get_stats(
     const snn_buffer_bridge_t* bridge,
     snn_buffer_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_bridge_get_stats: null bridge pointer");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_bridge_get_stats: null stats pointer");
+        return -1;
+    }
 
     *stats = bridge->stats;
     return 0;
 }
 
 void snn_buffer_bridge_reset_stats(snn_buffer_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_bridge_reset_stats: null bridge pointer");
+        return;
+    }
 
     memset(&bridge->stats, 0, sizeof(snn_buffer_stats_t));
     bridge->last_update_time = 0.0f;
@@ -425,7 +506,10 @@ float snn_buffer_bridge_get_utilization(
     const snn_buffer_bridge_t* bridge,
     uint32_t buffer_id
 ) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_buffer_bridge_get_utilization: null bridge pointer");
+        return 0.0f;
+    }
     if (buffer_id >= bridge->n_buffers) return 0.0f;
 
     return circular_buffer_utilization(bridge->buffers[buffer_id]);

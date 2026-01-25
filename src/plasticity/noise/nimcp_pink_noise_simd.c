@@ -256,8 +256,8 @@ pink_simd_generator_t* pink_simd_create(const pink_simd_config_t* config) {
 
 void pink_simd_destroy(pink_simd_generator_t* gen) {
     if (!gen) return;
-    if (gen->octave_values) free(gen->octave_values);
-    if (gen->output_buffer) free(gen->output_buffer);
+    if (gen->octave_values) nimcp_free(gen->octave_values);
+    if (gen->output_buffer) nimcp_free(gen->output_buffer);
     if (gen->octave_counters) nimcp_free(gen->octave_counters);
     nimcp_free(gen);
 }

@@ -48,7 +48,7 @@ snn_self_model_bridge_t* snn_self_model_bridge_create(
 
     snn_self_model_bridge_t* bridge = nimcp_malloc(sizeof(snn_self_model_bridge_t));
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate SNN-self_model bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_self_model_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -77,7 +77,10 @@ void snn_self_model_bridge_destroy(snn_self_model_bridge_t* bridge) {
 }
 
 int snn_self_model_bridge_connect_bio_async(snn_self_model_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_self_model_bridge_connect_bio_async: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -109,7 +112,10 @@ bool snn_self_model_bridge_is_bio_async_connected(const snn_self_model_bridge_t*
 }
 
 int snn_self_model_bridge_update(snn_self_model_bridge_t* bridge, float dt) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_self_model_bridge_update: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     bridge->last_update_time += dt;
     if (bridge->last_update_time < bridge->config.update_interval_ms) {
@@ -149,7 +155,18 @@ float snn_self_model_compute_coherence(snn_self_model_bridge_t* bridge, float sp
 }
 
 int snn_self_model_update_stability(snn_self_model_bridge_t* bridge, const float* spike_train, uint32_t length, float* stability) {
-    if (!bridge || !spike_train || length == 0) return SNN_ERROR_INVALID_CONFIG;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_self_model_update_stability: bridge is NULL");
+        return SNN_ERROR_INVALID_CONFIG;
+    }
+    if (!spike_train) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_self_model_update_stability: spike_train is NULL");
+        return SNN_ERROR_INVALID_CONFIG;
+    }
+    if (length == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_self_model_update_stability: length is zero");
+        return SNN_ERROR_INVALID_CONFIG;
+    }
 
     float mean = 0.0f;
     for (uint32_t i = 0; i < length; i++) mean += spike_train[i];
@@ -176,7 +193,14 @@ bool snn_self_model_check_coherent_self(const snn_self_model_bridge_t* bridge) {
 }
 
 int snn_self_model_bridge_get_state(const snn_self_model_bridge_t* bridge, snn_self_model_state_t* state) {
-    if (!bridge || !state) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_self_model_bridge_get_state: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_self_model_bridge_get_state: state is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -190,7 +214,10 @@ float snn_self_model_get_stability(const snn_self_model_bridge_t* bridge) {
 }
 
 int snn_self_model_get_stats(const snn_self_model_bridge_t* bridge, uint32_t* reference_count, uint32_t* coherent_detections, float* avg_coherence) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_self_model_get_stats: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (reference_count) *reference_count = bridge->state.self_reference_count;
     if (coherent_detections) *coherent_detections = bridge->state.coherent_self_detected ? 1 : 0;
     if (avg_coherence) *avg_coherence = bridge->state.self_coherence;

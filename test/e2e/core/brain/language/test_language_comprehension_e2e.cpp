@@ -38,6 +38,7 @@
 
 #include "core/brain/regions/wernicke/nimcp_wernicke_adapter.h"
 #include "core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.h"
+#include "perception/nimcp_speech_cortex.h"
 #include "utils/memory/nimcp_memory.h"
 
 using namespace nimcp::e2e;
@@ -161,13 +162,24 @@ static std::vector<float> generate_synthetic_audio(uint32_t num_samples, float f
     return audio;
 }
 
+static std::vector<phoneme_event_t> create_phoneme_event_sequence(const uint8_t* phonemes, uint32_t count) {
+    std::vector<phoneme_event_t> seq(count);
+    for (uint32_t i = 0; i < count; i++) {
+        memset(&seq[i], 0, sizeof(phoneme_event_t));
+        seq[i].phoneme = static_cast<phoneme_t>(phonemes[i]);
+        seq[i].confidence = 0.9f;
+        seq[i].features.duration_ms = 80.0f + (i % 3) * 20.0f;
+        seq[i].onset_time_ms = i * 100;
+        seq[i].offset_time_ms = (i + 1) * 100;
+        seq[i].sequence_position = i;
+    }
+    return seq;
+}
+
 static std::vector<phoneme_t> create_phoneme_sequence(const uint8_t* phonemes, uint32_t count) {
     std::vector<phoneme_t> seq(count);
     for (uint32_t i = 0; i < count; i++) {
-        memset(&seq[i], 0, sizeof(phoneme_t));
-        seq[i].phoneme_id = phonemes[i];
-        seq[i].confidence = 0.9f;
-        seq[i].duration_ms = 80.0f + (i % 3) * 20.0f;
+        seq[i] = static_cast<phoneme_t>(phonemes[i]);
     }
     return seq;
 }
@@ -263,6 +275,7 @@ TEST_F(E2ELanguageComprehensionTest, PhonemeToWordRecognition) {
     // Create phoneme sequence for "cat"
     E2E_STAGE_BEGIN("Create phoneme sequence", 10);
     uint8_t cat_phonemes[] = {'k', 'a', 't'};
+    auto phoneme_events = create_phoneme_event_sequence(cat_phonemes, 3);
     auto phonemes = create_phoneme_sequence(cat_phonemes, 3);
     E2E_STAGE_END();
 
@@ -270,8 +283,8 @@ TEST_F(E2ELanguageComprehensionTest, PhonemeToWordRecognition) {
     E2E_STAGE_BEGIN("Process phonemes", MAX_PROCESSING_TIME_MS);
     bool success = wernicke_process_phonemes(
         wernicke,
-        phonemes.data(),
-        static_cast<uint32_t>(phonemes.size())
+        phoneme_events.data(),
+        static_cast<uint32_t>(phoneme_events.size())
     );
     EXPECT_TRUE(success) << "Phoneme processing should succeed";
     E2E_STAGE_END();
@@ -281,10 +294,9 @@ TEST_F(E2ELanguageComprehensionTest, PhonemeToWordRecognition) {
     wernicke_word_result_t word_result;
     memset(&word_result, 0, sizeof(word_result));
 
-    phoneme_t* phoneme_ptr = phonemes.data();
     success = wernicke_recognize_word(
         wernicke,
-        phoneme_ptr,
+        phonemes.data(),
         static_cast<uint32_t>(phonemes.size()),
         &word_result
     );
@@ -622,16 +634,16 @@ TEST_F(E2ELanguageComprehensionTest, WordToConceptMapping) {
 
     // Get semantic meaning
     E2E_STAGE_BEGIN("Get word meaning", MAX_PROCESSING_TIME_MS);
-    wernicke_concept_t concept;
-    memset(&concept, 0, sizeof(concept));
+    wernicke_concept_t wern_concept;
+    memset(&wern_concept, 0, sizeof(wern_concept));
 
-    success = wernicke_get_meaning(wernicke, &word, &concept);
+    success = wernicke_get_meaning(wernicke, &word, &wern_concept);
     EXPECT_TRUE(success) << "Should get meaning for recognized word";
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Verify concept", 10);
-    EXPECT_EQ(concept.concept_id, 103u) << "Should map to cat concept";
-    EXPECT_GT(concept.activation, 0.0f) << "Concept should be activated";
+    EXPECT_EQ(wern_concept.concept_id, 103u) << "Should map to cat concept";
+    EXPECT_GT(wern_concept.activation, 0.0f) << "Concept should be activated";
     E2E_STAGE_END();
 
     E2E_PIPELINE_END();

@@ -60,7 +60,10 @@ static inline void snn_training_heartbeat(const char* operation, float progress)
 //=============================================================================
 
 void snn_stdp_config_default(snn_stdp_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_stdp_config_default: null config pointer");
+        return;
+    }
 
     /* Bi & Poo 1998 parameters */
     config->a_plus = NIMCP_DEFAULT_LEARNING_RATE;         /* LTP amplitude */
@@ -74,7 +77,10 @@ void snn_stdp_config_default(snn_stdp_config_t* config) {
 }
 
 void snn_rstdp_config_default(snn_rstdp_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_rstdp_config_default: null config pointer");
+        return;
+    }
 
     snn_stdp_config_default(&config->stdp);
     config->eligibility_tau = 100.0f;   /* 100 ms eligibility window */
@@ -84,7 +90,10 @@ void snn_rstdp_config_default(snn_rstdp_config_t* config) {
 }
 
 void snn_surrogate_config_default(snn_surrogate_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_surrogate_config_default: null config pointer");
+        return;
+    }
 
     config->type = SNN_SURROGATE_FAST_SIGMOID;
     config->beta = 10.0f;           /* Steepness */
@@ -95,7 +104,10 @@ void snn_surrogate_config_default(snn_surrogate_config_t* config) {
 }
 
 void snn_eprop_config_default(snn_eprop_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_eprop_config_default: null config pointer");
+        return;
+    }
 
     config->learning_rate = 1e-3f;
     config->eligibility_tau = 100.0f;
@@ -106,7 +118,10 @@ void snn_eprop_config_default(snn_eprop_config_t* config) {
 }
 
 void snn_homeostatic_config_default(snn_homeostatic_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_homeostatic_config_default: null config pointer");
+        return;
+    }
 
     config->target_rate = 5.0f;         /* 5 Hz target (cortical) */
     config->rate_tau = 1000.0f;         /* 1 second rate estimation */
@@ -145,12 +160,15 @@ snn_training_ctx_t* snn_training_create_rstdp(const snn_rstdp_config_t* config,
                                                uint32_t n_pre,
                                                uint32_t n_post) {
     if (!config || n_pre == 0 || n_post == 0) {
-        NIMCP_LOGGING_ERROR("snn_training_create_rstdp: invalid args");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID, "snn_training_create_rstdp: invalid args (null config or zero dimensions)");
         return NULL;
     }
 
     snn_training_ctx_t* ctx = nimcp_malloc(sizeof(snn_training_ctx_t));
-    if (!ctx) return NULL;
+    if (!ctx) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(snn_training_ctx_t), "snn_training_create_rstdp: failed to allocate context");
+        return NULL;
+    }
 
     memset(ctx, 0, sizeof(snn_training_ctx_t));
     ctx->mode = SNN_TRAIN_R_STDP;
@@ -162,6 +180,7 @@ snn_training_ctx_t* snn_training_create_rstdp(const snn_rstdp_config_t* config,
     ctx->eligibility = nimcp_tensor_zeros(dims, 2, NIMCP_DTYPE_F32);
 
     if (!ctx->eligibility) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, n_pre * n_post * sizeof(float), "snn_training_create_rstdp: failed to allocate eligibility tensor");
         nimcp_free(ctx);
         return NULL;
     }
@@ -174,12 +193,15 @@ snn_training_ctx_t* snn_training_create_surrogate(const snn_surrogate_config_t* 
                                                    uint32_t n_pre,
                                                    uint32_t n_post) {
     if (!config || n_pre == 0 || n_post == 0) {
-        NIMCP_LOGGING_ERROR("snn_training_create_surrogate: invalid args");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID, "snn_training_create_surrogate: invalid args (null config or zero dimensions)");
         return NULL;
     }
 
     snn_training_ctx_t* ctx = nimcp_malloc(sizeof(snn_training_ctx_t));
-    if (!ctx) return NULL;
+    if (!ctx) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(snn_training_ctx_t), "snn_training_create_surrogate: failed to allocate context");
+        return NULL;
+    }
 
     memset(ctx, 0, sizeof(snn_training_ctx_t));
     ctx->mode = SNN_TRAIN_EPROP;  /* Use eProp for backprop-style */
@@ -191,6 +213,7 @@ snn_training_ctx_t* snn_training_create_surrogate(const snn_surrogate_config_t* 
     ctx->grad_weights = nimcp_tensor_zeros(dims, 2, NIMCP_DTYPE_F32);
 
     if (!ctx->grad_weights) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, n_pre * n_post * sizeof(float), "snn_training_create_surrogate: failed to allocate gradient tensor");
         nimcp_free(ctx);
         return NULL;
     }
@@ -203,12 +226,15 @@ snn_training_ctx_t* snn_training_create_eprop(const snn_eprop_config_t* config,
                                                uint32_t n_pre,
                                                uint32_t n_post) {
     if (!config || n_pre == 0 || n_post == 0) {
-        NIMCP_LOGGING_ERROR("snn_training_create_eprop: invalid args");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID, "snn_training_create_eprop: invalid args (null config or zero dimensions)");
         return NULL;
     }
 
     snn_training_ctx_t* ctx = nimcp_malloc(sizeof(snn_training_ctx_t));
-    if (!ctx) return NULL;
+    if (!ctx) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(snn_training_ctx_t), "snn_training_create_eprop: failed to allocate context");
+        return NULL;
+    }
 
     memset(ctx, 0, sizeof(snn_training_ctx_t));
     ctx->mode = SNN_TRAIN_EPROP;
@@ -220,6 +246,7 @@ snn_training_ctx_t* snn_training_create_eprop(const snn_eprop_config_t* config,
     ctx->grad_weights = nimcp_tensor_zeros(dims, 2, NIMCP_DTYPE_F32);
 
     if (!ctx->eligibility || !ctx->grad_weights) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, n_pre * n_post * sizeof(float), "snn_training_create_eprop: failed to allocate tensors");
         snn_training_destroy(ctx);
         return NULL;
     }
@@ -229,7 +256,10 @@ snn_training_ctx_t* snn_training_create_eprop(const snn_eprop_config_t* config,
 }
 
 void snn_training_destroy(snn_training_ctx_t* ctx) {
-    if (!ctx) return;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_destroy: null context pointer");
+        return;
+    }
 
     if (ctx->eligibility) nimcp_tensor_destroy(ctx->eligibility);
     if (ctx->grad_membrane) nimcp_tensor_destroy(ctx->grad_membrane);
@@ -245,7 +275,10 @@ void snn_training_destroy(snn_training_ctx_t* ctx) {
 float snn_stdp_compute_delta_w(const snn_training_ctx_t* ctx,
                                 float dt_pre_post,
                                 float current_weight) {
-    if (!ctx) return 0.0f;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_stdp_compute_delta_w: null context pointer");
+        return 0.0f;
+    }
 
     /* Use default STDP parameters from common.h */
     const float a_plus = NIMCP_DEFAULT_LEARNING_RATE;
@@ -304,7 +337,10 @@ float snn_stdp_update(snn_training_ctx_t* ctx,
                       synapse_t* synapse,
                       float t_pre,
                       float t_post) {
-    if (!ctx || !synapse) return 0.0f;
+    if (!ctx || !synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_stdp_update: null context or synapse pointer");
+        return 0.0f;
+    }
 
     float dt = t_post - t_pre;
     float delta_w = snn_stdp_compute_delta_w(ctx, dt, synapse->weight);
@@ -322,7 +358,10 @@ float snn_stdp_update(snn_training_ctx_t* ctx,
 uint32_t snn_stdp_apply_network(snn_training_ctx_t* ctx,
                                  snn_network_t* network,
                                  float t_current) {
-    if (!ctx || !network) return 0;
+    if (!ctx || !network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_stdp_apply_network: null context or network pointer");
+        return 0;
+    }
 
     (void)t_current;
 
@@ -335,19 +374,28 @@ uint32_t snn_stdp_apply_network(snn_training_ctx_t* ctx,
 //=============================================================================
 
 void snn_rstdp_update_eligibility(snn_training_ctx_t* ctx, float dt) {
-    if (!ctx || !ctx->eligibility) return;
+    if (!ctx || !ctx->eligibility) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_rstdp_update_eligibility: null context or eligibility pointer");
+        return;
+    }
 
     float decay = expf(-dt * ctx->eligibility_decay);
     nimcp_tensor_mul_scalar_(ctx->eligibility, (double)decay);
 }
 
 void snn_rstdp_set_reward(snn_training_ctx_t* ctx, float reward) {
-    if (!ctx) return;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_rstdp_set_reward: null context pointer");
+        return;
+    }
     ctx->reward = reward;
 }
 
 uint32_t snn_rstdp_apply(snn_training_ctx_t* ctx, snn_network_t* network) {
-    if (!ctx || !network || !ctx->eligibility) return 0;
+    if (!ctx || !network || !ctx->eligibility) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_rstdp_apply: null context, network, or eligibility pointer");
+        return 0;
+    }
 
     float reward_modulation = ctx->reward - ctx->reward_baseline;
     (void)reward_modulation;
@@ -360,7 +408,10 @@ uint32_t snn_rstdp_apply(snn_training_ctx_t* ctx, snn_network_t* network) {
 //=============================================================================
 
 float snn_surrogate_gradient(const snn_training_ctx_t* ctx, float membrane_v) {
-    if (!ctx) return 0.0f;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_surrogate_gradient: null context pointer");
+        return 0.0f;
+    }
 
     float beta = ctx->surrogate_beta > 0.0f ? ctx->surrogate_beta : 10.0f;
     float x = beta * (membrane_v - 1.0f);  /* Threshold normalized to 1 */
@@ -474,7 +525,10 @@ void snn_eprop_update_eligibility(snn_training_ctx_t* ctx,
                                    const uint8_t* pre_spikes,
                                    const uint8_t* post_spikes,
                                    float dt) {
-    if (!ctx || !ctx->eligibility || !pre_spikes || !post_spikes) return;
+    if (!ctx || !ctx->eligibility || !pre_spikes || !post_spikes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_eprop_update_eligibility: null context, eligibility, pre_spikes, or post_spikes pointer");
+        return;
+    }
 
     float decay = expf(-dt * ctx->eligibility_decay);
     nimcp_tensor_mul_scalar_(ctx->eligibility, (double)decay);
@@ -483,7 +537,10 @@ void snn_eprop_update_eligibility(snn_training_ctx_t* ctx,
 uint32_t snn_eprop_apply(snn_training_ctx_t* ctx,
                           snn_network_t* network,
                           float learning_signal) {
-    if (!ctx || !network || !ctx->eligibility) return 0;
+    if (!ctx || !network || !ctx->eligibility) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_eprop_apply: null context, network, or eligibility pointer");
+        return 0;
+    }
 
     (void)learning_signal;
     return 0;  /* Placeholder */
@@ -497,13 +554,19 @@ void snn_homeostatic_update_rates(snn_training_ctx_t* ctx,
                                    const uint8_t* spikes,
                                    uint32_t n_neurons,
                                    float dt) {
-    if (!ctx || !spikes) return;
+    if (!ctx || !spikes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_homeostatic_update_rates: null context or spikes pointer");
+        return;
+    }
     (void)n_neurons;
     (void)dt;
 }
 
 uint32_t snn_homeostatic_apply(snn_training_ctx_t* ctx, snn_network_t* network) {
-    if (!ctx || !network) return 0;
+    if (!ctx || !network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_homeostatic_apply: null context or network pointer");
+        return 0;
+    }
     return 0;
 }
 
@@ -515,7 +578,10 @@ void snn_training_get_stats(const snn_training_ctx_t* ctx,
                             uint64_t* weight_updates,
                             uint64_t* training_steps,
                             float* total_delta_w) {
-    if (!ctx) return;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_get_stats: null context pointer");
+        return;
+    }
 
     if (weight_updates) *weight_updates = 0;
     if (training_steps) *training_steps = 0;
@@ -523,12 +589,18 @@ void snn_training_get_stats(const snn_training_ctx_t* ctx,
 }
 
 void snn_training_reset_stats(snn_training_ctx_t* ctx) {
-    if (!ctx) return;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_reset_stats: null context pointer");
+        return;
+    }
     /* No stats to reset in current struct */
 }
 
 void snn_training_reset(snn_training_ctx_t* ctx) {
-    if (!ctx) return;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_reset: null context pointer");
+        return;
+    }
 
     /* Zero out tensors by multiplying by 0 */
     if (ctx->eligibility) {

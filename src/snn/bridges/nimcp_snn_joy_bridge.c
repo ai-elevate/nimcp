@@ -86,7 +86,10 @@ void snn_joy_bridge_destroy(snn_joy_bridge_t* bridge) {
 }
 
 int snn_joy_bridge_connect_bio_async(snn_joy_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_joy_bridge_connect_bio_async: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -119,7 +122,10 @@ bool snn_joy_bridge_is_bio_async_connected(const snn_joy_bridge_t* bridge) {
 }
 
 int snn_joy_bridge_update(snn_joy_bridge_t* bridge, float dt) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_joy_bridge_update: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     bridge->last_update_time += dt;
     if (bridge->last_update_time < bridge->config.update_interval_ms) {
@@ -154,7 +160,10 @@ int snn_joy_decode_from_spikes(
     float* joy_level_out,
     float* rpe_out
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_joy_decode_from_spikes: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     float joy_rate = 0.0f, reward_rate = 0.0f;
 
@@ -190,7 +199,14 @@ int snn_joy_detect_burst(
     snn_joy_bridge_t* bridge,
     snn_burst_state_t* burst_state
 ) {
-    if (!bridge || !burst_state) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_joy_detect_burst: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!burst_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_joy_detect_burst: burst_state is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     float joy_rate = bridge->joy_pop ? snn_population_get_firing_rate(bridge->joy_pop) : 0.0f;
 
@@ -222,7 +238,10 @@ int snn_joy_compute_rpe(
     float actual_reward,
     float* rpe_out
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_joy_compute_rpe: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     bridge->state.predicted_reward = predicted_reward;
     bridge->state.actual_reward = actual_reward;
@@ -239,7 +258,10 @@ int snn_joy_compute_rpe(
 }
 
 int snn_joy_modulate_populations(snn_joy_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_joy_modulate_populations: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     if (bridge->state.burst.is_bursting) {
         bridge->state.dopamine_level = bridge->config.dopamine_baseline +
@@ -258,7 +280,10 @@ int snn_joy_encode_to_spikes(
     float joy_level,
     float rpe
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_joy_encode_to_spikes: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     return 0;
 }
 
@@ -266,7 +291,14 @@ int snn_joy_bridge_get_state(
     const snn_joy_bridge_t* bridge,
     snn_joy_state_t* state
 ) {
-    if (!bridge || !state) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_joy_bridge_get_state: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_joy_bridge_get_state: state is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -289,7 +321,10 @@ int snn_joy_get_stats(
     uint32_t* burst_count,
     float* avg_joy_level
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_joy_get_stats: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (sync_count) *sync_count = bridge->state.sync_count;
     if (burst_count) *burst_count = bridge->state.burst_count;
     if (avg_joy_level) *avg_joy_level = bridge->state.avg_joy_level;

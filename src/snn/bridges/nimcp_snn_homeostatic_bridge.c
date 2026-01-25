@@ -15,7 +15,10 @@
 #define BIO_MODULE_SNN_HOMEOSTATIC_BRIDGE 0x0612
 
 void snn_homeostatic_bridge_config_default(snn_homeostatic_bridge_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_homeostatic_bridge_config_default: null config pointer");
+        return;
+    }
 
     config->target_rate_hz = 5.0f;
     config->rate_tolerance = 0.5f;
@@ -92,7 +95,10 @@ snn_homeostatic_bridge_t* snn_homeostatic_bridge_create(
 }
 
 void snn_homeostatic_bridge_destroy(snn_homeostatic_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_homeostatic_bridge_destroy: null bridge pointer");
+        return;
+    }
 
     if (bridge->base.bio_async_enabled) {
         snn_homeostatic_bridge_disconnect_bio_async(bridge);
@@ -110,7 +116,10 @@ void snn_homeostatic_bridge_destroy(snn_homeostatic_bridge_t* bridge) {
 }
 
 int snn_homeostatic_bridge_connect_bio_async(snn_homeostatic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_homeostatic_bridge_connect_bio_async: null bridge pointer");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -130,7 +139,11 @@ int snn_homeostatic_bridge_connect_bio_async(snn_homeostatic_bridge_t* bridge) {
 }
 
 int snn_homeostatic_bridge_disconnect_bio_async(snn_homeostatic_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_homeostatic_bridge_disconnect_bio_async: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->base.bio_async_enabled) return 0;
 
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_async_enabled = false;
@@ -140,11 +153,18 @@ int snn_homeostatic_bridge_disconnect_bio_async(snn_homeostatic_bridge_t* bridge
 }
 
 bool snn_homeostatic_bridge_is_bio_async_connected(const snn_homeostatic_bridge_t* bridge) {
-    return bridge ? bridge->base.bio_async_enabled : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_homeostatic_bridge_is_bio_async_connected: null bridge pointer");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }
 
 int snn_homeostatic_bridge_update_rates(snn_homeostatic_bridge_t* bridge, float dt) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_homeostatic_bridge_update_rates: null bridge pointer");
+        return -1;
+    }
 
     if (bridge->base.mutex) nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -177,7 +197,13 @@ int snn_homeostatic_bridge_update_rates(snn_homeostatic_bridge_t* bridge, float 
 }
 
 int snn_homeostatic_bridge_apply_plasticity(snn_homeostatic_bridge_t* bridge, float dt) {
-    if (!bridge || !bridge->config.enable_threshold_adaptation) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_homeostatic_bridge_apply_plasticity: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->config.enable_threshold_adaptation) {
+        return -1;
+    }
 
     if (bridge->base.mutex) nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -212,7 +238,10 @@ int snn_homeostatic_bridge_apply_plasticity(snn_homeostatic_bridge_t* bridge, fl
 }
 
 int snn_homeostatic_bridge_update(snn_homeostatic_bridge_t* bridge, float dt) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_homeostatic_bridge_update: null bridge pointer");
+        return -1;
+    }
 
     int ret = snn_homeostatic_bridge_update_rates(bridge, dt);
     if (ret != 0) return ret;
@@ -233,7 +262,20 @@ int snn_homeostatic_bridge_get_weight_changes(
     uint32_t max_changes,
     uint32_t* n_changes
 ) {
-    if (!bridge || !neuron_ids || !threshold_adjustments || !n_changes) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_homeostatic_bridge_get_weight_changes: null bridge pointer");
+        return -1;
+    }
+    if (!neuron_ids) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_homeostatic_bridge_get_weight_changes: null neuron_ids pointer");
+        return -1;
+    }
+    if (!threshold_adjustments) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_homeostatic_bridge_get_weight_changes: null threshold_adjustments pointer");
+        return -1;
+    }
+    if (!n_changes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_homeostatic_bridge_get_weight_changes: null n_changes pointer");
         return -1;
     }
 
@@ -245,7 +287,14 @@ int snn_homeostatic_bridge_get_effects(
     const snn_homeostatic_bridge_t* bridge,
     snn_homeostatic_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_homeostatic_bridge_get_effects: null bridge pointer");
+        return -1;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_homeostatic_bridge_get_effects: null effects pointer");
+        return -1;
+    }
 
     if (bridge->base.mutex) {
         nimcp_platform_mutex_lock((void*)bridge->base.mutex);
@@ -261,11 +310,19 @@ int snn_homeostatic_bridge_get_effects(
 }
 
 float snn_homeostatic_bridge_get_avg_rate(const snn_homeostatic_bridge_t* bridge) {
-    return bridge ? bridge->effects.avg_firing_rate : 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_homeostatic_bridge_get_avg_rate: null bridge pointer");
+        return 0.0f;
+    }
+    return bridge->effects.avg_firing_rate;
 }
 
 bool snn_homeostatic_bridge_is_stable(const snn_homeostatic_bridge_t* bridge) {
-    return bridge ? bridge->effects.network_stable : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_homeostatic_bridge_is_stable: null bridge pointer");
+        return false;
+    }
+    return bridge->effects.network_stable;
 }
 
 int snn_homeostatic_bridge_get_stats(
@@ -274,7 +331,10 @@ int snn_homeostatic_bridge_get_stats(
     uint32_t* stability_checks,
     uint32_t* updates
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_homeostatic_bridge_get_stats: null bridge pointer");
+        return -1;
+    }
 
     if (threshold_adjustments) *threshold_adjustments = bridge->threshold_adjustments;
     if (stability_checks) *stability_checks = bridge->stability_checks;
@@ -285,7 +345,10 @@ int snn_homeostatic_bridge_get_stats(
 }
 
 void snn_homeostatic_bridge_reset_stats(snn_homeostatic_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_homeostatic_bridge_reset_stats: null bridge pointer");
+        return;
+    }
 
     if (bridge->base.mutex) nimcp_platform_mutex_lock(bridge->base.mutex);
 

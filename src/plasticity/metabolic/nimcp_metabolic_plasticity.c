@@ -91,7 +91,10 @@ static void update_energy_state(metabolic_plasticity_t* metabolic) {
  * ============================================================================ */
 
 int metabolic_plasticity_default_config(metabolic_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_plasticity_default_config: config is NULL");
+        return -1;
+    }
 
     /* Initial state */
     config->initial_atp = METABOLIC_ATP_INITIAL;
@@ -210,8 +213,14 @@ int metabolic_plasticity_consume_atp(
     float magnitude
 ) {
     /* Guard clauses */
-    if (!metabolic) return -1;
-    if (magnitude < 0.0f || magnitude > 1.0f) return -1;
+    if (!metabolic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_plasticity_consume_atp: metabolic is NULL");
+        return -1;
+    }
+    if (magnitude < 0.0f || magnitude > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metabolic_plasticity_consume_atp: magnitude out of range [0, 1]");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(metabolic->mutex);
 
@@ -291,7 +300,14 @@ int metabolic_plasticity_get_atp_state(
     const metabolic_plasticity_t* metabolic,
     atp_pool_state_t* state
 ) {
-    if (!metabolic || !state) return -1;
+    if (!metabolic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_plasticity_get_atp_state: metabolic is NULL");
+        return -1;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_plasticity_get_atp_state: state is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(metabolic->mutex);
     memcpy(state, &metabolic->atp_state, sizeof(atp_pool_state_t));
@@ -306,7 +322,10 @@ int metabolic_plasticity_get_atp_state(
 
 int metabolic_plasticity_update(metabolic_plasticity_t* metabolic, uint64_t delta_ms) {
     /* Guard clauses */
-    if (!metabolic) return -1;
+    if (!metabolic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_plasticity_update: metabolic is NULL");
+        return -1;
+    }
     if (delta_ms == 0) return 0;
 
     nimcp_platform_mutex_lock(metabolic->mutex);
@@ -361,8 +380,14 @@ int metabolic_plasticity_set_recovery_rate(
     metabolic_plasticity_t* metabolic,
     float recovery_rate
 ) {
-    if (!metabolic) return -1;
-    if (recovery_rate < 0.0f) return -1;
+    if (!metabolic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_plasticity_set_recovery_rate: metabolic is NULL");
+        return -1;
+    }
+    if (recovery_rate < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metabolic_plasticity_set_recovery_rate: recovery_rate must be non-negative");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(metabolic->mutex);
     metabolic->atp_state.recovery_rate = recovery_rate;
@@ -377,7 +402,10 @@ float metabolic_plasticity_get_recovery_rate(const metabolic_plasticity_t* metab
 }
 
 int metabolic_plasticity_restore_atp(metabolic_plasticity_t* metabolic, float atp_level) {
-    if (!metabolic) return -1;
+    if (!metabolic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_plasticity_restore_atp: metabolic is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(metabolic->mutex);
 
@@ -447,7 +475,14 @@ int metabolic_plasticity_get_stats(
     const metabolic_plasticity_t* metabolic,
     metabolic_stats_t* stats
 ) {
-    if (!metabolic || !stats) return -1;
+    if (!metabolic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_plasticity_get_stats: metabolic is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_plasticity_get_stats: stats is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(metabolic->mutex);
     memcpy(stats, &metabolic->stats, sizeof(metabolic_stats_t));
@@ -457,7 +492,10 @@ int metabolic_plasticity_get_stats(
 }
 
 int metabolic_plasticity_reset_stats(metabolic_plasticity_t* metabolic) {
-    if (!metabolic) return -1;
+    if (!metabolic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_plasticity_reset_stats: metabolic is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(metabolic->mutex);
 

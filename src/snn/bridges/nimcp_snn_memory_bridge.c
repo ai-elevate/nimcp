@@ -32,7 +32,10 @@
  * HOW:  Literature-based parameter values
  */
 void snn_memory_config_default(snn_memory_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_config_default: null config pointer");
+        return;
+    }
 
     /* Spike-to-memory encoding */
     config->encoding_threshold_rate = 20.0f;     /* 20 Hz min for encoding */
@@ -173,7 +176,10 @@ snn_memory_bridge_t* snn_memory_bridge_create(
  * HOW:  Disconnect, free all allocations
  */
 void snn_memory_bridge_destroy(snn_memory_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_bridge_destroy: null bridge pointer");
+        return;
+    }
 
     /* Disconnect bio-async if connected */
     if (bridge->base.bio_async_enabled) {
@@ -213,7 +219,10 @@ void snn_memory_bridge_destroy(snn_memory_bridge_t* bridge) {
  * HOW:  Register with router
  */
 int snn_memory_bridge_connect_bio_async(snn_memory_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_bridge_connect_bio_async: null bridge pointer");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -240,7 +249,11 @@ int snn_memory_bridge_connect_bio_async(snn_memory_bridge_t* bridge) {
  * HOW:  Unregister from router
  */
 int snn_memory_bridge_disconnect_bio_async(snn_memory_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_bridge_disconnect_bio_async: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->base.bio_async_enabled) return 0;
 
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_async_enabled = false;
@@ -254,7 +267,11 @@ int snn_memory_bridge_disconnect_bio_async(snn_memory_bridge_t* bridge) {
  * HOW:  Return flag
  */
 bool snn_memory_bridge_is_bio_async_connected(const snn_memory_bridge_t* bridge) {
-    return bridge ? bridge->base.bio_async_enabled : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_bridge_is_bio_async_connected: null bridge pointer");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }
 
 //=============================================================================
@@ -273,7 +290,7 @@ int snn_memory_bridge_process(
 ) {
     /* Guard: Validate inputs */
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Null bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_bridge_process: null bridge pointer");
         return -1;
     }
 
@@ -300,7 +317,7 @@ int snn_memory_bridge_process(
 int snn_memory_bridge_update(snn_memory_bridge_t* bridge, float dt) {
     /* Guard: Validate bridge */
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Null bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_bridge_update: null bridge pointer");
         return -1;
     }
 
@@ -369,7 +386,7 @@ int snn_memory_encode_item(
 ) {
     /* Guard: Validate inputs */
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Null bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_encode_item: null bridge pointer");
         return -1;
     }
 
@@ -433,7 +450,16 @@ int snn_memory_extract_pattern(
     snn_memory_pattern_t* pattern
 ) {
     /* Guard: Validate inputs */
-    if (!bridge || !population || !pattern) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_extract_pattern: null bridge pointer");
+        return -1;
+    }
+    if (!population) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_extract_pattern: null population pointer");
+        return -1;
+    }
+    if (!pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_extract_pattern: null pattern pointer");
         return -1;
     }
 
@@ -477,7 +503,10 @@ bool snn_memory_is_persistent(
     snn_memory_bridge_t* bridge,
     uint32_t population_id
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_is_persistent: null bridge pointer");
+        return false;
+    }
 
     /* Find population index */
     for (uint32_t i = 0; i < bridge->config.num_memory_populations; i++) {
@@ -499,7 +528,10 @@ int snn_memory_boost_recurrence(
     uint32_t population_id
 ) {
     /* Guard: Validate inputs */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_boost_recurrence: null bridge pointer");
+        return -1;
+    }
 
     if (!bridge->config.enable_recurrent_boost) {
         return 0;  /* Disabled */
@@ -526,7 +558,10 @@ int snn_memory_retrieve_item(
     uint32_t item_index
 ) {
     /* Guard: Validate inputs */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_retrieve_item: null bridge pointer");
+        return -1;
+    }
 
     if (item_index >= bridge->state.num_encoded_items) {
         NIMCP_LOGGING_ERROR("Item index %u out of range", item_index);
@@ -569,7 +604,16 @@ int snn_memory_activate_pattern(
     const snn_memory_pattern_t* pattern
 ) {
     /* Guard: Validate inputs */
-    if (!bridge || !population || !pattern) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_activate_pattern: null bridge pointer");
+        return -1;
+    }
+    if (!population) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_activate_pattern: null population pointer");
+        return -1;
+    }
+    if (!pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_activate_pattern: null pattern pointer");
         return -1;
     }
 
@@ -591,7 +635,10 @@ int snn_memory_modulate_by_salience(
     float salience
 ) {
     /* Guard: Validate inputs */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_modulate_by_salience: null bridge pointer");
+        return -1;
+    }
 
     float boost = bridge->config.salience_scaling * salience;
 
@@ -614,7 +661,14 @@ int snn_memory_bridge_get_state(
     const snn_memory_bridge_t* bridge,
     snn_memory_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_bridge_get_state: null bridge pointer");
+        return -1;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_bridge_get_state: null state pointer");
+        return -1;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -625,7 +679,11 @@ int snn_memory_bridge_get_state(
  * HOW:  Return counter
  */
 uint32_t snn_memory_get_num_items(const snn_memory_bridge_t* bridge) {
-    return bridge ? bridge->state.num_encoded_items : 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_get_num_items: null bridge pointer");
+        return 0;
+    }
+    return bridge->state.num_encoded_items;
 }
 
 /**
@@ -637,7 +695,10 @@ bool snn_memory_has_persistent_activity(
     const snn_memory_bridge_t* bridge,
     uint32_t population_id
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_has_persistent_activity: null bridge pointer");
+        return false;
+    }
 
     for (uint32_t i = 0; i < bridge->config.num_memory_populations; i++) {
         if (bridge->config.memory_population_ids[i] == population_id) {
@@ -657,7 +718,11 @@ float snn_memory_get_persistence_strength(
     const snn_memory_bridge_t* bridge,
     uint32_t item_index
 ) {
-    if (!bridge || item_index >= bridge->state.num_encoded_items) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_get_persistence_strength: null bridge pointer");
+        return 0.0f;
+    }
+    if (item_index >= bridge->state.num_encoded_items) {
         return 0.0f;
     }
 
@@ -679,7 +744,10 @@ int snn_memory_get_stats(
     uint32_t* retrievals,
     uint32_t* evictions
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_get_stats: null bridge pointer");
+        return -1;
+    }
 
     if (encodings) *encodings = bridge->state.total_encodings;
     if (retrievals) *retrievals = bridge->state.total_retrievals;
@@ -694,7 +762,10 @@ int snn_memory_get_stats(
  * HOW:  Zero counters
  */
 void snn_memory_reset_stats(snn_memory_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_memory_reset_stats: null bridge pointer");
+        return;
+    }
 
     bridge->state.total_encodings = 0;
     bridge->state.total_retrievals = 0;

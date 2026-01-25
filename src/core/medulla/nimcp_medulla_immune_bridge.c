@@ -97,6 +97,7 @@ medulla_immune_bridge_t medulla_immune_create(
     /* Guard: Null checks */
     if (!medulla || !immune) {
         NIMCP_LOGGING_ERROR("Null medulla or immune system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_immune_create: medulla or immune is NULL");
         return NULL;
     }
 
@@ -229,7 +230,10 @@ int medulla_immune_update_immune_to_medulla(
     medulla_immune_bridge_t bridge,
     medulla_cytokine_effects_t* effects
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_immune_update_immune_to_medulla: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->config.enable_immune_to_medulla) return NIMCP_SUCCESS;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -335,7 +339,10 @@ int medulla_immune_update_medulla_to_immune(
     medulla_immune_bridge_t bridge,
     medulla_immune_effects_t* effects
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_immune_update_medulla_to_immune: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->config.enable_medulla_to_immune) return NIMCP_SUCCESS;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -418,7 +425,10 @@ int medulla_immune_update_medulla_to_immune(
 //=============================================================================
 
 int medulla_immune_update(medulla_immune_bridge_t bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_immune_update: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     int result;
 
@@ -450,7 +460,14 @@ int medulla_immune_get_cytokine_effects(
     medulla_immune_bridge_t bridge,
     medulla_cytokine_effects_t* effects
 ) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_immune_get_cytokine_effects: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_immune_get_cytokine_effects: effects is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->cytokine_effects;
@@ -463,7 +480,14 @@ int medulla_immune_get_immune_effects(
     medulla_immune_bridge_t bridge,
     medulla_immune_effects_t* effects
 ) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_immune_get_immune_effects: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_immune_get_immune_effects: effects is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->immune_effects;
@@ -476,7 +500,14 @@ int medulla_immune_get_stats(
     medulla_immune_bridge_t bridge,
     medulla_immune_stats_t* stats
 ) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_immune_get_stats: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_immune_get_stats: stats is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -490,7 +521,10 @@ int medulla_immune_get_stats(
 //=============================================================================
 
 int medulla_immune_connect_bio_async(medulla_immune_bridge_t bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_immune_connect_bio_async: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (bridge->bio_async_connected) return NIMCP_SUCCESS;
 
     /* Register with bio-router */
@@ -513,7 +547,10 @@ int medulla_immune_connect_bio_async(medulla_immune_bridge_t bridge) {
 }
 
 int medulla_immune_disconnect_bio_async(medulla_immune_bridge_t bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "medulla_immune_disconnect_bio_async: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->bio_async_connected) return NIMCP_SUCCESS;
 
     if (bridge->base.bio_ctx) {

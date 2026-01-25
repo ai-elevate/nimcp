@@ -48,7 +48,7 @@ snn_tom_bridge_t* snn_tom_bridge_create(
 
     snn_tom_bridge_t* bridge = nimcp_malloc(sizeof(snn_tom_bridge_t));
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate SNN-tom bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_tom_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -77,7 +77,10 @@ void snn_tom_bridge_destroy(snn_tom_bridge_t* bridge) {
 }
 
 int snn_tom_bridge_connect_bio_async(snn_tom_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_tom_bridge_connect_bio_async: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -109,7 +112,10 @@ bool snn_tom_bridge_is_bio_async_connected(const snn_tom_bridge_t* bridge) {
 }
 
 int snn_tom_bridge_update(snn_tom_bridge_t* bridge, float dt) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_tom_bridge_update: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     bridge->last_update_time += dt;
     if (bridge->last_update_time < bridge->config.update_interval_ms) {
@@ -149,7 +155,18 @@ float snn_tom_compute_mentalizing(snn_tom_bridge_t* bridge, float spike_rate) {
 }
 
 int snn_tom_update_perspective(snn_tom_bridge_t* bridge, const float* spike_train, uint32_t length, float* accuracy) {
-    if (!bridge || !spike_train || length == 0) return SNN_ERROR_INVALID_CONFIG;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_tom_update_perspective: bridge is NULL");
+        return SNN_ERROR_INVALID_CONFIG;
+    }
+    if (!spike_train) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_tom_update_perspective: spike_train is NULL");
+        return SNN_ERROR_INVALID_CONFIG;
+    }
+    if (length == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_tom_update_perspective: length is 0");
+        return SNN_ERROR_INVALID_CONFIG;
+    }
 
     float autocorr = 0.0f;
     uint32_t lag = (length > 10) ? 10 : length / 2;
@@ -179,7 +196,14 @@ bool snn_tom_check_mentalizing_active(const snn_tom_bridge_t* bridge) {
 }
 
 int snn_tom_bridge_get_state(const snn_tom_bridge_t* bridge, snn_tom_state_t* state) {
-    if (!bridge || !state) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_tom_bridge_get_state: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_tom_bridge_get_state: state is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -193,7 +217,10 @@ float snn_tom_get_perspective_accuracy(const snn_tom_bridge_t* bridge) {
 }
 
 int snn_tom_get_stats(const snn_tom_bridge_t* bridge, uint32_t* attribution_count, uint32_t* mentalizing_detections, float* avg_activity) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_tom_get_stats: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (attribution_count) *attribution_count = bridge->state.attribution_count;
     if (mentalizing_detections) *mentalizing_detections = bridge->state.mentalizing_active ? 1 : 0;
     if (avg_activity) *avg_activity = bridge->state.mentalizing_activity;

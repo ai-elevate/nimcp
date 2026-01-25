@@ -132,6 +132,9 @@ pc_hierarchy_config_t pc_hierarchy_config_default(uint32_t num_levels,
     /* WHAT: Default hierarchy configuration
      * WHY:  Standard configuration with reasonable defaults
      */
+    if (num_levels == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pc_hierarchy_config_default: num_levels is 0");
+    }
     pc_hierarchy_config_t config = {
         .num_levels = num_levels,
         .units_per_level = NULL,  /* Will be copied */
@@ -379,10 +382,16 @@ pc_prediction_weights_t* pc_prediction_weights_create(uint32_t num_lower,
      * WHY:  Connect layers in hierarchy
      */
 
-    if (num_lower == 0 || num_higher == 0) return NULL;
+    if (num_lower == 0 || num_higher == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pc_prediction_weights_create: num_lower or num_higher is 0");
+        return NULL;
+    }
 
     pc_prediction_weights_t* weights = nimcp_calloc(1, sizeof(pc_prediction_weights_t));
-    if (!weights) return NULL;
+    if (!weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pc_prediction_weights_create: failed to allocate weights");
+        return NULL;
+    }
 
     weights->num_lower = num_lower;
     weights->num_higher = num_higher;
@@ -392,6 +401,7 @@ pc_prediction_weights_t* pc_prediction_weights_create(uint32_t num_lower,
     weights->bias = nimcp_calloc(num_lower, sizeof(float));
 
     if (!weights->weights || !weights->bias) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pc_prediction_weights_create: failed to allocate weight arrays");
         pc_prediction_weights_destroy(weights);
         return NULL;
     }
@@ -500,21 +510,27 @@ pc_hierarchy_t pc_hierarchy_create(const pc_hierarchy_config_t* config) {
      */
 
     if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pc_hierarchy_create: config is NULL");
         NIMCP_LOGGING_ERROR("Null config in pc_hierarchy_create");
         return NULL;
     }
     if (config->num_levels == 0 || config->num_levels > PC_MAX_HIERARCHY_LEVELS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pc_hierarchy_create: invalid num_levels");
         NIMCP_LOGGING_ERROR("Invalid num_levels: %u", config->num_levels);
         return NULL;
     }
     if (!config->units_per_level) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pc_hierarchy_create: units_per_level is NULL");
         NIMCP_LOGGING_ERROR("Null units_per_level");
         return NULL;
     }
 
     /* Allocate hierarchy */
     pc_hierarchy_t hier = nimcp_calloc(1, sizeof(struct pc_hierarchy_struct));
-    if (!hier) return NULL;
+    if (!hier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pc_hierarchy_create: failed to allocate hierarchy");
+        return NULL;
+    }
 
     /* Copy configuration */
     memcpy(&hier->config, config, sizeof(pc_hierarchy_config_t));
@@ -532,6 +548,7 @@ pc_hierarchy_t pc_hierarchy_create(const pc_hierarchy_config_t* config) {
     hier->layer_states = nimcp_calloc(config->num_levels, sizeof(pc_layer_state_t*));
     hier->layer_params = nimcp_calloc(config->num_levels, sizeof(pc_layer_params_t));
     if (!hier->layer_states || !hier->layer_params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pc_hierarchy_create: failed to allocate layer arrays");
         pc_hierarchy_destroy(hier);
         return NULL;
     }
@@ -546,6 +563,7 @@ pc_hierarchy_t pc_hierarchy_create(const pc_hierarchy_config_t* config) {
 
         hier->layer_states[l] = pc_layer_state_create(&hier->layer_params[l]);
         if (!hier->layer_states[l]) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pc_hierarchy_create: failed to create layer state");
             pc_hierarchy_destroy(hier);
             return NULL;
         }
@@ -556,6 +574,7 @@ pc_hierarchy_t pc_hierarchy_create(const pc_hierarchy_config_t* config) {
         hier->prediction_weights = nimcp_calloc(config->num_levels - 1,
                                                 sizeof(pc_prediction_weights_t*));
         if (!hier->prediction_weights) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pc_hierarchy_create: failed to allocate prediction weights array");
             pc_hierarchy_destroy(hier);
             return NULL;
         }
@@ -567,6 +586,7 @@ pc_hierarchy_t pc_hierarchy_create(const pc_hierarchy_config_t* config) {
                 config->units_per_level[l + 1]   /* Higher */
             );
             if (!hier->prediction_weights[l]) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pc_hierarchy_create: failed to create prediction weights");
                 pc_hierarchy_destroy(hier);
                 return NULL;
             }
@@ -580,6 +600,7 @@ pc_hierarchy_t pc_hierarchy_create(const pc_hierarchy_config_t* config) {
 
     if (!hier->stats.layer_free_energies || !hier->stats.layer_mean_errors ||
         !hier->free_energy_history) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pc_hierarchy_create: failed to allocate statistics arrays");
         pc_hierarchy_destroy(hier);
         return NULL;
     }
@@ -587,6 +608,7 @@ pc_hierarchy_t pc_hierarchy_create(const pc_hierarchy_config_t* config) {
     /* Allocate temp buffer */
     hier->temp_prediction = nimcp_calloc(hier->max_layer_size, sizeof(float));
     if (!hier->temp_prediction) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "pc_hierarchy_create: failed to allocate temp buffer");
         pc_hierarchy_destroy(hier);
         return NULL;
     }
@@ -793,8 +815,18 @@ bool pc_hierarchy_get_representations(pc_hierarchy_t hierarchy,
      * WHY:  Access internal states
      */
 
-    if (!hierarchy || !output) return false;
-    if (level >= hierarchy->num_levels) return false;
+    if (!hierarchy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pc_hierarchy_get_representations: hierarchy is NULL");
+        return false;
+    }
+    if (!output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pc_hierarchy_get_representations: output is NULL");
+        return false;
+    }
+    if (level >= hierarchy->num_levels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pc_hierarchy_get_representations: level out of range");
+        return false;
+    }
 
     pc_layer_state_t* state = hierarchy->layer_states[level];
     memcpy(output, state->mu, state->num_units * sizeof(float));
@@ -808,8 +840,18 @@ bool pc_hierarchy_get_errors(pc_hierarchy_t hierarchy,
      * WHY:  Errors indicate surprise/novelty
      */
 
-    if (!hierarchy || !output) return false;
-    if (level >= hierarchy->num_levels) return false;
+    if (!hierarchy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pc_hierarchy_get_errors: hierarchy is NULL");
+        return false;
+    }
+    if (!output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pc_hierarchy_get_errors: output is NULL");
+        return false;
+    }
+    if (level >= hierarchy->num_levels) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pc_hierarchy_get_errors: level out of range");
+        return false;
+    }
 
     pc_layer_state_t* state = hierarchy->layer_states[level];
     memcpy(output, state->error, state->num_units * sizeof(float));
@@ -823,7 +865,14 @@ float pc_hierarchy_get_free_energy(pc_hierarchy_t hierarchy) {
 
 bool pc_hierarchy_get_stats(pc_hierarchy_t hierarchy,
                             pc_hierarchy_stats_t* stats) {
-    if (!hierarchy || !stats) return false;
+    if (!hierarchy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pc_hierarchy_get_stats: hierarchy is NULL");
+        return false;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pc_hierarchy_get_stats: stats is NULL");
+        return false;
+    }
     memcpy(stats, &hierarchy->stats, sizeof(pc_hierarchy_stats_t));
     return true;
 }

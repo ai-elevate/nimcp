@@ -179,6 +179,7 @@ int metabolic_pink_noise_default_config(metabolic_pink_noise_config_t* config) {
     // Guard: NULL config
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_pink_noise_default_config: config is NULL");
         return -1;
     }
 
@@ -243,6 +244,7 @@ metabolic_pink_noise_bridge_t* metabolic_pink_noise_create(
     bridge->noise_generator = pink_noise_create(&noise_config);
     if (!bridge->noise_generator) {
         NIMCP_LOGGING_ERROR("Failed to create pink noise generator");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metabolic_pink_noise_create: failed to create pink noise generator");
         nimcp_free(bridge);
         return NULL;
     }
@@ -255,12 +257,14 @@ metabolic_pink_noise_bridge_t* metabolic_pink_noise_create(
     bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metabolic_pink_noise_create: failed to allocate mutex");
         pink_noise_destroy(bridge->noise_generator);
         nimcp_free(bridge);
         return NULL;
     }
     if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "metabolic_pink_noise_create: failed to initialize mutex");
         pink_noise_destroy(bridge->noise_generator);
         nimcp_free(bridge);
         return NULL;
@@ -303,12 +307,14 @@ int metabolic_pink_noise_connect_metabolic(
     // Guard: NULL bridge
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_pink_noise_connect_metabolic: bridge is NULL");
         return -1;
     }
 
     // Guard: NULL metabolic
     if (!metabolic) {
         NIMCP_LOGGING_ERROR("NULL metabolic pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_pink_noise_connect_metabolic: metabolic is NULL");
         return -1;
     }
 
@@ -325,6 +331,7 @@ int metabolic_pink_noise_disconnect(metabolic_pink_noise_bridge_t* bridge) {
     // Guard: NULL bridge
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_pink_noise_disconnect: bridge is NULL");
         return -1;
     }
 
@@ -357,6 +364,7 @@ int metabolic_pink_noise_update(
     // Guard: NULL bridge
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_pink_noise_update: bridge is NULL");
         return -1;
     }
 
@@ -500,12 +508,14 @@ int metabolic_pink_noise_get_state(
     // Guard: NULL bridge
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_pink_noise_get_state: bridge is NULL");
         return -1;
     }
 
     // Guard: NULL state
     if (!state) {
         NIMCP_LOGGING_ERROR("NULL state pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_pink_noise_get_state: state is NULL");
         return -1;
     }
 
@@ -546,12 +556,14 @@ int metabolic_pink_noise_get_stats(
     // Guard: NULL bridge
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_pink_noise_get_stats: bridge is NULL");
         return -1;
     }
 
     // Guard: NULL stats
     if (!stats) {
         NIMCP_LOGGING_ERROR("NULL stats pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_pink_noise_get_stats: stats is NULL");
         return -1;
     }
 
@@ -574,6 +586,7 @@ int metabolic_pink_noise_reset_stats(metabolic_pink_noise_bridge_t* bridge) {
     // Guard: NULL bridge
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_pink_noise_reset_stats: bridge is NULL");
         return -1;
     }
 
@@ -602,6 +615,7 @@ int metabolic_pink_noise_enable_target(
     // Guard: NULL bridge
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_pink_noise_enable_target: bridge is NULL");
         return -1;
     }
 
@@ -630,6 +644,7 @@ int metabolic_pink_noise_enable_target(
         default:
             nimcp_mutex_unlock(bridge->base.mutex);
             NIMCP_LOGGING_ERROR("Invalid noise target");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metabolic_pink_noise_enable_target: invalid noise target");
             return -1;
     }
 
@@ -644,6 +659,7 @@ int metabolic_pink_noise_disable_target(
     // Guard: NULL bridge
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_pink_noise_disable_target: bridge is NULL");
         return -1;
     }
 
@@ -672,6 +688,7 @@ int metabolic_pink_noise_disable_target(
         default:
             nimcp_mutex_unlock(bridge->base.mutex);
             NIMCP_LOGGING_ERROR("Invalid noise target");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metabolic_pink_noise_disable_target: invalid noise target");
             return -1;
     }
 
@@ -687,12 +704,14 @@ int metabolic_pink_noise_set_strength(
     // Guard: NULL bridge
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_pink_noise_set_strength: bridge is NULL");
         return -1;
     }
 
     // Guard: Invalid strength range
     if (strength < 0.0f || strength > 1.0f) {
         NIMCP_LOGGING_ERROR("Strength must be in range [0, 1]");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metabolic_pink_noise_set_strength: strength out of range [0, 1]");
         return -1;
     }
 
@@ -721,6 +740,7 @@ int metabolic_pink_noise_set_strength(
         default:
             nimcp_mutex_unlock(bridge->base.mutex);
             NIMCP_LOGGING_ERROR("Invalid noise target");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metabolic_pink_noise_set_strength: invalid noise target");
             return -1;
     }
 

@@ -67,7 +67,7 @@ snn_thalamic_bridge_t* snn_thalamic_bridge_create(
     snn_thalamic_bridge_t* bridge = (snn_thalamic_bridge_t*)nimcp_malloc(
         sizeof(snn_thalamic_bridge_t));
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate SNN thalamic bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_thalamic_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -96,7 +96,7 @@ snn_thalamic_bridge_t* snn_thalamic_bridge_create(
     bridge->neuron_modes = (thalamic_relay_mode_t*)nimcp_malloc(
         total_neurons * sizeof(thalamic_relay_mode_t));
     if (!bridge->neuron_modes) {
-        NIMCP_LOGGING_ERROR("Failed to allocate neuron modes");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_thalamic_bridge_create: failed to allocate neuron_modes");
         snn_thalamic_bridge_destroy(bridge);
         return NULL;
     }
@@ -108,7 +108,7 @@ snn_thalamic_bridge_t* snn_thalamic_bridge_create(
     bridge->last_spike_time_us = (uint64_t*)nimcp_malloc(
         total_neurons * sizeof(uint64_t));
     if (!bridge->last_spike_time_us) {
-        NIMCP_LOGGING_ERROR("Failed to allocate spike timing");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_thalamic_bridge_create: failed to allocate last_spike_time_us");
         snn_thalamic_bridge_destroy(bridge);
         return NULL;
     }
@@ -118,7 +118,7 @@ snn_thalamic_bridge_t* snn_thalamic_bridge_create(
     bridge->attention_weights = (float*)nimcp_malloc(
         network->n_populations * sizeof(float));
     if (!bridge->attention_weights) {
-        NIMCP_LOGGING_ERROR("Failed to allocate attention weights");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_thalamic_bridge_create: failed to allocate attention_weights");
         snn_thalamic_bridge_destroy(bridge);
         return NULL;
     }
@@ -130,7 +130,7 @@ snn_thalamic_bridge_t* snn_thalamic_bridge_create(
     if (bridge->config.enable_trn_inhibition) {
         bridge->trn_inhibition = (float*)nimcp_malloc(total_neurons * sizeof(float));
         if (!bridge->trn_inhibition) {
-            NIMCP_LOGGING_ERROR("Failed to allocate TRN inhibition");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_thalamic_bridge_create: failed to allocate trn_inhibition");
             snn_thalamic_bridge_destroy(bridge);
             return NULL;
         }
@@ -143,7 +143,7 @@ snn_thalamic_bridge_t* snn_thalamic_bridge_create(
         bridge->ct_feedback_buffer = (snn_spike_t*)nimcp_malloc(
             bridge->ct_buffer_size * sizeof(snn_spike_t));
         if (!bridge->ct_feedback_buffer) {
-            NIMCP_LOGGING_ERROR("Failed to allocate CT feedback buffer");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_thalamic_bridge_create: failed to allocate ct_feedback_buffer");
             snn_thalamic_bridge_destroy(bridge);
             return NULL;
         }
@@ -177,7 +177,10 @@ void snn_thalamic_bridge_destroy(snn_thalamic_bridge_t* bridge) {
 }
 
 int snn_thalamic_bridge_connect_bio_async(snn_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_thalamic_bridge_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bridge->base.bio_async_enabled = true;
@@ -187,7 +190,10 @@ int snn_thalamic_bridge_connect_bio_async(snn_thalamic_bridge_t* bridge) {
 }
 
 int snn_thalamic_bridge_disconnect_bio_async(snn_thalamic_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_thalamic_bridge_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     bridge->base.bio_async_enabled = false;
@@ -213,12 +219,22 @@ int snn_thalamic_bridge_process(
     uint32_t* n_out_actual
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_thalamic_bridge_process: bridge is NULL");
+        return -1;
+    }
     if (!spikes_in || n_spikes == 0) {
         if (n_out_actual) *n_out_actual = 0;
         return 0;
     }
-    if (!spikes_out || !n_out_actual) return -1;
+    if (!spikes_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_thalamic_bridge_process: spikes_out is NULL");
+        return -1;
+    }
+    if (!n_out_actual) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_thalamic_bridge_process: n_out_actual is NULL");
+        return -1;
+    }
 
     uint32_t n_relayed = 0;
 
@@ -285,7 +301,10 @@ int snn_thalamic_bridge_process(
 }
 
 int snn_thalamic_bridge_update(snn_thalamic_bridge_t* bridge, float dt) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_thalamic_bridge_update: bridge is NULL");
+        return -1;
+    }
 
     bridge->last_update_time += dt;
 
@@ -307,7 +326,10 @@ int snn_thalamic_bridge_set_mode(
     uint32_t neuron_id,
     thalamic_relay_mode_t mode
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_thalamic_bridge_set_mode: bridge is NULL");
+        return -1;
+    }
 
     uint32_t total_neurons = 0;
     for (uint32_t i = 0; i < bridge->network->n_populations; i++) {
@@ -325,7 +347,14 @@ int snn_thalamic_bridge_get_mode(
     uint32_t neuron_id,
     thalamic_relay_mode_t* mode
 ) {
-    if (!bridge || !mode) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_thalamic_bridge_get_mode: bridge is NULL");
+        return -1;
+    }
+    if (!mode) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_thalamic_bridge_get_mode: mode is NULL");
+        return -1;
+    }
 
     uint32_t total_neurons = 0;
     for (uint32_t i = 0; i < bridge->network->n_populations; i++) {
@@ -378,9 +407,18 @@ int snn_thalamic_bridge_set_attention(
     uint32_t pop_id,
     float attention
 ) {
-    if (!bridge) return -1;
-    if (pop_id >= bridge->network->n_populations) return -1;
-    if (attention < 0.0f || attention > 1.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_thalamic_bridge_set_attention: bridge is NULL");
+        return -1;
+    }
+    if (pop_id >= bridge->network->n_populations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_thalamic_bridge_set_attention: pop_id out of range");
+        return -1;
+    }
+    if (attention < 0.0f || attention > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_thalamic_bridge_set_attention: attention out of range [0,1]");
+        return -1;
+    }
 
     bridge->attention_weights[pop_id] = attention;
     return 0;
@@ -391,8 +429,18 @@ int snn_thalamic_bridge_get_attention(
     uint32_t pop_id,
     float* attention
 ) {
-    if (!bridge || !attention) return -1;
-    if (pop_id >= bridge->network->n_populations) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_thalamic_bridge_get_attention: bridge is NULL");
+        return -1;
+    }
+    if (!attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_thalamic_bridge_get_attention: attention is NULL");
+        return -1;
+    }
+    if (pop_id >= bridge->network->n_populations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_thalamic_bridge_get_attention: pop_id out of range");
+        return -1;
+    }
 
     *attention = bridge->attention_weights[pop_id];
     return 0;
@@ -406,8 +454,18 @@ int snn_thalamic_bridge_ct_feedback(
     snn_thalamic_bridge_t* bridge,
     const snn_spike_t* spike
 ) {
-    if (!bridge || !spike) return -1;
-    if (!bridge->config.enable_ct_loop) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_thalamic_bridge_ct_feedback: bridge is NULL");
+        return -1;
+    }
+    if (!spike) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_thalamic_bridge_ct_feedback: spike is NULL");
+        return -1;
+    }
+    if (!bridge->config.enable_ct_loop) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_thalamic_bridge_ct_feedback: CT loop not enabled");
+        return -1;
+    }
 
     /* Buffer feedback spike */
     if (bridge->ct_buffer_count < bridge->ct_buffer_size) {
@@ -423,7 +481,10 @@ int snn_thalamic_bridge_process_ct_loop(
     snn_thalamic_bridge_t* bridge,
     uint64_t current_time_us
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_thalamic_bridge_process_ct_loop: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_ct_loop) return 0;
 
     /* Process buffered feedback spikes with delay */
@@ -462,7 +523,14 @@ int snn_thalamic_bridge_get_stats(
     const snn_thalamic_bridge_t* bridge,
     snn_thalamic_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_thalamic_bridge_get_stats: bridge is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_thalamic_bridge_get_stats: stats is NULL");
+        return -1;
+    }
 
     *stats = bridge->stats;
     return 0;

@@ -42,6 +42,7 @@ stdp_pink_noise_bridge_t* stdp_pink_noise_create(
 
     bridge->pink_bridge = pink_quantum_create(&pink_config);
     if (!bridge->pink_bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_pink_noise_create: failed to create quantum pink noise generator");
         NIMCP_LOGGING_ERROR("Failed to create quantum pink noise generator");
         nimcp_free(bridge);
         return NULL;
@@ -152,6 +153,7 @@ int stdp_pink_noise_update_samples(stdp_pink_noise_bridge_t* bridge) {
     }
 
     if (!bridge->pink_bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "stdp_pink_noise_update_samples: pink quantum bridge not initialized");
         NIMCP_LOGGING_ERROR("Pink quantum bridge not initialized");
         return -1;
     }
@@ -220,6 +222,7 @@ int stdp_pink_noise_apply_modulation(stdp_pink_noise_bridge_t* bridge) {
     NIMCP_API_CHECK_NULL(bridge, -1, "STDP pink noise bridge is NULL");
 
     if (!stdp_pink_noise_has_optimizer(bridge)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "stdp_pink_noise_apply_modulation: no optimizer connected");
         NIMCP_LOGGING_ERROR("No optimizer connected for noise modulation");
         return -1;
     }
@@ -229,12 +232,14 @@ int stdp_pink_noise_apply_modulation(stdp_pink_noise_bridge_t* bridge) {
     if (qstdp_optimizer_get_params(bridge->stdp_optimizer,
                                     &base_lr, &base_a_plus, &base_a_minus,
                                     &base_tau_plus, &base_tau_minus) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "stdp_pink_noise_apply_modulation: failed to get base parameters");
         NIMCP_LOGGING_ERROR("Failed to get base parameters from optimizer");
         return -1;
     }
 
     /* Update noise samples */
     if (stdp_pink_noise_update_samples(bridge) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "stdp_pink_noise_apply_modulation: failed to update noise samples");
         NIMCP_LOGGING_ERROR("Failed to update noise samples");
         return -1;
     }
@@ -347,7 +352,10 @@ int stdp_pink_noise_apply_modulation(stdp_pink_noise_bridge_t* bridge) {
  * HOW:  Return cached value from last apply_modulation
  */
 float stdp_pink_noise_get_noisy_lr(const stdp_pink_noise_bridge_t* bridge) {
-    if (!bridge) return 0.01f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pink_noise_get_noisy_lr: bridge is NULL");
+        return 0.01f;
+    }
     return bridge->noisy_lr;
 }
 
@@ -537,6 +545,7 @@ int stdp_pink_noise_reset(
     if (bridge->pink_bridge) {
         uint32_t seed = new_seed ? new_seed : bridge->config.seed;
         if (pink_quantum_reset(bridge->pink_bridge, seed) != 0) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "stdp_pink_noise_reset: failed to reset pink quantum bridge");
             NIMCP_LOGGING_ERROR("Failed to reset pink quantum bridge");
             return -1;
         }

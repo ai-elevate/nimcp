@@ -30,7 +30,10 @@
 //=============================================================================
 
 void snn_hippocampus_config_default(snn_hippocampus_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_config_default: null config pointer");
+        return;
+    }
 
     /* Theta rhythm (8 Hz typical) */
     config->theta_frequency = 8.0f;
@@ -241,7 +244,10 @@ snn_hippocampus_bridge_t* snn_hippocampus_bridge_create(
 }
 
 void snn_hippocampus_bridge_destroy(snn_hippocampus_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_bridge_destroy: null bridge pointer");
+        return;
+    }
 
     /* Free place cells */
     if (bridge->place_cells) {
@@ -285,7 +291,10 @@ void snn_hippocampus_bridge_destroy(snn_hippocampus_bridge_t* bridge) {
 //=============================================================================
 
 int snn_hippocampus_bridge_connect_bio_async(snn_hippocampus_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_bridge_connect_bio_async: null bridge pointer");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -304,7 +313,11 @@ int snn_hippocampus_bridge_connect_bio_async(snn_hippocampus_bridge_t* bridge) {
 }
 
 int snn_hippocampus_bridge_disconnect_bio_async(snn_hippocampus_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_bridge_disconnect_bio_async: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
@@ -315,7 +328,11 @@ int snn_hippocampus_bridge_disconnect_bio_async(snn_hippocampus_bridge_t* bridge
 }
 
 bool snn_hippocampus_bridge_is_bio_async_connected(const snn_hippocampus_bridge_t* bridge) {
-    return bridge && bridge->base.bio_async_enabled;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_bridge_is_bio_async_connected: null bridge pointer");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }
 
 //=============================================================================
@@ -330,8 +347,22 @@ int snn_hippocampus_bridge_process(
     uint32_t output_size
 ) {
     /* Guard clauses */
-    if (!bridge || !position || !output) return -1;
-    if (!bridge->connected) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_bridge_process: null bridge pointer");
+        return -1;
+    }
+    if (!position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_bridge_process: null position pointer");
+        return -1;
+    }
+    if (!output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_bridge_process: null output pointer");
+        return -1;
+    }
+    if (!bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_hippocampus_bridge_process: bridge not connected");
+        return -1;
+    }
 
     /* Update spatial state */
     memcpy(bridge->current_position, position, 3 * sizeof(float));
@@ -376,8 +407,14 @@ int snn_hippocampus_bridge_process(
 }
 
 int snn_hippocampus_bridge_update(snn_hippocampus_bridge_t* bridge, float dt) {
-    if (!bridge) return -1;
-    if (!bridge->connected) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_bridge_update: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_hippocampus_bridge_update: bridge not connected");
+        return -1;
+    }
 
     /* Update time */
     bridge->last_update_time += dt;
@@ -400,8 +437,14 @@ ripple_event_t* snn_hippocampus_generate_ripple(
     snn_hippocampus_bridge_t* bridge,
     episodic_memory_t* episode
 ) {
-    if (!bridge) return NULL;
-    if (bridge->ripple_count >= bridge->max_ripples) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_generate_ripple: null bridge pointer");
+        return NULL;
+    }
+    if (bridge->ripple_count >= bridge->max_ripples) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_hippocampus_generate_ripple: ripple buffer full");
+        return NULL;
+    }
 
     ripple_event_t* ripple = &bridge->recent_ripples[bridge->ripple_count];
     bridge->ripple_count++;
@@ -425,8 +468,14 @@ episodic_memory_t* snn_hippocampus_encode_episode(
     snn_hippocampus_bridge_t* bridge,
     float time_window
 ) {
-    if (!bridge) return NULL;
-    if (bridge->n_episodes >= bridge->max_episodes) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_encode_episode: null bridge pointer");
+        return NULL;
+    }
+    if (bridge->n_episodes >= bridge->max_episodes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_hippocampus_encode_episode: episode storage full");
+        return NULL;
+    }
 
     /* Allocate new episode */
     episodic_memory_t* episode = nimcp_malloc(sizeof(episodic_memory_t));
@@ -493,7 +542,18 @@ episodic_memory_t* snn_hippocampus_retrieve_episode(
     const uint32_t* cue_spikes,
     uint32_t cue_length
 ) {
-    if (!bridge || !cue_spikes || cue_length == 0) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_retrieve_episode: null bridge pointer");
+        return NULL;
+    }
+    if (!cue_spikes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_retrieve_episode: null cue_spikes pointer");
+        return NULL;
+    }
+    if (cue_length == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_hippocampus_retrieve_episode: zero cue_length");
+        return NULL;
+    }
 
     /* Find most similar episode via pattern completion */
     episodic_memory_t* best_match = NULL;
@@ -531,7 +591,11 @@ episodic_memory_t* snn_hippocampus_retrieve_episode(
 //=============================================================================
 
 float snn_hippocampus_get_theta_phase(const snn_hippocampus_bridge_t* bridge) {
-    return bridge ? bridge->theta_phase : -1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_get_theta_phase: null bridge pointer");
+        return -1.0f;
+    }
+    return bridge->theta_phase;
 }
 
 int snn_hippocampus_get_place_cell(
@@ -539,19 +603,36 @@ int snn_hippocampus_get_place_cell(
     uint32_t cell_idx,
     place_cell_pattern_t* pattern
 ) {
-    if (!bridge || !pattern) return -1;
-    if (cell_idx >= bridge->n_place_cells) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_get_place_cell: null bridge pointer");
+        return -1;
+    }
+    if (!pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_get_place_cell: null pattern pointer");
+        return -1;
+    }
+    if (cell_idx >= bridge->n_place_cells) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_hippocampus_get_place_cell: invalid cell_idx");
+        return -1;
+    }
 
     *pattern = *(bridge->place_cells[cell_idx]);
     return 0;
 }
 
 uint32_t snn_hippocampus_get_episode_count(const snn_hippocampus_bridge_t* bridge) {
-    return bridge ? bridge->n_episodes : 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_get_episode_count: null bridge pointer");
+        return 0;
+    }
+    return bridge->n_episodes;
 }
 
 float snn_hippocampus_bridge_get_activity(const snn_hippocampus_bridge_t* bridge) {
-    if (!bridge) return -1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_bridge_get_activity: null bridge pointer");
+        return -1.0f;
+    }
 
     /* Average place cell firing rate */
     float total_rate = 0.0f;
@@ -575,7 +656,10 @@ int snn_hippocampus_get_stats(
     uint32_t* episodes_stored,
     uint32_t* updates
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_get_stats: null bridge pointer");
+        return -1;
+    }
 
     if (total_ripples) {
         *total_ripples = bridge->ripple_count;
@@ -593,7 +677,10 @@ int snn_hippocampus_get_stats(
 }
 
 void snn_hippocampus_reset_stats(snn_hippocampus_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_hippocampus_reset_stats: null bridge pointer");
+        return;
+    }
 
     bridge->update_count = 0;
     bridge->last_update_time = 0.0f;

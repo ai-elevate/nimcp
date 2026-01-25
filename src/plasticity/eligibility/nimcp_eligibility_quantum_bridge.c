@@ -7,6 +7,7 @@
 
 #include "plasticity/eligibility/nimcp_eligibility_quantum_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -88,13 +89,10 @@ elig_quantum_config_t elig_quantum_default_config(void) {
 
 eligibility_quantum_ctx_t elig_quantum_create(const elig_quantum_config_t* config) {
     struct eligibility_quantum_ctx_internal* ctx =
-        calloc(1, sizeof(struct eligibility_quantum_ctx_internal));
+        nimcp_calloc(1, sizeof(struct eligibility_quantum_ctx_internal));
     if (!ctx) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "elig_quantum_create: ctx allocation failed");
         return NULL;
-
     }
 
     ctx->config = config ? *config : elig_quantum_default_config();
@@ -117,13 +115,18 @@ eligibility_quantum_ctx_t elig_quantum_create(const elig_quantum_config_t* confi
 }
 
 void elig_quantum_destroy(eligibility_quantum_ctx_t ctx) {
-    if (ctx) {
-        free(ctx);
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_destroy: ctx is NULL");
+        return;
     }
+    nimcp_free(ctx);
 }
 
 void elig_quantum_reset(eligibility_quantum_ctx_t ctx) {
-    if (!ctx) return;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_reset: ctx is NULL");
+        return;
+    }
 
     ctx->anneal_state.temperature = ctx->config.initial_temperature;
     ctx->anneal_state.tunneling_probability = ctx->config.tunneling_rate;
@@ -155,15 +158,32 @@ float elig_quantum_analyze_information_flow(
     const float* weights,
     uint32_t num_synapses
 ) {
-    if (!ctx || !traces || !weights || num_synapses == 0) {
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_analyze_information_flow: ctx is NULL");
+        return 0.0f;
+    }
+    if (!traces) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_analyze_information_flow: traces is NULL");
+        return 0.0f;
+    }
+    if (!weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_analyze_information_flow: weights is NULL");
+        return 0.0f;
+    }
+    if (num_synapses == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "elig_quantum_analyze_information_flow: num_synapses is zero");
         return 0.0f;
     }
 
     ctx->metrics.bottleneck_analyses++;
 
     /* Compute trace distribution entropy */
-    float* probs = malloc(num_synapses * sizeof(float));
-    if (!probs) return 0.0f;
+    float* probs = nimcp_malloc(num_synapses * sizeof(float));
+    if (!probs) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_synapses * sizeof(float),
+                           "elig_quantum_analyze_information_flow: failed to allocate probs array");
+        return 0.0f;
+    }
 
     float total_trace = 0.0f;
     for (uint32_t i = 0; i < num_synapses; i++) {
@@ -171,7 +191,7 @@ float elig_quantum_analyze_information_flow(
     }
 
     if (total_trace < 1e-10f) {
-        free(probs);
+        nimcp_free(probs);
         return 1.0f;  /* No activity = perfect efficiency */
     }
 
@@ -184,7 +204,7 @@ float elig_quantum_analyze_information_flow(
     float efficiency = (max_entropy > 0) ? entropy / max_entropy : 1.0f;
 
     ctx->metrics.information_efficiency = efficiency;
-    free(probs);
+    nimcp_free(probs);
 
     return efficiency;
 }
@@ -198,7 +218,24 @@ bool elig_quantum_detect_bottlenecks(
     uint32_t max_bottlenecks,
     uint32_t* num_found
 ) {
-    if (!ctx || !traces || !weights || !bottlenecks || !num_found) {
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_detect_bottlenecks: ctx is NULL");
+        return false;
+    }
+    if (!traces) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_detect_bottlenecks: traces is NULL");
+        return false;
+    }
+    if (!weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_detect_bottlenecks: weights is NULL");
+        return false;
+    }
+    if (!bottlenecks) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_detect_bottlenecks: bottlenecks is NULL");
+        return false;
+    }
+    if (!num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_detect_bottlenecks: num_found is NULL");
         return false;
     }
 
@@ -244,10 +281,21 @@ float elig_quantum_compute_trace_entropy(
     const eligibility_trace_t* traces,
     uint32_t num_traces
 ) {
-    if (!traces || num_traces == 0) return 0.0f;
+    if (!traces) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_compute_trace_entropy: traces is NULL");
+        return 0.0f;
+    }
+    if (num_traces == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "elig_quantum_compute_trace_entropy: num_traces is zero");
+        return 0.0f;
+    }
 
-    float* probs = malloc(num_traces * sizeof(float));
-    if (!probs) return 0.0f;
+    float* probs = nimcp_malloc(num_traces * sizeof(float));
+    if (!probs) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_traces * sizeof(float),
+                           "elig_quantum_compute_trace_entropy: failed to allocate probs array");
+        return 0.0f;
+    }
 
     float total = 0.0f;
     for (uint32_t i = 0; i < num_traces; i++) {
@@ -255,7 +303,7 @@ float elig_quantum_compute_trace_entropy(
     }
 
     if (total < 1e-10f) {
-        free(probs);
+        nimcp_free(probs);
         return 0.0f;
     }
 
@@ -264,7 +312,7 @@ float elig_quantum_compute_trace_entropy(
     }
 
     float entropy = compute_shannon_entropy(probs, num_traces);
-    free(probs);
+    nimcp_free(probs);
     return entropy;
 }
 
@@ -274,7 +322,20 @@ bool elig_quantum_optimize_from_bottlenecks(
     uint32_t num_bottlenecks,
     elig_quantum_params_t* param_adjustments
 ) {
-    if (!ctx || !bottlenecks || !param_adjustments || num_bottlenecks == 0) {
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_optimize_from_bottlenecks: ctx is NULL");
+        return false;
+    }
+    if (!bottlenecks) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_optimize_from_bottlenecks: bottlenecks is NULL");
+        return false;
+    }
+    if (!param_adjustments) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_optimize_from_bottlenecks: param_adjustments is NULL");
+        return false;
+    }
+    if (num_bottlenecks == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "elig_quantum_optimize_from_bottlenecks: num_bottlenecks is zero");
         return false;
     }
 
@@ -315,7 +376,20 @@ bool elig_quantum_assign_credit(
     uint32_t max_credits,
     uint32_t* num_credits
 ) {
-    if (!ctx || !traces || !credits || !num_credits) {
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_assign_credit: ctx is NULL");
+        return false;
+    }
+    if (!traces) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_assign_credit: traces is NULL");
+        return false;
+    }
+    if (!credits) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_assign_credit: credits is NULL");
+        return false;
+    }
+    if (!num_credits) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_assign_credit: num_credits is NULL");
         return false;
     }
 
@@ -370,7 +444,18 @@ float elig_quantum_estimate_optimal_entropy(
     const eligibility_trace_t* traces,
     uint32_t num_synapses
 ) {
-    if (!ctx || !traces || num_synapses == 0) return 0.0f;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_estimate_optimal_entropy: ctx is NULL");
+        return 0.0f;
+    }
+    if (!traces) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_estimate_optimal_entropy: traces is NULL");
+        return 0.0f;
+    }
+    if (num_synapses == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "elig_quantum_estimate_optimal_entropy: num_synapses is zero");
+        return 0.0f;
+    }
 
     /* Optimal entropy depends on network size and sparsity target */
     float max_entropy = log2f((float)num_synapses);
@@ -385,7 +470,20 @@ bool elig_quantum_compute_causal_strength(
     uint32_t num_synapses,
     float* causal_strengths
 ) {
-    if (!ctx || !traces || !weights || !causal_strengths) {
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_compute_causal_strength: ctx is NULL");
+        return false;
+    }
+    if (!traces) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_compute_causal_strength: traces is NULL");
+        return false;
+    }
+    if (!weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_compute_causal_strength: weights is NULL");
+        return false;
+    }
+    if (!causal_strengths) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_compute_causal_strength: causal_strengths is NULL");
         return false;
     }
 
@@ -409,7 +507,16 @@ bool elig_quantum_optimize_params(
     const elig_quantum_params_t* current_params,
     elig_quantum_params_t* optimized_params
 ) {
-    if (!ctx || !current_params || !optimized_params) {
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_optimize_params: ctx is NULL");
+        return false;
+    }
+    if (!current_params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_optimize_params: current_params is NULL");
+        return false;
+    }
+    if (!optimized_params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_optimize_params: optimized_params is NULL");
         return false;
     }
 
@@ -462,13 +569,23 @@ bool elig_quantum_get_anneal_state(
     eligibility_quantum_ctx_t ctx,
     elig_quantum_anneal_state_t* state
 ) {
-    if (!ctx || !state) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_get_anneal_state: ctx is NULL");
+        return false;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_get_anneal_state: state is NULL");
+        return false;
+    }
     *state = ctx->anneal_state;
     return true;
 }
 
 void elig_quantum_reset_anneal(eligibility_quantum_ctx_t ctx) {
-    if (!ctx) return;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_reset_anneal: ctx is NULL");
+        return;
+    }
     ctx->anneal_state.temperature = ctx->config.initial_temperature;
     ctx->anneal_state.tunneling_probability = ctx->config.tunneling_rate;
     ctx->anneal_state.iteration = 0;
@@ -494,7 +611,16 @@ bool elig_quantum_diffuse(
     uint32_t num_synapses,
     float* diffused_eligibility
 ) {
-    if (!ctx || !diffused_eligibility || source_synapse >= num_synapses) {
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_diffuse: ctx is NULL");
+        return false;
+    }
+    if (!diffused_eligibility) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_diffuse: diffused_eligibility is NULL");
+        return false;
+    }
+    if (source_synapse >= num_synapses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "elig_quantum_diffuse: source_synapse out of bounds");
         return false;
     }
 
@@ -508,8 +634,12 @@ bool elig_quantum_diffuse(
     uint32_t steps = ctx->config.walk_steps;
     float decoherence = ctx->config.decoherence_rate;
 
-    float* temp = malloc(num_synapses * sizeof(float));
-    if (!temp) return false;
+    float* temp = nimcp_malloc(num_synapses * sizeof(float));
+    if (!temp) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, num_synapses * sizeof(float),
+                           "elig_quantum_diffuse: failed to allocate temp array");
+        return false;
+    }
 
     for (uint32_t step = 0; step < steps; step++) {
         memcpy(temp, diffused_eligibility, num_synapses * sizeof(float));
@@ -540,7 +670,7 @@ bool elig_quantum_diffuse(
         }
     }
 
-    free(temp);
+    nimcp_free(temp);
 
     /* Normalize to preserve total probability (sum to initial_eligibility) */
     float total = 0.0f;
@@ -570,7 +700,20 @@ bool elig_quantum_diffuse_multi(
     uint32_t num_synapses,
     float* diffused_eligibility
 ) {
-    if (!ctx || !source_synapses || !initial_eligibilities || !diffused_eligibility) {
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_diffuse_multi: ctx is NULL");
+        return false;
+    }
+    if (!source_synapses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_diffuse_multi: source_synapses is NULL");
+        return false;
+    }
+    if (!initial_eligibilities) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_diffuse_multi: initial_eligibilities is NULL");
+        return false;
+    }
+    if (!diffused_eligibility) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_diffuse_multi: diffused_eligibility is NULL");
         return false;
     }
 
@@ -578,8 +721,11 @@ bool elig_quantum_diffuse_multi(
     memset(diffused_eligibility, 0, num_synapses * sizeof(float));
 
     /* Sum diffusion from each source */
-    float* single_diffusion = malloc(num_synapses * sizeof(float));
-    if (!single_diffusion) return false;
+    float* single_diffusion = nimcp_malloc(num_synapses * sizeof(float));
+    if (!single_diffusion) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "elig_quantum_diffuse_multi: failed to allocate single_diffusion array");
+        return false;
+    }
 
     for (uint32_t s = 0; s < num_sources; s++) {
         if (source_synapses[s] < num_synapses) {
@@ -591,7 +737,7 @@ bool elig_quantum_diffuse_multi(
         }
     }
 
-    free(single_diffusion);
+    nimcp_free(single_diffusion);
     return true;
 }
 
@@ -601,7 +747,10 @@ bool elig_quantum_get_walk_stats(
     float* spreading_distance,
     float* entropy
 ) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_get_walk_stats: ctx is NULL");
+        return false;
+    }
     if (speedup_factor) *speedup_factor = ctx->walk_speedup;
     if (spreading_distance) *spreading_distance = ctx->walk_distance;
     if (entropy) *entropy = ctx->walk_entropy;
@@ -620,7 +769,18 @@ void elig_quantum_update_trace_enhanced(
     bool spike_occurred,
     float weight
 ) {
-    if (!ctx || !trace || !config) return;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_update_trace_enhanced: ctx is NULL");
+        return;
+    }
+    if (!trace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_update_trace_enhanced: trace is NULL");
+        return;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_update_trace_enhanced: config is NULL");
+        return;
+    }
 
     /* Standard trace decay with configurable lambda */
     float dt = (float)(current_time - trace->last_update);  /* ms */
@@ -647,7 +807,14 @@ int elig_quantum_consolidate_enhanced(
     float reward,
     float dopamine_level
 ) {
-    if (!ctx || !traces) return 0;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_consolidate_enhanced: ctx is NULL");
+        return 0;
+    }
+    if (!traces) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_consolidate_enhanced: traces is NULL");
+        return 0;
+    }
 
     int updated = 0;
 
@@ -672,7 +839,18 @@ uint32_t elig_quantum_learning_tick(
     float reward,
     uint64_t current_time
 ) {
-    if (!ctx || !traces || !weights) return 0;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_learning_tick: ctx is NULL");
+        return 0;
+    }
+    if (!traces) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_learning_tick: traces is NULL");
+        return 0;
+    }
+    if (!weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_learning_tick: weights is NULL");
+        return 0;
+    }
 
     uint32_t updated = 0;
 
@@ -697,26 +875,50 @@ uint32_t elig_quantum_learning_tick(
  *===========================================================================*/
 
 bool elig_quantum_get_metrics(eligibility_quantum_ctx_t ctx, elig_quantum_metrics_t* metrics) {
-    if (!ctx || !metrics) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_get_metrics: ctx is NULL");
+        return false;
+    }
+    if (!metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_get_metrics: metrics is NULL");
+        return false;
+    }
     *metrics = ctx->metrics;
     metrics->last_update_ms = get_time_ms();
     return true;
 }
 
 int32_t elig_quantum_flush_metrics(eligibility_quantum_ctx_t ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_flush_metrics: ctx is NULL");
+        return -1;
+    }
     /* Would write to file here */
     return 0;
 }
 
 bool elig_quantum_export_csv(eligibility_quantum_ctx_t ctx, const char* filename) {
-    if (!ctx || !filename) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_export_csv: ctx is NULL");
+        return false;
+    }
+    if (!filename) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_export_csv: filename is NULL");
+        return false;
+    }
     /* Would export to CSV here */
     return true;
 }
 
 bool elig_quantum_export_json(eligibility_quantum_ctx_t ctx, const char* filename) {
-    if (!ctx || !filename) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_export_json: ctx is NULL");
+        return false;
+    }
+    if (!filename) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_export_json: filename is NULL");
+        return false;
+    }
     /* Would export to JSON here */
     return true;
 }
@@ -733,11 +935,17 @@ void elig_quantum_reset_metrics(eligibility_quantum_ctx_t ctx) {
  *===========================================================================*/
 
 void elig_quantum_print_status(const eligibility_quantum_ctx_t ctx) {
-    if (!ctx) return;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_print_status: ctx is NULL");
+        return;
+    }
     /* Would print status here */
 }
 
 bool elig_quantum_verify(const eligibility_quantum_ctx_t ctx) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_quantum_verify: ctx is NULL");
+        return false;
+    }
     return ctx->enabled;
 }

@@ -40,6 +40,7 @@
 #include "core/brain/regions/broca/nimcp_language_production_bridge.h"
 #include "core/brain/regions/wernicke/nimcp_wernicke_adapter.h"
 #include "core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.h"
+#include "perception/nimcp_speech_cortex.h"
 #include "utils/memory/nimcp_memory.h"
 
 using namespace nimcp::e2e;
@@ -107,13 +108,24 @@ static void populate_lexicon(broca_adapter_t* broca, wernicke_adapter_t* wernick
     }
 }
 
+static std::vector<phoneme_event_t> create_phoneme_event_sequence(const uint8_t* phonemes, uint32_t count) {
+    std::vector<phoneme_event_t> seq(count);
+    for (uint32_t i = 0; i < count; i++) {
+        memset(&seq[i], 0, sizeof(phoneme_event_t));
+        seq[i].phoneme = static_cast<phoneme_t>(phonemes[i]);
+        seq[i].confidence = 0.9f;
+        seq[i].features.duration_ms = 80.0f;
+        seq[i].onset_time_ms = i * 100;
+        seq[i].offset_time_ms = (i + 1) * 100;
+        seq[i].sequence_position = i;
+    }
+    return seq;
+}
+
 static std::vector<phoneme_t> create_phoneme_sequence(const uint8_t* phonemes, uint32_t count) {
     std::vector<phoneme_t> seq(count);
     for (uint32_t i = 0; i < count; i++) {
-        memset(&seq[i], 0, sizeof(phoneme_t));
-        seq[i].phoneme_id = phonemes[i];
-        seq[i].confidence = 0.9f;
-        seq[i].duration_ms = 80.0f;
+        seq[i] = static_cast<phoneme_t>(phonemes[i]);
     }
     return seq;
 }
@@ -415,9 +427,10 @@ TEST_F(E2ELanguagePathologyTest, WernickeAphasiaComprehensionDeficit) {
     // May recognize word form but semantic access impaired
 
     if (success) {
-        wernicke_concept_t concept;
-        bool meaning_found = wernicke_get_meaning(wernicke, &word, &concept);
+        wernicke_concept_t wern_concept;
+        bool meaning_found = wernicke_get_meaning(wernicke, &word, &wern_concept);
         // In Wernicke's aphasia, semantic access would be impaired
+        (void)meaning_found;  // Unused variable - just demonstrating impairment
     }
     E2E_STAGE_END();
 
@@ -622,18 +635,24 @@ TEST_F(E2ELanguagePathologyTest, GlobalAphasiaBothImpaired) {
 
     // Global aphasia: both production and comprehension severely impaired
     E2E_STAGE_BEGIN("Test comprehension impairment", MAX_PATHOLOGY_TIME_MS);
-    // Simulate severe comprehension deficit
+    // Simulate severe comprehension deficit with phoneme events
     uint8_t hello_phonemes[] = {'h', 'E', 'l', 'o', 'U'};
-    auto phonemes = create_phoneme_sequence(hello_phonemes, 5);
+    auto phoneme_events = create_phoneme_event_sequence(hello_phonemes, 5);
 
     // Reduce phoneme confidence to simulate damage
-    for (auto& p : phonemes) {
+    for (auto& p : phoneme_events) {
         p.confidence *= 0.2f;  // Severely reduced
     }
 
+    // Process phonemes with reduced confidence
+    wernicke_process_phonemes(wernicke, phoneme_events.data(), 5);
+
+    // Also create phoneme_t array for word recognition
+    auto phonemes = create_phoneme_sequence(hello_phonemes, 5);
     wernicke_word_result_t word;
     bool comp_success = wernicke_recognize_word(wernicke, phonemes.data(), 5, &word);
     // May still succeed but with very low confidence
+    (void)comp_success;
     E2E_STAGE_END();
 
     E2E_STAGE_BEGIN("Test production impairment", MAX_PATHOLOGY_TIME_MS);
@@ -777,11 +796,10 @@ TEST_F(E2ELanguagePathologyTest, CompensatoryStrategies) {
     E2E_STAGE_BEGIN("Test working memory support", MAX_PROCESSING_TIME_MS);
     // Use working memory as a compensatory strategy
     // Store phonemes for rehearsal
-    phoneme_t phonemes[5];
     uint8_t ph_data[] = {'h', 'E', 'l', 'o', 'U'};
+    phoneme_t phonemes[5];
     for (int i = 0; i < 5; i++) {
-        memset(&phonemes[i], 0, sizeof(phoneme_t));
-        phonemes[i].phoneme_id = ph_data[i];
+        phonemes[i] = static_cast<phoneme_t>(ph_data[i]);
     }
 
     bool wm_success = wernicke_wm_store(wernicke, phonemes, 5);

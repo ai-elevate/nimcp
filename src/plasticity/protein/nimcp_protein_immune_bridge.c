@@ -79,6 +79,7 @@ static float compute_cytokine_effect(
 int protein_immune_default_config(protein_immune_config_t* config) {
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_immune_default_config: config is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -102,8 +103,14 @@ protein_immune_bridge_t* protein_immune_bridge_create(
     brain_immune_system_t* immune_system,
     protein_synthesis_system_t protein_system
 ) {
-    if (!immune_system || !protein_system) {
-        NIMCP_LOGGING_ERROR("NULL system pointers");
+    if (!immune_system) {
+        NIMCP_LOGGING_ERROR("NULL immune_system pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_immune_bridge_create: immune_system is NULL");
+        return NULL;
+    }
+    if (!protein_system) {
+        NIMCP_LOGGING_ERROR("NULL protein_system pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_immune_bridge_create: protein_system is NULL");
         return NULL;
     }
 
@@ -113,9 +120,7 @@ protein_immune_bridge_t* protein_immune_bridge_create(
 
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate protein-immune bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "protein_immune_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -144,9 +149,15 @@ protein_immune_bridge_t* protein_immune_bridge_create(
     bridge->restoration_events = 0;
 
     /* Create mutex */
-    if (bridge_base_init(&bridge->base, 0, "protein_immune") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "protein_immune") != 0) {
+        NIMCP_LOGGING_ERROR("Failed to initialize bridge base");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "protein_immune_bridge_create: bridge_base_init failed");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "protein_immune_bridge_create: failed to create mutex");
         nimcp_free(bridge);
         return NULL;
     }
@@ -183,7 +194,10 @@ void protein_immune_bridge_destroy(protein_immune_bridge_t* bridge) {
  * ============================================================================ */
 
 int protein_immune_apply_cytokine_effects(protein_immune_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_immune_apply_cytokine_effects: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -256,7 +270,10 @@ int protein_immune_apply_cytokine_effects(protein_immune_bridge_t* bridge) {
 int protein_immune_apply_inflammation_effects(
     protein_immune_bridge_t* bridge
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_immune_apply_inflammation_effects: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -337,8 +354,12 @@ int protein_immune_restore_synthesis(
     protein_immune_bridge_t* bridge,
     float recovery_factor
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_immune_restore_synthesis: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (recovery_factor < 0.0f || recovery_factor > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "protein_immune_restore_synthesis: recovery_factor out of range");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -371,7 +392,10 @@ int protein_immune_bridge_update(
     protein_immune_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_immune_bridge_update: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -394,7 +418,14 @@ int protein_immune_get_cytokine_effects(
     const protein_immune_bridge_t* bridge,
     cytokine_protein_effects_t* effects
 ) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_immune_get_cytokine_effects: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_immune_get_cytokine_effects: effects is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->cytokine_effects;
@@ -407,7 +438,14 @@ int protein_immune_get_inflammation_state(
     const protein_immune_bridge_t* bridge,
     inflammation_protein_state_t* state
 ) {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_immune_get_inflammation_state: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_immune_get_inflammation_state: state is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *state = bridge->inflammation_state;
@@ -455,7 +493,10 @@ float protein_immune_get_synthesis_reduction(
  * ============================================================================ */
 
 int protein_immune_connect_bio_async(protein_immune_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_immune_connect_bio_async: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -484,7 +525,10 @@ int protein_immune_connect_bio_async(protein_immune_bridge_t* bridge) {
 }
 
 int protein_immune_disconnect_bio_async(protein_immune_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_immune_disconnect_bio_async: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 

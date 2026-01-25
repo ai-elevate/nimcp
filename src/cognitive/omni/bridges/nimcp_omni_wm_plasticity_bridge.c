@@ -748,18 +748,18 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
         omni_wm_plasticity_bridge_default_config(&bridge->config);
     }
 
-    /* Create mutex */
-    if (bridge_base_init(&bridge->base, 0, "omni_wm_plasticity") != 0) { nimcp_free(bridge); return NULL; }
+    /* Verify mutex was created by bridge_base_init */
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex for WM plasticity bridge");
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
+    /* Alias the legacy mutex field to base.mutex for backward compatibility */
+    bridge->mutex = bridge->base.mutex;
 
     /* Allocate buffers */
     if (allocate_stdp_event_buffer(bridge) != NIMCP_SUCCESS) {
-        bridge_base_cleanup(&bridge->base);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
@@ -767,7 +767,6 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
 
     if (allocate_spike_seq_buffer(bridge) != NIMCP_SUCCESS) {
         free_stdp_event_buffer(bridge);
-        bridge_base_cleanup(&bridge->base);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
@@ -777,7 +776,6 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
         free_spike_seq_buffer(bridge);
         free_stdp_event_buffer(bridge);
         bridge_base_cleanup(&bridge->base);
-        bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
     }
@@ -786,7 +784,6 @@ omni_wm_plasticity_bridge_t* omni_wm_plasticity_bridge_create(
         free_encoder_deltas(bridge);
         free_spike_seq_buffer(bridge);
         free_stdp_event_buffer(bridge);
-        bridge_base_cleanup(&bridge->base);
         bridge_base_cleanup(&bridge->base);
         nimcp_free(bridge);
         return NULL;
@@ -861,8 +858,8 @@ nimcp_error_t omni_wm_plasticity_bridge_reset(omni_wm_plasticity_bridge_t* bridg
     /* Reset statistics */
     memset(&bridge->stats, 0, sizeof(omni_wm_plasticity_bridge_stats_t));
 
-    /* Reset base */
-    bridge_base_reset(&bridge->base);
+    /* Reset base (unlocked since we already hold the mutex) */
+    bridge_base_reset_unlocked(&bridge->base);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -890,10 +887,10 @@ nimcp_error_t omni_wm_plasticity_bridge_connect(
     bridge->coordinator = coordinator;
     bridge->snn = snn;
 
-    /* Update base connection state */
-    bridge_base_connect_a(&bridge->base, world_model);
+    /* Update base connection state (unlocked since we already hold the mutex) */
+    bridge_base_connect_a_unlocked(&bridge->base, world_model);
     if (stdp_bridge || coordinator || snn) {
-        bridge_base_connect_b(&bridge->base, stdp_bridge ? (void*)stdp_bridge :
+        bridge_base_connect_b_unlocked(&bridge->base, stdp_bridge ? (void*)stdp_bridge :
                                (coordinator ? (void*)coordinator : (void*)snn));
     }
 
@@ -913,7 +910,7 @@ nimcp_error_t omni_wm_plasticity_bridge_connect_world_model(
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->world_model = world_model;
-    bridge_base_connect_a(&bridge->base, world_model);
+    bridge_base_connect_a_unlocked(&bridge->base, world_model);
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
@@ -1496,8 +1493,7 @@ nimcp_error_t omni_wm_plasticity_bridge_disconnect_bio_async(
 bool omni_wm_plasticity_bridge_is_bio_async_connected(
     const omni_wm_plasticity_bridge_t* bridge)
 {
-    if (!bridge) return false;
-    return bridge_base_is_bio_async_connected(&bridge->base);
+    return bridge_base_is_bio_async_connected(bridge ? &bridge->base : NULL);
 }
 
 /* ============================================================================

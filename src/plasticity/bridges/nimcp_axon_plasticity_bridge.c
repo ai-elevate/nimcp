@@ -106,7 +106,10 @@ static int axon_plasticity_wiring_handler_callback(
 
 int axon_plasticity_default_config(axon_plasticity_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_plasticity_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -147,6 +150,7 @@ axon_plasticity_bridge_t* axon_plasticity_create(
     axon_plasticity_bridge_t* bridge = nimcp_malloc(sizeof(axon_plasticity_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate axon plasticity bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_plasticity_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -167,6 +171,7 @@ axon_plasticity_bridge_t* axon_plasticity_create(
         bridge->segment_capacity * sizeof(axon_segment_state_t));
     if (!bridge->segments) {
         NIMCP_LOGGING_ERROR("Failed to allocate segment array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_plasticity_create: failed to allocate segment array");
         nimcp_free(bridge);
         return NULL;
     }
@@ -176,11 +181,13 @@ axon_plasticity_bridge_t* axon_plasticity_create(
     /* Allocate mutex */
     bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_plasticity_create: failed to allocate mutex");
         nimcp_free(bridge->segments);
         nimcp_free(bridge);
         return NULL;
     }
     if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "axon_plasticity_create: failed to initialize mutex");
         nimcp_free(bridge->segments);
         nimcp_free(bridge);
         return NULL;
@@ -220,7 +227,10 @@ void axon_plasticity_destroy(axon_plasticity_bridge_t* bridge)
 
 int axon_plasticity_connect_structural(axon_plasticity_bridge_t* bridge, structural_state_t* s)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_plasticity_connect_structural: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->structural = s;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -229,7 +239,10 @@ int axon_plasticity_connect_structural(axon_plasticity_bridge_t* bridge, structu
 
 int axon_plasticity_connect_intrinsic(axon_plasticity_bridge_t* bridge, intrinsic_excitability_state_t* i)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_plasticity_connect_intrinsic: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->intrinsic = i;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -238,7 +251,10 @@ int axon_plasticity_connect_intrinsic(axon_plasticity_bridge_t* bridge, intrinsi
 
 int axon_plasticity_connect_metabolic(axon_plasticity_bridge_t* bridge, metabolic_state_t* m)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_plasticity_connect_metabolic: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metabolic = m;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -247,7 +263,10 @@ int axon_plasticity_connect_metabolic(axon_plasticity_bridge_t* bridge, metaboli
 
 int axon_plasticity_connect_myelin(axon_plasticity_bridge_t* bridge, nimcp_myelin_sheath_t* myelin)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_plasticity_connect_myelin: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->myelin = myelin;
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -256,7 +275,10 @@ int axon_plasticity_connect_myelin(axon_plasticity_bridge_t* bridge, nimcp_myeli
 
 int axon_plasticity_connect_bio_async(axon_plasticity_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_plasticity_connect_bio_async: bridge is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
     if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     bio_module_info_t info = {
@@ -293,7 +315,10 @@ int axon_plasticity_connect_bio_async(axon_plasticity_bridge_t* bridge)
 
 int axon_plasticity_disconnect_bio_async(axon_plasticity_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_plasticity_disconnect_bio_async: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {
@@ -316,7 +341,10 @@ bool axon_plasticity_is_bio_async_connected(const axon_plasticity_bridge_t* brid
 
 int axon_plasticity_update_conduction(axon_plasticity_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_plasticity_update_conduction: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -371,12 +399,16 @@ int axon_plasticity_on_spike(
     uint32_t segment_id,
     uint64_t spike_time)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_plasticity_on_spike: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     axon_segment_state_t* seg = find_or_create_segment(bridge, segment_id);
     if (!seg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "axon_plasticity_on_spike: failed to find or create segment");
         nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_NO_MEMORY;
     }
@@ -410,7 +442,10 @@ int axon_plasticity_on_spike(
 
 int axon_plasticity_update_myelination(axon_plasticity_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_plasticity_update_myelination: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->config.enable_adaptive_myelination) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -459,7 +494,10 @@ float axon_plasticity_get_myelination(
 
 int axon_plasticity_apply_structural(axon_plasticity_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_plasticity_apply_structural: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->config.enable_structural_plasticity) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -484,7 +522,10 @@ int axon_plasticity_apply_structural(axon_plasticity_bridge_t* bridge)
 
 int axon_plasticity_update(axon_plasticity_bridge_t* bridge, float dt_ms)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_plasticity_update: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -535,7 +576,14 @@ int axon_plasticity_get_stats(
     const axon_plasticity_bridge_t* bridge,
     axon_plasticity_stats_t* stats)
 {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_plasticity_get_stats: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "axon_plasticity_get_stats: stats is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     *stats = bridge->stats;
     return 0;
 }

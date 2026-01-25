@@ -767,8 +767,8 @@ nimcp_error_t omni_wm_substrate_bridge_reset(omni_wm_substrate_bridge_t* bridge)
     bridge->stats.mean_horizon_achieved = (float)bridge->config.max_horizon;
     bridge->stats.mean_compute_rate = bridge->config.base_compute_rate;
 
-    /* Reset base bridge */
-    bridge_base_reset(&bridge->base);
+    /* Reset base bridge (unlocked since we already hold the mutex) */
+    bridge_base_reset_unlocked(&bridge->base);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -1257,8 +1257,7 @@ nimcp_error_t omni_wm_substrate_bridge_disconnect_bio_async(
 bool omni_wm_substrate_bridge_is_bio_async_connected(
     const omni_wm_substrate_bridge_t* bridge) {
 
-    if (!bridge) return false;
-    return bridge->base.bio_async_enabled;
+    return bridge_base_is_bio_async_connected(bridge ? &bridge->base : NULL);
 }
 
 /* ============================================================================

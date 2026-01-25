@@ -40,7 +40,7 @@ snn_wellbeing_bridge_t* snn_wellbeing_bridge_create(const snn_wellbeing_config_t
 
     snn_wellbeing_bridge_t* bridge = nimcp_malloc(sizeof(snn_wellbeing_bridge_t));
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate SNN-wellbeing bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_wellbeing_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -71,7 +71,10 @@ void snn_wellbeing_bridge_destroy(snn_wellbeing_bridge_t* bridge) {
 }
 
 int snn_wellbeing_bridge_connect_bio_async(snn_wellbeing_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_wellbeing_bridge_connect_bio_async: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -103,7 +106,10 @@ bool snn_wellbeing_bridge_is_bio_async_connected(const snn_wellbeing_bridge_t* b
 }
 
 int snn_wellbeing_bridge_update(snn_wellbeing_bridge_t* bridge, float dt) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_wellbeing_bridge_update: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     bridge->last_update_time += dt;
     if (bridge->last_update_time < bridge->config.update_interval_ms) return 0;
@@ -138,22 +144,37 @@ int snn_wellbeing_bridge_update(snn_wellbeing_bridge_t* bridge, float dt) {
 }
 
 int snn_wellbeing_bridge_encode_wellbeing(snn_wellbeing_bridge_t* bridge, float wellbeing) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
-    if (!bridge->wellbeing_pop) return SNN_ERROR_INVALID_STATE;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_wellbeing_bridge_encode_wellbeing: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!bridge->wellbeing_pop) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_wellbeing_bridge_encode_wellbeing: wellbeing_pop is NULL");
+        return SNN_ERROR_INVALID_STATE;
+    }
 
     return 0;
 }
 
 int snn_wellbeing_bridge_trigger_regulation(snn_wellbeing_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
-    if (!bridge->regulation_pop) return SNN_ERROR_INVALID_STATE;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_wellbeing_bridge_trigger_regulation: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!bridge->regulation_pop) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_wellbeing_bridge_trigger_regulation: regulation_pop is NULL");
+        return SNN_ERROR_INVALID_STATE;
+    }
 
     bridge->state.regulation_events++;
     return 0;
 }
 
 int snn_wellbeing_bridge_apply_recovery(snn_wellbeing_bridge_t* bridge, float dt) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_wellbeing_bridge_apply_recovery: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     float recovery = bridge->config.recovery_rate * dt / 1000.0f;
     bridge->state.allostatic_load -= recovery;
@@ -189,7 +210,14 @@ float snn_wellbeing_compute_allostatic_load(const snn_wellbeing_bridge_t* bridge
 }
 
 int snn_wellbeing_bridge_get_state(const snn_wellbeing_bridge_t* bridge, snn_wellbeing_state_t* state) {
-    if (!bridge || !state) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_wellbeing_bridge_get_state: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_wellbeing_bridge_get_state: state is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -215,7 +243,10 @@ bool snn_wellbeing_is_overloaded(const snn_wellbeing_bridge_t* bridge) {
 }
 
 int snn_wellbeing_get_stats(const snn_wellbeing_bridge_t* bridge, uint32_t* regulation_events, uint32_t* overload_events, float* avg_load) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_wellbeing_get_stats: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (regulation_events) *regulation_events = bridge->state.regulation_events;
     if (overload_events) *overload_events = bridge->state.overload_events;
     if (avg_load) {

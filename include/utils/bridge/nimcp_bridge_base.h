@@ -137,6 +137,18 @@ void bridge_base_cleanup(bridge_base_t* base);
  */
 int bridge_base_reset(bridge_base_t* base);
 
+/**
+ * @brief Reset base bridge state (unlocked version)
+ *
+ * WHAT: Same as bridge_base_reset but assumes mutex is already held
+ * WHY:  Prevents deadlock when called from within a locked section
+ * HOW:  Directly resets fields without acquiring mutex
+ *
+ * @param base Pointer to base bridge struct
+ * @return 0 on success, error code on failure
+ */
+int bridge_base_reset_unlocked(bridge_base_t* base);
+
 /* ============================================================================
  * Base Bridge Connection Functions
  * ============================================================================ */
@@ -158,6 +170,30 @@ int bridge_base_connect_a(bridge_base_t* base, void* system_a);
  * @return 0 on success, error code on failure
  */
 int bridge_base_connect_b(bridge_base_t* base, void* system_b);
+
+/**
+ * @brief Connect system A to bridge (unlocked version)
+ *
+ * WHAT: Same as bridge_base_connect_a but assumes mutex is already held
+ * WHY:  Prevents deadlock when called from within a locked section
+ *
+ * @param base     Pointer to base bridge struct
+ * @param system_a Pointer to system A
+ * @return 0 on success, error code on failure
+ */
+int bridge_base_connect_a_unlocked(bridge_base_t* base, void* system_a);
+
+/**
+ * @brief Connect system B to bridge (unlocked version)
+ *
+ * WHAT: Same as bridge_base_connect_b but assumes mutex is already held
+ * WHY:  Prevents deadlock when called from within a locked section
+ *
+ * @param base     Pointer to base bridge struct
+ * @param system_b Pointer to system B
+ * @return 0 on success, error code on failure
+ */
+int bridge_base_connect_b_unlocked(bridge_base_t* base, void* system_b);
 
 /**
  * @brief Disconnect system A from bridge

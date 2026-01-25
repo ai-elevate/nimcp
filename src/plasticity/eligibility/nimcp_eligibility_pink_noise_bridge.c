@@ -31,7 +31,11 @@ elig_pink_noise_bridge_t* elig_pink_noise_create(const elig_pink_noise_config_t*
     nc.seed = bridge->config.seed;
 
     bridge->noise_gen = pink_noise_create(&nc);
-    if (!bridge->noise_gen) { nimcp_free(bridge); return NULL; }
+    if (!bridge->noise_gen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "elig_pink_noise_create: failed to create noise generator");
+        nimcp_free(bridge);
+        return NULL;
+    }
 
     bridge->noise_connected = true;
     bridge->is_enabled = bridge->config.enabled;
@@ -44,20 +48,37 @@ elig_pink_noise_bridge_t* elig_pink_noise_create(const elig_pink_noise_config_t*
 }
 
 void elig_pink_noise_destroy(elig_pink_noise_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pink_noise_destroy: bridge is NULL");
+        return;
+    }
     if (bridge->noise_gen) pink_noise_destroy(bridge->noise_gen);
     nimcp_free(bridge);
 }
 
 int elig_pink_noise_connect(elig_pink_noise_bridge_t* bridge, void* elig_state) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pink_noise_connect: bridge is NULL");
+        return -1;
+    }
     bridge->eligibility_state = elig_state;
     bridge->elig_connected = (elig_state != NULL);
     return 0;
 }
 
 int elig_pink_noise_update(elig_pink_noise_bridge_t* bridge) {
-    if (!bridge || !bridge->is_enabled || !bridge->noise_gen) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pink_noise_update: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->is_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "elig_pink_noise_update: bridge is not enabled");
+        return -1;
+    }
+    if (!bridge->noise_gen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "elig_pink_noise_update: noise generator is NULL");
+        return -1;
+    }
 
     float amp = bridge->config.noise_amplitude;
 
@@ -83,11 +104,18 @@ int elig_pink_noise_update(elig_pink_noise_bridge_t* bridge) {
 }
 
 float elig_pink_noise_get_noisy_decay(const elig_pink_noise_bridge_t* bridge) {
-    return bridge ? bridge->noisy_decay_rate : 0.1f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pink_noise_get_noisy_decay: bridge is NULL");
+        return 0.1f;
+    }
+    return bridge->noisy_decay_rate;
 }
 
 int elig_pink_noise_reset(elig_pink_noise_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_pink_noise_reset: bridge is NULL");
+        return -1;
+    }
     bridge->decay_noise = bridge->threshold_noise = bridge->boost_noise = 0.0f;
     bridge->noisy_decay_rate = 0.1f;
     bridge->noisy_threshold = 0.5f;

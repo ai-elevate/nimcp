@@ -18,7 +18,10 @@
 #define BIO_MODULE_SNN_EXECUTIVE_BRIDGE 0x0613
 
 void snn_executive_config_default(snn_executive_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_executive_config_default: null config pointer");
+        return;
+    }
     config->inhibition_rate_threshold = 30.0f;
     config->task_switch_rate_change = 15.0f;
     config->cognitive_load_max_rate = 80.0f;
@@ -72,7 +75,10 @@ snn_executive_bridge_t* snn_executive_bridge_create(
 }
 
 void snn_executive_bridge_destroy(snn_executive_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_executive_bridge_destroy: null bridge pointer");
+        return;
+    }
     if (bridge->base.bio_async_enabled) {
         snn_executive_bridge_disconnect_bio_async(bridge);
     }
@@ -81,7 +87,10 @@ void snn_executive_bridge_destroy(snn_executive_bridge_t* bridge) {
 }
 
 int snn_executive_bridge_connect_bio_async(snn_executive_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_executive_bridge_connect_bio_async: null bridge pointer");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -103,14 +112,22 @@ int snn_executive_bridge_connect_bio_async(snn_executive_bridge_t* bridge) {
 }
 
 int snn_executive_bridge_disconnect_bio_async(snn_executive_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_executive_bridge_disconnect_bio_async: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->base.bio_async_enabled) return 0;
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool snn_executive_bridge_is_bio_async_connected(const snn_executive_bridge_t* bridge) {
-    return bridge ? bridge->base.bio_async_enabled : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_executive_bridge_is_bio_async_connected: null bridge pointer");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }
 
 int snn_executive_bridge_process(
@@ -118,7 +135,10 @@ int snn_executive_bridge_process(
     const float* input,
     float* output
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_executive_bridge_process: null bridge pointer");
+        return -1;
+    }
 
     int ret = snn_executive_bridge_update(bridge, bridge->config.update_interval_ms);
     if (ret != 0) return ret;
@@ -132,7 +152,10 @@ int snn_executive_bridge_process(
 }
 
 int snn_executive_bridge_update(snn_executive_bridge_t* bridge, float dt) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_executive_bridge_update: null bridge pointer");
+        return -1;
+    }
 
     if (bridge->last_update_time > 0 && (dt < bridge->config.update_interval_ms)) {
         return 0;
@@ -187,7 +210,10 @@ float snn_executive_compute_inhibition(
     const snn_executive_bridge_t* bridge,
     float interneuron_rate
 ) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_executive_compute_inhibition: null bridge pointer");
+        return 0.0f;
+    }
 
     /* Linear scaling above threshold */
     float threshold = bridge->config.inhibition_rate_threshold;
@@ -211,7 +237,10 @@ bool snn_executive_detect_task_switch(
     snn_executive_bridge_t* bridge,
     float current_rate
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_executive_detect_task_switch: null bridge pointer");
+        return false;
+    }
 
     /* Detect significant rate change */
     float rate_change = fabsf(current_rate - bridge->last_executive_rate);
@@ -222,7 +251,10 @@ float snn_executive_compute_cognitive_load(
     const snn_executive_bridge_t* bridge,
     float population_rate
 ) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_executive_compute_cognitive_load: null bridge pointer");
+        return 0.0f;
+    }
 
     float max_rate = bridge->config.cognitive_load_max_rate;
     float load = population_rate / max_rate;
@@ -237,7 +269,10 @@ int snn_executive_apply_inhibition(
     snn_executive_bridge_t* bridge,
     float inhibition_strength
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_executive_apply_inhibition: null bridge pointer");
+        return -1;
+    }
 
     if (!bridge->config.enable_interneuron_control) {
         return 0;  /* Disabled */

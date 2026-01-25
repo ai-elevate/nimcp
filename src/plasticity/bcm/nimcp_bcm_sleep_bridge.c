@@ -43,6 +43,7 @@ static void bcm_on_sleep_state_change(sleep_state_t new_state, void* user_data)
 
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in sleep state callback");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_on_sleep_state_change: bridge is NULL");
         return;
     }
 
@@ -135,7 +136,10 @@ bcm_sleep_bridge_t bcm_sleep_bridge_create(
 }
 
 void bcm_sleep_bridge_destroy(bcm_sleep_bridge_t bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_sleep_bridge_destroy: bridge is NULL");
+        return;
+    }
 
     /* Unregister callback if it was registered */
     if (bridge->callback_registered && bridge->sleep_system) {
@@ -193,7 +197,10 @@ int bcm_sleep_get_effects(const bcm_sleep_bridge_t bridge, bcm_sleep_effects_t* 
 }
 
 float bcm_sleep_get_theta_factor(const bcm_sleep_bridge_t bridge) {
-    if (!bridge) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_sleep_get_theta_factor: bridge is NULL");
+        return 1.0f;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.theta_factor;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -201,7 +208,10 @@ float bcm_sleep_get_theta_factor(const bcm_sleep_bridge_t bridge) {
 }
 
 float bcm_sleep_get_lr_factor(const bcm_sleep_bridge_t bridge) {
-    if (!bridge) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_sleep_get_lr_factor: bridge is NULL");
+        return 1.0f;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.learning_rate_factor;
     nimcp_platform_mutex_unlock(bridge->base.mutex);

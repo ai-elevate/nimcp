@@ -64,7 +64,10 @@ int stp_fep_bridge_default_config(stp_fep_config_t* config) {
 
 stp_fep_bridge_t* stp_fep_bridge_create(const stp_fep_config_t* config) {
     stp_fep_bridge_t* bridge = (stp_fep_bridge_t*)nimcp_malloc(sizeof(stp_fep_bridge_t));
-    NIMCP_API_CHECK_ALLOC(bridge, "STP-FEP bridge allocation failed");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stp_fep_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     /* Initialize configuration */
     if (config) {
@@ -80,11 +83,15 @@ stp_fep_bridge_t* stp_fep_bridge_create(const stp_fep_config_t* config) {
     memset(&bridge->stats, 0, sizeof(stp_fep_stats_t));
 
     /* Create mutex */
-    if (bridge_base_init(&bridge->base, 0, "stp_fep") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "stp_fep") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stp_fep_bridge_create: failed to initialize bridge base");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         LOG_ERROR("STP-FEP bridge mutex creation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "STP-FEP bridge mutex creation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stp_fep_bridge_create: failed to create mutex");
         return NULL;
     }
 
@@ -119,8 +126,14 @@ void stp_fep_bridge_destroy(stp_fep_bridge_t* bridge) {
  * ============================================================================ */
 
 int stp_fep_bridge_connect_fep(stp_fep_bridge_t* bridge, fep_system_t* fep) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "STP-FEP bridge is NULL");
-    NIMCP_API_CHECK_NULL(fep, -1, "FEP system is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_fep_bridge_connect_fep: bridge is NULL");
+        return -1;
+    }
+    if (!fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_fep_bridge_connect_fep: fep is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -131,8 +144,14 @@ int stp_fep_bridge_connect_fep(stp_fep_bridge_t* bridge, fep_system_t* fep) {
 }
 
 int stp_fep_bridge_connect_stp(stp_fep_bridge_t* bridge, stp_state_t* stp_state) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "STP-FEP bridge is NULL");
-    NIMCP_API_CHECK_NULL(stp_state, -1, "STP state is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_fep_bridge_connect_stp: bridge is NULL");
+        return -1;
+    }
+    if (!stp_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_fep_bridge_connect_stp: stp_state is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->stp_state = stp_state;
@@ -143,7 +162,10 @@ int stp_fep_bridge_connect_stp(stp_fep_bridge_t* bridge, stp_state_t* stp_state)
 }
 
 int stp_fep_bridge_disconnect(stp_fep_bridge_t* bridge) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "STP-FEP bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_fep_bridge_disconnect: bridge is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
@@ -212,7 +234,10 @@ float stp_fep_get_effective_u(const stp_fep_bridge_t* bridge, float base_u) {
  * ============================================================================ */
 
 int stp_fep_report_facilitation(stp_fep_bridge_t* bridge, float u) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "STP-FEP bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_fep_report_facilitation: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_stp_precision_feedback) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -224,7 +249,10 @@ int stp_fep_report_facilitation(stp_fep_bridge_t* bridge, float u) {
 }
 
 int stp_fep_report_depression(stp_fep_bridge_t* bridge, float x) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "STP-FEP bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_fep_report_depression: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_stp_precision_feedback) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -255,7 +283,10 @@ float stp_fep_get_effective_transmission(const stp_fep_bridge_t* bridge) {
  * ============================================================================ */
 
 int stp_fep_bridge_update(stp_fep_bridge_t* bridge, uint64_t delta_ms) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "STP-FEP bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_fep_bridge_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -323,8 +354,14 @@ int stp_fep_bridge_update(stp_fep_bridge_t* bridge, uint64_t delta_ms) {
  * ============================================================================ */
 
 int stp_fep_bridge_get_state(const stp_fep_bridge_t* bridge, stp_fep_state_t* state) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "STP-FEP bridge is NULL");
-    NIMCP_API_CHECK_NULL(state, -1, "State output pointer is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_fep_bridge_get_state: bridge is NULL");
+        return -1;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_fep_bridge_get_state: state is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(state, &bridge->state, sizeof(stp_fep_state_t));
@@ -334,8 +371,14 @@ int stp_fep_bridge_get_state(const stp_fep_bridge_t* bridge, stp_fep_state_t* st
 }
 
 int stp_fep_bridge_get_stats(const stp_fep_bridge_t* bridge, stp_fep_stats_t* stats) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "STP-FEP bridge is NULL");
-    NIMCP_API_CHECK_NULL(stats, -1, "Stats output pointer is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_fep_bridge_get_stats: bridge is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_fep_bridge_get_stats: stats is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(stp_fep_stats_t));
@@ -349,7 +392,10 @@ int stp_fep_bridge_get_stats(const stp_fep_bridge_t* bridge, stp_fep_stats_t* st
  * ============================================================================ */
 
 int stp_fep_bridge_connect_bio_async(stp_fep_bridge_t* bridge) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "STP-FEP bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_fep_bridge_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     /* Note: BIO_MODULE_FEP_STP would need to be added to nimcp_bio_messages.h */
@@ -360,7 +406,10 @@ int stp_fep_bridge_connect_bio_async(stp_fep_bridge_t* bridge) {
 }
 
 int stp_fep_bridge_disconnect_bio_async(stp_fep_bridge_t* bridge) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "STP-FEP bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_fep_bridge_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     bridge->base.bio_async_enabled = false;

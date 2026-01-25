@@ -7,6 +7,7 @@ find_package(GTest REQUIRED)
 # Common includes
 set(MEDULLA_TEST_INCLUDES
     ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/test
     ${GTEST_INCLUDE_DIRS}
 )
 
@@ -81,5 +82,13 @@ add_executable(unit_core_medulla_cerebellum_bridge
 target_include_directories(unit_core_medulla_cerebellum_bridge PRIVATE ${MEDULLA_TEST_INCLUDES})
 target_link_libraries(unit_core_medulla_cerebellum_bridge ${MEDULLA_TEST_LIBS})
 add_test(NAME unit_core_medulla_cerebellum_bridge COMMAND unit_core_medulla_cerebellum_bridge --gtest_brief=1)
+
+# Medulla Exception Handling Tests
+add_executable(unit_core_medulla_exception_handling
+    test_medulla_exception_handling.cpp
+)
+target_include_directories(unit_core_medulla_exception_handling PRIVATE ${MEDULLA_TEST_INCLUDES})
+target_link_libraries(unit_core_medulla_exception_handling ${MEDULLA_TEST_LIBS})
+add_test(NAME unit_core_medulla_exception_handling COMMAND unit_core_medulla_exception_handling --gtest_brief=1)
 
 message(STATUS "Medulla unit tests configured")

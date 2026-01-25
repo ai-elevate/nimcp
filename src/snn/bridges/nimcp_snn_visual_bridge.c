@@ -35,7 +35,10 @@
  * HOW:  Literature-based parameter values from V1 studies
  */
 void snn_visual_config_default(snn_visual_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_config_default: null config pointer");
+        return;
+    }
 
     /* Encoding configuration */
     config->encoding_method = SNN_ENCODE_RATE;
@@ -182,7 +185,10 @@ snn_visual_bridge_t* snn_visual_bridge_create(
  * HOW:  Disconnect, free all buffers, destroy encoder/decoder
  */
 void snn_visual_bridge_destroy(snn_visual_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_destroy: null bridge pointer");
+        return;
+    }
 
     /* Disconnect bio-async if connected */
     if (bridge->base.bio_async_enabled) {
@@ -215,7 +221,10 @@ void snn_visual_bridge_destroy(snn_visual_bridge_t* bridge) {
  * HOW:  Register with router as BIO_MODULE_SNN_VISUAL
  */
 int snn_visual_bridge_connect_bio_async(snn_visual_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_connect_bio_async: null bridge pointer");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -242,7 +251,11 @@ int snn_visual_bridge_connect_bio_async(snn_visual_bridge_t* bridge) {
  * HOW:  Unregister from router
  */
 int snn_visual_bridge_disconnect_bio_async(snn_visual_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_disconnect_bio_async: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->base.bio_async_enabled) return 0;
 
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_async_enabled = false;
@@ -256,7 +269,11 @@ int snn_visual_bridge_disconnect_bio_async(snn_visual_bridge_t* bridge) {
  * HOW:  Return flag
  */
 bool snn_visual_bridge_is_bio_async_connected(const snn_visual_bridge_t* bridge) {
-    return bridge ? bridge->base.bio_async_enabled : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_is_bio_async_connected: null bridge pointer");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }
 
 //=============================================================================
@@ -277,8 +294,16 @@ int snn_visual_bridge_encode(
     snn_spike_train_t** spike_trains
 ) {
     /* Guard: Validate inputs */
-    if (!bridge || !frame || !spike_trains) {
-        NIMCP_LOGGING_ERROR("Null parameters to visual encode");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_encode: null bridge pointer");
+        return -1;
+    }
+    if (!frame) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_encode: null frame pointer");
+        return -1;
+    }
+    if (!spike_trains) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_encode: null spike_trains pointer");
         return -1;
     }
 
@@ -398,7 +423,16 @@ int snn_visual_bridge_encode_features(
     snn_spike_train_t** spike_trains
 ) {
     /* Guard: Validate inputs */
-    if (!bridge || !features || !spike_trains) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_encode_features: null bridge pointer");
+        return -1;
+    }
+    if (!features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_encode_features: null features pointer");
+        return -1;
+    }
+    if (!spike_trains) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_encode_features: null spike_trains pointer");
         return -1;
     }
 
@@ -463,7 +497,16 @@ int snn_visual_bridge_decode(
     uint8_t* frame_out
 ) {
     /* Guard: Validate inputs */
-    if (!bridge || !spike_trains || !frame_out) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_decode: null bridge pointer");
+        return -1;
+    }
+    if (!spike_trains) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_decode: null spike_trains pointer");
+        return -1;
+    }
+    if (!frame_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_decode: null frame_out pointer");
         return -1;
     }
 
@@ -507,7 +550,16 @@ int snn_visual_bridge_decode_features(
     uint32_t num_features
 ) {
     /* Guard: Validate inputs */
-    if (!bridge || !spike_trains || !features_out) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_decode_features: null bridge pointer");
+        return -1;
+    }
+    if (!spike_trains) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_decode_features: null spike_trains pointer");
+        return -1;
+    }
+    if (!features_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_decode_features: null features_out pointer");
         return -1;
     }
 
@@ -541,7 +593,12 @@ int snn_visual_bridge_decode_features(
  */
 int snn_visual_bridge_update(snn_visual_bridge_t* bridge, float dt) {
     /* Guard: Validate bridge */
-    if (!bridge || !bridge->connected) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_update: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_visual_bridge_update: bridge not connected");
         return -1;
     }
 
@@ -567,7 +624,12 @@ int snn_visual_bridge_update(snn_visual_bridge_t* bridge, float dt) {
  */
 int snn_visual_bridge_update_attention(snn_visual_bridge_t* bridge) {
     /* Guard: Validate bridge */
-    if (!bridge || !bridge->attention_gains) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_update_attention: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->attention_gains) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_visual_bridge_update_attention: attention gains not initialized");
         return -1;
     }
 
@@ -639,7 +701,14 @@ int snn_visual_bridge_get_encode_stats(
     const snn_visual_bridge_t* bridge,
     snn_visual_encode_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_get_encode_stats: null bridge pointer");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_get_encode_stats: null stats pointer");
+        return -1;
+    }
     *stats = bridge->encode_stats;
     return 0;
 }
@@ -653,7 +722,14 @@ int snn_visual_bridge_get_decode_stats(
     const snn_visual_bridge_t* bridge,
     snn_visual_decode_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_get_decode_stats: null bridge pointer");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_get_decode_stats: null stats pointer");
+        return -1;
+    }
     *stats = bridge->decode_stats;
     return 0;
 }
@@ -667,7 +743,14 @@ float snn_visual_bridge_get_spike_rate(
     const snn_visual_bridge_t* bridge,
     uint32_t index
 ) {
-    if (!bridge || !bridge->spike_input_buffer) return -1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_get_spike_rate: null bridge pointer");
+        return -1.0f;
+    }
+    if (!bridge->spike_input_buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_visual_bridge_get_spike_rate: spike_input_buffer not initialized");
+        return -1.0f;
+    }
 
     /* Return rate based on input buffer value scaled to spike rate */
     float normalized = bridge->spike_input_buffer[index];
@@ -681,7 +764,11 @@ float snn_visual_bridge_get_spike_rate(
  * HOW:  Return connected flag
  */
 bool snn_visual_bridge_is_active(const snn_visual_bridge_t* bridge) {
-    return bridge ? bridge->connected : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_is_active: null bridge pointer");
+        return false;
+    }
+    return bridge->connected;
 }
 
 //=============================================================================
@@ -694,7 +781,10 @@ bool snn_visual_bridge_is_active(const snn_visual_bridge_t* bridge) {
  * HOW:  Zero all counters
  */
 void snn_visual_bridge_reset_stats(snn_visual_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_visual_bridge_reset_stats: null bridge pointer");
+        return;
+    }
 
     memset(&bridge->encode_stats, 0, sizeof(snn_visual_encode_stats_t));
     memset(&bridge->decode_stats, 0, sizeof(snn_visual_decode_stats_t));

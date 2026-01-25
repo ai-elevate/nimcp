@@ -26,7 +26,10 @@
 //=============================================================================
 
 void snn_stdp_bridge_config_default(snn_stdp_bridge_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_stdp_bridge_config_default: null config pointer");
+        return;
+    }
 
     /* Timing windows from Bi & Poo (1998) */
     config->ltp_window_ms = 20.0f;
@@ -132,7 +135,10 @@ snn_stdp_bridge_t* snn_stdp_bridge_create(
 }
 
 void snn_stdp_bridge_destroy(snn_stdp_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_stdp_bridge_destroy: null bridge pointer");
+        return;
+    }
 
     /* Disconnect bio-async */
     if (bridge->base.bio_async_enabled) {
@@ -157,7 +163,10 @@ void snn_stdp_bridge_destroy(snn_stdp_bridge_t* bridge) {
 //=============================================================================
 
 int snn_stdp_bridge_connect_bio_async(snn_stdp_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_stdp_bridge_connect_bio_async: null bridge pointer");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -177,7 +186,11 @@ int snn_stdp_bridge_connect_bio_async(snn_stdp_bridge_t* bridge) {
 }
 
 int snn_stdp_bridge_disconnect_bio_async(snn_stdp_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_stdp_bridge_disconnect_bio_async: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->base.bio_async_enabled) return 0;
 
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_async_enabled = false;
@@ -187,7 +200,11 @@ int snn_stdp_bridge_disconnect_bio_async(snn_stdp_bridge_t* bridge) {
 }
 
 bool snn_stdp_bridge_is_bio_async_connected(const snn_stdp_bridge_t* bridge) {
-    return bridge ? bridge->base.bio_async_enabled : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_stdp_bridge_is_bio_async_connected: null bridge pointer");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }
 
 //=============================================================================
@@ -195,7 +212,12 @@ bool snn_stdp_bridge_is_bio_async_connected(const snn_stdp_bridge_t* bridge) {
 //=============================================================================
 
 int snn_stdp_bridge_update_effects(snn_stdp_bridge_t* bridge) {
-    if (!bridge || !bridge->stdp_synapses) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_stdp_bridge_update_effects: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->stdp_synapses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_stdp_bridge_update_effects: null stdp_synapses");
         return -1;
     }
 
@@ -247,7 +269,12 @@ int snn_stdp_bridge_update_effects(snn_stdp_bridge_t* bridge) {
 }
 
 int snn_stdp_bridge_apply_plasticity(snn_stdp_bridge_t* bridge, float dt) {
-    if (!bridge || !bridge->network) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_stdp_bridge_apply_plasticity: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_stdp_bridge_apply_plasticity: null network");
         return -1;
     }
 
@@ -268,7 +295,10 @@ int snn_stdp_bridge_apply_plasticity(snn_stdp_bridge_t* bridge, float dt) {
 }
 
 int snn_stdp_bridge_update(snn_stdp_bridge_t* bridge, float dt) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_stdp_bridge_update: null bridge pointer");
+        return -1;
+    }
 
     /* Update effects from STDP module */
     int ret = snn_stdp_bridge_update_effects(bridge);
@@ -297,7 +327,16 @@ int snn_stdp_bridge_get_weight_changes(
     uint32_t max_changes,
     uint32_t* n_changes
 ) {
-    if (!bridge || !changes || !n_changes) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_stdp_bridge_get_weight_changes: null bridge pointer");
+        return -1;
+    }
+    if (!changes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_stdp_bridge_get_weight_changes: null changes pointer");
+        return -1;
+    }
+    if (!n_changes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_stdp_bridge_get_weight_changes: null n_changes pointer");
         return -1;
     }
 
@@ -325,7 +364,10 @@ int snn_stdp_bridge_get_weight_changes(
 }
 
 int snn_stdp_bridge_mark_synced(snn_stdp_bridge_t* bridge, uint32_t n_synced) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_stdp_bridge_mark_synced: null bridge pointer");
+        return -1;
+    }
 
     if (bridge->base.mutex) {
         nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -354,7 +396,10 @@ int snn_stdp_bridge_record_weight_change(
     uint32_t synapse_id,
     float delta_weight
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_stdp_bridge_record_weight_change: null bridge pointer");
+        return -1;
+    }
 
     if (bridge->base.mutex) {
         nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -387,7 +432,12 @@ int snn_stdp_bridge_get_effects(
     const snn_stdp_bridge_t* bridge,
     snn_stdp_effects_t* effects
 ) {
-    if (!bridge || !effects) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_stdp_bridge_get_effects: null bridge pointer");
+        return -1;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_stdp_bridge_get_effects: null effects pointer");
         return -1;
     }
 
@@ -405,15 +455,27 @@ int snn_stdp_bridge_get_effects(
 }
 
 float snn_stdp_bridge_get_effective_a_plus(const snn_stdp_bridge_t* bridge) {
-    return bridge ? bridge->effects.effective_a_plus : 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_stdp_bridge_get_effective_a_plus: null bridge pointer");
+        return 0.0f;
+    }
+    return bridge->effects.effective_a_plus;
 }
 
 float snn_stdp_bridge_get_effective_a_minus(const snn_stdp_bridge_t* bridge) {
-    return bridge ? bridge->effects.effective_a_minus : 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_stdp_bridge_get_effective_a_minus: null bridge pointer");
+        return 0.0f;
+    }
+    return bridge->effects.effective_a_minus;
 }
 
 float snn_stdp_bridge_get_da_modulation(const snn_stdp_bridge_t* bridge) {
-    return bridge ? bridge->effects.da_modulation_factor : 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_stdp_bridge_get_da_modulation: null bridge pointer");
+        return 1.0f;
+    }
+    return bridge->effects.da_modulation_factor;
 }
 
 //=============================================================================
@@ -426,7 +488,10 @@ int snn_stdp_bridge_get_stats(
     uint32_t* weight_syncs,
     uint32_t* updates
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_stdp_bridge_get_stats: null bridge pointer");
+        return -1;
+    }
 
     if (plasticity_events) {
         *plasticity_events = bridge->plasticity_events;
@@ -443,7 +508,10 @@ int snn_stdp_bridge_get_stats(
 }
 
 void snn_stdp_bridge_reset_stats(snn_stdp_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_stdp_bridge_reset_stats: null bridge pointer");
+        return;
+    }
 
     if (bridge->base.mutex) {
         nimcp_platform_mutex_lock(bridge->base.mutex);

@@ -46,7 +46,7 @@ snn_reasoning_bridge_t* snn_reasoning_bridge_create(
 
     snn_reasoning_bridge_t* bridge = nimcp_malloc(sizeof(snn_reasoning_bridge_t));
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate SNN-reasoning bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_reasoning_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -73,7 +73,10 @@ void snn_reasoning_bridge_destroy(snn_reasoning_bridge_t* bridge) {
 }
 
 int snn_reasoning_bridge_connect_bio_async(snn_reasoning_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_reasoning_bridge_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -110,7 +113,10 @@ int snn_reasoning_bridge_process(
     const float* input,
     float* output
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_reasoning_bridge_process: bridge is NULL");
+        return -1;
+    }
 
     int ret = snn_reasoning_bridge_update(bridge, bridge->config.update_interval_ms);
     if (ret != 0) return ret;
@@ -124,7 +130,10 @@ int snn_reasoning_bridge_process(
 }
 
 int snn_reasoning_bridge_update(snn_reasoning_bridge_t* bridge, float dt) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_reasoning_bridge_update: bridge is NULL");
+        return -1;
+    }
 
     if (bridge->last_update_time > 0 && (dt < bridge->config.update_interval_ms)) {
         return 0;
@@ -180,7 +189,18 @@ int snn_reasoning_compete_populations(
     uint32_t num_populations,
     uint32_t* winner
 ) {
-    if (!bridge || !population_ids || num_populations == 0) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_reasoning_compete_populations: bridge is NULL");
+        return -1;
+    }
+    if (!population_ids) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_reasoning_compete_populations: population_ids is NULL");
+        return -1;
+    }
+    if (num_populations == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_reasoning_compete_populations: num_populations is 0");
+        return -1;
+    }
 
     float max_rate = 0.0f;
     uint32_t max_idx = 0;
@@ -213,7 +233,14 @@ int snn_reasoning_bridge_get_state(
     const snn_reasoning_bridge_t* bridge,
     snn_reasoning_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_reasoning_bridge_get_state: bridge is NULL");
+        return -1;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_reasoning_bridge_get_state: state is NULL");
+        return -1;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -236,7 +263,10 @@ int snn_reasoning_get_stats(
     uint32_t* decisions_made,
     float* avg_confidence
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_reasoning_get_stats: bridge is NULL");
+        return -1;
+    }
     if (integration_steps) *integration_steps = bridge->state.integration_steps;
     if (decisions_made) *decisions_made = bridge->state.decision_committed ? 1 : 0;
     if (avg_confidence) *avg_confidence = bridge->state.decision_confidence;

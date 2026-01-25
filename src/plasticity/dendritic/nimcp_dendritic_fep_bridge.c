@@ -16,7 +16,10 @@
 #define LOG_MODULE_DENDRITIC_FEP "DENDRITIC_FEP_BRIDGE"
 
 int dendritic_fep_bridge_default_config(dendritic_fep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_fep_bridge_default_config: config is NULL");
+        return -1;
+    }
     config->pe_nmda_gain = DENDRITIC_FEP_PE_NMDA_SCALING;
     config->precision_excitability_gain = 1.0f;
     config->calcium_belief_sensitivity = DENDRITIC_FEP_CALCIUM_PE_FACTOR;
@@ -30,17 +33,22 @@ int dendritic_fep_bridge_default_config(dendritic_fep_config_t* config) {
 dendritic_fep_bridge_t* dendritic_fep_bridge_create(const dendritic_fep_config_t* config) {
     dendritic_fep_bridge_t* bridge = (dendritic_fep_bridge_t*)nimcp_malloc(sizeof(dendritic_fep_bridge_t));
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendritic_fep_bridge_create: failed to allocate bridge");
         return NULL;
-
     }
     memset(bridge, 0, sizeof(dendritic_fep_bridge_t));
     if (config) bridge->config = *config;
     else dendritic_fep_bridge_default_config(&bridge->config);
-    if (bridge_base_init(&bridge->base, 0, "dendritic_fep") != 0) { nimcp_free(bridge); return NULL; }
-    if (!bridge->base.mutex) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "dendritic_fep") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "dendritic_fep_bridge_create: bridge_base_init failed");
+        nimcp_free(bridge);
+        return NULL;
+    }
+    if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendritic_fep_bridge_create: mutex allocation failed");
+        nimcp_free(bridge);
+        return NULL;
+    }
     bridge->effects.total_nmda_modulation = 1.0f;
     bridge->effects.total_gain_modulation = 1.0f;
     NIMCP_LOGGING_INFO("Dendritic-FEP bridge created");
@@ -55,7 +63,10 @@ void dendritic_fep_bridge_destroy(dendritic_fep_bridge_t* bridge) {
 }
 
 int dendritic_fep_bridge_connect_fep(dendritic_fep_bridge_t* bridge, fep_system_t* fep) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_fep_bridge_connect_fep: bridge is NULL");
+        return -1;
+    }
     /* Allow NULL fep to disconnect/reset FEP connection */
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -64,7 +75,10 @@ int dendritic_fep_bridge_connect_fep(dendritic_fep_bridge_t* bridge, fep_system_
 }
 
 int dendritic_fep_bridge_connect_dendritic(dendritic_fep_bridge_t* bridge, dendritic_tree_t dendritic) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_fep_bridge_connect_dendritic: bridge is NULL");
+        return -1;
+    }
     /* Allow NULL dendritic to disconnect/reset dendritic connection */
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->dendritic_system = dendritic;
@@ -73,7 +87,10 @@ int dendritic_fep_bridge_connect_dendritic(dendritic_fep_bridge_t* bridge, dendr
 }
 
 int dendritic_fep_bridge_disconnect(dendritic_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_fep_bridge_disconnect: bridge is NULL");
+        return -1;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->dendritic_system = NULL;
@@ -82,7 +99,11 @@ int dendritic_fep_bridge_disconnect(dendritic_fep_bridge_t* bridge) {
 }
 
 float dendritic_fep_apply_pe_nmda_modulation(dendritic_fep_bridge_t* bridge, float pe) {
-    if (!bridge || !bridge->config.enable_pe_nmda_modulation) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_fep_apply_pe_nmda_modulation: bridge is NULL");
+        return 1.0f;
+    }
+    if (!bridge->config.enable_pe_nmda_modulation) return 1.0f;
     float modulation = 1.0f + fabsf(pe) * bridge->config.pe_nmda_gain;
     /* Store for get_effective_nmda_conductance to use */
     bridge->effects.pe_magnitude = pe;
@@ -92,13 +113,21 @@ float dendritic_fep_apply_pe_nmda_modulation(dendritic_fep_bridge_t* bridge, flo
 }
 
 float dendritic_fep_apply_precision_gain_control(dendritic_fep_bridge_t* bridge, float precision) {
-    if (!bridge || !bridge->config.enable_precision_gain_control) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_fep_apply_precision_gain_control: bridge is NULL");
+        return 1.0f;
+    }
+    if (!bridge->config.enable_precision_gain_control) return 1.0f;
     float gain = precision * bridge->config.precision_excitability_gain;
     return fminf(fmaxf(gain, DENDRITIC_FEP_PRECISION_GAIN_MIN), DENDRITIC_FEP_PRECISION_GAIN_MAX);
 }
 
 float dendritic_fep_compute_calcium_belief_update(const dendritic_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->config.enable_calcium_belief_updates) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_fep_compute_calcium_belief_update: bridge is NULL");
+        return 0.0f;
+    }
+    if (!bridge->config.enable_calcium_belief_updates) return 0.0f;
     return bridge->effects.calcium_concentration * bridge->config.calcium_belief_sensitivity;
 }
 
@@ -108,7 +137,10 @@ float dendritic_fep_get_effective_nmda_conductance(const dendritic_fep_bridge_t*
 }
 
 int dendritic_fep_report_dendritic_spike(dendritic_fep_bridge_t* bridge, float spike_amplitude) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_fep_report_dendritic_spike: bridge is NULL");
+        return -1;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->state.dendritic_spikes++;
     bridge->stats.dendritic_spike_events++;
@@ -117,7 +149,10 @@ int dendritic_fep_report_dendritic_spike(dendritic_fep_bridge_t* bridge, float s
 }
 
 int dendritic_fep_bridge_update(dendritic_fep_bridge_t* bridge, uint64_t delta_ms) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_fep_bridge_update: bridge is NULL");
+        return -1;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->fep_system) {
         float pe_nmda = dendritic_fep_apply_pe_nmda_modulation(bridge, bridge->effects.pe_magnitude);
@@ -141,19 +176,36 @@ int dendritic_fep_bridge_update(dendritic_fep_bridge_t* bridge, uint64_t delta_m
 }
 
 int dendritic_fep_bridge_get_state(const dendritic_fep_bridge_t* bridge, dendritic_fep_state_t* state) {
-    if (!bridge || !state) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_fep_bridge_get_state: bridge is NULL");
+        return -1;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_fep_bridge_get_state: state is NULL");
+        return -1;
+    }
     *state = bridge->state;
     return 0;
 }
 
 int dendritic_fep_bridge_get_stats(const dendritic_fep_bridge_t* bridge, dendritic_fep_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_fep_bridge_get_stats: bridge is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_fep_bridge_get_stats: stats is NULL");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 int dendritic_fep_bridge_connect_bio_async(dendritic_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_fep_bridge_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_DENDRITIC_BRIDGE,
@@ -170,7 +222,10 @@ int dendritic_fep_bridge_connect_bio_async(dendritic_fep_bridge_t* bridge) {
 }
 
 int dendritic_fep_bridge_disconnect_bio_async(dendritic_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_fep_bridge_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (!bridge->base.bio_async_enabled) return 0;  /* Already disconnected - success */
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_ctx = NULL;

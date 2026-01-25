@@ -185,6 +185,7 @@ int triplet_stdp_synapse_reset(triplet_stdp_synapse_t* synapse) {
      * HOW:  Zero out traces and counters
      */
     if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_synapse_reset: synapse is NULL");
         NIMCP_LOGGING_ERROR("NULL synapse in reset");
         return -1;
     }
@@ -231,11 +232,15 @@ int triplet_stdp_update_traces(triplet_stdp_synapse_t* synapse, float dt) {
      * HOW:  Multiply each trace by exp(-dt/tau)
      */
     if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_update_traces: synapse is NULL");
         NIMCP_LOGGING_ERROR("NULL synapse in update_traces");
         return -1;
     }
 
-    if (dt <= 0.0f) return 0;  /* No time passed */
+    if (dt <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "triplet_stdp_update_traces: dt must be positive");
+        return 0;  /* No time passed */
+    }
 
     nimcp_spinlock_lock(&synapse->lock);
 
@@ -288,6 +293,7 @@ float triplet_stdp_pre_spike(triplet_stdp_synapse_t* synapse, float spike_time) 
      *   dw_LTD = -A2_minus * o1_post(t_pre) - A3_minus * r1_pre(t_pre) * o2_post(t_pre)
      */
     if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_pre_spike: synapse is NULL");
         NIMCP_LOGGING_ERROR("NULL synapse in pre_spike");
         return 0.0f;
     }
@@ -388,6 +394,7 @@ float triplet_stdp_post_spike(triplet_stdp_synapse_t* synapse, float spike_time)
      *   dw_LTP = A2_plus * r1_pre(t_post) + A3_plus * r2_pre(t_post) * o1_post(t_post)
      */
     if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_post_spike: synapse is NULL");
         NIMCP_LOGGING_ERROR("NULL synapse in post_spike");
         return 0.0f;
     }
@@ -489,6 +496,7 @@ int triplet_stdp_set_sleep_state(triplet_stdp_synapse_t* synapse, sleep_state_t 
      * HOW:  Store state, will be applied by sleep bridge during updates
      */
     if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_set_sleep_state: synapse is NULL");
         NIMCP_LOGGING_ERROR("NULL synapse in set_sleep_state");
         return -1;
     }
@@ -508,7 +516,13 @@ int triplet_stdp_connect_sleep_bridge(
      * WHY:  Enable sleep-dependent plasticity changes
      * HOW:  Register with sleep bridge (implementation in bridge)
      */
-    if (!synapse || !sleep_bridge) {
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_connect_sleep_bridge: synapse is NULL");
+        NIMCP_LOGGING_ERROR("NULL pointer in connect_sleep_bridge");
+        return -1;
+    }
+    if (!sleep_bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_connect_sleep_bridge: sleep_bridge is NULL");
         NIMCP_LOGGING_ERROR("NULL pointer in connect_sleep_bridge");
         return -1;
     }
@@ -530,7 +544,13 @@ int triplet_stdp_connect_immune_bridge(
      * WHY:  Enable inflammation-dependent plasticity changes
      * HOW:  Register with immune bridge (implementation in bridge)
      */
-    if (!synapse || !immune_bridge) {
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_connect_immune_bridge: synapse is NULL");
+        NIMCP_LOGGING_ERROR("NULL pointer in connect_immune_bridge");
+        return -1;
+    }
+    if (!immune_bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_connect_immune_bridge: immune_bridge is NULL");
         NIMCP_LOGGING_ERROR("NULL pointer in connect_immune_bridge");
         return -1;
     }
@@ -554,7 +574,12 @@ int triplet_stdp_register_callback(
      * HOW:  Store callback, invoke on events (future implementation)
      */
     if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_register_callback: synapse is NULL");
         NIMCP_LOGGING_ERROR("NULL synapse in register_callback");
+        return -1;
+    }
+    if (!callback) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "triplet_stdp_register_callback: callback is NULL");
         return -1;
     }
 

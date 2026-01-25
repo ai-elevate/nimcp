@@ -82,7 +82,10 @@ static void dendritic_on_sleep_state_change(sleep_state_t new_state, void* user_
 }
 
 int dendritic_sleep_default_config(dendritic_sleep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_sleep_default_config: config is NULL");
+        return -1;
+    }
     config->enable_nmda_modulation = true;
     config->enable_threshold_modulation = true;
     config->enable_calcium_modulation = true;
@@ -96,6 +99,7 @@ dendritic_sleep_bridge_t dendritic_sleep_bridge_create(
 {
     if (!sleep_system) {
         NIMCP_LOGGING_ERROR("dendritic_sleep_bridge_create: NULL sleep_system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_sleep_bridge_create: sleep_system is NULL");
         return NULL;
     }
 
@@ -103,11 +107,8 @@ dendritic_sleep_bridge_t dendritic_sleep_bridge_create(
         (struct dendritic_sleep_bridge_struct*)nimcp_malloc(
             sizeof(struct dendritic_sleep_bridge_struct));
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendritic_sleep_bridge_create: failed to allocate bridge");
         return NULL;
-
     }
 
     memset(bridge, 0, sizeof(struct dendritic_sleep_bridge_struct));
@@ -124,8 +125,13 @@ dendritic_sleep_bridge_t dendritic_sleep_bridge_create(
     bridge->effects.calcium_decay_factor = 1.0f;
     bridge->effects.enhanced_integration = false;
 
-    if (bridge_base_init(&bridge->base, 0, "dendritic_sleep") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "dendritic_sleep") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "dendritic_sleep_bridge_create: bridge_base_init failed");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendritic_sleep_bridge_create: mutex allocation failed");
         nimcp_free(bridge);
         return NULL;
     }
@@ -170,7 +176,10 @@ void dendritic_sleep_bridge_destroy(dendritic_sleep_bridge_t bridge) {
 }
 
 int dendritic_sleep_update(dendritic_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -207,7 +216,14 @@ int dendritic_sleep_update(dendritic_sleep_bridge_t bridge) {
 
 int dendritic_sleep_get_effects(const dendritic_sleep_bridge_t bridge,
                                  dendritic_sleep_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_sleep_get_effects: bridge is NULL");
+        return -1;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_sleep_get_effects: effects is NULL");
+        return -1;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_platform_mutex_unlock(bridge->base.mutex);

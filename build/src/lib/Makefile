@@ -10289,6 +10289,294 @@ __/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.c.s
 .PHONY : __/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.c.s
 
+__/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_fep_bridge.o: __/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_fep_bridge.c.o
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_fep_bridge.o
+
+# target to build an object file
+__/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_fep_bridge.c.o
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_fep_bridge.c.o
+
+__/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_fep_bridge.i: __/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_fep_bridge.c.i
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_fep_bridge.i
+
+# target to preprocess a source file
+__/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_fep_bridge.c.i
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_fep_bridge.c.i
+
+__/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_fep_bridge.s: __/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_fep_bridge.c.s
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_fep_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_fep_bridge.c.s
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_fep_bridge.c.s
+
+__/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_thermo_bridge.o: __/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_thermo_bridge.c.o
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_thermo_bridge.o
+
+# target to build an object file
+__/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_thermo_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_thermo_bridge.c.o
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_thermo_bridge.c.o
+
+__/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_thermo_bridge.i: __/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_thermo_bridge.c.i
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_thermo_bridge.i
+
+# target to preprocess a source file
+__/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_thermo_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_thermo_bridge.c.i
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_thermo_bridge.c.i
+
+__/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_thermo_bridge.s: __/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_thermo_bridge.c.s
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_thermo_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_thermo_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_thermo_bridge.c.s
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_thermo_bridge.c.s
+
+__/cognitive/neuro_symbolic/bridges/nimcp_evolutionary_proof_logic_bridge.o: __/cognitive/neuro_symbolic/bridges/nimcp_evolutionary_proof_logic_bridge.c.o
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_evolutionary_proof_logic_bridge.o
+
+# target to build an object file
+__/cognitive/neuro_symbolic/bridges/nimcp_evolutionary_proof_logic_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/bridges/nimcp_evolutionary_proof_logic_bridge.c.o
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_evolutionary_proof_logic_bridge.c.o
+
+__/cognitive/neuro_symbolic/bridges/nimcp_evolutionary_proof_logic_bridge.i: __/cognitive/neuro_symbolic/bridges/nimcp_evolutionary_proof_logic_bridge.c.i
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_evolutionary_proof_logic_bridge.i
+
+# target to preprocess a source file
+__/cognitive/neuro_symbolic/bridges/nimcp_evolutionary_proof_logic_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/bridges/nimcp_evolutionary_proof_logic_bridge.c.i
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_evolutionary_proof_logic_bridge.c.i
+
+__/cognitive/neuro_symbolic/bridges/nimcp_evolutionary_proof_logic_bridge.s: __/cognitive/neuro_symbolic/bridges/nimcp_evolutionary_proof_logic_bridge.c.s
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_evolutionary_proof_logic_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/neuro_symbolic/bridges/nimcp_evolutionary_proof_logic_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/bridges/nimcp_evolutionary_proof_logic_bridge.c.s
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_evolutionary_proof_logic_bridge.c.s
+
+__/cognitive/neuro_symbolic/bridges/nimcp_genius_game_theory_bridge.o: __/cognitive/neuro_symbolic/bridges/nimcp_genius_game_theory_bridge.c.o
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_genius_game_theory_bridge.o
+
+# target to build an object file
+__/cognitive/neuro_symbolic/bridges/nimcp_genius_game_theory_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/bridges/nimcp_genius_game_theory_bridge.c.o
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_genius_game_theory_bridge.c.o
+
+__/cognitive/neuro_symbolic/bridges/nimcp_genius_game_theory_bridge.i: __/cognitive/neuro_symbolic/bridges/nimcp_genius_game_theory_bridge.c.i
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_genius_game_theory_bridge.i
+
+# target to preprocess a source file
+__/cognitive/neuro_symbolic/bridges/nimcp_genius_game_theory_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/bridges/nimcp_genius_game_theory_bridge.c.i
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_genius_game_theory_bridge.c.i
+
+__/cognitive/neuro_symbolic/bridges/nimcp_genius_game_theory_bridge.s: __/cognitive/neuro_symbolic/bridges/nimcp_genius_game_theory_bridge.c.s
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_genius_game_theory_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/neuro_symbolic/bridges/nimcp_genius_game_theory_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/bridges/nimcp_genius_game_theory_bridge.c.s
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_genius_game_theory_bridge.c.s
+
+__/cognitive/neuro_symbolic/bridges/nimcp_hypergraph_kg_bridge.o: __/cognitive/neuro_symbolic/bridges/nimcp_hypergraph_kg_bridge.c.o
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_hypergraph_kg_bridge.o
+
+# target to build an object file
+__/cognitive/neuro_symbolic/bridges/nimcp_hypergraph_kg_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/bridges/nimcp_hypergraph_kg_bridge.c.o
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_hypergraph_kg_bridge.c.o
+
+__/cognitive/neuro_symbolic/bridges/nimcp_hypergraph_kg_bridge.i: __/cognitive/neuro_symbolic/bridges/nimcp_hypergraph_kg_bridge.c.i
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_hypergraph_kg_bridge.i
+
+# target to preprocess a source file
+__/cognitive/neuro_symbolic/bridges/nimcp_hypergraph_kg_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/bridges/nimcp_hypergraph_kg_bridge.c.i
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_hypergraph_kg_bridge.c.i
+
+__/cognitive/neuro_symbolic/bridges/nimcp_hypergraph_kg_bridge.s: __/cognitive/neuro_symbolic/bridges/nimcp_hypergraph_kg_bridge.c.s
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_hypergraph_kg_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/neuro_symbolic/bridges/nimcp_hypergraph_kg_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/bridges/nimcp_hypergraph_kg_bridge.c.s
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_hypergraph_kg_bridge.c.s
+
+__/cognitive/neuro_symbolic/bridges/nimcp_quantum_mcts_fep_bridge.o: __/cognitive/neuro_symbolic/bridges/nimcp_quantum_mcts_fep_bridge.c.o
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_quantum_mcts_fep_bridge.o
+
+# target to build an object file
+__/cognitive/neuro_symbolic/bridges/nimcp_quantum_mcts_fep_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/bridges/nimcp_quantum_mcts_fep_bridge.c.o
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_quantum_mcts_fep_bridge.c.o
+
+__/cognitive/neuro_symbolic/bridges/nimcp_quantum_mcts_fep_bridge.i: __/cognitive/neuro_symbolic/bridges/nimcp_quantum_mcts_fep_bridge.c.i
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_quantum_mcts_fep_bridge.i
+
+# target to preprocess a source file
+__/cognitive/neuro_symbolic/bridges/nimcp_quantum_mcts_fep_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/bridges/nimcp_quantum_mcts_fep_bridge.c.i
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_quantum_mcts_fep_bridge.c.i
+
+__/cognitive/neuro_symbolic/bridges/nimcp_quantum_mcts_fep_bridge.s: __/cognitive/neuro_symbolic/bridges/nimcp_quantum_mcts_fep_bridge.c.s
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_quantum_mcts_fep_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/neuro_symbolic/bridges/nimcp_quantum_mcts_fep_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/bridges/nimcp_quantum_mcts_fep_bridge.c.s
+.PHONY : __/cognitive/neuro_symbolic/bridges/nimcp_quantum_mcts_fep_bridge.c.s
+
+__/cognitive/neuro_symbolic/nimcp_energy_consistency.o: __/cognitive/neuro_symbolic/nimcp_energy_consistency.c.o
+.PHONY : __/cognitive/neuro_symbolic/nimcp_energy_consistency.o
+
+# target to build an object file
+__/cognitive/neuro_symbolic/nimcp_energy_consistency.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/nimcp_energy_consistency.c.o
+.PHONY : __/cognitive/neuro_symbolic/nimcp_energy_consistency.c.o
+
+__/cognitive/neuro_symbolic/nimcp_energy_consistency.i: __/cognitive/neuro_symbolic/nimcp_energy_consistency.c.i
+.PHONY : __/cognitive/neuro_symbolic/nimcp_energy_consistency.i
+
+# target to preprocess a source file
+__/cognitive/neuro_symbolic/nimcp_energy_consistency.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/nimcp_energy_consistency.c.i
+.PHONY : __/cognitive/neuro_symbolic/nimcp_energy_consistency.c.i
+
+__/cognitive/neuro_symbolic/nimcp_energy_consistency.s: __/cognitive/neuro_symbolic/nimcp_energy_consistency.c.s
+.PHONY : __/cognitive/neuro_symbolic/nimcp_energy_consistency.s
+
+# target to generate assembly for a file
+__/cognitive/neuro_symbolic/nimcp_energy_consistency.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/nimcp_energy_consistency.c.s
+.PHONY : __/cognitive/neuro_symbolic/nimcp_energy_consistency.c.s
+
+__/cognitive/neuro_symbolic/nimcp_evolutionary_proof.o: __/cognitive/neuro_symbolic/nimcp_evolutionary_proof.c.o
+.PHONY : __/cognitive/neuro_symbolic/nimcp_evolutionary_proof.o
+
+# target to build an object file
+__/cognitive/neuro_symbolic/nimcp_evolutionary_proof.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/nimcp_evolutionary_proof.c.o
+.PHONY : __/cognitive/neuro_symbolic/nimcp_evolutionary_proof.c.o
+
+__/cognitive/neuro_symbolic/nimcp_evolutionary_proof.i: __/cognitive/neuro_symbolic/nimcp_evolutionary_proof.c.i
+.PHONY : __/cognitive/neuro_symbolic/nimcp_evolutionary_proof.i
+
+# target to preprocess a source file
+__/cognitive/neuro_symbolic/nimcp_evolutionary_proof.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/nimcp_evolutionary_proof.c.i
+.PHONY : __/cognitive/neuro_symbolic/nimcp_evolutionary_proof.c.i
+
+__/cognitive/neuro_symbolic/nimcp_evolutionary_proof.s: __/cognitive/neuro_symbolic/nimcp_evolutionary_proof.c.s
+.PHONY : __/cognitive/neuro_symbolic/nimcp_evolutionary_proof.s
+
+# target to generate assembly for a file
+__/cognitive/neuro_symbolic/nimcp_evolutionary_proof.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/nimcp_evolutionary_proof.c.s
+.PHONY : __/cognitive/neuro_symbolic/nimcp_evolutionary_proof.c.s
+
+__/cognitive/neuro_symbolic/nimcp_genius_math_orchestrator.o: __/cognitive/neuro_symbolic/nimcp_genius_math_orchestrator.c.o
+.PHONY : __/cognitive/neuro_symbolic/nimcp_genius_math_orchestrator.o
+
+# target to build an object file
+__/cognitive/neuro_symbolic/nimcp_genius_math_orchestrator.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/nimcp_genius_math_orchestrator.c.o
+.PHONY : __/cognitive/neuro_symbolic/nimcp_genius_math_orchestrator.c.o
+
+__/cognitive/neuro_symbolic/nimcp_genius_math_orchestrator.i: __/cognitive/neuro_symbolic/nimcp_genius_math_orchestrator.c.i
+.PHONY : __/cognitive/neuro_symbolic/nimcp_genius_math_orchestrator.i
+
+# target to preprocess a source file
+__/cognitive/neuro_symbolic/nimcp_genius_math_orchestrator.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/nimcp_genius_math_orchestrator.c.i
+.PHONY : __/cognitive/neuro_symbolic/nimcp_genius_math_orchestrator.c.i
+
+__/cognitive/neuro_symbolic/nimcp_genius_math_orchestrator.s: __/cognitive/neuro_symbolic/nimcp_genius_math_orchestrator.c.s
+.PHONY : __/cognitive/neuro_symbolic/nimcp_genius_math_orchestrator.s
+
+# target to generate assembly for a file
+__/cognitive/neuro_symbolic/nimcp_genius_math_orchestrator.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/nimcp_genius_math_orchestrator.c.s
+.PHONY : __/cognitive/neuro_symbolic/nimcp_genius_math_orchestrator.c.s
+
+__/cognitive/neuro_symbolic/nimcp_hypergraph.o: __/cognitive/neuro_symbolic/nimcp_hypergraph.c.o
+.PHONY : __/cognitive/neuro_symbolic/nimcp_hypergraph.o
+
+# target to build an object file
+__/cognitive/neuro_symbolic/nimcp_hypergraph.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/nimcp_hypergraph.c.o
+.PHONY : __/cognitive/neuro_symbolic/nimcp_hypergraph.c.o
+
+__/cognitive/neuro_symbolic/nimcp_hypergraph.i: __/cognitive/neuro_symbolic/nimcp_hypergraph.c.i
+.PHONY : __/cognitive/neuro_symbolic/nimcp_hypergraph.i
+
+# target to preprocess a source file
+__/cognitive/neuro_symbolic/nimcp_hypergraph.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/nimcp_hypergraph.c.i
+.PHONY : __/cognitive/neuro_symbolic/nimcp_hypergraph.c.i
+
+__/cognitive/neuro_symbolic/nimcp_hypergraph.s: __/cognitive/neuro_symbolic/nimcp_hypergraph.c.s
+.PHONY : __/cognitive/neuro_symbolic/nimcp_hypergraph.s
+
+# target to generate assembly for a file
+__/cognitive/neuro_symbolic/nimcp_hypergraph.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/nimcp_hypergraph.c.s
+.PHONY : __/cognitive/neuro_symbolic/nimcp_hypergraph.c.s
+
+__/cognitive/neuro_symbolic/nimcp_quantum_math_engine.o: __/cognitive/neuro_symbolic/nimcp_quantum_math_engine.c.o
+.PHONY : __/cognitive/neuro_symbolic/nimcp_quantum_math_engine.o
+
+# target to build an object file
+__/cognitive/neuro_symbolic/nimcp_quantum_math_engine.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/nimcp_quantum_math_engine.c.o
+.PHONY : __/cognitive/neuro_symbolic/nimcp_quantum_math_engine.c.o
+
+__/cognitive/neuro_symbolic/nimcp_quantum_math_engine.i: __/cognitive/neuro_symbolic/nimcp_quantum_math_engine.c.i
+.PHONY : __/cognitive/neuro_symbolic/nimcp_quantum_math_engine.i
+
+# target to preprocess a source file
+__/cognitive/neuro_symbolic/nimcp_quantum_math_engine.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/nimcp_quantum_math_engine.c.i
+.PHONY : __/cognitive/neuro_symbolic/nimcp_quantum_math_engine.c.i
+
+__/cognitive/neuro_symbolic/nimcp_quantum_math_engine.s: __/cognitive/neuro_symbolic/nimcp_quantum_math_engine.c.s
+.PHONY : __/cognitive/neuro_symbolic/nimcp_quantum_math_engine.s
+
+# target to generate assembly for a file
+__/cognitive/neuro_symbolic/nimcp_quantum_math_engine.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/nimcp_quantum_math_engine.c.s
+.PHONY : __/cognitive/neuro_symbolic/nimcp_quantum_math_engine.c.s
+
+__/cognitive/neuro_symbolic/nimcp_quantum_mcts.o: __/cognitive/neuro_symbolic/nimcp_quantum_mcts.c.o
+.PHONY : __/cognitive/neuro_symbolic/nimcp_quantum_mcts.o
+
+# target to build an object file
+__/cognitive/neuro_symbolic/nimcp_quantum_mcts.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/nimcp_quantum_mcts.c.o
+.PHONY : __/cognitive/neuro_symbolic/nimcp_quantum_mcts.c.o
+
+__/cognitive/neuro_symbolic/nimcp_quantum_mcts.i: __/cognitive/neuro_symbolic/nimcp_quantum_mcts.c.i
+.PHONY : __/cognitive/neuro_symbolic/nimcp_quantum_mcts.i
+
+# target to preprocess a source file
+__/cognitive/neuro_symbolic/nimcp_quantum_mcts.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/nimcp_quantum_mcts.c.i
+.PHONY : __/cognitive/neuro_symbolic/nimcp_quantum_mcts.c.i
+
+__/cognitive/neuro_symbolic/nimcp_quantum_mcts.s: __/cognitive/neuro_symbolic/nimcp_quantum_mcts.c.s
+.PHONY : __/cognitive/neuro_symbolic/nimcp_quantum_mcts.s
+
+# target to generate assembly for a file
+__/cognitive/neuro_symbolic/nimcp_quantum_mcts.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/neuro_symbolic/nimcp_quantum_mcts.c.s
+.PHONY : __/cognitive/neuro_symbolic/nimcp_quantum_mcts.c.s
+
 __/cognitive/nimcp_cognitive_meta_controller.o: __/cognitive/nimcp_cognitive_meta_controller.c.o
 .PHONY : __/cognitive/nimcp_cognitive_meta_controller.o
 
@@ -11129,6 +11417,150 @@ __/cognitive/parietal/nimcp_fep_parietal_bridge.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_fep_parietal_bridge.c.s
 .PHONY : __/cognitive/parietal/nimcp_fep_parietal_bridge.c.s
 
+__/cognitive/parietal/nimcp_genius_erdos.o: __/cognitive/parietal/nimcp_genius_erdos.c.o
+.PHONY : __/cognitive/parietal/nimcp_genius_erdos.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_genius_erdos.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_genius_erdos.c.o
+.PHONY : __/cognitive/parietal/nimcp_genius_erdos.c.o
+
+__/cognitive/parietal/nimcp_genius_erdos.i: __/cognitive/parietal/nimcp_genius_erdos.c.i
+.PHONY : __/cognitive/parietal/nimcp_genius_erdos.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_genius_erdos.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_genius_erdos.c.i
+.PHONY : __/cognitive/parietal/nimcp_genius_erdos.c.i
+
+__/cognitive/parietal/nimcp_genius_erdos.s: __/cognitive/parietal/nimcp_genius_erdos.c.s
+.PHONY : __/cognitive/parietal/nimcp_genius_erdos.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_genius_erdos.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_genius_erdos.c.s
+.PHONY : __/cognitive/parietal/nimcp_genius_erdos.c.s
+
+__/cognitive/parietal/nimcp_genius_gauss.o: __/cognitive/parietal/nimcp_genius_gauss.c.o
+.PHONY : __/cognitive/parietal/nimcp_genius_gauss.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_genius_gauss.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_genius_gauss.c.o
+.PHONY : __/cognitive/parietal/nimcp_genius_gauss.c.o
+
+__/cognitive/parietal/nimcp_genius_gauss.i: __/cognitive/parietal/nimcp_genius_gauss.c.i
+.PHONY : __/cognitive/parietal/nimcp_genius_gauss.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_genius_gauss.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_genius_gauss.c.i
+.PHONY : __/cognitive/parietal/nimcp_genius_gauss.c.i
+
+__/cognitive/parietal/nimcp_genius_gauss.s: __/cognitive/parietal/nimcp_genius_gauss.c.s
+.PHONY : __/cognitive/parietal/nimcp_genius_gauss.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_genius_gauss.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_genius_gauss.c.s
+.PHONY : __/cognitive/parietal/nimcp_genius_gauss.c.s
+
+__/cognitive/parietal/nimcp_genius_newton.o: __/cognitive/parietal/nimcp_genius_newton.c.o
+.PHONY : __/cognitive/parietal/nimcp_genius_newton.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_genius_newton.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_genius_newton.c.o
+.PHONY : __/cognitive/parietal/nimcp_genius_newton.c.o
+
+__/cognitive/parietal/nimcp_genius_newton.i: __/cognitive/parietal/nimcp_genius_newton.c.i
+.PHONY : __/cognitive/parietal/nimcp_genius_newton.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_genius_newton.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_genius_newton.c.i
+.PHONY : __/cognitive/parietal/nimcp_genius_newton.c.i
+
+__/cognitive/parietal/nimcp_genius_newton.s: __/cognitive/parietal/nimcp_genius_newton.c.s
+.PHONY : __/cognitive/parietal/nimcp_genius_newton.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_genius_newton.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_genius_newton.c.s
+.PHONY : __/cognitive/parietal/nimcp_genius_newton.c.s
+
+__/cognitive/parietal/nimcp_genius_plasticity_bridge.o: __/cognitive/parietal/nimcp_genius_plasticity_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_genius_plasticity_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_genius_plasticity_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_genius_plasticity_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_genius_plasticity_bridge.c.o
+
+__/cognitive/parietal/nimcp_genius_plasticity_bridge.i: __/cognitive/parietal/nimcp_genius_plasticity_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_genius_plasticity_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_genius_plasticity_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_genius_plasticity_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_genius_plasticity_bridge.c.i
+
+__/cognitive/parietal/nimcp_genius_plasticity_bridge.s: __/cognitive/parietal/nimcp_genius_plasticity_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_genius_plasticity_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_genius_plasticity_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_genius_plasticity_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_genius_plasticity_bridge.c.s
+
+__/cognitive/parietal/nimcp_genius_snn_bridge.o: __/cognitive/parietal/nimcp_genius_snn_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_genius_snn_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_genius_snn_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_genius_snn_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_genius_snn_bridge.c.o
+
+__/cognitive/parietal/nimcp_genius_snn_bridge.i: __/cognitive/parietal/nimcp_genius_snn_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_genius_snn_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_genius_snn_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_genius_snn_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_genius_snn_bridge.c.i
+
+__/cognitive/parietal/nimcp_genius_snn_bridge.s: __/cognitive/parietal/nimcp_genius_snn_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_genius_snn_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_genius_snn_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_genius_snn_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_genius_snn_bridge.c.s
+
+__/cognitive/parietal/nimcp_genius_training_bridge.o: __/cognitive/parietal/nimcp_genius_training_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_genius_training_bridge.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_genius_training_bridge.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_genius_training_bridge.c.o
+.PHONY : __/cognitive/parietal/nimcp_genius_training_bridge.c.o
+
+__/cognitive/parietal/nimcp_genius_training_bridge.i: __/cognitive/parietal/nimcp_genius_training_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_genius_training_bridge.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_genius_training_bridge.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_genius_training_bridge.c.i
+.PHONY : __/cognitive/parietal/nimcp_genius_training_bridge.c.i
+
+__/cognitive/parietal/nimcp_genius_training_bridge.s: __/cognitive/parietal/nimcp_genius_training_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_genius_training_bridge.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_genius_training_bridge.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_genius_training_bridge.c.s
+.PHONY : __/cognitive/parietal/nimcp_genius_training_bridge.c.s
+
 __/cognitive/parietal/nimcp_hypothesis_generation.o: __/cognitive/parietal/nimcp_hypothesis_generation.c.o
 .PHONY : __/cognitive/parietal/nimcp_hypothesis_generation.o
 
@@ -11272,6 +11704,30 @@ __/cognitive/parietal/nimcp_intuitive_reasoning.s: __/cognitive/parietal/nimcp_i
 __/cognitive/parietal/nimcp_intuitive_reasoning.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_intuitive_reasoning.c.s
 .PHONY : __/cognitive/parietal/nimcp_intuitive_reasoning.c.s
+
+__/cognitive/parietal/nimcp_mathematical_genius.o: __/cognitive/parietal/nimcp_mathematical_genius.c.o
+.PHONY : __/cognitive/parietal/nimcp_mathematical_genius.o
+
+# target to build an object file
+__/cognitive/parietal/nimcp_mathematical_genius.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_mathematical_genius.c.o
+.PHONY : __/cognitive/parietal/nimcp_mathematical_genius.c.o
+
+__/cognitive/parietal/nimcp_mathematical_genius.i: __/cognitive/parietal/nimcp_mathematical_genius.c.i
+.PHONY : __/cognitive/parietal/nimcp_mathematical_genius.i
+
+# target to preprocess a source file
+__/cognitive/parietal/nimcp_mathematical_genius.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_mathematical_genius.c.i
+.PHONY : __/cognitive/parietal/nimcp_mathematical_genius.c.i
+
+__/cognitive/parietal/nimcp_mathematical_genius.s: __/cognitive/parietal/nimcp_mathematical_genius.c.s
+.PHONY : __/cognitive/parietal/nimcp_mathematical_genius.s
+
+# target to generate assembly for a file
+__/cognitive/parietal/nimcp_mathematical_genius.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/cognitive/parietal/nimcp_mathematical_genius.c.s
+.PHONY : __/cognitive/parietal/nimcp_mathematical_genius.c.s
 
 __/cognitive/parietal/nimcp_mathematical_intuition.o: __/cognitive/parietal/nimcp_mathematical_intuition.c.o
 .PHONY : __/cognitive/parietal/nimcp_mathematical_intuition.o
@@ -41297,6 +41753,30 @@ __/utils/containers/nimcp_graph.c.s:
 	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/containers/nimcp_graph.c.s
 .PHONY : __/utils/containers/nimcp_graph.c.s
 
+__/utils/containers/nimcp_graph_ternary.o: __/utils/containers/nimcp_graph_ternary.c.o
+.PHONY : __/utils/containers/nimcp_graph_ternary.o
+
+# target to build an object file
+__/utils/containers/nimcp_graph_ternary.c.o:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/containers/nimcp_graph_ternary.c.o
+.PHONY : __/utils/containers/nimcp_graph_ternary.c.o
+
+__/utils/containers/nimcp_graph_ternary.i: __/utils/containers/nimcp_graph_ternary.c.i
+.PHONY : __/utils/containers/nimcp_graph_ternary.i
+
+# target to preprocess a source file
+__/utils/containers/nimcp_graph_ternary.c.i:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/containers/nimcp_graph_ternary.c.i
+.PHONY : __/utils/containers/nimcp_graph_ternary.c.i
+
+__/utils/containers/nimcp_graph_ternary.s: __/utils/containers/nimcp_graph_ternary.c.s
+.PHONY : __/utils/containers/nimcp_graph_ternary.s
+
+# target to generate assembly for a file
+__/utils/containers/nimcp_graph_ternary.c.s:
+	cd /home/bbrelin/nimcp/build && $(MAKE) $(MAKESILENT) -f src/lib/CMakeFiles/nimcp.dir/build.make src/lib/CMakeFiles/nimcp.dir/__/utils/containers/nimcp_graph_ternary.c.s
+.PHONY : __/utils/containers/nimcp_graph_ternary.c.s
+
 __/utils/containers/nimcp_hash_table.o: __/utils/containers/nimcp_hash_table.c.o
 .PHONY : __/utils/containers/nimcp_hash_table.o
 
@@ -45550,6 +46030,42 @@ help:
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.o"
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.i"
 	@echo "... __/cognitive/mirror_neurons/nimcp_mirror_visual_bridge.s"
+	@echo "... __/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_fep_bridge.o"
+	@echo "... __/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_fep_bridge.i"
+	@echo "... __/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_fep_bridge.s"
+	@echo "... __/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_thermo_bridge.o"
+	@echo "... __/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_thermo_bridge.i"
+	@echo "... __/cognitive/neuro_symbolic/bridges/nimcp_energy_consistency_thermo_bridge.s"
+	@echo "... __/cognitive/neuro_symbolic/bridges/nimcp_evolutionary_proof_logic_bridge.o"
+	@echo "... __/cognitive/neuro_symbolic/bridges/nimcp_evolutionary_proof_logic_bridge.i"
+	@echo "... __/cognitive/neuro_symbolic/bridges/nimcp_evolutionary_proof_logic_bridge.s"
+	@echo "... __/cognitive/neuro_symbolic/bridges/nimcp_genius_game_theory_bridge.o"
+	@echo "... __/cognitive/neuro_symbolic/bridges/nimcp_genius_game_theory_bridge.i"
+	@echo "... __/cognitive/neuro_symbolic/bridges/nimcp_genius_game_theory_bridge.s"
+	@echo "... __/cognitive/neuro_symbolic/bridges/nimcp_hypergraph_kg_bridge.o"
+	@echo "... __/cognitive/neuro_symbolic/bridges/nimcp_hypergraph_kg_bridge.i"
+	@echo "... __/cognitive/neuro_symbolic/bridges/nimcp_hypergraph_kg_bridge.s"
+	@echo "... __/cognitive/neuro_symbolic/bridges/nimcp_quantum_mcts_fep_bridge.o"
+	@echo "... __/cognitive/neuro_symbolic/bridges/nimcp_quantum_mcts_fep_bridge.i"
+	@echo "... __/cognitive/neuro_symbolic/bridges/nimcp_quantum_mcts_fep_bridge.s"
+	@echo "... __/cognitive/neuro_symbolic/nimcp_energy_consistency.o"
+	@echo "... __/cognitive/neuro_symbolic/nimcp_energy_consistency.i"
+	@echo "... __/cognitive/neuro_symbolic/nimcp_energy_consistency.s"
+	@echo "... __/cognitive/neuro_symbolic/nimcp_evolutionary_proof.o"
+	@echo "... __/cognitive/neuro_symbolic/nimcp_evolutionary_proof.i"
+	@echo "... __/cognitive/neuro_symbolic/nimcp_evolutionary_proof.s"
+	@echo "... __/cognitive/neuro_symbolic/nimcp_genius_math_orchestrator.o"
+	@echo "... __/cognitive/neuro_symbolic/nimcp_genius_math_orchestrator.i"
+	@echo "... __/cognitive/neuro_symbolic/nimcp_genius_math_orchestrator.s"
+	@echo "... __/cognitive/neuro_symbolic/nimcp_hypergraph.o"
+	@echo "... __/cognitive/neuro_symbolic/nimcp_hypergraph.i"
+	@echo "... __/cognitive/neuro_symbolic/nimcp_hypergraph.s"
+	@echo "... __/cognitive/neuro_symbolic/nimcp_quantum_math_engine.o"
+	@echo "... __/cognitive/neuro_symbolic/nimcp_quantum_math_engine.i"
+	@echo "... __/cognitive/neuro_symbolic/nimcp_quantum_math_engine.s"
+	@echo "... __/cognitive/neuro_symbolic/nimcp_quantum_mcts.o"
+	@echo "... __/cognitive/neuro_symbolic/nimcp_quantum_mcts.i"
+	@echo "... __/cognitive/neuro_symbolic/nimcp_quantum_mcts.s"
 	@echo "... __/cognitive/nimcp_cognitive_meta_controller.o"
 	@echo "... __/cognitive/nimcp_cognitive_meta_controller.i"
 	@echo "... __/cognitive/nimcp_cognitive_meta_controller.s"
@@ -45655,6 +46171,24 @@ help:
 	@echo "... __/cognitive/parietal/nimcp_fep_parietal_bridge.o"
 	@echo "... __/cognitive/parietal/nimcp_fep_parietal_bridge.i"
 	@echo "... __/cognitive/parietal/nimcp_fep_parietal_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_genius_erdos.o"
+	@echo "... __/cognitive/parietal/nimcp_genius_erdos.i"
+	@echo "... __/cognitive/parietal/nimcp_genius_erdos.s"
+	@echo "... __/cognitive/parietal/nimcp_genius_gauss.o"
+	@echo "... __/cognitive/parietal/nimcp_genius_gauss.i"
+	@echo "... __/cognitive/parietal/nimcp_genius_gauss.s"
+	@echo "... __/cognitive/parietal/nimcp_genius_newton.o"
+	@echo "... __/cognitive/parietal/nimcp_genius_newton.i"
+	@echo "... __/cognitive/parietal/nimcp_genius_newton.s"
+	@echo "... __/cognitive/parietal/nimcp_genius_plasticity_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_genius_plasticity_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_genius_plasticity_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_genius_snn_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_genius_snn_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_genius_snn_bridge.s"
+	@echo "... __/cognitive/parietal/nimcp_genius_training_bridge.o"
+	@echo "... __/cognitive/parietal/nimcp_genius_training_bridge.i"
+	@echo "... __/cognitive/parietal/nimcp_genius_training_bridge.s"
 	@echo "... __/cognitive/parietal/nimcp_hypothesis_generation.o"
 	@echo "... __/cognitive/parietal/nimcp_hypothesis_generation.i"
 	@echo "... __/cognitive/parietal/nimcp_hypothesis_generation.s"
@@ -45673,6 +46207,9 @@ help:
 	@echo "... __/cognitive/parietal/nimcp_intuitive_reasoning.o"
 	@echo "... __/cognitive/parietal/nimcp_intuitive_reasoning.i"
 	@echo "... __/cognitive/parietal/nimcp_intuitive_reasoning.s"
+	@echo "... __/cognitive/parietal/nimcp_mathematical_genius.o"
+	@echo "... __/cognitive/parietal/nimcp_mathematical_genius.i"
+	@echo "... __/cognitive/parietal/nimcp_mathematical_genius.s"
 	@echo "... __/cognitive/parietal/nimcp_mathematical_intuition.o"
 	@echo "... __/cognitive/parietal/nimcp_mathematical_intuition.i"
 	@echo "... __/cognitive/parietal/nimcp_mathematical_intuition.s"
@@ -49426,6 +49963,9 @@ help:
 	@echo "... __/utils/containers/nimcp_graph.o"
 	@echo "... __/utils/containers/nimcp_graph.i"
 	@echo "... __/utils/containers/nimcp_graph.s"
+	@echo "... __/utils/containers/nimcp_graph_ternary.o"
+	@echo "... __/utils/containers/nimcp_graph_ternary.i"
+	@echo "... __/utils/containers/nimcp_graph_ternary.s"
 	@echo "... __/utils/containers/nimcp_hash_table.o"
 	@echo "... __/utils/containers/nimcp_hash_table.i"
 	@echo "... __/utils/containers/nimcp_hash_table.s"

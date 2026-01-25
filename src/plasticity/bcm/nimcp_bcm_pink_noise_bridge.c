@@ -100,7 +100,10 @@ bcm_pink_noise_bridge_t* bcm_pink_noise_create(
 }
 
 void bcm_pink_noise_destroy(bcm_pink_noise_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_pink_noise_destroy: bridge is NULL");
+        return;
+    }
 
     if (bridge->noise_gen) {
         pink_noise_destroy(bridge->noise_gen);
@@ -268,17 +271,26 @@ int bcm_pink_noise_apply_to_synapse(
 //=============================================================================
 
 float bcm_pink_noise_get_noisy_threshold(const bcm_pink_noise_bridge_t* bridge) {
-    if (!bridge) return 0.5f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_pink_noise_get_noisy_threshold: bridge is NULL");
+        return 0.5f;
+    }
     return bridge->noisy_threshold;
 }
 
 float bcm_pink_noise_get_noisy_lr(const bcm_pink_noise_bridge_t* bridge) {
-    if (!bridge) return BCM_PINK_NOISE_DEFAULT_LR;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_pink_noise_get_noisy_lr: bridge is NULL");
+        return BCM_PINK_NOISE_DEFAULT_LR;
+    }
     return bridge->noisy_lr;
 }
 
 float bcm_pink_noise_get_threshold_noise(const bcm_pink_noise_bridge_t* bridge) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_pink_noise_get_threshold_noise: bridge is NULL");
+        return 0.0f;
+    }
     return bridge->threshold_noise;
 }
 

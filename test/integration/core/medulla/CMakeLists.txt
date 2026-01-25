@@ -63,3 +63,39 @@ set_tests_properties(test_medulla_cerebellum_bridge_integration
         TIMEOUT 180
         LABELS "integration;core;medulla;cerebellum;bridge;error-signaling;motor"
 )
+
+# ============================================================================
+# Medulla Exception Integration Tests
+# ============================================================================
+#
+# WHAT: Comprehensive integration tests for medulla oblongata components
+# WHY:  Verify medulla-immune, medulla-cerebellum, brainstem-cortex coupling,
+#       and cross-bridge integration work correctly together
+# HOW:  Create realistic multi-component scenarios, verify expected behaviors
+
+add_executable(test_medulla_exception_integration
+    test_medulla_exception_integration.cpp
+)
+
+target_link_libraries(test_medulla_exception_integration
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+
+target_include_directories(test_medulla_exception_integration
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(test_medulla_exception_integration PRIVATE cxx_std_17)
+
+# Register test with CTest
+add_test(NAME test_medulla_exception_integration
+         COMMAND test_medulla_exception_integration --gtest_brief=1)
+
+set_tests_properties(test_medulla_exception_integration
+    PROPERTIES
+        TIMEOUT 240
+        LABELS "integration;core;medulla;immune;cerebellum;brainstem;coupling;exception"
+)

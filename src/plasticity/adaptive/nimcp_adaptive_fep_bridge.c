@@ -21,7 +21,7 @@
 
 int adaptive_fep_bridge_default_config(adaptive_fep_config_t* config) {
     if (!config) {
-        NIMCP_LOGGING_ERROR("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_fep_bridge_default_config: config is NULL");
         return -1;
     }
 
@@ -47,9 +47,7 @@ int adaptive_fep_bridge_default_config(adaptive_fep_config_t* config) {
 adaptive_fep_bridge_t* adaptive_fep_bridge_create(const adaptive_fep_config_t* config) {
     adaptive_fep_bridge_t* bridge = (adaptive_fep_bridge_t*)nimcp_malloc(sizeof(adaptive_fep_bridge_t));
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "adaptive_fep_bridge_create: bridge allocation failed");
         return NULL;
     }
 
@@ -61,9 +59,13 @@ adaptive_fep_bridge_t* adaptive_fep_bridge_create(const adaptive_fep_config_t* c
         adaptive_fep_bridge_default_config(&bridge->config);
     }
 
-    if (bridge_base_init(&bridge->base, 0, "adaptive_fep") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "adaptive_fep") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "adaptive_fep_bridge_create: bridge_base_init failed");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
-        NIMCP_LOGGING_ERROR("Failed to create mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "adaptive_fep_bridge_create: mutex creation failed");
         nimcp_free(bridge);
         return NULL;
     }
@@ -96,8 +98,12 @@ void adaptive_fep_bridge_destroy(adaptive_fep_bridge_t* bridge) {
  * ============================================================================ */
 
 int adaptive_fep_bridge_connect_fep(adaptive_fep_bridge_t* bridge, fep_system_t* fep) {
-    if (!bridge || !fep) {
-        NIMCP_LOGGING_ERROR("NULL bridge or FEP system");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_fep_bridge_connect_fep: bridge is NULL");
+        return -1;
+    }
+    if (!fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_fep_bridge_connect_fep: fep is NULL");
         return -1;
     }
 
@@ -111,8 +117,12 @@ int adaptive_fep_bridge_connect_fep(adaptive_fep_bridge_t* bridge, fep_system_t*
 
 int adaptive_fep_bridge_connect_adaptive(adaptive_fep_bridge_t* bridge,
                                           adaptive_network_t network) {
-    if (!bridge || !network) {
-        NIMCP_LOGGING_ERROR("Invalid parameters");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_fep_bridge_connect_adaptive: bridge is NULL");
+        return -1;
+    }
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_fep_bridge_connect_adaptive: network is NULL");
         return -1;
     }
 
@@ -126,11 +136,8 @@ int adaptive_fep_bridge_connect_adaptive(adaptive_fep_bridge_t* bridge,
 
 int adaptive_fep_bridge_disconnect(adaptive_fep_bridge_t* bridge) {
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_fep_bridge_disconnect: bridge is NULL");
         return -1;
-
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -147,7 +154,10 @@ int adaptive_fep_bridge_disconnect(adaptive_fep_bridge_t* bridge) {
  * ============================================================================ */
 
 float adaptive_fep_apply_pe_scaling(adaptive_fep_bridge_t* bridge, float pe) {
-    if (!bridge) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_fep_apply_pe_scaling: bridge is NULL");
+        return 1.0f;
+    }
 
     if (!bridge->config.enable_pe_scaling) {
         return 1.0f;
@@ -172,7 +182,10 @@ float adaptive_fep_apply_pe_scaling(adaptive_fep_bridge_t* bridge, float pe) {
 }
 
 float adaptive_fep_apply_precision_sparsity(adaptive_fep_bridge_t* bridge, float precision) {
-    if (!bridge) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_fep_apply_precision_sparsity: bridge is NULL");
+        return 1.0f;
+    }
 
     if (!bridge->config.enable_precision_sparsity) {
         return 1.0f;
@@ -196,7 +209,11 @@ float adaptive_fep_apply_precision_sparsity(adaptive_fep_bridge_t* bridge, float
 
 float adaptive_fep_apply_complexity_regularization(adaptive_fep_bridge_t* bridge,
                                                     float complexity) {
-    if (!bridge || !bridge->config.enable_complexity_regularization) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_fep_apply_complexity_regularization: bridge is NULL");
+        return 1.0f;
+    }
+    if (!bridge->config.enable_complexity_regularization) {
         return 1.0f;
     }
 
@@ -206,13 +223,19 @@ float adaptive_fep_apply_complexity_regularization(adaptive_fep_bridge_t* bridge
 
 float adaptive_fep_get_effective_sparsity(const adaptive_fep_bridge_t* bridge,
                                            float base_sparsity) {
-    if (!bridge) return base_sparsity;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_fep_get_effective_sparsity: bridge is NULL");
+        return base_sparsity;
+    }
     return base_sparsity * bridge->effects.effective_sparsity_target / ADAPTIVE_FEP_SPARSITY_BASELINE;
 }
 
 float adaptive_fep_get_effective_adaptation_rate(const adaptive_fep_bridge_t* bridge,
                                                   float base_rate) {
-    if (!bridge) return base_rate;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_fep_get_effective_adaptation_rate: bridge is NULL");
+        return base_rate;
+    }
     return base_rate * bridge->effects.effective_adaptation_rate;
 }
 
@@ -222,11 +245,11 @@ float adaptive_fep_get_effective_adaptation_rate(const adaptive_fep_bridge_t* br
 
 int adaptive_fep_report_sparsity(adaptive_fep_bridge_t* bridge, float sparsity) {
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_fep_report_sparsity: bridge is NULL");
         return -1;
-
+    }
+    if (sparsity < 0.0f || sparsity > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "adaptive_fep_report_sparsity: sparsity out of range [0,1]");
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -244,11 +267,8 @@ int adaptive_fep_report_sparsity(adaptive_fep_bridge_t* bridge, float sparsity) 
 int adaptive_fep_report_threshold_changes(adaptive_fep_bridge_t* bridge,
                                            float threshold_delta) {
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_fep_report_threshold_changes: bridge is NULL");
         return -1;
-
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -260,7 +280,10 @@ int adaptive_fep_report_threshold_changes(adaptive_fep_bridge_t* bridge,
 }
 
 float adaptive_fep_compute_sparsity_precision(const adaptive_fep_bridge_t* bridge) {
-    if (!bridge) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_fep_compute_sparsity_precision: bridge is NULL");
+        return 1.0f;
+    }
 
     float sparsity = bridge->feedback.measured_sparsity;
     if (sparsity < 0.1f) return 0.1f;
@@ -275,11 +298,8 @@ float adaptive_fep_compute_sparsity_precision(const adaptive_fep_bridge_t* bridg
 
 int adaptive_fep_bridge_update(adaptive_fep_bridge_t* bridge, uint64_t delta_ms) {
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_fep_bridge_update: bridge is NULL");
         return -1;
-
     }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -326,14 +346,28 @@ int adaptive_fep_bridge_update(adaptive_fep_bridge_t* bridge, uint64_t delta_ms)
 
 int adaptive_fep_bridge_get_state(const adaptive_fep_bridge_t* bridge,
                                    adaptive_fep_state_t* state) {
-    if (!bridge || !state) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_fep_bridge_get_state: bridge is NULL");
+        return -1;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_fep_bridge_get_state: state is NULL");
+        return -1;
+    }
     *state = bridge->state;
     return 0;
 }
 
 int adaptive_fep_bridge_get_stats(const adaptive_fep_bridge_t* bridge,
                                    adaptive_fep_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_fep_bridge_get_stats: bridge is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_fep_bridge_get_stats: stats is NULL");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
@@ -343,7 +377,11 @@ int adaptive_fep_bridge_get_stats(const adaptive_fep_bridge_t* bridge,
  * ============================================================================ */
 
 int adaptive_fep_bridge_connect_bio_async(adaptive_fep_bridge_t* bridge) {
-    if (!bridge || bridge->base.bio_async_enabled) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_fep_bridge_connect_bio_async: bridge is NULL");
+        return -1;
+    }
+    if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_ADAPTIVE_BRIDGE,
@@ -362,7 +400,14 @@ int adaptive_fep_bridge_connect_bio_async(adaptive_fep_bridge_t* bridge) {
 }
 
 int adaptive_fep_bridge_disconnect_bio_async(adaptive_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_fep_bridge_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->base.bio_async_enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "adaptive_fep_bridge_disconnect_bio_async: not connected to bio-async");
+        return -1;
+    }
 
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_ctx = NULL;
@@ -372,5 +417,9 @@ int adaptive_fep_bridge_disconnect_bio_async(adaptive_fep_bridge_t* bridge) {
 }
 
 bool adaptive_fep_bridge_is_bio_async_connected(const adaptive_fep_bridge_t* bridge) {
-    return bridge && bridge->base.bio_async_enabled;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_fep_bridge_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }

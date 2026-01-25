@@ -42,6 +42,7 @@ static void stdp_on_sleep_state_change(sleep_state_t new_state, void* user_data)
     stdp_sleep_bridge_t bridge = (stdp_sleep_bridge_t)user_data;
 
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_on_sleep_state_change: bridge is NULL");
         NIMCP_LOGGING_ERROR("NULL bridge in sleep state callback");
         return;
     }
@@ -114,11 +115,15 @@ stdp_sleep_bridge_t stdp_sleep_bridge_create(
     bridge->effects.tau_factor = 1.0f;
     bridge->effects.plasticity_enabled = true;
 
-    if (bridge_base_init(&bridge->base, 0, "stdp_sleep") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "stdp_sleep") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_sleep_bridge_create: failed to init bridge base");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         LOG_ERROR("STDP-sleep bridge mutex creation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "STDP-sleep bridge mutex creation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_sleep_bridge_create: mutex creation failed");
         return NULL;
     }
 
@@ -129,6 +134,7 @@ stdp_sleep_bridge_t stdp_sleep_bridge_create(
         bridge);
 
     if (!bridge->callback_registered) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "stdp_sleep_bridge_create: failed to register callback");
         NIMCP_LOGGING_WARN("Failed to register sleep state callback - will use polling");
     } else {
         NIMCP_LOGGING_DEBUG("Registered sleep state callback for STDP bridge");
@@ -207,7 +213,10 @@ int stdp_sleep_get_effects(const stdp_sleep_bridge_t bridge, stdp_sleep_effects_
 }
 
 float stdp_sleep_get_learning_rate(const stdp_sleep_bridge_t bridge, float base_lr) {
-    if (!bridge) return base_lr;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_sleep_get_learning_rate: bridge is NULL");
+        return base_lr;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     float result = base_lr * bridge->effects.learning_rate_factor;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -215,7 +224,10 @@ float stdp_sleep_get_learning_rate(const stdp_sleep_bridge_t bridge, float base_
 }
 
 float stdp_sleep_get_a_plus(const stdp_sleep_bridge_t bridge, float base_a_plus) {
-    if (!bridge) return base_a_plus;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_sleep_get_a_plus: bridge is NULL");
+        return base_a_plus;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     float result = base_a_plus * bridge->effects.ltp_ltd_ratio;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -223,7 +235,10 @@ float stdp_sleep_get_a_plus(const stdp_sleep_bridge_t bridge, float base_a_plus)
 }
 
 float stdp_sleep_get_a_minus(const stdp_sleep_bridge_t bridge, float base_a_minus) {
-    if (!bridge) return base_a_minus;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_sleep_get_a_minus: bridge is NULL");
+        return base_a_minus;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     /* A- gets inverse ratio adjustment to shift LTP/LTD balance */
     float result = base_a_minus / bridge->effects.ltp_ltd_ratio;

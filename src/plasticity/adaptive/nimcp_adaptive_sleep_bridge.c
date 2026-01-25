@@ -80,7 +80,10 @@ static void adaptive_on_sleep_state_change(sleep_state_t new_state, void* user_d
 }
 
 int adaptive_sleep_default_config(adaptive_sleep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_sleep_default_config: config is NULL");
+        return -1;
+    }
     config->enable_adaptation_modulation = true;
     config->enable_sparsity_modulation = true;
     config->enable_reset_modulation = true;
@@ -93,7 +96,7 @@ adaptive_sleep_bridge_t adaptive_sleep_bridge_create(
     sleep_system_t sleep_system)
 {
     if (!sleep_system) {
-        NIMCP_LOGGING_ERROR("adaptive_sleep_bridge_create: NULL sleep_system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_sleep_bridge_create: sleep_system is NULL");
         return NULL;
     }
 
@@ -101,11 +104,8 @@ adaptive_sleep_bridge_t adaptive_sleep_bridge_create(
         (struct adaptive_sleep_bridge_struct*)nimcp_malloc(
             sizeof(struct adaptive_sleep_bridge_struct));
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "adaptive_sleep_bridge_create: bridge allocation failed");
         return NULL;
-
     }
 
     memset(bridge, 0, sizeof(struct adaptive_sleep_bridge_struct));
@@ -122,8 +122,13 @@ adaptive_sleep_bridge_t adaptive_sleep_bridge_create(
     bridge->effects.soft_reset_factor = 1.0f;
     bridge->effects.freeze_thresholds = false;
 
-    if (bridge_base_init(&bridge->base, 0, "adaptive_sleep") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "adaptive_sleep") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NOT_INITIALIZED, "adaptive_sleep_bridge_create: bridge_base_init failed");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "adaptive_sleep_bridge_create: mutex creation failed");
         nimcp_free(bridge);
         return NULL;
     }
@@ -168,7 +173,10 @@ void adaptive_sleep_bridge_destroy(adaptive_sleep_bridge_t bridge) {
 }
 
 int adaptive_sleep_update(adaptive_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -203,7 +211,14 @@ int adaptive_sleep_update(adaptive_sleep_bridge_t bridge) {
 
 int adaptive_sleep_get_effects(const adaptive_sleep_bridge_t bridge,
                                 adaptive_sleep_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_sleep_get_effects: bridge is NULL");
+        return -1;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_sleep_get_effects: effects is NULL");
+        return -1;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -212,7 +227,10 @@ int adaptive_sleep_get_effects(const adaptive_sleep_bridge_t bridge,
 
 float adaptive_sleep_get_adaptation_rate(const adaptive_sleep_bridge_t bridge,
                                           float base_rate) {
-    if (!bridge) return base_rate;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_sleep_get_adaptation_rate: bridge is NULL");
+        return base_rate;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     float result = base_rate * bridge->effects.adaptation_rate_factor;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -221,7 +239,10 @@ float adaptive_sleep_get_adaptation_rate(const adaptive_sleep_bridge_t bridge,
 
 float adaptive_sleep_get_sparsity_target(const adaptive_sleep_bridge_t bridge,
                                           float base_sparsity) {
-    if (!bridge) return base_sparsity;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_sleep_get_sparsity_target: bridge is NULL");
+        return base_sparsity;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.sparsity_target;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -230,7 +251,10 @@ float adaptive_sleep_get_sparsity_target(const adaptive_sleep_bridge_t bridge,
 
 float adaptive_sleep_get_soft_reset(const adaptive_sleep_bridge_t bridge,
                                      float base_reset) {
-    if (!bridge) return base_reset;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "adaptive_sleep_get_soft_reset: bridge is NULL");
+        return base_reset;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     float result = base_reset * bridge->effects.soft_reset_factor;
     nimcp_platform_mutex_unlock(bridge->base.mutex);

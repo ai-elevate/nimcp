@@ -39,6 +39,7 @@
 #include "core/brain/regions/broca/nimcp_language_production_bridge.h"
 #include "core/brain/regions/wernicke/nimcp_wernicke_adapter.h"
 #include "core/brain/regions/wernicke/nimcp_wernicke_broca_bridge.h"
+#include "perception/nimcp_speech_cortex.h"
 #include "utils/memory/nimcp_memory.h"
 
 using namespace nimcp::e2e;
@@ -125,13 +126,24 @@ static std::vector<float> generate_semantic_vector(uint32_t dim, uint32_t seed) 
     return vec;
 }
 
+static std::vector<phoneme_event_t> create_phoneme_event_sequence(const uint8_t* phonemes, uint32_t count) {
+    std::vector<phoneme_event_t> seq(count);
+    for (uint32_t i = 0; i < count; i++) {
+        memset(&seq[i], 0, sizeof(phoneme_event_t));
+        seq[i].phoneme = static_cast<phoneme_t>(phonemes[i]);
+        seq[i].confidence = 0.9f;
+        seq[i].features.duration_ms = 80.0f;
+        seq[i].onset_time_ms = i * 100;
+        seq[i].offset_time_ms = (i + 1) * 100;
+        seq[i].sequence_position = i;
+    }
+    return seq;
+}
+
 static std::vector<phoneme_t> create_phoneme_sequence(const uint8_t* phonemes, uint32_t count) {
     std::vector<phoneme_t> seq(count);
     for (uint32_t i = 0; i < count; i++) {
-        memset(&seq[i], 0, sizeof(phoneme_t));
-        seq[i].phoneme_id = phonemes[i];
-        seq[i].confidence = 0.9f;
-        seq[i].duration_ms = 80.0f;
+        seq[i] = static_cast<phoneme_t>(phonemes[i]);
     }
     return seq;
 }
@@ -596,14 +608,14 @@ TEST_F(E2ELanguageLoopTest, SemanticTransformation) {
     EXPECT_TRUE(success);
 
     // Get semantic representation
-    wernicke_concept_t concept;
-    wernicke_get_meaning(wernicke, &source, &concept);
+    wernicke_concept_t wern_concept;
+    wernicke_get_meaning(wernicke, &source, &wern_concept);
     E2E_STAGE_END();
 
     // Transform: produce different but related output
     E2E_STAGE_BEGIN("Transform to target", MAX_PROCESSING_TIME_MS);
     // Instead of "cat", produce "sat" (related by rhyme/context)
-    auto semantic = generate_semantic_vector(SEMANTIC_DIM, concept.concept_id);
+    auto semantic = generate_semantic_vector(SEMANTIC_DIM, wern_concept.concept_id);
 
     lpb_semantic_intent_t intent;
     memset(&intent, 0, sizeof(intent));
@@ -704,11 +716,10 @@ TEST_F(E2ELanguageLoopTest, WorkingMemoryIntegration) {
 
     // Test working memory across the loop
     E2E_STAGE_BEGIN("Store in Wernicke WM", MAX_PROCESSING_TIME_MS);
-    phoneme_t phonemes[5];
     uint8_t ph_data[] = {'h', 'E', 'l', 'o', 'U'};
+    phoneme_t phonemes[5];
     for (int i = 0; i < 5; i++) {
-        memset(&phonemes[i], 0, sizeof(phoneme_t));
-        phonemes[i].phoneme_id = ph_data[i];
+        phonemes[i] = static_cast<phoneme_t>(ph_data[i]);
     }
 
     bool success = wernicke_wm_store(wernicke, phonemes, 5);

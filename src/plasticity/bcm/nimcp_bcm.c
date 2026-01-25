@@ -158,7 +158,14 @@ void bcm_update_threshold(bcm_synapse_t* synapse, float post_activity, float dt,
     /* WHAT: Guard clause - validate inputs
      * WHY:  Prevent null pointer dereference
      */
-    if (!synapse || !params) return;
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_update_threshold: synapse is NULL");
+        return;
+    }
+    if (!params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_update_threshold: params is NULL");
+        return;
+    }
 
     /* WHAT: Acquire spinlock for atomic threshold update
      * WHY:  Prevent race conditions when multiple threads access same synapse
@@ -253,7 +260,14 @@ void bcm_apply_rule(bcm_synapse_t* synapse, float pre_activity, float post_activ
     /* WHAT: Guard clause - validate inputs
      * WHY:  Prevent null pointer dereference
      */
-    if (!synapse || !params) return;
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_apply_rule: synapse is NULL");
+        return;
+    }
+    if (!params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_apply_rule: params is NULL");
+        return;
+    }
 
     /* WHAT: Acquire spinlock for atomic weight update
      * WHY:  Prevent race conditions when multiple threads access same synapse
@@ -338,7 +352,14 @@ void bcm_apply_rule_modulated(bcm_synapse_t* synapse, float pre_activity,
     /* WHAT: Guard clause - validate inputs
      * WHY:  Prevent null pointer dereference
      */
-    if (!synapse || !params) return;
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_apply_rule_modulated: synapse is NULL");
+        return;
+    }
+    if (!params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_apply_rule_modulated: params is NULL");
+        return;
+    }
 
     /* WHAT: Clamp neuromodulator to valid range
      * WHY:  Ensure modulation factor is in [0, 1]
@@ -566,7 +587,18 @@ bool bcm_compute_stats(const bcm_synapse_t* synapses, uint32_t num_synapses,
     /* WHAT: Guard clause - validate inputs
      * WHY:  Prevent null pointer dereference
      */
-    if (!synapses || !stats || num_synapses == 0) return false;
+    if (!synapses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_compute_stats: synapses is NULL");
+        return false;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_compute_stats: stats is NULL");
+        return false;
+    }
+    if (num_synapses == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bcm_compute_stats: num_synapses is 0");
+        return false;
+    }
 
     /* WHAT: Zero out statistics structure
      * WHY:  Clean slate for accumulation
@@ -634,7 +666,10 @@ void bcm_set_sleep_state(bcm_synapse_t* synapse, sleep_state_t state) {
      * WHY:  Sleep state modulates threshold and learning rate
      * HOW:  Set current_sleep_state field, will be applied during next update
      */
-    if (!synapse) return;
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_set_sleep_state: synapse is NULL");
+        return;
+    }
     synapse->current_sleep_state = state;
 }
 
@@ -655,16 +690,20 @@ void* bcm_extract_quantum_stats(const bcm_synapse_t* synapses, uint32_t num_syna
      */
 
     /* WHAT: Guard clause - validate inputs */
-    if (!synapses || num_synapses == 0) return NULL;
+    if (!synapses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_extract_quantum_stats: synapses is NULL");
+        return NULL;
+    }
+    if (num_synapses == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "bcm_extract_quantum_stats: num_synapses is 0");
+        return NULL;
+    }
 
     /* WHAT: Allocate statistics structure */
     bcm_activity_stats_t* stats = (bcm_activity_stats_t*)nimcp_malloc(sizeof(bcm_activity_stats_t));
     if (!stats) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stats is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "bcm_extract_quantum_stats: failed to allocate bcm_activity_stats_t");
         return NULL;
-
     }
 
     /* WHAT: Compute BCM statistics */
@@ -719,7 +758,10 @@ void* bcm_extract_quantum_stats(const bcm_synapse_t* synapses, uint32_t num_syna
  * @return 1 if self-knowledge found, 0 if not found or error
  */
 int bcm_query_self_knowledge(kg_reader_t* kg) {
-    if (!kg) return 0;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_query_self_knowledge: kg is NULL");
+        return 0;
+    }
 
     /* Query our own entity from the knowledge graph */
     const kg_entity_t* self = kg_reader_get_entity(kg, "BCM_Module");

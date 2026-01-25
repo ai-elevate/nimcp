@@ -88,7 +88,7 @@ snn_mental_health_bridge_t* snn_mental_health_bridge_create(
     /* Allocate bridge */
     snn_mental_health_bridge_t* bridge = nimcp_malloc(sizeof(snn_mental_health_bridge_t));
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate SNN-mental health bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_mental_health_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -150,7 +150,10 @@ void snn_mental_health_bridge_destroy(snn_mental_health_bridge_t* bridge) {
  * HOW:  Register with router
  */
 int snn_mental_health_bridge_connect_bio_async(snn_mental_health_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_mental_health_bridge_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -206,7 +209,7 @@ bool snn_mental_health_bridge_is_bio_async_connected(const snn_mental_health_bri
 int snn_mental_health_bridge_update(snn_mental_health_bridge_t* bridge, float dt) {
     /* Guard: Validate bridge */
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Null bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_mental_health_bridge_update: bridge is NULL");
         return SNN_ERROR_NULL_POINTER;
     }
 
@@ -413,7 +416,10 @@ int snn_mental_health_trigger_intervention(
     snn_mental_health_bridge_t* bridge,
     snn_dysregulation_type_t dysregulation_type
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_mental_health_trigger_intervention: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     /* Mark intervention as active */
     bridge->state.intervention_active = true;
@@ -442,7 +448,10 @@ int snn_mental_health_trigger_intervention(
  * HOW:  Reset modulation
  */
 int snn_mental_health_stop_intervention(snn_mental_health_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_mental_health_stop_intervention: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     bridge->state.intervention_active = false;
     bridge->state.intervention_time_remaining = 0.0f;
@@ -511,7 +520,14 @@ int snn_mental_health_bridge_get_state(
     const snn_mental_health_bridge_t* bridge,
     snn_mental_health_state_t* state
 ) {
-    if (!bridge || !state) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_mental_health_bridge_get_state: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_mental_health_bridge_get_state: state is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -531,7 +547,10 @@ int snn_mental_health_get_stats(
     uint32_t* dysregulation_count,
     float* avg_stability
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_mental_health_get_stats: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     if (intervention_count) *intervention_count = bridge->state.intervention_count;
     if (dysregulation_count) *dysregulation_count = bridge->state.dysregulation_detections;

@@ -156,6 +156,7 @@ static inline float exp_decay(float dt, float tau) {
 void stp_init(stp_state_t* state, const stp_params_t* params, uint64_t timestamp) {
     // Guard: Validate state pointer
     if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_init: null state pointer");
         return;
     }
 
@@ -178,6 +179,7 @@ void stp_init(stp_state_t* state, const stp_params_t* params, uint64_t timestamp
 void stp_update(stp_state_t* state, uint64_t timestamp) {
     // Guard: Validate state pointer
     if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_update: null state pointer");
         return;
     }
 
@@ -209,6 +211,7 @@ void stp_update(stp_state_t* state, uint64_t timestamp) {
 void stp_process_spike(stp_state_t* state, uint64_t timestamp) {
     // Guard: Validate state pointer
     if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_process_spike: null state pointer");
         return;
     }
 
@@ -229,6 +232,7 @@ void stp_process_spike(stp_state_t* state, uint64_t timestamp) {
 float stp_get_modulation(const stp_state_t* state) {
     // Guard: Validate state pointer
     if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_get_modulation: null state pointer");
         return 1.0F;  // No modulation if state invalid
     }
 
@@ -239,6 +243,7 @@ float stp_get_modulation(const stp_state_t* state) {
 void stp_reset(stp_state_t* state, uint64_t timestamp) {
     // Guard: Validate state pointer
     if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_reset: null state pointer");
         return;
     }
 
@@ -255,6 +260,7 @@ void stp_reset(stp_state_t* state, uint64_t timestamp) {
 stp_params_t stp_get_preset_params(stp_preset_t preset) {
     // Guard: Validate preset index
     if (preset < 0 || preset >= sizeof(PRESET_TABLE) / sizeof(PRESET_TABLE[0])) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stp_get_preset_params: invalid preset index");
         return PRESET_TABLE[STP_PRESET_DEPRESSING];  // Default
     }
 
@@ -274,6 +280,7 @@ stp_params_t stp_create_params(float U, float tau_D, float tau_F) {
 const char* stp_get_preset_name(stp_preset_t preset) {
     // Guard: Validate preset index
     if (preset < 0 || preset >= sizeof(PRESET_NAMES) / sizeof(PRESET_NAMES[0])) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stp_get_preset_name: invalid preset index");
         return "Unknown";
     }
 
@@ -283,6 +290,7 @@ const char* stp_get_preset_name(stp_preset_t preset) {
 const char* stp_get_preset_description(stp_preset_t preset) {
     // Guard: Validate preset index
     if (preset < 0 || preset >= sizeof(PRESET_DESCRIPTIONS) / sizeof(PRESET_DESCRIPTIONS[0])) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stp_get_preset_description: invalid preset index");
         return "Unknown preset type";
     }
 
@@ -297,6 +305,7 @@ void stp_compute_steady_state(const stp_params_t* params, float frequency, float
                                float* u_ss) {
     // Guard: Validate pointers
     if (!params || !x_ss || !u_ss) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_compute_steady_state: null params, x_ss, or u_ss pointer");
         return;
     }
 
@@ -335,6 +344,7 @@ void stp_compute_steady_state(const stp_params_t* params, float frequency, float
 int stp_classify_synapse(const stp_params_t* params) {
     // Guard: Validate params
     if (!params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_classify_synapse: null params pointer");
         return 2;  // Unknown -> mixed
     }
 

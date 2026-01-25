@@ -23,7 +23,10 @@
 //=============================================================================
 
 void snn_cortical_config_default(snn_cortical_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_config_default: null config pointer");
+        return;
+    }
 
     /* Layer-specific rates from cortical neuroscience */
     config->layer_2_3_base_rate = 15.0f;    /* L2/3: moderate rate */
@@ -194,7 +197,10 @@ snn_cortical_bridge_t* snn_cortical_bridge_create(
 }
 
 void snn_cortical_bridge_destroy(snn_cortical_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_bridge_destroy: null bridge pointer");
+        return;
+    }
 
     /* Destroy minicolumn patterns */
     if (bridge->minicolumn_patterns) {
@@ -217,7 +223,10 @@ void snn_cortical_bridge_destroy(snn_cortical_bridge_t* bridge) {
 //=============================================================================
 
 int snn_cortical_bridge_connect_bio_async(snn_cortical_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_bridge_connect_bio_async: null bridge pointer");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -236,7 +245,11 @@ int snn_cortical_bridge_connect_bio_async(snn_cortical_bridge_t* bridge) {
 }
 
 int snn_cortical_bridge_disconnect_bio_async(snn_cortical_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_bridge_disconnect_bio_async: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
@@ -247,7 +260,11 @@ int snn_cortical_bridge_disconnect_bio_async(snn_cortical_bridge_t* bridge) {
 }
 
 bool snn_cortical_bridge_is_bio_async_connected(const snn_cortical_bridge_t* bridge) {
-    return bridge && bridge->base.bio_async_enabled;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_bridge_is_bio_async_connected: null bridge pointer");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }
 
 //=============================================================================
@@ -274,8 +291,22 @@ int snn_cortical_bridge_process(
     uint32_t output_size
 ) {
     /* Guard clauses */
-    if (!bridge || !input || !output) return -1;
-    if (!bridge->connected) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_bridge_process: null bridge pointer");
+        return -1;
+    }
+    if (!input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_bridge_process: null input pointer");
+        return -1;
+    }
+    if (!output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_bridge_process: null output pointer");
+        return -1;
+    }
+    if (!bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_cortical_bridge_process: bridge not connected");
+        return -1;
+    }
 
     /* Process input through hypercolumn */
     hypercolumn_compute(bridge->hypercolumn, input, input_size);
@@ -311,8 +342,14 @@ int snn_cortical_bridge_process(
 }
 
 int snn_cortical_bridge_update(snn_cortical_bridge_t* bridge, float dt) {
-    if (!bridge) return -1;
-    if (!bridge->connected) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_bridge_update: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_cortical_bridge_update: bridge not connected");
+        return -1;
+    }
 
     /* Update time */
     bridge->last_update_time += dt;
@@ -340,7 +377,10 @@ uint32_t snn_cortical_generate_bursts(
     snn_cortical_bridge_t* bridge,
     cortical_layer_t layer
 ) {
-    if (!bridge) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_generate_bursts: null bridge pointer");
+        return 0;
+    }
 
     uint32_t burst_count = 0;
 
@@ -359,7 +399,10 @@ uint32_t snn_cortical_generate_bursts(
 }
 
 int snn_cortical_apply_lateral_inhibition(snn_cortical_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_apply_lateral_inhibition: null bridge pointer");
+        return -1;
+    }
 
     /* Compute Mexican hat lateral inhibition */
     float radius = bridge->config.mexican_hat_radius;
@@ -395,7 +438,10 @@ int snn_cortical_apply_lateral_inhibition(snn_cortical_bridge_t* bridge) {
 }
 
 int snn_cortical_run_competition(snn_cortical_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_run_competition: null bridge pointer");
+        return -1;
+    }
 
     /* Reset winner flags */
     for (uint32_t i = 0; i < bridge->n_minicolumns; i++) {
@@ -453,8 +499,18 @@ int snn_cortical_get_layer_activity(
     cortical_layer_t layer,
     cortical_layer_activity_t* activity
 ) {
-    if (!bridge || !activity) return -1;
-    if (layer >= LAYER_COUNT) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_get_layer_activity: null bridge pointer");
+        return -1;
+    }
+    if (!activity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_get_layer_activity: null activity pointer");
+        return -1;
+    }
+    if (layer >= LAYER_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_cortical_get_layer_activity: invalid layer");
+        return -1;
+    }
 
     *activity = bridge->layer_activity[layer];
     return 0;
@@ -465,8 +521,18 @@ int snn_cortical_get_minicolumn_pattern(
     uint32_t minicolumn_idx,
     minicolumn_spike_pattern_t* pattern
 ) {
-    if (!bridge || !pattern) return -1;
-    if (minicolumn_idx >= bridge->n_minicolumns) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_get_minicolumn_pattern: null bridge pointer");
+        return -1;
+    }
+    if (!pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_get_minicolumn_pattern: null pattern pointer");
+        return -1;
+    }
+    if (minicolumn_idx >= bridge->n_minicolumns) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_cortical_get_minicolumn_pattern: invalid minicolumn index");
+        return -1;
+    }
 
     minicolumn_spike_pattern_t* src = bridge->minicolumn_patterns[minicolumn_idx];
 
@@ -483,7 +549,10 @@ int snn_cortical_get_minicolumn_pattern(
 }
 
 uint32_t snn_cortical_get_winner(const snn_cortical_bridge_t* bridge) {
-    if (!bridge) return UINT32_MAX;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_get_winner: null bridge pointer");
+        return UINT32_MAX;
+    }
 
     for (uint32_t i = 0; i < bridge->n_minicolumns; i++) {
         if (bridge->minicolumn_patterns[i]->is_winner) {
@@ -495,7 +564,10 @@ uint32_t snn_cortical_get_winner(const snn_cortical_bridge_t* bridge) {
 }
 
 float snn_cortical_bridge_get_activity(const snn_cortical_bridge_t* bridge) {
-    if (!bridge) return -1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_bridge_get_activity: null bridge pointer");
+        return -1.0f;
+    }
 
     /* Average activation across all minicolumns */
     float total = 0.0f;
@@ -516,7 +588,10 @@ int snn_cortical_get_stats(
     float* mean_rate,
     uint32_t* updates
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_get_stats: null bridge pointer");
+        return -1;
+    }
 
     if (total_spikes) {
         *total_spikes = 0;
@@ -541,7 +616,10 @@ int snn_cortical_get_stats(
 }
 
 void snn_cortical_reset_stats(snn_cortical_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_cortical_reset_stats: null bridge pointer");
+        return;
+    }
 
     bridge->update_count = 0;
     bridge->last_update_time = 0.0f;

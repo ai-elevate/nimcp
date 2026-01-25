@@ -118,15 +118,13 @@ bool stdp_pr_bridge_validate_config(const stdp_pr_bridge_config_t* config) {
 stdp_pr_bridge_t stdp_pr_bridge_create(const stdp_pr_bridge_config_t* config) {
     stdp_pr_bridge_t bridge = nimcp_calloc(1, sizeof(struct stdp_pr_bridge_struct));
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_pr_bridge_create: failed to allocate bridge");
         return NULL;
-
     }
 
     if (config) {
         if (!stdp_pr_bridge_validate_config(config)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_pr_bridge_create: invalid config");
             nimcp_free(bridge);
             return NULL;
         }
@@ -136,6 +134,7 @@ stdp_pr_bridge_t stdp_pr_bridge_create(const stdp_pr_bridge_config_t* config) {
     }
 
     if (nimcp_platform_mutex_init(&bridge->base.mutex, false) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_pr_bridge_create: failed to init mutex");
         nimcp_free(bridge);
         return NULL;
     }
@@ -178,8 +177,18 @@ int stdp_pr_notify_ltp(stdp_pr_bridge_t bridge,
                        uint64_t source_id, uint64_t target_id,
                        float weight_change,
                        stdp_pr_forward_effect_t* effect) {
-    if (!bridge || !bridge->initialized) return -1;
-    if (weight_change <= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_notify_ltp: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "stdp_pr_notify_ltp: bridge not initialized");
+        return -1;
+    }
+    if (weight_change <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_pr_notify_ltp: weight_change must be positive");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(&bridge->base.mutex);
 
@@ -217,8 +226,18 @@ int stdp_pr_notify_ltd(stdp_pr_bridge_t bridge,
                        uint64_t source_id, uint64_t target_id,
                        float weight_change,
                        stdp_pr_forward_effect_t* effect) {
-    if (!bridge || !bridge->initialized) return -1;
-    if (weight_change >= 0.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_notify_ltd: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "stdp_pr_notify_ltd: bridge not initialized");
+        return -1;
+    }
+    if (weight_change >= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_pr_notify_ltd: weight_change must be negative");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(&bridge->base.mutex);
 
@@ -255,8 +274,18 @@ int stdp_pr_notify_burst(stdp_pr_bridge_t bridge,
                          uint64_t source_id, uint64_t target_id,
                          float weight_change, bool is_ltp,
                          stdp_pr_forward_effect_t* effect) {
-    if (!bridge || !bridge->initialized) return -1;
-    if (fabsf(weight_change) < STDP_PR_BURST_MIN_WEIGHT_CHANGE) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_notify_burst: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "stdp_pr_notify_burst: bridge not initialized");
+        return -1;
+    }
+    if (fabsf(weight_change) < STDP_PR_BURST_MIN_WEIGHT_CHANGE) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_pr_notify_burst: weight_change below minimum");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(&bridge->base.mutex);
 
@@ -355,7 +384,14 @@ int stdp_pr_notify_batch(stdp_pr_bridge_t bridge,
 int stdp_pr_get_modulation(stdp_pr_bridge_t bridge,
                            uint64_t node_id,
                            stdp_pr_backward_effect_t* effect) {
-    if (!bridge || !effect) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_get_modulation: bridge is NULL");
+        return -1;
+    }
+    if (!effect) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_get_modulation: effect is NULL");
+        return -1;
+    }
     (void)node_id;  /* Would query actual PR memory in full implementation */
 
     nimcp_platform_mutex_lock(&bridge->base.mutex);
@@ -399,7 +435,14 @@ int stdp_pr_get_modulation(stdp_pr_bridge_t bridge,
 int stdp_pr_apply_resonance_modulation(stdp_pr_bridge_t bridge,
                                        float resonance, float base_lr,
                                        float* modulated_lr) {
-    if (!bridge || !modulated_lr) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_apply_resonance_modulation: bridge is NULL");
+        return -1;
+    }
+    if (!modulated_lr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_apply_resonance_modulation: modulated_lr is NULL");
+        return -1;
+    }
 
     resonance = clamp_float(resonance, 0.0f, 1.0f);
 
@@ -421,7 +464,14 @@ int stdp_pr_apply_resonance_modulation(stdp_pr_bridge_t bridge,
 int stdp_pr_apply_consolidation_gate(stdp_pr_bridge_t bridge,
                                      float consolidation, float base_lr,
                                      float* gated_lr) {
-    if (!bridge || !gated_lr) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_apply_consolidation_gate: bridge is NULL");
+        return -1;
+    }
+    if (!gated_lr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_apply_consolidation_gate: gated_lr is NULL");
+        return -1;
+    }
 
     consolidation = clamp_float(consolidation, 0.0f, 1.0f);
 
@@ -453,8 +503,18 @@ int stdp_pr_apply_consolidation_gate(stdp_pr_bridge_t bridge,
 int stdp_pr_get_tier_rate(stdp_pr_bridge_t bridge,
                           stdp_pr_memory_tier_t tier,
                           float* rate_multiplier) {
-    if (!bridge || !rate_multiplier) return -1;
-    if (tier >= STDP_PR_TIER_COUNT) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_get_tier_rate: bridge is NULL");
+        return -1;
+    }
+    if (!rate_multiplier) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_get_tier_rate: rate_multiplier is NULL");
+        return -1;
+    }
+    if (tier >= STDP_PR_TIER_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_pr_get_tier_rate: invalid tier");
+        return -1;
+    }
 
     *rate_multiplier = bridge->config.tier_rates[tier];
 
@@ -472,7 +532,14 @@ int stdp_pr_compute_modulation(stdp_pr_bridge_t bridge,
                                stdp_pr_memory_tier_t tier,
                                float base_a_plus, float base_a_minus,
                                stdp_pr_backward_effect_t* effect) {
-    if (!bridge || !effect) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_compute_modulation: bridge is NULL");
+        return -1;
+    }
+    if (!effect) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_compute_modulation: effect is NULL");
+        return -1;
+    }
 
     resonance = clamp_float(resonance, 0.0f, 1.0f);
     consolidation = clamp_float(consolidation, 0.0f, 1.0f);
@@ -522,7 +589,14 @@ int stdp_pr_compute_modulation(stdp_pr_bridge_t bridge,
 
 int stdp_pr_bridge_get_state(stdp_pr_bridge_t bridge,
                              stdp_pr_bridge_state_t* state) {
-    if (!bridge || !state) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_bridge_get_state: bridge is NULL");
+        return -1;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_bridge_get_state: state is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(&bridge->base.mutex);
     *state = bridge->state;
@@ -533,7 +607,14 @@ int stdp_pr_bridge_get_state(stdp_pr_bridge_t bridge,
 
 int stdp_pr_bridge_get_stats(stdp_pr_bridge_t bridge,
                              stdp_pr_bridge_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_bridge_get_stats: bridge is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_bridge_get_stats: stats is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(&bridge->base.mutex);
     *stats = bridge->stats;
@@ -543,7 +624,10 @@ int stdp_pr_bridge_get_stats(stdp_pr_bridge_t bridge,
 }
 
 int stdp_pr_bridge_reset_stats(stdp_pr_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(&bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
@@ -553,7 +637,10 @@ int stdp_pr_bridge_reset_stats(stdp_pr_bridge_t bridge) {
 }
 
 int stdp_pr_bridge_update(stdp_pr_bridge_t bridge, float dt_ms) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_pr_bridge_update: bridge is NULL");
+        return -1;
+    }
     (void)dt_ms;
 
     nimcp_platform_mutex_lock(&bridge->base.mutex);

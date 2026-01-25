@@ -29,7 +29,10 @@ homeo_pink_noise_bridge_t* homeo_pink_noise_create(
     const homeo_pink_noise_config_t* config
 ) {
     homeo_pink_noise_bridge_t* bridge = nimcp_calloc(1, sizeof(homeo_pink_noise_bridge_t));
-    NIMCP_API_CHECK_ALLOC(bridge, "Homeostatic pink noise bridge allocation failed");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "homeo_pink_noise_create: bridge allocation failed");
+        return NULL;
+    }
 
     if (config) {
         memcpy(&bridge->config, config, sizeof(homeo_pink_noise_config_t));
@@ -47,7 +50,7 @@ homeo_pink_noise_bridge_t* homeo_pink_noise_create(
     if (!bridge->noise_gen) {
         nimcp_free(bridge);
         LOG_ERROR("Pink noise generator creation failed for homeostatic");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Pink noise generator creation failed for homeostatic");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "homeo_pink_noise_create: noise_gen allocation failed");
         return NULL;
     }
     bridge->noise_connected = true;
@@ -78,7 +81,10 @@ int homeo_pink_noise_connect_scaling(
     homeo_pink_noise_bridge_t* bridge,
     synaptic_scaling_params_t* params
 ) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Homeostatic pink noise bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeo_pink_noise_connect_scaling: bridge is NULL");
+        return -1;
+    }
     bridge->scaling_params = params;
     bridge->params_connected = (params != NULL);
 
@@ -92,7 +98,10 @@ int homeo_pink_noise_connect_scaling(
 }
 
 int homeo_pink_noise_disconnect(homeo_pink_noise_bridge_t* bridge) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Homeostatic pink noise bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeo_pink_noise_disconnect: bridge is NULL");
+        return -1;
+    }
     bridge->scaling_params = NULL;
     bridge->params_connected = false;
     return 0;
@@ -103,9 +112,15 @@ int homeo_pink_noise_disconnect(homeo_pink_noise_bridge_t* bridge) {
 //=============================================================================
 
 int homeo_pink_noise_update(homeo_pink_noise_bridge_t* bridge) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Homeostatic pink noise bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeo_pink_noise_update: bridge is NULL");
+        return -1;
+    }
     if (!bridge->is_enabled) return 0;
-    NIMCP_API_CHECK_NULL(bridge->noise_gen, -1, "Pink noise generator is NULL");
+    if (!bridge->noise_gen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "homeo_pink_noise_update: noise_gen is NULL");
+        return -1;
+    }
 
     // Generate noise samples
     if (bridge->config.noise_targets & HOMEO_NOISE_TARGET_RATE) {
@@ -181,8 +196,14 @@ int homeo_pink_noise_apply_to_state(
     homeo_pink_noise_bridge_t* bridge,
     synaptic_scaling_state_t* state
 ) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Homeostatic pink noise bridge is NULL");
-    NIMCP_API_CHECK_NULL(state, -1, "Synaptic scaling state is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeo_pink_noise_apply_to_state: bridge is NULL");
+        return -1;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeo_pink_noise_apply_to_state: state is NULL");
+        return -1;
+    }
     if (!bridge->is_enabled) return 0;
     // State is updated via scaling_params, not directly
     return 0;
@@ -193,12 +214,18 @@ int homeo_pink_noise_apply_to_state(
 //=============================================================================
 
 float homeo_pink_noise_get_noisy_target_rate(const homeo_pink_noise_bridge_t* bridge) {
-    if (!bridge) return HOMEO_PINK_NOISE_DEFAULT_TARGET;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeo_pink_noise_get_noisy_target_rate: bridge is NULL");
+        return HOMEO_PINK_NOISE_DEFAULT_TARGET;
+    }
     return bridge->noisy_target_rate;
 }
 
 float homeo_pink_noise_get_noisy_scaling_exp(const homeo_pink_noise_bridge_t* bridge) {
-    if (!bridge) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeo_pink_noise_get_noisy_scaling_exp: bridge is NULL");
+        return 1.0f;
+    }
     return bridge->noisy_scaling_exp;
 }
 
@@ -206,8 +233,14 @@ int homeo_pink_noise_get_stats(
     const homeo_pink_noise_bridge_t* bridge,
     homeo_pink_noise_stats_t* stats
 ) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Homeostatic pink noise bridge is NULL");
-    NIMCP_API_CHECK_NULL(stats, -1, "Stats output pointer is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeo_pink_noise_get_stats: bridge is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeo_pink_noise_get_stats: stats is NULL");
+        return -1;
+    }
 
     memset(stats, 0, sizeof(homeo_pink_noise_stats_t));
     stats->samples_generated = bridge->samples_generated;
@@ -226,14 +259,20 @@ int homeo_pink_noise_get_stats(
 //=============================================================================
 
 int homeo_pink_noise_set_enabled(homeo_pink_noise_bridge_t* bridge, bool enabled) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Homeostatic pink noise bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeo_pink_noise_set_enabled: bridge is NULL");
+        return -1;
+    }
     bridge->is_enabled = enabled;
     bridge->config.enabled = enabled;
     return 0;
 }
 
 int homeo_pink_noise_reset(homeo_pink_noise_bridge_t* bridge) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Homeostatic pink noise bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeo_pink_noise_reset: bridge is NULL");
+        return -1;
+    }
 
     bridge->target_rate_noise = 0.0f;
     bridge->scaling_tau_noise = 0.0f;
@@ -259,8 +298,14 @@ int homeo_pink_noise_reset(homeo_pink_noise_bridge_t* bridge) {
 }
 
 int homeo_pink_noise_set_amplitude(homeo_pink_noise_bridge_t* bridge, float amplitude) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Homeostatic pink noise bridge is NULL");
-    NIMCP_API_CHECK(amplitude >= 0.0f && amplitude <= 1.0f, -1, "Amplitude must be between 0.0 and 1.0");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeo_pink_noise_set_amplitude: bridge is NULL");
+        return -1;
+    }
+    if (amplitude < 0.0f || amplitude > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "homeo_pink_noise_set_amplitude: amplitude out of range [0.0, 1.0]");
+        return -1;
+    }
     bridge->config.noise_amplitude = amplitude;
     return 0;
 }

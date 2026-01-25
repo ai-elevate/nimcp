@@ -497,7 +497,10 @@ med_cereb_bridge_t med_cereb_bridge_create(const med_cereb_bridge_config_t* conf
 }
 
 void med_cereb_bridge_destroy(med_cereb_bridge_t bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "med_cereb_bridge_destroy: bridge is NULL");
+        return;
+    }
 
     if (bridge->base.mutex) {
         bridge_base_cleanup(&bridge->base);
@@ -534,8 +537,14 @@ int med_cereb_bridge_reset(med_cereb_bridge_t bridge) {
  * ============================================================================ */
 
 int med_cereb_bridge_connect_medulla(med_cereb_bridge_t bridge, medulla_t medulla) {
-    if (!bridge) return -1;
-    if (!medulla) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "med_cereb_bridge_connect_medulla: bridge is NULL");
+        return -1;
+    }
+    if (!medulla) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "med_cereb_bridge_connect_medulla: medulla is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->medulla = medulla;
@@ -546,8 +555,14 @@ int med_cereb_bridge_connect_medulla(med_cereb_bridge_t bridge, medulla_t medull
 
 int med_cereb_bridge_connect_cerebellum(med_cereb_bridge_t bridge,
                                          cerebellum_adapter_t* cerebellum) {
-    if (!bridge) return -1;
-    if (!cerebellum) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "med_cereb_bridge_connect_cerebellum: bridge is NULL");
+        return -1;
+    }
+    if (!cerebellum) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "med_cereb_bridge_connect_cerebellum: cerebellum is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->cerebellum = cerebellum;
@@ -580,8 +595,14 @@ int med_cereb_bridge_queue_error(med_cereb_bridge_t bridge,
                                   med_cereb_error_type_t error_type,
                                   float magnitude,
                                   uint32_t source_id) {
-    if (!bridge) return -1;
-    if (error_type >= MED_CEREB_ERROR_COUNT) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "med_cereb_bridge_queue_error: bridge is NULL");
+        return -1;
+    }
+    if (error_type >= MED_CEREB_ERROR_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "med_cereb_bridge_queue_error: error_type out of range");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -616,8 +637,14 @@ int med_cereb_bridge_send_climbing_signal(med_cereb_bridge_t bridge,
                                            med_cereb_error_type_t error_type,
                                            float magnitude,
                                            uint32_t target_purkinje) {
-    if (!bridge) return -1;
-    if (!bridge->cerebellum) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "med_cereb_bridge_send_climbing_signal: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->cerebellum) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "med_cereb_bridge_send_climbing_signal: cerebellum is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -666,7 +693,14 @@ int med_cereb_bridge_broadcast_error(med_cereb_bridge_t bridge,
 
 int med_cereb_bridge_get_arousal_effects(med_cereb_bridge_t bridge,
                                           med_cereb_arousal_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "med_cereb_bridge_get_arousal_effects: bridge is NULL");
+        return -1;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "med_cereb_bridge_get_arousal_effects: effects is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->arousal_effects;
@@ -679,8 +713,22 @@ int med_cereb_bridge_modulate_motor(med_cereb_bridge_t bridge,
                                      const float* motor_command,
                                      float* modulated_command,
                                      uint32_t num_dimensions) {
-    if (!bridge || !motor_command || !modulated_command) return -1;
-    if (num_dimensions == 0 || num_dimensions > 8) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "med_cereb_bridge_modulate_motor: bridge is NULL");
+        return -1;
+    }
+    if (!motor_command) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "med_cereb_bridge_modulate_motor: motor_command is NULL");
+        return -1;
+    }
+    if (!modulated_command) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "med_cereb_bridge_modulate_motor: modulated_command is NULL");
+        return -1;
+    }
+    if (num_dimensions == 0 || num_dimensions > 8) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "med_cereb_bridge_modulate_motor: num_dimensions out of range");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -727,7 +775,14 @@ int med_cereb_bridge_modulate_motor(med_cereb_bridge_t bridge,
 
 int med_cereb_bridge_get_protection_effects(med_cereb_bridge_t bridge,
                                              med_cereb_protection_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "med_cereb_bridge_get_protection_effects: bridge is NULL");
+        return -1;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "med_cereb_bridge_get_protection_effects: effects is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->protection_effects;
@@ -773,7 +828,10 @@ bool med_cereb_bridge_motor_allowed(med_cereb_bridge_t bridge,
 }
 
 int med_cereb_bridge_emergency_stop(med_cereb_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "med_cereb_bridge_emergency_stop: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -809,7 +867,14 @@ int med_cereb_bridge_release_emergency(med_cereb_bridge_t bridge) {
 
 int med_cereb_bridge_get_circadian_effects(med_cereb_bridge_t bridge,
                                             med_cereb_circadian_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "med_cereb_bridge_get_circadian_effects: bridge is NULL");
+        return -1;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "med_cereb_bridge_get_circadian_effects: effects is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *effects = bridge->circadian_effects;
@@ -854,7 +919,10 @@ int med_cereb_bridge_apply_circadian_learning(med_cereb_bridge_t bridge) {
  * ============================================================================ */
 
 int med_cereb_bridge_update(med_cereb_bridge_t bridge, uint64_t delta_us) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "med_cereb_bridge_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -948,7 +1016,14 @@ int med_cereb_bridge_process_messages(med_cereb_bridge_t bridge) {
 
 int med_cereb_bridge_get_stats(med_cereb_bridge_t bridge,
                                 med_cereb_bridge_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "med_cereb_bridge_get_stats: bridge is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "med_cereb_bridge_get_stats: stats is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *stats = bridge->stats;
@@ -969,7 +1044,14 @@ int med_cereb_bridge_reset_stats(med_cereb_bridge_t bridge) {
 
 int med_cereb_bridge_get_io_state(med_cereb_bridge_t bridge,
                                    med_cereb_inferior_olive_t* io_state) {
-    if (!bridge || !io_state) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "med_cereb_bridge_get_io_state: bridge is NULL");
+        return -1;
+    }
+    if (!io_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "med_cereb_bridge_get_io_state: io_state is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     *io_state = bridge->io;

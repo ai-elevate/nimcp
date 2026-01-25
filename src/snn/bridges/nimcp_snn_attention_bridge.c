@@ -32,7 +32,10 @@
  * HOW:  Literature-based parameter values
  */
 void snn_attention_config_default(snn_attention_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_attention_config_default: null config pointer");
+        return;
+    }
 
     /* Spike-to-attention conversion */
     config->spike_rate_min = 10.0f;          /* 10 Hz baseline */
@@ -127,7 +130,10 @@ snn_attention_bridge_t* snn_attention_bridge_create(
  * HOW:  Disconnect, free memory
  */
 void snn_attention_bridge_destroy(snn_attention_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_attention_bridge_destroy: null bridge pointer");
+        return;
+    }
 
     /* Disconnect bio-async if connected */
     if (bridge->base.bio_async_enabled) {
@@ -148,7 +154,10 @@ void snn_attention_bridge_destroy(snn_attention_bridge_t* bridge) {
  * HOW:  Register with router
  */
 int snn_attention_bridge_connect_bio_async(snn_attention_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_attention_bridge_connect_bio_async: null bridge pointer");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -175,7 +184,11 @@ int snn_attention_bridge_connect_bio_async(snn_attention_bridge_t* bridge) {
  * HOW:  Unregister from router
  */
 int snn_attention_bridge_disconnect_bio_async(snn_attention_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_attention_bridge_disconnect_bio_async: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->base.bio_async_enabled) return 0;
 
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_async_enabled = false;
@@ -189,7 +202,11 @@ int snn_attention_bridge_disconnect_bio_async(snn_attention_bridge_t* bridge) {
  * HOW:  Return flag
  */
 bool snn_attention_bridge_is_bio_async_connected(const snn_attention_bridge_t* bridge) {
-    return bridge ? bridge->base.bio_async_enabled : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_attention_bridge_is_bio_async_connected: null bridge pointer");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }
 
 //=============================================================================
@@ -208,7 +225,7 @@ int snn_attention_bridge_process(
 ) {
     /* Guard: Validate inputs */
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Null bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_attention_bridge_process: null bridge pointer");
         return -1;
     }
 
@@ -237,7 +254,7 @@ int snn_attention_bridge_process(
 int snn_attention_bridge_update(snn_attention_bridge_t* bridge, float dt) {
     /* Guard: Validate bridge */
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Null bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_attention_bridge_update: null bridge pointer");
         return -1;
     }
 
@@ -311,7 +328,10 @@ float snn_attention_compute_gate_signal(
     const snn_attention_bridge_t* bridge,
     float spike_rate
 ) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_attention_compute_gate_signal: null bridge pointer");
+        return 0.0f;
+    }
 
     float min_rate = bridge->config.spike_rate_min;
     float max_rate = bridge->config.spike_rate_max;
@@ -337,7 +357,16 @@ int snn_attention_detect_gamma(
     snn_gamma_state_t* gamma_state
 ) {
     /* Guard: Validate inputs */
-    if (!bridge || !population || !gamma_state) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_attention_detect_gamma: null bridge pointer");
+        return -1;
+    }
+    if (!population) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_attention_detect_gamma: null population pointer");
+        return -1;
+    }
+    if (!gamma_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_attention_detect_gamma: null gamma_state pointer");
         return -1;
     }
 
@@ -369,7 +398,10 @@ int snn_attention_detect_gamma(
  */
 int snn_attention_apply_gamma_sync(snn_attention_bridge_t* bridge) {
     /* Guard: Validate bridge */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_attention_apply_gamma_sync: null bridge pointer");
+        return -1;
+    }
 
     /* Modulate gate by gamma phase */
     float phase = bridge->state.gamma.phase;
@@ -396,7 +428,14 @@ int snn_attention_apply_gamma_sync(snn_attention_bridge_t* bridge) {
  */
 int snn_attention_boost_input_population(snn_attention_bridge_t* bridge) {
     /* Guard: Validate bridge and population */
-    if (!bridge || !bridge->input_pop) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_attention_boost_input_population: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->input_pop) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_attention_boost_input_population: null input_pop pointer");
+        return -1;
+    }
 
     /* Compute boost current */
     float boost = bridge->config.attention_boost_factor * bridge->state.attention_strength;
@@ -420,7 +459,12 @@ int snn_attention_modulate_weights(
     uint32_t seq_length
 ) {
     /* Guard: Validate inputs */
-    if (!bridge || !attention_weights) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_attention_modulate_weights: null bridge pointer");
+        return -1;
+    }
+    if (!attention_weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_attention_modulate_weights: null attention_weights pointer");
         return -1;
     }
 
@@ -448,7 +492,14 @@ int snn_attention_bridge_get_state(
     const snn_attention_bridge_t* bridge,
     snn_attention_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_attention_bridge_get_state: null bridge pointer");
+        return -1;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_attention_bridge_get_state: null state pointer");
+        return -1;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -462,7 +513,14 @@ int snn_attention_get_gamma_state(
     const snn_attention_bridge_t* bridge,
     snn_gamma_state_t* gamma
 ) {
-    if (!bridge || !gamma) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_attention_get_gamma_state: null bridge pointer");
+        return -1;
+    }
+    if (!gamma) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_attention_get_gamma_state: null gamma pointer");
+        return -1;
+    }
     *gamma = bridge->state.gamma;
     return 0;
 }
@@ -473,7 +531,11 @@ int snn_attention_get_gamma_state(
  * HOW:  Return cached value
  */
 float snn_attention_get_gate_signal(const snn_attention_bridge_t* bridge) {
-    return bridge ? bridge->state.attention_gate_signal : 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_attention_get_gate_signal: null bridge pointer");
+        return 0.0f;
+    }
+    return bridge->state.attention_gate_signal;
 }
 
 /**
@@ -482,7 +544,11 @@ float snn_attention_get_gate_signal(const snn_attention_bridge_t* bridge) {
  * HOW:  Return flag
  */
 bool snn_attention_is_gamma_synchronized(const snn_attention_bridge_t* bridge) {
-    return bridge ? bridge->state.gamma.is_synchronized : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_attention_is_gamma_synchronized: null bridge pointer");
+        return false;
+    }
+    return bridge->state.gamma.is_synchronized;
 }
 
 //=============================================================================
@@ -500,7 +566,10 @@ int snn_attention_get_stats(
     float* avg_gate,
     float* avg_spike_rate
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_attention_get_stats: null bridge pointer");
+        return -1;
+    }
 
     if (sync_count) *sync_count = bridge->state.sync_count;
     if (avg_gate) *avg_gate = bridge->state.avg_gate_signal;
@@ -515,7 +584,10 @@ int snn_attention_get_stats(
  * HOW:  Zero counters
  */
 void snn_attention_reset_stats(snn_attention_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_attention_reset_stats: null bridge pointer");
+        return;
+    }
 
     bridge->state.sync_count = 0;
     bridge->state.avg_gate_signal = 0.0f;

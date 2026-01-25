@@ -597,8 +597,14 @@ homeostatic_controller_t homeostatic_controller_create(
      */
 
     /* Guard: Validate inputs */
-    if (!config || num_neurons == 0) {
-        NIMCP_LOGGING_ERROR("Invalid config or zero neurons");
+    if (!config) {
+        NIMCP_LOGGING_ERROR("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_controller_create: config is NULL");
+        return NULL;
+    }
+    if (num_neurons == 0) {
+        NIMCP_LOGGING_ERROR("Zero neurons specified");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "homeostatic_controller_create: num_neurons is zero");
         return NULL;
     }
 
@@ -606,8 +612,7 @@ homeostatic_controller_t homeostatic_controller_create(
     homeostatic_controller_t ctrl = nimcp_calloc(1, sizeof(struct homeostatic_controller_struct));
     if (!ctrl) {
         NIMCP_LOGGING_ERROR("Failed to allocate homeostatic controller");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctrl is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "homeostatic_controller_create: controller allocation failed");
         return NULL;
     }
 
@@ -619,6 +624,7 @@ homeostatic_controller_t homeostatic_controller_create(
     if (config->enable_synaptic_scaling) {
         ctrl->scaling_states = nimcp_calloc(num_neurons, sizeof(synaptic_scaling_state_t));
         if (!ctrl->scaling_states) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "homeostatic_controller_create: scaling_states allocation failed");
             homeostatic_controller_destroy(ctrl);
             return NULL;
         }
@@ -631,6 +637,7 @@ homeostatic_controller_t homeostatic_controller_create(
     if (config->enable_intrinsic_plasticity) {
         ctrl->ip_states = nimcp_calloc(num_neurons, sizeof(intrinsic_plasticity_state_t));
         if (!ctrl->ip_states) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "homeostatic_controller_create: ip_states allocation failed");
             homeostatic_controller_destroy(ctrl);
             return NULL;
         }
@@ -643,6 +650,7 @@ homeostatic_controller_t homeostatic_controller_create(
     if (config->enable_metaplasticity) {
         ctrl->meta_states = nimcp_calloc(num_neurons, sizeof(metaplasticity_state_t));
         if (!ctrl->meta_states) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "homeostatic_controller_create: meta_states allocation failed");
             homeostatic_controller_destroy(ctrl);
             return NULL;
         }
@@ -698,7 +706,14 @@ void homeostatic_controller_update(homeostatic_controller_t controller,
      */
 
     /* Guard: Validate inputs */
-    if (!controller || !firing_rates) return;
+    if (!controller) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_controller_update: controller is NULL");
+        return;
+    }
+    if (!firing_rates) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_controller_update: firing_rates is NULL");
+        return;
+    }
 
     /* Thread-safe update with mutex lock */
     nimcp_mutex_lock(&controller->mutex);
@@ -807,7 +822,14 @@ bool homeostatic_controller_get_stats(homeostatic_controller_t controller,
      */
 
     /* Guard: Validate inputs */
-    if (!controller || !stats) return false;
+    if (!controller) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_controller_get_stats: controller is NULL");
+        return false;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_controller_get_stats: stats is NULL");
+        return false;
+    }
 
     memcpy(stats, &controller->stats, sizeof(homeostatic_stats_t));
     return true;
@@ -819,7 +841,10 @@ bool homeostatic_controller_is_stable(homeostatic_controller_t controller) {
      */
 
     /* Guard: Validate input */
-    if (!controller) return false;
+    if (!controller) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_controller_is_stable: controller is NULL");
+        return false;
+    }
 
     return controller->stats.stability_score >= controller->config.global_stability_threshold;
 }
@@ -830,7 +855,10 @@ void homeostatic_controller_reset(homeostatic_controller_t controller) {
      */
 
     /* Guard: Validate input */
-    if (!controller) return;
+    if (!controller) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_controller_reset: controller is NULL");
+        return;
+    }
 
     /* Reset scaling states */
     if (controller->scaling_states) {
@@ -869,7 +897,10 @@ bool homeostatic_controller_set_sleep_state(homeostatic_controller_t controller,
      */
 
     /* Guard: Validate input */
-    if (!controller) return false;
+    if (!controller) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_controller_set_sleep_state: controller is NULL");
+        return false;
+    }
 
     controller->current_sleep_state = sleep_state;
     return true;
@@ -881,7 +912,10 @@ sleep_state_t homeostatic_controller_get_sleep_state(homeostatic_controller_t co
      */
 
     /* Guard: Validate input */
-    if (!controller) return SLEEP_STATE_AWAKE;
+    if (!controller) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_controller_get_sleep_state: controller is NULL");
+        return SLEEP_STATE_AWAKE;
+    }
 
     return controller->current_sleep_state;
 }
@@ -903,7 +937,10 @@ sleep_state_t homeostatic_controller_get_sleep_state(homeostatic_controller_t co
  * @return 1 if self-knowledge found, 0 if not found or error
  */
 int homeostatic_query_self_knowledge(kg_reader_t* kg) {
-    if (!kg) return 0;
+    if (!kg) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_query_self_knowledge: kg is NULL");
+        return 0;
+    }
 
     /* Query our own entity from the knowledge graph */
     const kg_entity_t* self = kg_reader_get_entity(kg, "Homeostatic_Module");

@@ -216,10 +216,12 @@ neuromod_substrate_bridge_t* neuromod_substrate_bridge_create(
 {
     /* Guard: validate inputs */
     if (!substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_substrate_bridge_create: substrate is NULL");
         NIMCP_LOGGING_ERROR("NULL substrate pointer");
         return NULL;
     }
     if (!neuromod_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_substrate_bridge_create: neuromod_system is NULL");
         NIMCP_LOGGING_ERROR("NULL neuromodulator system pointer");
         return NULL;
     }
@@ -228,6 +230,7 @@ neuromod_substrate_bridge_t* neuromod_substrate_bridge_create(
     neuromod_substrate_bridge_t* bridge =
         (neuromod_substrate_bridge_t*)nimcp_malloc(sizeof(neuromod_substrate_bridge_t));
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neuromod_substrate_bridge_create: failed to allocate bridge");
         NIMCP_LOGGING_ERROR("Failed to allocate bridge");
         return NULL;
     }
@@ -248,12 +251,14 @@ neuromod_substrate_bridge_t* neuromod_substrate_bridge_create(
     /* Create mutex */
     bridge->base.mutex = (nimcp_platform_mutex_t*)nimcp_malloc(sizeof(nimcp_platform_mutex_t));
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neuromod_substrate_bridge_create: failed to allocate mutex");
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
         nimcp_free(bridge);
         return NULL;
     }
 
     if (nimcp_platform_mutex_init(bridge->base.mutex, false) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neuromod_substrate_bridge_create: failed to initialize mutex");
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
         nimcp_free(bridge);
         return NULL;

@@ -54,7 +54,10 @@ void metabolic_state_init(metabolic_state_t* state) {
     // WHY:  Provides sensible baseline for most common neurotransmitter
     // HOW:  Call init_with_config using dopamine parameters
 
-    if (!state) return;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_state_init: null state pointer");
+        return;
+    }
 
     metabolic_config_t config = metabolic_config_dopamine_default();
     metabolic_state_init_with_config(state, &config);
@@ -66,7 +69,14 @@ void metabolic_state_init_with_config(metabolic_state_t* state,
     // WHY:  Different neurotransmitters have different kinetics
     // HOW:  Set up synthesis, degradation, reuptake from config
 
-    if (!state || !config) return;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_state_init_with_config: null state pointer");
+        return;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_state_init_with_config: null config pointer");
+        return;
+    }
 
     memset(state, 0, sizeof(metabolic_state_t));
 
@@ -111,7 +121,10 @@ void metabolic_state_reset(metabolic_state_t* state) {
     // WHY:  Allows reuse without full reinitialization
     // HOW:  Zero dynamic state, preserve kinetic parameters
 
-    if (!state) return;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_state_reset: null state pointer");
+        return;
+    }
 
     // Preserve configuration
     metabolic_config_t config = {
@@ -229,7 +242,11 @@ float metabolic_synthesize(metabolic_state_t* state, float dt) {
     // WHY:  Synthesis maintains neurotransmitter stores
     // HOW:  Rate limited by enzyme activity and precursor availability
 
-    if (!state || dt <= 0.0F) return 0.0F;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_synthesize: null state pointer");
+        return 0.0F;
+    }
+    if (dt <= 0.0F) return 0.0F;
 
     synthesis_pathway_state_t* syn = &state->synthesis;
 
@@ -272,7 +289,10 @@ void metabolic_set_precursor(metabolic_state_t* state, float precursor_level) {
     // WHY:  Models dietary intake or blood-brain barrier transport
     // HOW:  Direct assignment with bounds check
 
-    if (!state) return;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_set_precursor: null state pointer");
+        return;
+    }
 
     state->synthesis.precursor_concentration = clamp(precursor_level, 0.0F, 1000.0F);
 }
@@ -282,7 +302,10 @@ void metabolic_set_enzyme_activity(metabolic_state_t* state, float activity) {
     // WHY:  Models transcriptional regulation or feedback inhibition
     // HOW:  Normalized 0-1 activity level
 
-    if (!state) return;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_set_enzyme_activity: null state pointer");
+        return;
+    }
 
     state->synthesis.enzyme_activity = clamp(activity, 0.0F, 2.0F);  // Allow up to 2x upregulation
 }
@@ -296,7 +319,11 @@ float metabolic_degrade(metabolic_state_t* state, float dt) {
     // WHY:  Clearance terminates neurotransmitter action
     // HOW:  First-order kinetics: dC/dt = -k × C
 
-    if (!state || dt <= 0.0F) return 0.0F;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_degrade: null state pointer");
+        return 0.0F;
+    }
+    if (dt <= 0.0F) return 0.0F;
 
     degradation_pathway_state_t* deg = &state->degradation;
 
@@ -333,7 +360,10 @@ void metabolic_apply_mao_inhibitor(metabolic_state_t* state, float inhibition) {
     // WHY:  Antidepressant mechanism (selegiline, phenelzine)
     // HOW:  Reduce degradation rate proportionally
 
-    if (!state) return;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_apply_mao_inhibitor: null state pointer");
+        return;
+    }
 
     state->degradation.inhibitor_blockade = clamp(inhibition, 0.0F, 1.0F);
 }
@@ -343,7 +373,10 @@ void metabolic_apply_comt_inhibitor(metabolic_state_t* state, float inhibition) 
     // WHY:  Parkinson's treatment (tolcapone, entacapone)
     // HOW:  Reduce catecholamine degradation
 
-    if (!state) return;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_apply_comt_inhibitor: null state pointer");
+        return;
+    }
 
     // COMT inhibition reduces effective degradation rate
     // For simplicity, treat similarly to MAO inhibition
@@ -359,7 +392,11 @@ float metabolic_reuptake(metabolic_state_t* state, float concentration, float dt
     // WHY:  Reuptake is primary inactivation mechanism (>80%)
     // HOW:  Michaelis-Menten kinetics with competitive inhibition
 
-    if (!state || dt <= 0.0F || concentration <= 0.0F) return 0.0F;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_reuptake: null state pointer");
+        return 0.0F;
+    }
+    if (dt <= 0.0F || concentration <= 0.0F) return 0.0F;
 
     reuptake_transporter_state_t* rpt = &state->reuptake;
 
@@ -407,7 +444,10 @@ void metabolic_apply_reuptake_inhibitor(metabolic_state_t* state,
     // WHY:  Models SSRIs, cocaine, other blockers
     // HOW:  Increase apparent Km via competitive inhibition
 
-    if (!state) return;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_apply_reuptake_inhibitor: null state pointer");
+        return;
+    }
 
     state->reuptake.inhibitor_concentration = clamp(inhibitor_concentration, 0.0F, 100.0F);
     state->reuptake.inhibitor_ki = clamp(inhibitor_ki, 0.001F, 10.0F);
@@ -418,7 +458,10 @@ void metabolic_reverse_transporter(metabolic_state_t* state, float magnitude) {
     // WHY:  Amphetamine mechanism - releases stored neurotransmitter
     // HOW:  Set reversal flag and magnitude
 
-    if (!state) return;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_reverse_transporter: null state pointer");
+        return;
+    }
 
     state->reuptake.is_reversed = (magnitude > 0.0F);
     state->reuptake.reversal_magnitude = clamp(magnitude, 0.0F, 0.01F);  // Max 0.01 µM/s
@@ -433,7 +476,11 @@ float metabolic_update(metabolic_state_t* state, float dt, float release_amount)
     // WHY:  Integrates all pathways into unified dynamics
     // HOW:  dC/dt = synthesis + release - degradation - reuptake
 
-    if (!state || dt <= 0.0F) return state ? state->concentration : 0.0F;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_update: null state pointer");
+        return 0.0F;
+    }
+    if (dt <= 0.0F) return state->concentration;
 
     // Synthesis: produces new neurotransmitter
     // Newly synthesized neurotransmitter goes into vesicular stores
@@ -476,7 +523,10 @@ void metabolic_get_synthesis_stats(const metabolic_state_t* state,
     // WHY:  Monitor neurotransmitter production
     // HOW:  Return counters and averages
 
-    if (!state) return;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_get_synthesis_stats: null state pointer");
+        return;
+    }
 
     if (total_synthesized) {
         *total_synthesized = state->synthesis.total_synthesized;
@@ -493,7 +543,10 @@ void metabolic_get_degradation_stats(const metabolic_state_t* state,
     // WHY:  Monitor enzymatic clearance
     // HOW:  Return counters and averages
 
-    if (!state) return;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_get_degradation_stats: null state pointer");
+        return;
+    }
 
     if (total_degraded) {
         *total_degraded = state->degradation.total_degraded;
@@ -510,7 +563,10 @@ void metabolic_get_reuptake_stats(const metabolic_state_t* state,
     // WHY:  Monitor transporter activity
     // HOW:  Return counters and averages
 
-    if (!state) return;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_get_reuptake_stats: null state pointer");
+        return;
+    }
 
     if (total_events) {
         *total_events = state->reuptake.total_reuptake_events;

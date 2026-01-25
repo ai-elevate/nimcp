@@ -60,11 +60,15 @@ stdp_fep_bridge_t* stdp_fep_bridge_create(const stdp_fep_config_t* config) {
         stdp_fep_bridge_default_config(&bridge->config);
     }
 
-    if (bridge_base_init(&bridge->base, 0, "stdp_fep") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "stdp_fep") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_fep_bridge_create: failed to init bridge base");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         LOG_ERROR("STDP-FEP bridge mutex creation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "STDP-FEP bridge mutex creation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_fep_bridge_create: mutex creation failed");
         return NULL;
     }
 
@@ -156,7 +160,10 @@ int stdp_fep_bridge_disconnect(stdp_fep_bridge_t* bridge) {
  * ============================================================================ */
 
 float stdp_fep_apply_pe_scaling(stdp_fep_bridge_t* bridge, float pe) {
-    if (!bridge) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_fep_apply_pe_scaling: bridge is NULL");
+        return 1.0f;
+    }
 
     if (!bridge->config.enable_pe_scaling) {
         return 1.0f;
@@ -187,7 +194,10 @@ float stdp_fep_apply_pe_scaling(stdp_fep_bridge_t* bridge, float pe) {
 }
 
 float stdp_fep_apply_precision_weighting(stdp_fep_bridge_t* bridge, float precision) {
-    if (!bridge) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_fep_apply_precision_weighting: bridge is NULL");
+        return 1.0f;
+    }
 
     if (!bridge->config.enable_precision_weighting) {
         return 1.0f;
@@ -207,7 +217,10 @@ float stdp_fep_apply_precision_weighting(stdp_fep_bridge_t* bridge, float precis
 }
 
 float stdp_fep_apply_belief_modulation(stdp_fep_bridge_t* bridge, float belief_delta) {
-    if (!bridge) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_fep_apply_belief_modulation: bridge is NULL");
+        return 1.0f;
+    }
 
     if (!bridge->config.enable_belief_modulation) {
         return 1.0f;
@@ -226,7 +239,10 @@ float stdp_fep_apply_belief_modulation(stdp_fep_bridge_t* bridge, float belief_d
 }
 
 float stdp_fep_get_effective_lr(const stdp_fep_bridge_t* bridge, float base_lr) {
-    if (!bridge) return base_lr;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_fep_get_effective_lr: bridge is NULL");
+        return base_lr;
+    }
 
     return base_lr * bridge->effects.total_lr_scaling;
 }
@@ -247,7 +263,10 @@ int stdp_fep_report_weight_changes(stdp_fep_bridge_t* bridge, float weight_delta
 }
 
 float stdp_fep_compute_complexity_regularization(const stdp_fep_bridge_t* bridge) {
-    if (!bridge) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_fep_compute_complexity_regularization: bridge is NULL");
+        return 1.0f;
+    }
 
     if (!bridge->config.enable_complexity_regularization) {
         return 1.0f;

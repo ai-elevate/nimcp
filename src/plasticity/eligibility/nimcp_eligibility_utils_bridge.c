@@ -61,28 +61,49 @@ static uint64_t get_current_time_ms(void) {
 }
 
 static void pool_init(elig_trace_pool_t* pool, uint32_t capacity) {
-    if (!pool || capacity == 0) return;
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool_init: pool is NULL");
+        return;
+    }
+    if (capacity == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "pool_init: capacity is zero");
+        return;
+    }
 
-    pool->pool = (eligibility_trace_t*)calloc(capacity, sizeof(eligibility_trace_t));
-    pool->free_list = (uint32_t*)malloc(capacity * sizeof(uint32_t));
+    pool->pool = (eligibility_trace_t*)nimcp_calloc(capacity, sizeof(eligibility_trace_t));
+    if (!pool->pool) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, capacity * sizeof(eligibility_trace_t),
+                           "pool_init: failed to allocate trace pool");
+        return;
+    }
 
-    if (pool->pool && pool->free_list) {
-        pool->capacity = capacity;
-        pool->used = 0;
-        pool->free_head = 0;
+    pool->free_list = (uint32_t*)nimcp_malloc(capacity * sizeof(uint32_t));
+    if (!pool->free_list) {
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, capacity * sizeof(uint32_t),
+                           "pool_init: failed to allocate free list");
+        nimcp_free(pool->pool);
+        pool->pool = NULL;
+        return;
+    }
 
-        /* Initialize free list */
-        for (uint32_t i = 0; i < capacity; i++) {
-            pool->free_list[i] = i;
-        }
+    pool->capacity = capacity;
+    pool->used = 0;
+    pool->free_head = 0;
+
+    /* Initialize free list */
+    for (uint32_t i = 0; i < capacity; i++) {
+        pool->free_list[i] = i;
     }
 }
 
 static void pool_destroy(elig_trace_pool_t* pool) {
-    if (!pool) return;
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "pool_destroy: pool is NULL");
+        return;
+    }
 
-    free(pool->pool);
-    free(pool->free_list);
+    nimcp_free(pool->pool);
+    nimcp_free(pool->free_list);
     pool->pool = NULL;
     pool->free_list = NULL;
     pool->capacity = 0;
@@ -116,7 +137,7 @@ eligibility_utils_config_t eligibility_utils_default_config(void) {
 
 eligibility_utils_ctx_t eligibility_utils_create(const eligibility_utils_config_t* config) {
     struct eligibility_utils_ctx_internal* ctx =
-        (struct eligibility_utils_ctx_internal*)calloc(1, sizeof(struct eligibility_utils_ctx_internal));
+        (struct eligibility_utils_ctx_internal*)nimcp_calloc(1, sizeof(struct eligibility_utils_ctx_internal));
 
     if (!ctx) {
 
@@ -149,14 +170,20 @@ eligibility_utils_ctx_t eligibility_utils_create(const eligibility_utils_config_
 }
 
 void eligibility_utils_destroy(eligibility_utils_ctx_t ctx) {
-    if (!ctx) return;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_destroy: ctx is NULL");
+        return;
+    }
 
     pool_destroy(&ctx->trace_pool);
-    free(ctx);
+    nimcp_free(ctx);
 }
 
 void eligibility_utils_reset(eligibility_utils_ctx_t ctx) {
-    if (!ctx) return;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_reset: ctx is NULL");
+        return;
+    }
 
     /* Reset metrics */
     memset(&ctx->metrics, 0, sizeof(eligibility_metrics_t));
@@ -181,11 +208,21 @@ void eligibility_utils_reset(eligibility_utils_ctx_t ctx) {
  *===========================================================================*/
 
 eligibility_trace_t* eligibility_utils_alloc_trace(eligibility_utils_ctx_t ctx) {
-    if (!ctx || !ctx->config.enable_trace_pool) return NULL;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_alloc_trace: ctx is NULL");
+        return NULL;
+    }
+    if (!ctx->config.enable_trace_pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "eligibility_utils_alloc_trace: trace pool not enabled");
+        return NULL;
+    }
 
     elig_trace_pool_t* pool = &ctx->trace_pool;
 
-    if (pool->used >= pool->capacity) return NULL;
+    if (pool->used >= pool->capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "eligibility_utils_alloc_trace: pool exhausted");
+        return NULL;
+    }
 
     uint32_t idx = pool->free_list[pool->free_head++];
     pool->used++;
@@ -197,13 +234,27 @@ eligibility_trace_t* eligibility_utils_alloc_trace(eligibility_utils_ctx_t ctx) 
 }
 
 void eligibility_utils_free_trace(eligibility_utils_ctx_t ctx, eligibility_trace_t* trace) {
-    if (!ctx || !trace || !ctx->config.enable_trace_pool) return;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_free_trace: ctx is NULL");
+        return;
+    }
+    if (!trace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_free_trace: trace is NULL");
+        return;
+    }
+    if (!ctx->config.enable_trace_pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "eligibility_utils_free_trace: trace pool not enabled");
+        return;
+    }
 
     elig_trace_pool_t* pool = &ctx->trace_pool;
 
     /* Calculate index from pointer */
     ptrdiff_t offset = trace - pool->pool;
-    if (offset < 0 || offset >= (ptrdiff_t)pool->capacity) return;
+    if (offset < 0 || offset >= (ptrdiff_t)pool->capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "eligibility_utils_free_trace: trace not from this pool");
+        return;
+    }
 
     uint32_t idx = (uint32_t)offset;
 
@@ -218,7 +269,18 @@ uint32_t eligibility_utils_alloc_trace_batch(
     uint32_t count,
     eligibility_trace_t** out_traces
 ) {
-    if (!ctx || !out_traces || count == 0) return 0;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_alloc_trace_batch: ctx is NULL");
+        return 0;
+    }
+    if (!out_traces) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_alloc_trace_batch: out_traces is NULL");
+        return 0;
+    }
+    if (count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "eligibility_utils_alloc_trace_batch: count is zero");
+        return 0;
+    }
 
     uint32_t allocated = 0;
     for (uint32_t i = 0; i < count; i++) {
@@ -240,6 +302,7 @@ void eligibility_utils_pool_stats(
     uint32_t* free_count
 ) {
     if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_pool_stats: ctx is NULL");
         if (total_capacity) *total_capacity = 0;
         if (used_count) *used_count = 0;
         if (free_count) *free_count = 0;
@@ -260,7 +323,11 @@ void eligibility_utils_record_update(
     float trace_value,
     float weight_change
 ) {
-    if (!ctx || !ctx->config.enable_metrics) return;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_record_update: ctx is NULL");
+        return;
+    }
+    if (!ctx->config.enable_metrics) return;
 
     ctx->metrics.total_traces_updated++;
 
@@ -300,7 +367,11 @@ void eligibility_utils_record_consolidation(
     float total_weight_change,
     bool burst_triggered
 ) {
-    if (!ctx || !ctx->config.enable_metrics) return;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_record_consolidation: ctx is NULL");
+        return;
+    }
+    if (!ctx->config.enable_metrics) return;
 
     ctx->metrics.total_consolidations++;
     if (burst_triggered) {
@@ -318,7 +389,18 @@ void eligibility_utils_update_trace_stats(
     const eligibility_trace_t* traces,
     uint32_t num_traces
 ) {
-    if (!ctx || !traces || num_traces == 0) return;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_update_trace_stats: ctx is NULL");
+        return;
+    }
+    if (!traces) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_update_trace_stats: traces is NULL");
+        return;
+    }
+    if (num_traces == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "eligibility_utils_update_trace_stats: num_traces is zero");
+        return;
+    }
 
     float sum = 0.0f;
     float max_val = 0.0f;
@@ -338,14 +420,24 @@ void eligibility_utils_update_trace_stats(
 }
 
 bool eligibility_utils_get_metrics(eligibility_utils_ctx_t ctx, eligibility_metrics_t* metrics) {
-    if (!ctx || !metrics) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_get_metrics: ctx is NULL");
+        return false;
+    }
+    if (!metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_get_metrics: metrics is NULL");
+        return false;
+    }
 
     *metrics = ctx->metrics;
     return true;
 }
 
 int32_t eligibility_utils_flush_metrics(eligibility_utils_ctx_t ctx) {
-    if (!ctx) return -1;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_flush_metrics: ctx is NULL");
+        return -1;
+    }
 
     /* In a real implementation, this would write to disk */
     /* For now, just reset the update count */
@@ -355,10 +447,20 @@ int32_t eligibility_utils_flush_metrics(eligibility_utils_ctx_t ctx) {
 }
 
 bool eligibility_utils_export_csv(eligibility_utils_ctx_t ctx, const char* filename) {
-    if (!ctx || !filename) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_export_csv: ctx is NULL");
+        return false;
+    }
+    if (!filename) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_export_csv: filename is NULL");
+        return false;
+    }
 
     FILE* fp = fopen(filename, "w");
-    if (!fp) return false;
+    if (!fp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "eligibility_utils_export_csv: failed to open file");
+        return false;
+    }
 
     fprintf(fp, "metric,value\n");
     fprintf(fp, "total_traces_updated,%lu\n", (unsigned long)ctx->metrics.total_traces_updated);
@@ -393,7 +495,18 @@ void eligibility_utils_rk4_update(
     float dt,
     float spike_contribution
 ) {
-    if (!trace || !config || dt <= 0.0f) return;
+    if (!trace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_rk4_update: trace is NULL");
+        return;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_rk4_update: config is NULL");
+        return;
+    }
+    if (dt <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "eligibility_utils_rk4_update: dt must be positive");
+        return;
+    }
 
     /* Convert decay_lambda to continuous decay rate */
     float lambda = config->decay_lambda;
@@ -422,7 +535,14 @@ float eligibility_utils_adaptive_update(
     float spike_contribution,
     eligibility_utils_ctx_t ctx
 ) {
-    if (!trace || !config) return 0.0f;
+    if (!trace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_adaptive_update: trace is NULL");
+        return 0.0f;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_adaptive_update: config is NULL");
+        return 0.0f;
+    }
 
     float tolerance = 1e-6f;
     if (ctx && ctx->config.use_adaptive_integration) {
@@ -487,7 +607,18 @@ void eligibility_utils_batch_update(
     const uint8_t* spike_mask,
     eligibility_utils_ctx_t ctx
 ) {
-    if (!traces || !configs || num_traces == 0) return;
+    if (!traces) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_batch_update: traces is NULL");
+        return;
+    }
+    if (!configs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_batch_update: configs is NULL");
+        return;
+    }
+    if (num_traces == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "eligibility_utils_batch_update: num_traces is zero");
+        return;
+    }
 
     for (uint32_t i = 0; i < num_traces; i++) {
         float spike = 0.0f;
@@ -513,7 +644,14 @@ float eligibility_utils_compute_entropy(
     const eligibility_trace_t* traces,
     uint32_t num_traces
 ) {
-    if (!traces || num_traces == 0) return 0.0f;
+    if (!traces) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_compute_entropy: traces is NULL");
+        return 0.0f;
+    }
+    if (num_traces == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "eligibility_utils_compute_entropy: num_traces is zero");
+        return 0.0f;
+    }
 
     /* Compute histogram of trace values */
     uint32_t bins[20] = {0};
@@ -545,7 +683,18 @@ float eligibility_utils_analyze_information_flow(
     const float* weights,
     uint32_t num_synapses
 ) {
-    if (!ctx || !traces || num_synapses == 0) return 0.0f;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_analyze_information_flow: ctx is NULL");
+        return 0.0f;
+    }
+    if (!traces) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_analyze_information_flow: traces is NULL");
+        return 0.0f;
+    }
+    if (num_synapses == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "eligibility_utils_analyze_information_flow: num_synapses is zero");
+        return 0.0f;
+    }
 
     /* Compute entropy of trace distribution */
     float entropy = eligibility_utils_compute_entropy(traces, num_synapses);
@@ -574,7 +723,22 @@ bool eligibility_utils_detect_bottlenecks(
     uint32_t max_bottlenecks,
     uint32_t* num_found
 ) {
-    if (!ctx || !traces || !bottlenecks || !num_found) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_detect_bottlenecks: ctx is NULL");
+        return false;
+    }
+    if (!traces) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_detect_bottlenecks: traces is NULL");
+        return false;
+    }
+    if (!bottlenecks) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_detect_bottlenecks: bottlenecks is NULL");
+        return false;
+    }
+    if (!num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_detect_bottlenecks: num_found is NULL");
+        return false;
+    }
 
     *num_found = 0;
 
@@ -608,7 +772,18 @@ bool eligibility_utils_suggest_adjustments(
     uint32_t num_bottlenecks,
     float* weight_adjustments
 ) {
-    if (!ctx || !bottlenecks || !weight_adjustments) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_suggest_adjustments: ctx is NULL");
+        return false;
+    }
+    if (!bottlenecks) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_suggest_adjustments: bottlenecks is NULL");
+        return false;
+    }
+    if (!weight_adjustments) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_suggest_adjustments: weight_adjustments is NULL");
+        return false;
+    }
 
     for (uint32_t i = 0; i < num_bottlenecks; i++) {
         /* Suggest weight increase proportional to deficit */
@@ -629,7 +804,18 @@ void eligibility_utils_update_enhanced(
     uint64_t current_time,
     float spike_contribution
 ) {
-    if (!ctx || !trace || !config) return;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_update_enhanced: ctx is NULL");
+        return;
+    }
+    if (!trace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_update_enhanced: trace is NULL");
+        return;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_update_enhanced: config is NULL");
+        return;
+    }
 
     float dt = (float)(current_time - trace->last_update) * ctx->config.integration_dt;
     if (dt <= 0.0f) dt = ctx->config.integration_dt;
@@ -656,7 +842,18 @@ float eligibility_utils_apply_reward_enhanced(
     float reward,
     float dopamine_level
 ) {
-    if (!ctx || !trace || !config) return 0.0f;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_apply_reward_enhanced: ctx is NULL");
+        return 0.0f;
+    }
+    if (!trace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_apply_reward_enhanced: trace is NULL");
+        return 0.0f;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_apply_reward_enhanced: config is NULL");
+        return 0.0f;
+    }
 
     (void)synapse;
 
@@ -679,7 +876,18 @@ int eligibility_utils_consolidate_enhanced(
     const void* phasic_tonic,
     float reward
 ) {
-    if (!ctx || !traces || num_synapses <= 0) return 0;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_consolidate_enhanced: ctx is NULL");
+        return 0;
+    }
+    if (!traces) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_utils_consolidate_enhanced: traces is NULL");
+        return 0;
+    }
+    if (num_synapses <= 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "eligibility_utils_consolidate_enhanced: num_synapses must be positive");
+        return 0;
+    }
 
     (void)synapses;
     (void)config;

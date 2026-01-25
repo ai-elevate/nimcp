@@ -77,7 +77,10 @@ static void eligibility_on_sleep_state_change(sleep_state_t new_state, void* use
 }
 
 int eligibility_sleep_default_config(eligibility_sleep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_sleep_default_config: config is NULL");
+        return -1;
+    }
     config->enable_lr_modulation = true;
     config->enable_decay_modulation = true;
     config->enable_consolidation = true;
@@ -90,6 +93,7 @@ eligibility_sleep_bridge_t eligibility_sleep_bridge_create(
     sleep_system_t sleep_system)
 {
     if (!sleep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_sleep_bridge_create: sleep_system is NULL");
         NIMCP_LOGGING_ERROR("eligibility_sleep_bridge_create: NULL sleep_system");
         return NULL;
     }
@@ -145,7 +149,10 @@ eligibility_sleep_bridge_t eligibility_sleep_bridge_create(
 }
 
 void eligibility_sleep_bridge_destroy(eligibility_sleep_bridge_t bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_sleep_bridge_destroy: bridge is NULL");
+        return;
+    }
 
     /* Unregister callback if it was registered */
     if (bridge->callback_registered && bridge->sleep_system) {
@@ -164,7 +171,10 @@ void eligibility_sleep_bridge_destroy(eligibility_sleep_bridge_t bridge) {
 }
 
 int eligibility_sleep_update(eligibility_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -196,7 +206,14 @@ int eligibility_sleep_update(eligibility_sleep_bridge_t bridge) {
 
 int eligibility_sleep_get_effects(const eligibility_sleep_bridge_t bridge,
                                    eligibility_sleep_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_sleep_get_effects: bridge is NULL");
+        return -1;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_sleep_get_effects: effects is NULL");
+        return -1;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -205,7 +222,10 @@ int eligibility_sleep_get_effects(const eligibility_sleep_bridge_t bridge,
 
 float eligibility_sleep_get_learning_rate(const eligibility_sleep_bridge_t bridge,
                                            float base_lr) {
-    if (!bridge) return base_lr;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_sleep_get_learning_rate: bridge is NULL");
+        return base_lr;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     float result = base_lr * bridge->effects.learning_rate_factor;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -214,7 +234,10 @@ float eligibility_sleep_get_learning_rate(const eligibility_sleep_bridge_t bridg
 
 float eligibility_sleep_get_decay_lambda(const eligibility_sleep_bridge_t bridge,
                                           float base_lambda) {
-    if (!bridge) return base_lambda;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_sleep_get_decay_lambda: bridge is NULL");
+        return base_lambda;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     /* Apply decay factor - higher factor = slower decay (higher lambda) */
     float result = base_lambda * bridge->effects.decay_factor;

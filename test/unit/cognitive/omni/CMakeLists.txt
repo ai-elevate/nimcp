@@ -50,3 +50,6 @@ foreach(TEST_FILE ${OMNI_WM_TEST_SOURCES})
 endforeach()
 
 message(STATUS "Added omni world model unit tests")
+
+# Include bridges subdirectory
+add_subdirectory(bridges)

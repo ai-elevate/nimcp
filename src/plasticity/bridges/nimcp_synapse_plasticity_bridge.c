@@ -196,11 +196,13 @@ synapse_plasticity_bridge_t* synapse_plasticity_create(
     bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "synapse_plasticity_create: failed to allocate mutex");
         nimcp_free(bridge);
         return NULL;
     }
     if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "synapse_plasticity_create: failed to initialize mutex");
         nimcp_free(bridge);
         return NULL;
     }
@@ -236,7 +238,10 @@ void synapse_plasticity_destroy(synapse_plasticity_bridge_t* bridge)
 
 int synapse_plasticity_connect_stdp(synapse_plasticity_bridge_t* bridge, stdp_synapse_t* stdp)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_connect_stdp: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->stdp = stdp;
     bridge->contributions[PLASTICITY_STDP].active = (stdp != NULL);
@@ -246,7 +251,10 @@ int synapse_plasticity_connect_stdp(synapse_plasticity_bridge_t* bridge, stdp_sy
 
 int synapse_plasticity_connect_bcm(synapse_plasticity_bridge_t* bridge, bcm_state_t* bcm)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_connect_bcm: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bcm = bcm;
     bridge->contributions[PLASTICITY_BCM].active = (bcm != NULL);
@@ -256,7 +264,10 @@ int synapse_plasticity_connect_bcm(synapse_plasticity_bridge_t* bridge, bcm_stat
 
 int synapse_plasticity_connect_homeostatic(synapse_plasticity_bridge_t* bridge, homeostatic_state_t* h)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_connect_homeostatic: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->homeostatic = h;
     bridge->contributions[PLASTICITY_HOMEOSTATIC].active = (h != NULL);
@@ -266,7 +277,10 @@ int synapse_plasticity_connect_homeostatic(synapse_plasticity_bridge_t* bridge, 
 
 int synapse_plasticity_connect_stp(synapse_plasticity_bridge_t* bridge, stp_state_t* stp)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_connect_stp: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->stp = stp;
     bridge->contributions[PLASTICITY_STP].active = (stp != NULL);
@@ -276,7 +290,10 @@ int synapse_plasticity_connect_stp(synapse_plasticity_bridge_t* bridge, stp_stat
 
 int synapse_plasticity_connect_metaplasticity(synapse_plasticity_bridge_t* bridge, metaplasticity_state_t* m)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_connect_metaplasticity: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->meta = m;
     bridge->contributions[PLASTICITY_METAPLASTICITY].active = (m != NULL);
@@ -286,7 +303,10 @@ int synapse_plasticity_connect_metaplasticity(synapse_plasticity_bridge_t* bridg
 
 int synapse_plasticity_connect_eligibility(synapse_plasticity_bridge_t* bridge, eligibility_state_t* e)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_connect_eligibility: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->eligibility = e;
     bridge->contributions[PLASTICITY_ELIGIBILITY].active = (e != NULL);
@@ -296,7 +316,10 @@ int synapse_plasticity_connect_eligibility(synapse_plasticity_bridge_t* bridge, 
 
 int synapse_plasticity_connect_heterosynaptic(synapse_plasticity_bridge_t* bridge, heterosynaptic_state_t* h)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_connect_heterosynaptic: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->hetero = h;
     bridge->contributions[PLASTICITY_HETEROSYNAPTIC].active = (h != NULL);
@@ -306,7 +329,10 @@ int synapse_plasticity_connect_heterosynaptic(synapse_plasticity_bridge_t* bridg
 
 int synapse_plasticity_connect_scaling(synapse_plasticity_bridge_t* bridge, synaptic_scaling_state_t* s)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_connect_scaling: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->scaling = s;
     bridge->contributions[PLASTICITY_SCALING].active = (s != NULL);
@@ -316,7 +342,10 @@ int synapse_plasticity_connect_scaling(synapse_plasticity_bridge_t* bridge, syna
 
 int synapse_plasticity_connect_tagging(synapse_plasticity_bridge_t* bridge, synaptic_tagging_state_t* t)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_connect_tagging: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->tagging = t;
     bridge->contributions[PLASTICITY_TAGGING].active = (t != NULL);
@@ -326,7 +355,10 @@ int synapse_plasticity_connect_tagging(synapse_plasticity_bridge_t* bridge, syna
 
 int synapse_plasticity_connect_calcium(synapse_plasticity_bridge_t* bridge, calcium_dynamics_state_t* c)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_connect_calcium: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->calcium = c;
     bridge->contributions[PLASTICITY_CALCIUM].active = (c != NULL);
@@ -336,7 +368,10 @@ int synapse_plasticity_connect_calcium(synapse_plasticity_bridge_t* bridge, calc
 
 int synapse_plasticity_connect_neuromod(synapse_plasticity_bridge_t* bridge, neuromodulator_state_t* n)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_connect_neuromod: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->neuromod = n;
     bridge->contributions[PLASTICITY_NEUROMODULATOR].active = (n != NULL);
@@ -346,7 +381,10 @@ int synapse_plasticity_connect_neuromod(synapse_plasticity_bridge_t* bridge, neu
 
 int synapse_plasticity_connect_metabolic(synapse_plasticity_bridge_t* bridge, metabolic_state_t* m)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_connect_metabolic: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->metabolic = m;
     bridge->contributions[PLASTICITY_METABOLIC].active = (m != NULL);
@@ -356,7 +394,10 @@ int synapse_plasticity_connect_metabolic(synapse_plasticity_bridge_t* bridge, me
 
 int synapse_plasticity_connect_structural(synapse_plasticity_bridge_t* bridge, structural_state_t* s)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_connect_structural: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->structural = s;
     bridge->contributions[PLASTICITY_STRUCTURAL].active = (s != NULL);
@@ -366,7 +407,10 @@ int synapse_plasticity_connect_structural(synapse_plasticity_bridge_t* bridge, s
 
 int synapse_plasticity_connect_glial(synapse_plasticity_bridge_t* bridge, gliotransmission_state_t* g)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_connect_glial: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->glial = g;
     bridge->contributions[PLASTICITY_GLIOTRANSMISSION].active = (g != NULL);
@@ -376,7 +420,10 @@ int synapse_plasticity_connect_glial(synapse_plasticity_bridge_t* bridge, gliotr
 
 int synapse_plasticity_connect_sfa(synapse_plasticity_bridge_t* bridge, spike_frequency_adaptation_state_t* s)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_connect_sfa: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->sfa = s;
     bridge->contributions[PLASTICITY_SFA].active = (s != NULL);
@@ -386,7 +433,10 @@ int synapse_plasticity_connect_sfa(synapse_plasticity_bridge_t* bridge, spike_fr
 
 int synapse_plasticity_connect_intrinsic(synapse_plasticity_bridge_t* bridge, intrinsic_excitability_state_t* i)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_connect_intrinsic: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->intrinsic = i;
     bridge->contributions[PLASTICITY_INTRINSIC].active = (i != NULL);
@@ -396,7 +446,10 @@ int synapse_plasticity_connect_intrinsic(synapse_plasticity_bridge_t* bridge, in
 
 int synapse_plasticity_connect_dendritic(synapse_plasticity_bridge_t* bridge, dendritic_plasticity_state_t* d)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_connect_dendritic: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->dendritic = d;
     bridge->contributions[PLASTICITY_DENDRITIC].active = (d != NULL);
@@ -408,7 +461,14 @@ int synapse_plasticity_connect_all(
     synapse_plasticity_bridge_t* bridge,
     plasticity_orchestrator_t* orch)
 {
-    if (!bridge || !orch) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_connect_all: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!orch) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_connect_all: orch is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     bridge->orch = orch;
     /* Would query orchestrator for available mechanisms and connect */
@@ -418,7 +478,10 @@ int synapse_plasticity_connect_all(
 
 int synapse_plasticity_connect_bio_async(synapse_plasticity_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_connect_bio_async: bridge is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
     if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     bio_module_info_t info = {
@@ -456,7 +519,10 @@ int synapse_plasticity_connect_bio_async(synapse_plasticity_bridge_t* bridge)
 
 int synapse_plasticity_disconnect_bio_async(synapse_plasticity_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_disconnect_bio_async: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {
@@ -638,7 +704,10 @@ int synapse_plasticity_update(
     synapse_plasticity_bridge_t* bridge,
     float dt_ms)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_update: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -680,7 +749,14 @@ int synapse_plasticity_get_stats(
     const synapse_plasticity_bridge_t* bridge,
     synapse_plasticity_stats_t* stats)
 {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_get_stats: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "synapse_plasticity_get_stats: stats is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     *stats = bridge->stats;
     return 0;

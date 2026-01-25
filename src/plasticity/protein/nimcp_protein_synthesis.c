@@ -144,6 +144,7 @@ static void invoke_consolidation_callback(
 int protein_synthesis_default_config(protein_synthesis_config_t* config) {
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_synthesis_default_config: config is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -182,9 +183,7 @@ protein_synthesis_system_t protein_synthesis_create(
 
     if (!system) {
         NIMCP_LOGGING_ERROR("Failed to allocate protein synthesis system");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
-
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "protein_synthesis_create: failed to allocate system");
         return NULL;
     }
 
@@ -215,6 +214,7 @@ protein_synthesis_system_t protein_synthesis_create(
 
     if (!system->tags) {
         NIMCP_LOGGING_ERROR("Failed to allocate tag array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "protein_synthesis_create: failed to allocate tag array");
         nimcp_free(system);
         return NULL;
     }
@@ -233,6 +233,7 @@ protein_synthesis_system_t protein_synthesis_create(
     system->mutex = nimcp_platform_mutex_create();
     if (!system->mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "protein_synthesis_create: failed to create mutex");
         nimcp_free(system->tags);
         nimcp_free(system);
         return NULL;
@@ -274,8 +275,12 @@ int protein_synthesis_set_tag(
     uint32_t synapse_id,
     float stimulation_strength
 ) {
-    if (!system) return NIMCP_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_synthesis_set_tag: system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (stimulation_strength < 0.0f || stimulation_strength > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "protein_synthesis_set_tag: stimulation_strength out of range");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -321,7 +326,10 @@ int protein_synthesis_remove_tag(
     protein_synthesis_system_t system,
     uint32_t synapse_id
 ) {
-    if (!system) return NIMCP_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_synthesis_remove_tag: system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -357,7 +365,14 @@ int protein_synthesis_get_tag(
     uint32_t synapse_id,
     synaptic_tag_t* tag
 ) {
-    if (!system || !tag) return NIMCP_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_synthesis_get_tag: system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!tag) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_synthesis_get_tag: tag is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -406,8 +421,12 @@ int protein_synthesis_induce_synthesis(
     float boost_factor,
     uint64_t duration_ms
 ) {
-    if (!system) return NIMCP_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_synthesis_induce_synthesis: system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (boost_factor < 1.0f || boost_factor > 3.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "protein_synthesis_induce_synthesis: boost_factor out of range");
         return NIMCP_ERROR_INVALID_PARAM;
     }
 
@@ -427,8 +446,14 @@ int protein_synthesis_add_prps(
     protein_synthesis_system_t system,
     float prp_amount
 ) {
-    if (!system) return NIMCP_ERROR_NULL_POINTER;
-    if (prp_amount < 0.0f) return NIMCP_ERROR_INVALID_PARAM;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_synthesis_add_prps: system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (prp_amount < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "protein_synthesis_add_prps: prp_amount is negative");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -453,7 +478,10 @@ int protein_synthesis_consolidate_synapse(
     protein_synthesis_system_t system,
     uint32_t synapse_id
 ) {
-    if (!system) return NIMCP_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_synthesis_consolidate_synapse: system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -619,7 +647,10 @@ int protein_synthesis_update(
     protein_synthesis_system_t system,
     uint64_t delta_ms
 ) {
-    if (!system) return NIMCP_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_synthesis_update: system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -789,7 +820,14 @@ int protein_synthesis_get_stats(
     const protein_synthesis_system_t system,
     protein_synthesis_stats_t* stats
 ) {
-    if (!system || !stats) return NIMCP_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_synthesis_get_stats: system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_synthesis_get_stats: stats is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -823,7 +861,10 @@ int protein_synthesis_get_stats(
 }
 
 int protein_synthesis_reset_stats(protein_synthesis_system_t system) {
-    if (!system) return NIMCP_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_synthesis_reset_stats: system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -885,7 +926,14 @@ int protein_synthesis_get_prp_state(
     const protein_synthesis_system_t system,
     prp_pool_state_t* state
 ) {
-    if (!system || !state) return NIMCP_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_synthesis_get_prp_state: system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_synthesis_get_prp_state: state is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
     *state = system->prp_state;

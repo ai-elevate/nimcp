@@ -104,15 +104,13 @@ bool stdp_omni_bridge_validate_config(const stdp_omni_bridge_config_t* config) {
 stdp_omni_bridge_t stdp_omni_bridge_create(const stdp_omni_bridge_config_t* config) {
     stdp_omni_bridge_t bridge = nimcp_calloc(1, sizeof(struct stdp_omni_bridge_struct));
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_omni_bridge_create: failed to allocate bridge");
         return NULL;
-
     }
 
     if (config) {
         if (!stdp_omni_bridge_validate_config(config)) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_omni_bridge_create: invalid config");
             nimcp_free(bridge);
             return NULL;
         }
@@ -122,6 +120,7 @@ stdp_omni_bridge_t stdp_omni_bridge_create(const stdp_omni_bridge_config_t* conf
     }
 
     if (nimcp_platform_mutex_init(&bridge->base.mutex, false) != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_omni_bridge_create: failed to init mutex");
         nimcp_free(bridge);
         return NULL;
     }
@@ -160,8 +159,18 @@ int stdp_omni_notify_weight_change(stdp_omni_bridge_t bridge,
                                    float weight_change,
                                    stdp_omni_direction_t direction,
                                    stdp_omni_forward_effect_t* effect) {
-    if (!bridge || !bridge->initialized) return -1;
-    if (direction >= STDP_OMNI_DIR_COUNT) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_notify_weight_change: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->initialized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "stdp_omni_notify_weight_change: bridge not initialized");
+        return -1;
+    }
+    if (direction >= STDP_OMNI_DIR_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_omni_notify_weight_change: invalid direction");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(&bridge->base.mutex);
 
@@ -229,7 +238,14 @@ int stdp_omni_apply_forward_pe(stdp_omni_bridge_t bridge,
                                float prediction_error,
                                float base_lr,
                                float* modulated_lr) {
-    if (!bridge || !modulated_lr) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_apply_forward_pe: bridge is NULL");
+        return -1;
+    }
+    if (!modulated_lr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_apply_forward_pe: modulated_lr is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_forward_pe) {
         *modulated_lr = base_lr;
         return 0;
@@ -253,7 +269,14 @@ int stdp_omni_apply_backward_pe(stdp_omni_bridge_t bridge,
                                 float prediction_error,
                                 float base_lr,
                                 float* modulated_lr) {
-    if (!bridge || !modulated_lr) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_apply_backward_pe: bridge is NULL");
+        return -1;
+    }
+    if (!modulated_lr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_apply_backward_pe: modulated_lr is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_backward_pe) {
         *modulated_lr = base_lr;
         return 0;
@@ -277,7 +300,14 @@ int stdp_omni_apply_lateral_pe(stdp_omni_bridge_t bridge,
                                float prediction_error,
                                float base_lr,
                                float* modulated_lr) {
-    if (!bridge || !modulated_lr) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_apply_lateral_pe: bridge is NULL");
+        return -1;
+    }
+    if (!modulated_lr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_apply_lateral_pe: modulated_lr is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_lateral_pe) {
         *modulated_lr = base_lr;
         return 0;
@@ -301,7 +331,14 @@ int stdp_omni_apply_precision(stdp_omni_bridge_t bridge,
                               float precision,
                               float base_lr,
                               float* modulated_lr) {
-    if (!bridge || !modulated_lr) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_apply_precision: bridge is NULL");
+        return -1;
+    }
+    if (!modulated_lr) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_apply_precision: modulated_lr is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_precision_modulation) {
         *modulated_lr = base_lr;
         return 0;
@@ -325,7 +362,14 @@ int stdp_omni_compute_modulation(stdp_omni_bridge_t bridge,
                                  float lateral_pe, float precision,
                                  float base_a_plus, float base_a_minus,
                                  stdp_omni_backward_effect_t* effect) {
-    if (!bridge || !effect) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_compute_modulation: bridge is NULL");
+        return -1;
+    }
+    if (!effect) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_compute_modulation: effect is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(&bridge->base.mutex);
 
@@ -382,7 +426,14 @@ int stdp_omni_compute_modulation(stdp_omni_bridge_t bridge,
 
 int stdp_omni_bridge_get_state(stdp_omni_bridge_t bridge,
                                stdp_omni_bridge_state_t* state) {
-    if (!bridge || !state) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_bridge_get_state: bridge is NULL");
+        return -1;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_bridge_get_state: state is NULL");
+        return -1;
+    }
     nimcp_platform_mutex_lock(&bridge->base.mutex);
     *state = bridge->state;
     nimcp_platform_mutex_unlock(&bridge->base.mutex);
@@ -391,7 +442,14 @@ int stdp_omni_bridge_get_state(stdp_omni_bridge_t bridge,
 
 int stdp_omni_bridge_get_stats(stdp_omni_bridge_t bridge,
                                stdp_omni_bridge_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_bridge_get_stats: bridge is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_bridge_get_stats: stats is NULL");
+        return -1;
+    }
     nimcp_platform_mutex_lock(&bridge->base.mutex);
     *stats = bridge->stats;
     nimcp_platform_mutex_unlock(&bridge->base.mutex);
@@ -399,7 +457,10 @@ int stdp_omni_bridge_get_stats(stdp_omni_bridge_t bridge,
 }
 
 int stdp_omni_bridge_reset_stats(stdp_omni_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
     nimcp_platform_mutex_lock(&bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     nimcp_platform_mutex_unlock(&bridge->base.mutex);
@@ -407,7 +468,10 @@ int stdp_omni_bridge_reset_stats(stdp_omni_bridge_t bridge) {
 }
 
 int stdp_omni_bridge_update(stdp_omni_bridge_t bridge, float dt_ms) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_omni_bridge_update: bridge is NULL");
+        return -1;
+    }
     (void)dt_ms;
 
     nimcp_platform_mutex_lock(&bridge->base.mutex);

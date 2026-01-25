@@ -72,6 +72,7 @@ int metaplasticity_immune_default_config(metaplasticity_immune_config_t* config)
     /* Guard clause */
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config in default_config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_immune_default_config: config is NULL");
         return -1;
     }
 
@@ -101,8 +102,14 @@ metaplasticity_immune_bridge_t* metaplasticity_immune_bridge_create(
     metaplasticity_controller_t metaplasticity_controller
 ) {
     /* Guard clauses */
-    if (!immune_system || !metaplasticity_controller) {
-        NIMCP_LOGGING_ERROR("NULL parameters in bridge create");
+    if (!immune_system) {
+        NIMCP_LOGGING_ERROR("NULL immune_system in bridge create");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_immune_bridge_create: immune_system is NULL");
+        return NULL;
+    }
+    if (!metaplasticity_controller) {
+        NIMCP_LOGGING_ERROR("NULL metaplasticity_controller in bridge create");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_immune_bridge_create: metaplasticity_controller is NULL");
         return NULL;
     }
 
@@ -113,8 +120,7 @@ metaplasticity_immune_bridge_t* metaplasticity_immune_bridge_create(
         );
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate immune bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metaplasticity_immune_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -155,12 +161,15 @@ metaplasticity_immune_bridge_t* metaplasticity_immune_bridge_create(
     bridge->base.mutex = nimcp_malloc(sizeof(nimcp_platform_mutex_t));
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metaplasticity_immune_bridge_create: failed to allocate mutex");
         nimcp_free(bridge);
         return NULL;
     }
 
     if (nimcp_platform_mutex_init((nimcp_platform_mutex_t*)bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "metaplasticity_immune_bridge_create: mutex init failed");
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -199,6 +208,7 @@ int metaplasticity_immune_apply_cytokine_effects(
     /* Guard clause */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in apply_cytokine_effects");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_immune_apply_cytokine_effects: bridge is NULL");
         return -1;
     }
 
@@ -269,6 +279,7 @@ int metaplasticity_immune_apply_inflammation_effects(
     /* Guard clause */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in apply_inflammation_effects");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_immune_apply_inflammation_effects: bridge is NULL");
         return -1;
     }
 
@@ -346,8 +357,14 @@ int metaplasticity_immune_get_modulation_state(
     metaplasticity_modulation_state_t* modulation
 ) {
     /* Guard clauses */
-    if (!bridge || !modulation) {
-        NIMCP_LOGGING_ERROR("NULL parameters in get_modulation_state");
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("NULL bridge in get_modulation_state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_immune_get_modulation_state: bridge is NULL");
+        return -1;
+    }
+    if (!modulation) {
+        NIMCP_LOGGING_ERROR("NULL modulation in get_modulation_state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_immune_get_modulation_state: modulation is NULL");
         return -1;
     }
 
@@ -388,10 +405,14 @@ int metaplasticity_immune_restore_metaplasticity(
     /* Guard clause */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in restore_metaplasticity");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_immune_restore_metaplasticity: bridge is NULL");
         return -1;
     }
 
     /* Clamp recovery factor */
+    if (recovery_factor < 0.0f || recovery_factor > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metaplasticity_immune_restore_metaplasticity: recovery_factor out of range");
+    }
     if (recovery_factor < 0.0f) recovery_factor = 0.0f;
     if (recovery_factor > 1.0f) recovery_factor = 1.0f;
 
@@ -426,6 +447,7 @@ int metaplasticity_immune_detect_instability(
     /* Guard clause */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in detect_instability");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_immune_detect_instability: bridge is NULL");
         return -1;
     }
 
@@ -495,8 +517,14 @@ int metaplasticity_immune_alert_instability(
     uint32_t* antigen_id
 ) {
     /* Guard clauses */
-    if (!bridge || !antigen_id) {
-        NIMCP_LOGGING_ERROR("NULL parameters in alert_instability");
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("NULL bridge in alert_instability");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_immune_alert_instability: bridge is NULL");
+        return -1;
+    }
+    if (!antigen_id) {
+        NIMCP_LOGGING_ERROR("NULL antigen_id in alert_instability");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_immune_alert_instability: antigen_id is NULL");
         return -1;
     }
 
@@ -534,6 +562,7 @@ int metaplasticity_immune_signal_healthy_homeostasis(
     /* Guard clause */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in signal_healthy_homeostasis");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_immune_signal_healthy_homeostasis: bridge is NULL");
         return -1;
     }
 
@@ -569,6 +598,7 @@ int metaplasticity_immune_bridge_update(
     /* Guard clause */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in bridge_update");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_immune_bridge_update: bridge is NULL");
         return -1;
     }
 
@@ -600,7 +630,14 @@ int metaplasticity_immune_get_cytokine_effects(
     const metaplasticity_immune_bridge_t* bridge,
     cytokine_metaplasticity_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_immune_get_cytokine_effects: bridge is NULL");
+        return -1;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_immune_get_cytokine_effects: effects is NULL");
+        return -1;
+    }
     *effects = bridge->cytokine_effects;
     return 0;
 }
@@ -609,7 +646,14 @@ int metaplasticity_immune_get_inflammation_state(
     const metaplasticity_immune_bridge_t* bridge,
     inflammation_metaplasticity_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_immune_get_inflammation_state: bridge is NULL");
+        return -1;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_immune_get_inflammation_state: state is NULL");
+        return -1;
+    }
     *state = bridge->inflammation_state;
     return 0;
 }
@@ -618,7 +662,14 @@ int metaplasticity_immune_get_instability_state(
     const metaplasticity_immune_bridge_t* bridge,
     metaplasticity_instability_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_immune_get_instability_state: bridge is NULL");
+        return -1;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_immune_get_instability_state: state is NULL");
+        return -1;
+    }
     *state = bridge->instability_state;
     return 0;
 }

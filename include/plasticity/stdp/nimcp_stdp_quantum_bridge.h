@@ -115,6 +115,7 @@ void stdp_quantum_reset_stats(stdp_quantum_bridge_t* bridge);
 
 #include <stdlib.h>
 #include <string.h>
+#include "utils/exception/nimcp_exception_macros.h"
 
 struct stdp_quantum_bridge {
     bridge_base_t base;               /**< MUST be first: base bridge infrastructure */
@@ -140,7 +141,10 @@ stdp_quantum_bridge_t* stdp_quantum_bridge_create(
     const stdp_quantum_config_t* config
 ) {
     stdp_quantum_bridge_t* bridge = (stdp_quantum_bridge_t*)calloc(1, sizeof(*bridge));
-    if (!bridge) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_quantum_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     bridge->config = config ? *config : stdp_quantum_default_config();
 
@@ -153,6 +157,7 @@ stdp_quantum_bridge_t* stdp_quantum_bridge_create(
 
     bridge->optimizer = qstdp_optimizer_create(&qconfig);
     if (!bridge->optimizer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_quantum_bridge_create: failed to create quantum optimizer");
         free(bridge);
         return NULL;
     }
@@ -162,21 +167,39 @@ stdp_quantum_bridge_t* stdp_quantum_bridge_create(
 }
 
 void stdp_quantum_bridge_destroy(stdp_quantum_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_quantum_bridge_destroy: bridge is NULL");
+        return;
+    }
     if (bridge->optimizer) qstdp_optimizer_destroy(bridge->optimizer);
     free(bridge);
 }
 
 bool stdp_quantum_bridge_is_enabled(const stdp_quantum_bridge_t* bridge) {
-    return bridge && bridge->config.enabled;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_quantum_bridge_is_enabled: bridge is NULL");
+        return false;
+    }
+    return bridge->config.enabled;
 }
 
 void stdp_quantum_bridge_set_enabled(stdp_quantum_bridge_t* bridge, bool enabled) {
-    if (bridge) bridge->config.enabled = enabled;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_quantum_bridge_set_enabled: bridge is NULL");
+        return;
+    }
+    bridge->config.enabled = enabled;
 }
 
 float stdp_quantum_get_lr(stdp_quantum_bridge_t* bridge) {
-    if (!bridge || !bridge->optimizer) return 0.01f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_quantum_get_lr: bridge is NULL");
+        return 0.01f;
+    }
+    if (!bridge->optimizer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "stdp_quantum_get_lr: optimizer is NULL");
+        return 0.01f;
+    }
 
     float lr = 0.01f;
     qstdp_optimizer_get_params(bridge->optimizer, &lr, NULL, NULL, NULL, NULL);
@@ -187,7 +210,14 @@ float stdp_quantum_step(
     stdp_quantum_bridge_t* bridge,
     const qstdp_activity_stats_t* stats
 ) {
-    if (!bridge || !bridge->optimizer) return 0.01f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_quantum_step: bridge is NULL");
+        return 0.01f;
+    }
+    if (!bridge->optimizer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "stdp_quantum_step: optimizer is NULL");
+        return 0.01f;
+    }
 
     float new_lr = qstdp_optimizer_step(bridge->optimizer, stats);
 
@@ -204,7 +234,18 @@ int stdp_quantum_get_params(
     stdp_quantum_bridge_t* bridge,
     stdp_quantum_params_t* params_out
 ) {
-    if (!bridge || !bridge->optimizer || !params_out) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_quantum_get_params: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->optimizer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "stdp_quantum_get_params: optimizer is NULL");
+        return -1;
+    }
+    if (!params_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_quantum_get_params: params_out is NULL");
+        return -1;
+    }
 
     return qstdp_optimizer_get_params(bridge->optimizer,
                                        &params_out->learning_rate,
@@ -215,7 +256,11 @@ int stdp_quantum_get_params(
 }
 
 void stdp_quantum_reset(stdp_quantum_bridge_t* bridge) {
-    if (bridge && bridge->optimizer) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_quantum_reset: bridge is NULL");
+        return;
+    }
+    if (bridge->optimizer) {
         qstdp_optimizer_reset(bridge->optimizer);
     }
 }
@@ -224,13 +269,24 @@ int stdp_quantum_get_stats(
     const stdp_quantum_bridge_t* bridge,
     stdp_quantum_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_quantum_get_stats: bridge is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_quantum_get_stats: stats is NULL");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 void stdp_quantum_reset_stats(stdp_quantum_bridge_t* bridge) {
-    if (bridge) memset(&bridge->stats, 0, sizeof(bridge->stats));
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_quantum_reset_stats: bridge is NULL");
+        return;
+    }
+    memset(&bridge->stats, 0, sizeof(bridge->stats));
 }
 
 #endif // NIMCP_STDP_QUANTUM_BRIDGE_IMPLEMENTATION

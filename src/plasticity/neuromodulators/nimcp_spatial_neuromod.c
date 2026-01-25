@@ -550,7 +550,13 @@ spatial_neuromod_field_t* spatial_neuromod_create(uint32_t num_neurons,
     // COMPLEXITY: O(N) memory, O(N) time
     // MEMORY: ~3*N*sizeof(float) + overhead (~12N bytes for 32-bit floats)
 
-    if (!config || num_neurons == 0 || num_neurons > MAX_NEURONS) {
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_create: config is NULL");
+        LOG_ERROR("Invalid parameters for spatial neuromodulator creation");
+        return NULL;
+    }
+    if (num_neurons == 0 || num_neurons > MAX_NEURONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_neuromod_create: invalid num_neurons");
         LOG_ERROR("Invalid parameters for spatial neuromodulator creation");
         return NULL;
     }
@@ -559,9 +565,8 @@ spatial_neuromod_field_t* spatial_neuromod_create(uint32_t num_neurons,
     spatial_neuromod_field_t* field = (spatial_neuromod_field_t*)
         nimcp_aligned_alloc(64, sizeof(spatial_neuromod_field_t));
     if (!field) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "spatial_neuromod_create: failed to allocate field");
         LOG_ERROR("Failed to allocate spatial neuromodulator field");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "field is NULL");
-
         return NULL;
     }
 
@@ -583,6 +588,7 @@ spatial_neuromod_field_t* spatial_neuromod_create(uint32_t num_neurons,
     field->laplacian_buffer = (float*)nimcp_aligned_alloc(64, num_neurons * sizeof(float));
 
     if (!field->concentration || !field->source_rate || !field->laplacian_buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "spatial_neuromod_create: failed to allocate concentration arrays");
         LOG_ERROR("Failed to allocate concentration arrays");
         spatial_neuromod_destroy(field);
         return NULL;
@@ -667,7 +673,18 @@ spatial_neuromod_system_t* spatial_neuromod_system_create(
     // WHY:  Manage all neuromodulator types in one system
     // HOW:  Create individual fields for each enabled type
 
-    if (!network || !enabled_types || !configs) {
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_system_create: network is NULL");
+        LOG_ERROR("Invalid parameters for spatial neuromodulator system creation");
+        return NULL;
+    }
+    if (!enabled_types) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_system_create: enabled_types is NULL");
+        LOG_ERROR("Invalid parameters for spatial neuromodulator system creation");
+        return NULL;
+    }
+    if (!configs) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_system_create: configs is NULL");
         LOG_ERROR("Invalid parameters for spatial neuromodulator system creation");
         return NULL;
     }
@@ -675,9 +692,8 @@ spatial_neuromod_system_t* spatial_neuromod_system_create(
     spatial_neuromod_system_t* system = (spatial_neuromod_system_t*)
         nimcp_aligned_alloc(64, sizeof(spatial_neuromod_system_t));
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "spatial_neuromod_system_create: failed to allocate system");
         LOG_ERROR("Failed to allocate spatial neuromodulator system");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "system is NULL");
-
         return NULL;
     }
 
@@ -693,6 +709,7 @@ spatial_neuromod_system_t* spatial_neuromod_system_create(
         if (enabled_types[i]) {
             system->fields[i] = spatial_neuromod_create(num_neurons, &configs[i]);
             if (!system->fields[i]) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "spatial_neuromod_system_create: failed to create field");
                 LOG_ERROR("Failed to create field for neuromodulator type %d", i);
                 spatial_neuromod_system_destroy(system);
                 return NULL;
@@ -779,16 +796,19 @@ bool spatial_neuromod_system_update(
 
     // Guard: Validate inputs
     if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_system_update: system is NULL");
         LOG_ERROR("Null system in spatial_neuromod_system_update");
         return false;
     }
 
     if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_system_update: network is NULL");
         LOG_ERROR("Null network in spatial_neuromod_system_update");
         return false;
     }
 
     if (dt <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_neuromod_system_update: invalid timestep");
         LOG_ERROR("Invalid timestep dt=%.6f in spatial_neuromod_system_update", dt);
         return false;
     }
@@ -830,7 +850,18 @@ bool spatial_neuromod_compute_laplacian(const spatial_neuromod_field_t* field,
     // COMPLEXITY: O(E) where E = number of edges (synapses)
     // PERFORMANCE: ~10μs per 1000 neurons with avg degree 50
 
-    if (!field || !network || !laplacian) {
+    if (!field) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_compute_laplacian: field is NULL");
+        LOG_ERROR("Invalid parameters for Laplacian computation");
+        return false;
+    }
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_compute_laplacian: network is NULL");
+        LOG_ERROR("Invalid parameters for Laplacian computation");
+        return false;
+    }
+    if (!laplacian) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_compute_laplacian: laplacian is NULL");
         LOG_ERROR("Invalid parameters for Laplacian computation");
         return false;
     }
@@ -898,7 +929,13 @@ bool spatial_neuromod_update(spatial_neuromod_field_t* field,
     // COMPLEXITY: O(E) per substep, where E = edges
     // TYPICAL: ~50μs for 1000 neurons, degree=50, 1 substep
 
-    if (!field || !network) {
+    if (!field) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_update: field is NULL");
+        LOG_ERROR("Invalid parameters for spatial neuromodulator update");
+        return false;
+    }
+    if (!network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_update: network is NULL");
         LOG_ERROR("Invalid parameters for spatial neuromodulator update");
         return false;
     }
@@ -1057,11 +1094,13 @@ bool spatial_neuromod_release(spatial_neuromod_field_t* field,
     //            This allows diffusion update to handle spatial/temporal dynamics
 
     if (!field) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_release: field is NULL");
         LOG_ERROR("NULL field in spatial_neuromod_release");
         return false;
     }
 
     if (!is_valid_neuron_id(neuron_id, field->num_neurons)) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "spatial_neuromod_release: invalid neuron_id");
         LOG_ERROR("Invalid neuron_id=%u (max=%u)", neuron_id, field->num_neurons);
         return false;
     }
@@ -1087,7 +1126,18 @@ bool spatial_neuromod_release_batch(spatial_neuromod_field_t* field,
     // WHY:  Efficient for simultaneous releases
     // HOW:  Loop over arrays, update source terms
 
-    if (!field || !neuron_ids || !amounts) {
+    if (!field) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_release_batch: field is NULL");
+        LOG_ERROR("Invalid parameters for batch release");
+        return false;
+    }
+    if (!neuron_ids) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_release_batch: neuron_ids is NULL");
+        LOG_ERROR("Invalid parameters for batch release");
+        return false;
+    }
+    if (!amounts) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "spatial_neuromod_release_batch: amounts is NULL");
         LOG_ERROR("Invalid parameters for batch release");
         return false;
     }

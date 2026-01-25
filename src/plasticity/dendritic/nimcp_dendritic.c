@@ -263,6 +263,7 @@ float nmda_compute_block(float voltage, const nmda_params_t* params) {
 
     /* Guard: Validate input */
     if (!params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nmda_compute_block: params is NULL");
         return 0.0F;
     }
 
@@ -287,8 +288,18 @@ void nmda_update_kinetics(dendritic_nmda_state_t* state,
      */
 
     /* Guard: Validate inputs */
-    if (!state || !params) return;
-    if (dt <= 0.0F) return;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nmda_update_kinetics: state is NULL");
+        return;
+    }
+    if (!params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nmda_update_kinetics: params is NULL");
+        return;
+    }
+    if (dt <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "nmda_update_kinetics: dt must be positive");
+        return;
+    }
 
     /* Clamp glutamate to [0,1] */
     glutamate = clamp_f(glutamate, 0.0F, 1.0F);
@@ -324,7 +335,14 @@ float nmda_compute_current(const dendritic_nmda_state_t* state,
      */
 
     /* Guard: Validate inputs */
-    if (!state || !params) return 0.0F;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nmda_compute_current: state is NULL");
+        return 0.0F;
+    }
+    if (!params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nmda_compute_current: params is NULL");
+        return 0.0F;
+    }
 
     /* Compute voltage-dependent block */
     float block = nmda_compute_block(voltage, params);
@@ -350,7 +368,14 @@ float nmda_compute_calcium_influx(const dendritic_nmda_state_t* state,
      */
 
     /* Guard: Validate inputs */
-    if (!state || !params) return 0.0F;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nmda_compute_calcium_influx: state is NULL");
+        return 0.0F;
+    }
+    if (!params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "nmda_compute_calcium_influx: params is NULL");
+        return 0.0F;
+    }
 
     /* Compute block and conductance */
     float block = nmda_compute_block(voltage, params);
@@ -401,8 +426,18 @@ void compartment_integrate(compartment_state_t* state,
      */
 
     /* Guard: Validate inputs */
-    if (!state || !params) return;
-    if (dt <= 0.0F) return;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compartment_integrate: state is NULL");
+        return;
+    }
+    if (!params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compartment_integrate: params is NULL");
+        return;
+    }
+    if (dt <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "compartment_integrate: dt must be positive");
+        return;
+    }
 
     /* Store previous voltage for spike detection */
     state->voltage_prev = state->voltage;
@@ -464,7 +499,14 @@ bool compartment_check_spike(compartment_state_t* state,
      */
 
     /* Guard: Validate inputs */
-    if (!state || !params) return false;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compartment_check_spike: state is NULL");
+        return false;
+    }
+    if (!params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "compartment_check_spike: params is NULL");
+        return false;
+    }
 
     /* Already in spike state */
     if (state->spike_active) return false;
@@ -532,11 +574,13 @@ dendritic_tree_t dendritic_tree_create(const dendritic_tree_config_t* config) {
     }
     if (config->num_branches == 0 || config->num_branches > DENDRITIC_MAX_BRANCHES) {
         NIMCP_LOGGING_ERROR("Invalid num_branches: %u", config->num_branches);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendritic_tree_create: invalid num_branches");
         return NULL;
     }
     if (config->compartments_per_branch == 0 ||
         config->compartments_per_branch > DENDRITIC_MAX_COMPARTMENTS) {
         NIMCP_LOGGING_ERROR("Invalid compartments_per_branch: %u", config->compartments_per_branch);
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendritic_tree_create: invalid compartments_per_branch");
         return NULL;
     }
 
@@ -544,8 +588,7 @@ dendritic_tree_t dendritic_tree_create(const dendritic_tree_config_t* config) {
     dendritic_tree_t tree = nimcp_calloc(1, sizeof(struct dendritic_tree_struct));
     if (!tree) {
         NIMCP_LOGGING_ERROR("Failed to allocate dendritic tree");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "tree is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendritic_tree_create: failed to allocate tree");
         return NULL;
     }
 
@@ -563,6 +606,7 @@ dendritic_tree_t dendritic_tree_create(const dendritic_tree_config_t* config) {
     /* Allocate branches */
     tree->branches = nimcp_calloc(config->num_branches, sizeof(dendritic_branch_t));
     if (!tree->branches) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendritic_tree_create: failed to allocate branches");
         dendritic_tree_destroy(tree);
         return NULL;
     }
@@ -571,6 +615,7 @@ dendritic_tree_t dendritic_tree_create(const dendritic_tree_config_t* config) {
     if (config->enable_nmda) {
         tree->nmda_states = nimcp_calloc(config->num_branches, sizeof(dendritic_nmda_state_t*));
         if (!tree->nmda_states) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendritic_tree_create: failed to allocate nmda_states");
             dendritic_tree_destroy(tree);
             return NULL;
         }
@@ -588,6 +633,7 @@ dendritic_tree_t dendritic_tree_create(const dendritic_tree_config_t* config) {
         branch->params = nimcp_calloc(config->compartments_per_branch,
                                       sizeof(compartment_params_t));
         if (!branch->params) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendritic_tree_create: failed to allocate branch params");
             dendritic_tree_destroy(tree);
             return NULL;
         }
@@ -596,6 +642,7 @@ dendritic_tree_t dendritic_tree_create(const dendritic_tree_config_t* config) {
         branch->states = nimcp_calloc(config->compartments_per_branch,
                                       sizeof(compartment_state_t));
         if (!branch->states) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendritic_tree_create: failed to allocate branch states");
             dendritic_tree_destroy(tree);
             return NULL;
         }
@@ -623,6 +670,7 @@ dendritic_tree_t dendritic_tree_create(const dendritic_tree_config_t* config) {
             tree->nmda_states[b] = nimcp_calloc(config->compartments_per_branch,
                                                 sizeof(dendritic_nmda_state_t));
             if (!tree->nmda_states[b]) {
+                NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendritic_tree_create: failed to allocate nmda_states for branch");
                 dendritic_tree_destroy(tree);
                 return NULL;
             }
@@ -681,9 +729,18 @@ void dendritic_tree_inject_input(dendritic_tree_t tree,
      */
 
     /* Guard: Validate inputs */
-    if (!tree) return;
-    if (branch_id >= tree->num_branches) return;
-    if (compartment_id >= tree->branches[branch_id].num_compartments) return;
+    if (!tree) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_tree_inject_input: tree is NULL");
+        return;
+    }
+    if (branch_id >= tree->num_branches) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendritic_tree_inject_input: invalid branch_id");
+        return;
+    }
+    if (compartment_id >= tree->branches[branch_id].num_compartments) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendritic_tree_inject_input: invalid compartment_id");
+        return;
+    }
 
     dendritic_branch_t* branch = &tree->branches[branch_id];
     compartment_state_t* state = &branch->states[compartment_id];
@@ -717,7 +774,14 @@ void dendritic_tree_update(dendritic_tree_t tree, float dt) {
      */
 
     /* Guard: Validate inputs */
-    if (!tree || dt <= 0.0F) return;
+    if (!tree) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_tree_update: tree is NULL");
+        return;
+    }
+    if (dt <= 0.0F) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "dendritic_tree_update: dt must be positive");
+        return;
+    }
 
     tree->stats.total_updates++;
     float total_voltage = 0.0F;
@@ -833,7 +897,14 @@ bool dendritic_tree_get_stats(dendritic_tree_t tree,
     /* WHAT: Retrieve monitoring metrics
      * WHY:  Track dendritic activity
      */
-    if (!tree || !stats) return false;
+    if (!tree) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_tree_get_stats: tree is NULL");
+        return false;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendritic_tree_get_stats: stats is NULL");
+        return false;
+    }
 
     memcpy(stats, &tree->stats, sizeof(dendritic_tree_stats_t));
     return true;

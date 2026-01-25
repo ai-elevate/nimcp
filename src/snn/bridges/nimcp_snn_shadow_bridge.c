@@ -85,7 +85,10 @@ void snn_shadow_bridge_destroy(snn_shadow_bridge_t* bridge) {
 }
 
 int snn_shadow_bridge_connect_bio_async(snn_shadow_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_shadow_bridge_connect_bio_async: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -118,7 +121,10 @@ bool snn_shadow_bridge_is_bio_async_connected(const snn_shadow_bridge_t* bridge)
 }
 
 int snn_shadow_bridge_update(snn_shadow_bridge_t* bridge, float dt) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_shadow_bridge_update: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     bridge->last_update_time += dt;
     if (bridge->last_update_time < bridge->config.update_interval_ms) {
@@ -164,7 +170,10 @@ int snn_shadow_decode_from_spikes(
     float* shadow_activity_out,
     float* dmn_activity_out
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_shadow_decode_from_spikes: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     float shadow_rate = 0.0f, dmn_rate = 0.0f;
 
@@ -191,7 +200,14 @@ int snn_shadow_detect_background_pattern(
     snn_shadow_bridge_t* bridge,
     snn_background_pattern_state_t* background_state
 ) {
-    if (!bridge || !background_state) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_shadow_detect_background_pattern: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!background_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_shadow_detect_background_pattern: background_state is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     float center_freq = (bridge->config.background_frequency_min +
                         bridge->config.background_frequency_max) / 2.0f;
@@ -221,7 +237,10 @@ int snn_shadow_detect_integration_event(
     snn_shadow_bridge_t* bridge,
     bool* integration_detected
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_shadow_detect_integration_event: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     bool detected = (bridge->state.background.coherence > bridge->config.coherence_threshold &&
                     bridge->state.background.is_active);
@@ -232,7 +251,10 @@ int snn_shadow_detect_integration_event(
 }
 
 int snn_shadow_modulate_populations(snn_shadow_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_shadow_modulate_populations: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     bridge->state.resting_state_level = bridge->config.resting_state_baseline +
                                         bridge->state.shadow_activity_level * 0.3f;
@@ -248,7 +270,10 @@ int snn_shadow_encode_to_spikes(
     float shadow_activity,
     float integration_progress
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_shadow_encode_to_spikes: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     return 0;
 }
 
@@ -256,7 +281,14 @@ int snn_shadow_bridge_get_state(
     const snn_shadow_bridge_t* bridge,
     snn_shadow_state_t* state
 ) {
-    if (!bridge || !state) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_shadow_bridge_get_state: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_shadow_bridge_get_state: state is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -279,7 +311,10 @@ int snn_shadow_get_stats(
     uint32_t* integration_events,
     float* avg_shadow_activity
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_shadow_get_stats: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (sync_count) *sync_count = bridge->state.sync_count;
     if (integration_events) *integration_events = bridge->state.integration_events;
     if (avg_shadow_activity) *avg_shadow_activity = bridge->state.avg_shadow_activity;

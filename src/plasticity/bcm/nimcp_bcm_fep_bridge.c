@@ -56,7 +56,10 @@ bcm_fep_bridge_t* bcm_fep_bridge_create(const bcm_fep_config_t* config) {
 }
 
 void bcm_fep_bridge_destroy(bcm_fep_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_fep_bridge_destroy: bridge is NULL");
+        return;
+    }
     if (bridge->base.bio_async_enabled) bcm_fep_bridge_disconnect_bio_async(bridge);
     if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
@@ -94,7 +97,11 @@ int bcm_fep_bridge_disconnect(bcm_fep_bridge_t* bridge) {
 }
 
 float bcm_fep_apply_complexity_regularization(bcm_fep_bridge_t* bridge, float complexity) {
-    if (!bridge || !bridge->config.enable_complexity_regularization) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_fep_apply_complexity_regularization: bridge is NULL");
+        return 1.0f;
+    }
+    if (!bridge->config.enable_complexity_regularization) return 1.0f;
     float clamped = fminf(fmaxf(complexity, BCM_FEP_COMPLEXITY_MIN), BCM_FEP_COMPLEXITY_MAX);
     float scaling = 1.0f + clamped * bridge->config.complexity_threshold_gain;
     /* Store values for get_effective_threshold to use */
@@ -108,23 +115,37 @@ float bcm_fep_apply_complexity_regularization(bcm_fep_bridge_t* bridge, float co
 }
 
 float bcm_fep_apply_precision_modulation(bcm_fep_bridge_t* bridge, float precision) {
-    if (!bridge || !bridge->config.enable_precision_modulation) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_fep_apply_precision_modulation: bridge is NULL");
+        return 1.0f;
+    }
+    if (!bridge->config.enable_precision_modulation) return 1.0f;
     return precision * bridge->config.precision_selectivity_gain;
 }
 
 float bcm_fep_apply_pe_gating(bcm_fep_bridge_t* bridge, float pe) {
-    if (!bridge || !bridge->config.enable_pe_gating) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_fep_apply_pe_gating: bridge is NULL");
+        return 1.0f;
+    }
+    if (!bridge->config.enable_pe_gating) return 1.0f;
     float scaling = 1.0f + fabsf(pe) * bridge->config.pe_lr_sensitivity;
     return fminf(fmaxf(scaling, bridge->config.lr_min_factor), bridge->config.lr_max_factor);
 }
 
 float bcm_fep_get_effective_threshold(const bcm_fep_bridge_t* bridge, float base_threshold) {
-    if (!bridge) return base_threshold;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_fep_get_effective_threshold: bridge is NULL");
+        return base_threshold;
+    }
     return base_threshold * bridge->effects.total_threshold_modulation;
 }
 
 float bcm_fep_get_effective_lr(const bcm_fep_bridge_t* bridge, float base_lr) {
-    if (!bridge) return base_lr;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_fep_get_effective_lr: bridge is NULL");
+        return base_lr;
+    }
     return base_lr * bridge->effects.total_lr_modulation;
 }
 
@@ -137,7 +158,14 @@ int bcm_fep_report_threshold_changes(bcm_fep_bridge_t* bridge, float threshold_d
 }
 
 float bcm_fep_compute_sparsity(const bcm_fep_bridge_t* bridge) {
-    if (!bridge || !bridge->bcm_system) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_fep_compute_sparsity: bridge is NULL");
+        return 0.0f;
+    }
+    if (!bridge->bcm_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "bcm_fep_compute_sparsity: bcm_system not connected");
+        return 0.0f;
+    }
     uint32_t active = 0;
     for (uint32_t i = 0; i < bridge->num_synapses; i++) {
         if (bridge->bcm_system[i].weight > 0.1f) active++;
@@ -220,5 +248,9 @@ int bcm_fep_bridge_disconnect_bio_async(bcm_fep_bridge_t* bridge) {
 }
 
 bool bcm_fep_bridge_is_bio_async_connected(const bcm_fep_bridge_t* bridge) {
-    return bridge ? bridge->base.bio_async_enabled : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bcm_fep_bridge_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }

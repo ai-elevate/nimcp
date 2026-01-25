@@ -95,6 +95,10 @@ vesicle_pool_config_t vesicle_pool_get_default_config(void) {
 // ============================================================================
 
 void vesicle_pool_init(vesicle_pool_state_t* pool) {
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pool_init: null pool pointer");
+        return;
+    }
     vesicle_pool_config_t default_config = vesicle_pool_get_default_config();
     vesicle_pool_init_with_config(pool, &default_config);
 }
@@ -103,6 +107,15 @@ void vesicle_pool_init_with_config(
     vesicle_pool_state_t* pool,
     const vesicle_pool_config_t* config
 ) {
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pool_init_with_config: null pool pointer");
+        return;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pool_init_with_config: null config pointer");
+        return;
+    }
+
     // Zero all memory
     memset(pool, 0, sizeof(*pool));
 
@@ -146,6 +159,11 @@ void vesicle_pool_init_with_config(
 }
 
 void vesicle_pool_reset(vesicle_pool_state_t* pool) {
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pool_reset: null pool pointer");
+        return;
+    }
+
     // Restore pools to full capacity
     pool->readily_releasable_pool = pool->rrp_capacity;
     pool->recycling_pool = pool->recycling_capacity;
@@ -175,6 +193,11 @@ float vesicle_pool_release(
     bool action_potential,
     uint64_t current_time_us
 ) {
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pool_release: null pool pointer");
+        return 0.0F;
+    }
+
     // === Guard: No action potential ===
     if (!action_potential) {
         return 0.0F;
@@ -227,6 +250,11 @@ float vesicle_pool_release(
 }
 
 void vesicle_pool_update_facilitation(vesicle_pool_state_t* pool, float dt) {
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pool_update_facilitation: null pool pointer");
+        return;
+    }
+
     // === 1. Exponential Decay of Calcium Residual ===
     // Ca_residual(t) = Ca_residual(0) * exp(-t/τ)
     float decay_alpha = expf(-dt / pool->ca_decay_tau);
@@ -251,6 +279,11 @@ void vesicle_pool_update_facilitation(vesicle_pool_state_t* pool, float dt) {
 // ============================================================================
 
 void vesicle_pool_refill(vesicle_pool_state_t* pool, float dt) {
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pool_refill: null pool pointer");
+        return;
+    }
+
     // === 1. Accumulate Fractional Vesicles ===
     // Rate is in vesicles/second, dt is in seconds
     pool->refill_accumulator += pool->refill_rate * dt;
@@ -302,6 +335,11 @@ void vesicle_pool_refill(vesicle_pool_state_t* pool, float dt) {
 }
 
 void vesicle_pool_mobilize_reserve(vesicle_pool_state_t* pool, float dt) {
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pool_mobilize_reserve: null pool pointer");
+        return;
+    }
+
     // === 1. Accumulate Fractional Vesicles ===
     pool->mobilization_accumulator += pool->mobilization_rate * dt;
 
@@ -339,6 +377,11 @@ void vesicle_pool_mobilize_reserve(vesicle_pool_state_t* pool, float dt) {
 }
 
 void vesicle_pool_update(vesicle_pool_state_t* pool, float dt) {
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pool_update: null pool pointer");
+        return;
+    }
+
     // === 1. Refill RRP from Recycling ===
     vesicle_pool_refill(pool, dt);
 
@@ -361,6 +404,11 @@ void vesicle_pool_get_stats(
     float* depletion_fraction,
     float* facilitated_pr
 ) {
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pool_get_stats: null pool pointer");
+        return;
+    }
+
     if (rrp_count) *rrp_count = pool->readily_releasable_pool;
     if (recycling_count) *recycling_count = pool->recycling_pool;
     if (reserve_count) *reserve_count = pool->reserve_pool;
@@ -369,10 +417,18 @@ void vesicle_pool_get_stats(
 }
 
 bool vesicle_pool_is_depleted(const vesicle_pool_state_t* pool) {
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pool_is_depleted: null pool pointer");
+        return false;
+    }
     return pool->is_depleted;
 }
 
 float vesicle_pool_get_avg_release(const vesicle_pool_state_t* pool) {
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pool_get_avg_release: null pool pointer");
+        return 0.0F;
+    }
     return pool->avg_release_per_spike;
 }
 
@@ -381,6 +437,11 @@ float vesicle_pool_get_avg_release(const vesicle_pool_state_t* pool) {
 // ============================================================================
 
 void vesicle_pool_apply_botulinum(vesicle_pool_state_t* pool, float blockade) {
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pool_apply_botulinum: null pool pointer");
+        return;
+    }
+
     // WHAT: Botulinum toxin cleaves SNAP-25, preventing vesicle fusion
     // WHY:  Clinical use (cosmetic Botox, muscle spasms, hyperhidrosis)
     // HOW:  Reduce release probability to near-zero
@@ -402,6 +463,11 @@ void vesicle_pool_apply_botulinum(vesicle_pool_state_t* pool, float blockade) {
 }
 
 void vesicle_pool_apply_amphetamine(vesicle_pool_state_t* pool, float depletion) {
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pool_apply_amphetamine: null pool pointer");
+        return;
+    }
+
     // WHAT: Amphetamine causes reverse transport, depleting vesicle stores
     // WHY:  Model psychostimulant effects (Adderall, methamphetamine)
     // HOW:  Rapidly deplete RRP and recycling pools
@@ -424,6 +490,11 @@ void vesicle_pool_apply_amphetamine(vesicle_pool_state_t* pool, float depletion)
 }
 
 void vesicle_pool_apply_4ap(vesicle_pool_state_t* pool, float potentiation) {
+    if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "vesicle_pool_apply_4ap: null pool pointer");
+        return;
+    }
+
     // WHAT: 4-aminopyridine blocks K⁺ channels, prolonging Ca²⁺ influx
     // WHY:  Experimental tool to study synaptic transmission, Lambert-Eaton syndrome treatment
     // HOW:  Increase release probability

@@ -60,6 +60,7 @@ int metaplasticity_sleep_default_config(metaplasticity_sleep_config_t* config) {
     /* Guard clause */
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config in default_config");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_sleep_default_config: config is NULL");
         return -1;
     }
 
@@ -79,8 +80,14 @@ metaplasticity_sleep_bridge_t* metaplasticity_sleep_bridge_create(
     metaplasticity_controller_t metaplasticity_controller
 ) {
     /* Guard clauses */
-    if (!sleep_system || !metaplasticity_controller) {
-        NIMCP_LOGGING_ERROR("NULL parameters in bridge create");
+    if (!sleep_system) {
+        NIMCP_LOGGING_ERROR("NULL sleep_system in bridge create");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_sleep_bridge_create: sleep_system is NULL");
+        return NULL;
+    }
+    if (!metaplasticity_controller) {
+        NIMCP_LOGGING_ERROR("NULL metaplasticity_controller in bridge create");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_sleep_bridge_create: metaplasticity_controller is NULL");
         return NULL;
     }
 
@@ -89,8 +96,7 @@ metaplasticity_sleep_bridge_t* metaplasticity_sleep_bridge_create(
         (metaplasticity_sleep_bridge_t*)nimcp_malloc(sizeof(metaplasticity_sleep_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate sleep bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metaplasticity_sleep_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -117,12 +123,15 @@ metaplasticity_sleep_bridge_t* metaplasticity_sleep_bridge_create(
     bridge->base.mutex = nimcp_malloc(sizeof(nimcp_platform_mutex_t));
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metaplasticity_sleep_bridge_create: failed to allocate mutex");
         nimcp_free(bridge);
         return NULL;
     }
 
     if (nimcp_platform_mutex_init((nimcp_platform_mutex_t*)bridge->base.mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "metaplasticity_sleep_bridge_create: mutex init failed");
+        nimcp_free(bridge->base.mutex);
         nimcp_free(bridge);
         return NULL;
     }
@@ -154,6 +163,7 @@ int metaplasticity_sleep_apply_threshold_reset(metaplasticity_sleep_bridge_t* br
     /* Guard clause */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in apply_threshold_reset");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_sleep_apply_threshold_reset: bridge is NULL");
         return -1;
     }
 
@@ -203,6 +213,7 @@ int metaplasticity_sleep_freeze_adaptation(metaplasticity_sleep_bridge_t* bridge
     /* Guard clause */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in freeze_adaptation");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_sleep_freeze_adaptation: bridge is NULL");
         return -1;
     }
 
@@ -255,8 +266,14 @@ int metaplasticity_sleep_monitor_threshold_drift(
     float* drift
 ) {
     /* Guard clauses */
-    if (!bridge || !drift) {
-        NIMCP_LOGGING_ERROR("NULL parameters in monitor_threshold_drift");
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("NULL bridge in monitor_threshold_drift");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_sleep_monitor_threshold_drift: bridge is NULL");
+        return -1;
+    }
+    if (!drift) {
+        NIMCP_LOGGING_ERROR("NULL drift in monitor_threshold_drift");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_sleep_monitor_threshold_drift: drift is NULL");
         return -1;
     }
 
@@ -302,8 +319,14 @@ int metaplasticity_sleep_compute_sleep_pressure(
     float* sleep_pressure
 ) {
     /* Guard clauses */
-    if (!bridge || !sleep_pressure) {
-        NIMCP_LOGGING_ERROR("NULL parameters in compute_sleep_pressure");
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("NULL bridge in compute_sleep_pressure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_sleep_compute_sleep_pressure: bridge is NULL");
+        return -1;
+    }
+    if (!sleep_pressure) {
+        NIMCP_LOGGING_ERROR("NULL sleep_pressure in compute_sleep_pressure");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_sleep_compute_sleep_pressure: sleep_pressure is NULL");
         return -1;
     }
 
@@ -349,6 +372,7 @@ int metaplasticity_sleep_bridge_update(metaplasticity_sleep_bridge_t* bridge) {
     /* Guard clause */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in bridge_update");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_sleep_bridge_update: bridge is NULL");
         return -1;
     }
 
@@ -384,8 +408,14 @@ int metaplasticity_sleep_get_effects(
     metaplasticity_sleep_effects_t* effects
 ) {
     /* Guard clauses */
-    if (!bridge || !effects) {
-        NIMCP_LOGGING_ERROR("NULL parameters in get_effects");
+    if (!bridge) {
+        NIMCP_LOGGING_ERROR("NULL bridge in get_effects");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_sleep_get_effects: bridge is NULL");
+        return -1;
+    }
+    if (!effects) {
+        NIMCP_LOGGING_ERROR("NULL effects in get_effects");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_sleep_get_effects: effects is NULL");
         return -1;
     }
 
@@ -401,6 +431,7 @@ int metaplasticity_sleep_get_drift_stats(
     /* Guard clauses */
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in get_drift_stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_sleep_get_drift_stats: bridge is NULL");
         return -1;
     }
 

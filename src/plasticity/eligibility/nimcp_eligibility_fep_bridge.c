@@ -16,7 +16,10 @@
 #define LOG_MODULE_ELIGIBILITY_FEP "ELIGIBILITY_FEP_BRIDGE"
 
 int eligibility_fep_bridge_default_config(eligibility_fep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_fep_bridge_default_config: config is NULL");
+        return -1;
+    }
     config->pe_trace_gain = ELIGIBILITY_FEP_PE_TRACE_SCALING;
     config->precision_decay_sensitivity = 1.0f;
     config->fe_consolidation_threshold = 1.0f;
@@ -46,14 +49,20 @@ eligibility_fep_bridge_t* eligibility_fep_bridge_create(const eligibility_fep_co
 }
 
 void eligibility_fep_bridge_destroy(eligibility_fep_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_fep_bridge_destroy: bridge is NULL");
+        return;
+    }
     if (bridge->base.bio_async_enabled) eligibility_fep_bridge_disconnect_bio_async(bridge);
     if (bridge->base.mutex) bridge_base_cleanup(&bridge->base);
     nimcp_free(bridge);
 }
 
 int eligibility_fep_bridge_connect_fep(eligibility_fep_bridge_t* bridge, fep_system_t* fep) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_fep_bridge_connect_fep: bridge is NULL");
+        return -1;
+    }
     /* Allow NULL fep to disconnect/reset FEP connection */
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
@@ -62,7 +71,18 @@ int eligibility_fep_bridge_connect_fep(eligibility_fep_bridge_t* bridge, fep_sys
 }
 
 int eligibility_fep_bridge_connect_eligibility(eligibility_fep_bridge_t* bridge, eligibility_trace_t* traces, uint32_t num) {
-    if (!bridge || !traces || num == 0) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_fep_bridge_connect_eligibility: bridge is NULL");
+        return -1;
+    }
+    if (!traces) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_fep_bridge_connect_eligibility: traces is NULL");
+        return -1;
+    }
+    if (num == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "eligibility_fep_bridge_connect_eligibility: num is zero");
+        return -1;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->eligibility_system = traces;
     bridge->num_traces = num;
@@ -71,7 +91,10 @@ int eligibility_fep_bridge_connect_eligibility(eligibility_fep_bridge_t* bridge,
 }
 
 int eligibility_fep_bridge_disconnect(eligibility_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_fep_bridge_disconnect: bridge is NULL");
+        return -1;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->eligibility_system = NULL;
@@ -81,12 +104,20 @@ int eligibility_fep_bridge_disconnect(eligibility_fep_bridge_t* bridge) {
 }
 
 float eligibility_fep_apply_pe_eligibility(eligibility_fep_bridge_t* bridge, float pe) {
-    if (!bridge || !bridge->config.enable_pe_eligibility) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_fep_apply_pe_eligibility: bridge is NULL");
+        return 1.0f;
+    }
+    if (!bridge->config.enable_pe_eligibility) return 1.0f;
     return 1.0f + fabsf(pe) * bridge->config.pe_trace_gain;
 }
 
 float eligibility_fep_apply_precision_decay_modulation(eligibility_fep_bridge_t* bridge, float precision) {
-    if (!bridge || !bridge->config.enable_precision_decay_modulation) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_fep_apply_precision_decay_modulation: bridge is NULL");
+        return 1.0f;
+    }
+    if (!bridge->config.enable_precision_decay_modulation) return 1.0f;
     float decay = precision * bridge->config.precision_decay_sensitivity;
     decay = fminf(fmaxf(decay, ELIGIBILITY_FEP_PRECISION_DECAY_MIN), ELIGIBILITY_FEP_PRECISION_DECAY_MAX);
     /* Store for get_effective_decay to use */
@@ -97,18 +128,27 @@ float eligibility_fep_apply_precision_decay_modulation(eligibility_fep_bridge_t*
 }
 
 bool eligibility_fep_should_consolidate(const eligibility_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_fep_should_consolidate: bridge is NULL");
+        return false;
+    }
     if (!bridge->config.enable_fe_gated_consolidation) return true;
     return bridge->effects.free_energy_value > bridge->config.fe_consolidation_threshold;
 }
 
 float eligibility_fep_get_effective_decay(const eligibility_fep_bridge_t* bridge, float base_decay) {
-    if (!bridge) return base_decay;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_fep_get_effective_decay: bridge is NULL");
+        return base_decay;
+    }
     return base_decay * bridge->effects.total_decay_modulation;
 }
 
 int eligibility_fep_report_consolidation(eligibility_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_fep_report_consolidation: bridge is NULL");
+        return -1;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->stats.trace_consolidations++;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -116,7 +156,10 @@ int eligibility_fep_report_consolidation(eligibility_fep_bridge_t* bridge) {
 }
 
 int eligibility_fep_bridge_update(eligibility_fep_bridge_t* bridge, uint64_t delta_ms) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_fep_bridge_update: bridge is NULL");
+        return -1;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->fep_system) {
         float pe_scaling = eligibility_fep_apply_pe_eligibility(bridge, bridge->effects.pe_magnitude);
@@ -133,19 +176,36 @@ int eligibility_fep_bridge_update(eligibility_fep_bridge_t* bridge, uint64_t del
 }
 
 int eligibility_fep_bridge_get_state(const eligibility_fep_bridge_t* bridge, eligibility_fep_state_t* state) {
-    if (!bridge || !state) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_fep_bridge_get_state: bridge is NULL");
+        return -1;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_fep_bridge_get_state: state is NULL");
+        return -1;
+    }
     *state = bridge->state;
     return 0;
 }
 
 int eligibility_fep_bridge_get_stats(const eligibility_fep_bridge_t* bridge, eligibility_fep_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_fep_bridge_get_stats: bridge is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_fep_bridge_get_stats: stats is NULL");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 int eligibility_fep_bridge_connect_bio_async(eligibility_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_fep_bridge_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
     bio_module_info_t info = {
         .module_id = BIO_MODULE_FEP_ELIGIBILITY_BRIDGE,
@@ -162,7 +222,10 @@ int eligibility_fep_bridge_connect_bio_async(eligibility_fep_bridge_t* bridge) {
 }
 
 int eligibility_fep_bridge_disconnect_bio_async(eligibility_fep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_fep_bridge_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (!bridge->base.bio_async_enabled) return 0;  /* Already disconnected - success */
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_ctx = NULL;

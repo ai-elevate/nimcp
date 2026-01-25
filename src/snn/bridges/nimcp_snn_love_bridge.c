@@ -85,7 +85,10 @@ void snn_love_bridge_destroy(snn_love_bridge_t* bridge) {
 }
 
 int snn_love_bridge_connect_bio_async(snn_love_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_love_bridge_connect_bio_async: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -118,7 +121,10 @@ bool snn_love_bridge_is_bio_async_connected(const snn_love_bridge_t* bridge) {
 }
 
 int snn_love_bridge_update(snn_love_bridge_t* bridge, float dt) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_love_bridge_update: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     bridge->last_update_time += dt;
     if (bridge->last_update_time < bridge->config.update_interval_ms) {
@@ -160,7 +166,10 @@ int snn_love_decode_from_spikes(
     float* attachment_level_out,
     float* bonding_strength_out
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_love_decode_from_spikes: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     float attachment_rate = 0.0f, bonding_rate = 0.0f;
 
@@ -187,7 +196,14 @@ int snn_love_detect_sustained_activity(
     snn_love_bridge_t* bridge,
     snn_sustained_activity_state_t* sustained_state
 ) {
-    if (!bridge || !sustained_state) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_love_detect_sustained_activity: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!sustained_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_love_detect_sustained_activity: sustained_state is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     float attachment_rate = bridge->attachment_pop ?
                            snn_population_get_firing_rate(bridge->attachment_pop) : 0.0f;
@@ -221,7 +237,10 @@ int snn_love_detect_synchrony(
     snn_love_bridge_t* bridge,
     float* synchrony_out
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_love_detect_synchrony: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     float attachment_rate = bridge->attachment_pop ?
                            snn_population_get_firing_rate(bridge->attachment_pop) : 0.0f;
@@ -241,7 +260,10 @@ int snn_love_detect_synchrony(
 }
 
 int snn_love_modulate_populations(snn_love_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_love_modulate_populations: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     if (bridge->state.sustained.is_sustained) {
         bridge->state.oxytocin_level = bridge->config.oxytocin_baseline +
@@ -263,7 +285,10 @@ int snn_love_encode_to_spikes(
     float attachment_level,
     float bonding_strength
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_love_encode_to_spikes: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     return 0;
 }
 
@@ -271,7 +296,14 @@ int snn_love_bridge_get_state(
     const snn_love_bridge_t* bridge,
     snn_love_state_t* state
 ) {
-    if (!bridge || !state) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_love_bridge_get_state: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_love_bridge_get_state: state is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -294,7 +326,10 @@ int snn_love_get_stats(
     uint32_t* bonding_events_count,
     float* avg_attachment_level
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_love_get_stats: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (sync_count) *sync_count = bridge->state.sync_count;
     if (bonding_events_count) *bonding_events_count = bridge->state.bonding_events_count;
     if (avg_attachment_level) *avg_attachment_level = bridge->state.avg_attachment_level;

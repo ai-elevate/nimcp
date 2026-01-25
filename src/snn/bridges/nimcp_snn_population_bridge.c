@@ -20,7 +20,10 @@
 //=============================================================================
 
 void snn_population_config_default(snn_population_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_config_default: null config pointer");
+        return;
+    }
 
     memset(config, 0, sizeof(snn_population_config_t));
 
@@ -171,7 +174,10 @@ snn_population_bridge_t* snn_population_bridge_create(
 }
 
 void snn_population_bridge_destroy(snn_population_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_bridge_destroy: null bridge pointer");
+        return;
+    }
 
     /* Disconnect bio-async if connected */
     if (bridge->base.bio_async_enabled) {
@@ -197,7 +203,10 @@ void snn_population_bridge_destroy(snn_population_bridge_t* bridge) {
 }
 
 int snn_population_bridge_connect_bio_async(snn_population_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_bridge_connect_bio_async: null bridge pointer");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bridge->base.bio_async_enabled = true;
@@ -207,7 +216,10 @@ int snn_population_bridge_connect_bio_async(snn_population_bridge_t* bridge) {
 }
 
 int snn_population_bridge_disconnect_bio_async(snn_population_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_bridge_disconnect_bio_async: null bridge pointer");
+        return -1;
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     bridge->base.bio_async_enabled = false;
@@ -217,7 +229,11 @@ int snn_population_bridge_disconnect_bio_async(snn_population_bridge_t* bridge) 
 }
 
 bool snn_population_bridge_is_bio_async_connected(const snn_population_bridge_t* bridge) {
-    return bridge && bridge->base.bio_async_enabled;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_bridge_is_bio_async_connected: null bridge pointer");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }
 
 //=============================================================================
@@ -233,7 +249,10 @@ int snn_population_bridge_process(
     uint32_t* n_out_actual
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_bridge_process: null bridge pointer");
+        return -1;
+    }
     if (!spikes_in || n_spikes == 0) {
         if (n_out_actual) *n_out_actual = 0;
         return 0;
@@ -269,7 +288,10 @@ int snn_population_bridge_process(
 }
 
 int snn_population_bridge_update(snn_population_bridge_t* bridge, float dt) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_bridge_update: null bridge pointer");
+        return -1;
+    }
 
     bridge->last_update_time += dt;
 
@@ -287,8 +309,18 @@ int snn_population_bridge_encode_vector(
     uint32_t pop_id,
     vector3d_t* vector_out
 ) {
-    if (!bridge || !vector_out) return -1;
-    if (pop_id >= bridge->network->n_populations) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_bridge_encode_vector: null bridge pointer");
+        return -1;
+    }
+    if (!vector_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_bridge_encode_vector: null vector_out pointer");
+        return -1;
+    }
+    if (pop_id >= bridge->network->n_populations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_population_bridge_encode_vector: invalid pop_id");
+        return -1;
+    }
 
     snn_population_t* pop = bridge->network->populations[pop_id];
     if (!pop) return -1;
@@ -315,8 +347,18 @@ int snn_population_bridge_decode_vector(
     uint32_t pop_id,
     const vector3d_t* vector
 ) {
-    if (!bridge || !vector) return -1;
-    if (pop_id >= bridge->network->n_populations) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_bridge_decode_vector: null bridge pointer");
+        return -1;
+    }
+    if (!vector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_bridge_decode_vector: null vector pointer");
+        return -1;
+    }
+    if (pop_id >= bridge->network->n_populations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_population_bridge_decode_vector: invalid pop_id");
+        return -1;
+    }
 
     snn_population_t* pop = bridge->network->populations[pop_id];
     if (!pop) return -1;
@@ -349,8 +391,18 @@ int snn_population_bridge_set_tuning(
     uint32_t neuron_idx,
     const tuning_curve_t* tuning
 ) {
-    if (!bridge || !tuning) return -1;
-    if (pop_id >= bridge->network->n_populations) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_bridge_set_tuning: null bridge pointer");
+        return -1;
+    }
+    if (!tuning) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_bridge_set_tuning: null tuning pointer");
+        return -1;
+    }
+    if (pop_id >= bridge->network->n_populations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_population_bridge_set_tuning: invalid pop_id");
+        return -1;
+    }
 
     uint32_t neuron_offset = 0;
     for (uint32_t i = 0; i < pop_id; i++) {
@@ -370,8 +422,18 @@ int snn_population_bridge_get_tuning(
     uint32_t neuron_idx,
     tuning_curve_t* tuning
 ) {
-    if (!bridge || !tuning) return -1;
-    if (pop_id >= bridge->network->n_populations) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_bridge_get_tuning: null bridge pointer");
+        return -1;
+    }
+    if (!tuning) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_bridge_get_tuning: null tuning pointer");
+        return -1;
+    }
+    if (pop_id >= bridge->network->n_populations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_population_bridge_get_tuning: invalid pop_id");
+        return -1;
+    }
 
     uint32_t neuron_offset = 0;
     for (uint32_t i = 0; i < pop_id; i++) {
@@ -389,8 +451,14 @@ int snn_population_bridge_generate_tuning(
     snn_population_bridge_t* bridge,
     uint32_t pop_id
 ) {
-    if (!bridge) return -1;
-    if (pop_id >= bridge->network->n_populations) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_bridge_generate_tuning: null bridge pointer");
+        return -1;
+    }
+    if (pop_id >= bridge->network->n_populations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_population_bridge_generate_tuning: invalid pop_id");
+        return -1;
+    }
 
     snn_population_t* pop = bridge->network->populations[pop_id];
     if (!pop) return -1;
@@ -427,8 +495,18 @@ int snn_population_bridge_compute_synchrony(
     uint32_t pop_id,
     synchrony_result_t* synchrony_out
 ) {
-    if (!bridge || !synchrony_out) return -1;
-    if (pop_id >= bridge->network->n_populations) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_bridge_compute_synchrony: null bridge pointer");
+        return -1;
+    }
+    if (!synchrony_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_bridge_compute_synchrony: null synchrony_out pointer");
+        return -1;
+    }
+    if (pop_id >= bridge->network->n_populations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_population_bridge_compute_synchrony: invalid pop_id");
+        return -1;
+    }
 
     /* Simplified: return cached result if available */
     if (bridge->synchrony_results) {
@@ -445,8 +523,18 @@ int snn_population_bridge_get_current_vector(
     uint32_t pop_id,
     vector3d_t* vector
 ) {
-    if (!bridge || !vector) return -1;
-    if (pop_id >= bridge->network->n_populations) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_bridge_get_current_vector: null bridge pointer");
+        return -1;
+    }
+    if (!vector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_bridge_get_current_vector: null vector pointer");
+        return -1;
+    }
+    if (pop_id >= bridge->network->n_populations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_population_bridge_get_current_vector: invalid pop_id");
+        return -1;
+    }
 
     *vector = bridge->current_vectors[pop_id];
     return 0;
@@ -458,8 +546,18 @@ int snn_population_bridge_get_rates(
     float* rates,
     uint32_t n_neurons
 ) {
-    if (!bridge || !rates) return -1;
-    if (pop_id >= bridge->network->n_populations) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_bridge_get_rates: null bridge pointer");
+        return -1;
+    }
+    if (!rates) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_bridge_get_rates: null rates pointer");
+        return -1;
+    }
+    if (pop_id >= bridge->network->n_populations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_population_bridge_get_rates: invalid pop_id");
+        return -1;
+    }
 
     uint32_t neuron_offset = 0;
     for (uint32_t i = 0; i < pop_id; i++) {
@@ -481,14 +579,24 @@ int snn_population_bridge_get_stats(
     const snn_population_bridge_t* bridge,
     snn_population_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_bridge_get_stats: null bridge pointer");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_bridge_get_stats: null stats pointer");
+        return -1;
+    }
 
     *stats = bridge->stats;
     return 0;
 }
 
 void snn_population_bridge_reset_stats(snn_population_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_population_bridge_reset_stats: null bridge pointer");
+        return;
+    }
 
     memset(&bridge->stats, 0, sizeof(snn_population_stats_t));
     bridge->last_update_time = 0.0f;

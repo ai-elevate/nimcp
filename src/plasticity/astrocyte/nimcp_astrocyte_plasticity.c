@@ -123,6 +123,7 @@ static float compute_a1r_inhibition(float adenosine_level) {
 
 int astrocyte_plasticity_default_config(astrocyte_config_t* config) {
     NIMCP_API_CHECK_NULL(config, -1, "Astrocyte config is NULL");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_plasticity_default_config: config is NULL");
 
     /* Baseline gliotransmitter levels */
     config->baseline_d_serine = ASTROCYTE_D_SERINE_BASELINE;
@@ -166,14 +167,18 @@ astrocyte_plasticity_t astrocyte_plasticity_create(
     /* Guard: require at least one astrocyte */
     if (num_astrocytes == 0) {
         LOG_ERROR("Cannot create astrocyte system with 0 astrocytes");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "Cannot create astrocyte system with 0 astrocytes");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astrocyte_plasticity_create: num_astrocytes is 0");
         return NULL;
     }
 
     /* Allocate system */
     astrocyte_plasticity_t astro = (astrocyte_plasticity_t)
         nimcp_malloc(sizeof(struct astrocyte_plasticity_struct));
-    NIMCP_API_CHECK_ALLOC(astro, "Astrocyte system allocation failed");
+    if (!astro) {
+        LOG_ERROR("Astrocyte system allocation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "astrocyte_plasticity_create: system allocation failed");
+        return NULL;
+    }
     memset(astro, 0, sizeof(struct astrocyte_plasticity_struct));
 
     /* Apply configuration */
@@ -266,7 +271,9 @@ int astrocyte_plasticity_update(
 ) {
     /* Guard clauses */
     NIMCP_API_CHECK_NULL(astro, -1, "Astrocyte system is NULL");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_plasticity_update: astro is NULL");
     NIMCP_API_CHECK(astrocyte_id < astro->num_astrocytes, -1, "Astrocyte ID out of range");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astrocyte_plasticity_update: astrocyte_id out of range");
 
     nimcp_platform_mutex_lock(astro->mutex);
 
@@ -364,7 +371,9 @@ int astrocyte_plasticity_trigger_calcium_wave(
 ) {
     /* Guard clauses */
     NIMCP_API_CHECK_NULL(astro, -1, "Astrocyte system is NULL");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_plasticity_trigger_calcium_wave: astro is NULL");
     NIMCP_API_CHECK(source_id < astro->num_astrocytes, -1, "Source astrocyte ID out of range");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astrocyte_plasticity_trigger_calcium_wave: source_id out of range");
     if (!astro->config.enable_calcium_waves) return 0;
 
     nimcp_platform_mutex_lock(astro->mutex);
@@ -382,7 +391,9 @@ int astrocyte_plasticity_release_gliotransmitter(
 ) {
     /* Guard clauses */
     NIMCP_API_CHECK_NULL(astro, -1, "Astrocyte system is NULL");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_plasticity_release_gliotransmitter: astro is NULL");
     NIMCP_API_CHECK(astrocyte_id < astro->num_astrocytes, -1, "Astrocyte ID out of range");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astrocyte_plasticity_release_gliotransmitter: astrocyte_id out of range");
 
     nimcp_platform_mutex_lock(astro->mutex);
 
@@ -418,6 +429,7 @@ int astrocyte_plasticity_release_gliotransmitter(
 
         default:
             nimcp_platform_mutex_unlock(astro->mutex);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astrocyte_plasticity_release_gliotransmitter: invalid gliotransmitter type");
             return -1;
     }
 
@@ -444,8 +456,11 @@ int astrocyte_plasticity_get_effects(
 ) {
     /* Guard clauses */
     NIMCP_API_CHECK_NULL(astro, -1, "Astrocyte system is NULL");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_plasticity_get_effects: astro is NULL");
     NIMCP_API_CHECK_NULL(effects, -1, "Effects output pointer is NULL");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_plasticity_get_effects: effects is NULL");
     NIMCP_API_CHECK(astrocyte_id < astro->num_astrocytes, -1, "Astrocyte ID out of range");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astrocyte_plasticity_get_effects: astrocyte_id out of range");
 
     nimcp_platform_mutex_lock(astro->mutex);
 
@@ -489,7 +504,14 @@ float astrocyte_plasticity_get_d_serine_factor(
     const astrocyte_plasticity_t astro,
     uint32_t astrocyte_id
 ) {
-    if (!astro || astrocyte_id >= astro->num_astrocytes) return 1.0f;
+    if (!astro) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_plasticity_get_d_serine_factor: astro is NULL");
+        return 1.0f;
+    }
+    if (astrocyte_id >= astro->num_astrocytes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astrocyte_plasticity_get_d_serine_factor: astrocyte_id out of range");
+        return 1.0f;
+    }
 
     nimcp_platform_mutex_lock(astro->mutex);
     float d_serine = astro->states[astrocyte_id].d_serine_level;
@@ -502,8 +524,14 @@ float astrocyte_plasticity_get_glu_clearance_time(
     const astrocyte_plasticity_t astro,
     uint32_t astrocyte_id
 ) {
-    if (!astro || astrocyte_id >= astro->num_astrocytes)
+    if (!astro) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_plasticity_get_glu_clearance_time: astro is NULL");
         return ASTROCYTE_GLU_UPTAKE_TIME_MS;
+    }
+    if (astrocyte_id >= astro->num_astrocytes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astrocyte_plasticity_get_glu_clearance_time: astrocyte_id out of range");
+        return ASTROCYTE_GLU_UPTAKE_TIME_MS;
+    }
 
     nimcp_platform_mutex_lock(astro->mutex);
     float uptake_rate = astro->states[astrocyte_id].glutamate_uptake_rate;
@@ -516,7 +544,14 @@ float astrocyte_plasticity_get_a1r_inhibition(
     const astrocyte_plasticity_t astro,
     uint32_t astrocyte_id
 ) {
-    if (!astro || astrocyte_id >= astro->num_astrocytes) return 0.0f;
+    if (!astro) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_plasticity_get_a1r_inhibition: astro is NULL");
+        return 0.0f;
+    }
+    if (astrocyte_id >= astro->num_astrocytes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astrocyte_plasticity_get_a1r_inhibition: astrocyte_id out of range");
+        return 0.0f;
+    }
 
     nimcp_platform_mutex_lock(astro->mutex);
     float adenosine = astro->states[astrocyte_id].adenosine_level;
@@ -536,7 +571,9 @@ int astrocyte_plasticity_notify_glutamate_release(
 ) {
     /* Guard clauses */
     NIMCP_API_CHECK_NULL(astro, -1, "Astrocyte system is NULL");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_plasticity_notify_glutamate_release: astro is NULL");
     NIMCP_API_CHECK(astrocyte_id < astro->num_astrocytes, -1, "Astrocyte ID out of range");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astrocyte_plasticity_notify_glutamate_release: astrocyte_id out of range");
 
     nimcp_platform_mutex_lock(astro->mutex);
 
@@ -564,7 +601,9 @@ int astrocyte_plasticity_notify_ltp_induction(
 ) {
     /* Guard clauses */
     NIMCP_API_CHECK_NULL(astro, -1, "Astrocyte system is NULL");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_plasticity_notify_ltp_induction: astro is NULL");
     NIMCP_API_CHECK(astrocyte_id < astro->num_astrocytes, -1, "Astrocyte ID out of range");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astrocyte_plasticity_notify_ltp_induction: astrocyte_id out of range");
 
     nimcp_platform_mutex_lock(astro->mutex);
 
@@ -599,7 +638,9 @@ int astrocyte_plasticity_set_reactive_state(
 ) {
     /* Guard clauses */
     NIMCP_API_CHECK_NULL(astro, -1, "Astrocyte system is NULL");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_plasticity_set_reactive_state: astro is NULL");
     NIMCP_API_CHECK(astrocyte_id < astro->num_astrocytes, -1, "Astrocyte ID out of range");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astrocyte_plasticity_set_reactive_state: astrocyte_id out of range");
     if (!astro->config.enable_reactive_astrogliosis) return 0;
 
     nimcp_platform_mutex_lock(astro->mutex);
@@ -655,8 +696,14 @@ astrocyte_reactive_state_t astrocyte_plasticity_get_reactive_state(
     const astrocyte_plasticity_t astro,
     uint32_t astrocyte_id
 ) {
-    if (!astro || astrocyte_id >= astro->num_astrocytes)
+    if (!astro) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_plasticity_get_reactive_state: astro is NULL");
         return ASTROCYTE_RESTING;
+    }
+    if (astrocyte_id >= astro->num_astrocytes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astrocyte_plasticity_get_reactive_state: astrocyte_id out of range");
+        return ASTROCYTE_RESTING;
+    }
 
     nimcp_platform_mutex_lock(astro->mutex);
     astrocyte_reactive_state_t state = astro->states[astrocyte_id].reactive_state;
@@ -676,8 +723,11 @@ int astrocyte_plasticity_get_state(
 ) {
     /* Guard clauses */
     NIMCP_API_CHECK_NULL(astro, -1, "Astrocyte system is NULL");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_plasticity_get_state: astro is NULL");
     NIMCP_API_CHECK_NULL(state, -1, "State output pointer is NULL");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_plasticity_get_state: state is NULL");
     NIMCP_API_CHECK(astrocyte_id < astro->num_astrocytes, -1, "Astrocyte ID out of range");
+    NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astrocyte_plasticity_get_state: astrocyte_id out of range");
 
     nimcp_platform_mutex_lock(astro->mutex);
     memcpy(state, &astro->states[astrocyte_id], sizeof(astrocyte_state_t));
@@ -690,7 +740,14 @@ bool astrocyte_plasticity_is_calcium_wave_active(
     const astrocyte_plasticity_t astro,
     uint32_t astrocyte_id
 ) {
-    if (!astro || astrocyte_id >= astro->num_astrocytes) return false;
+    if (!astro) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_plasticity_is_calcium_wave_active: astro is NULL");
+        return false;
+    }
+    if (astrocyte_id >= astro->num_astrocytes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "astrocyte_plasticity_is_calcium_wave_active: astrocyte_id out of range");
+        return false;
+    }
 
     nimcp_platform_mutex_lock(astro->mutex);
     bool active = astro->states[astrocyte_id].calcium_wave_active;
@@ -702,6 +759,9 @@ bool astrocyte_plasticity_is_calcium_wave_active(
 uint32_t astrocyte_plasticity_get_num_astrocytes(
     const astrocyte_plasticity_t astro
 ) {
-    if (!astro) return 0;
+    if (!astro) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "astrocyte_plasticity_get_num_astrocytes: astro is NULL");
+        return 0;
+    }
     return astro->num_astrocytes;
 }

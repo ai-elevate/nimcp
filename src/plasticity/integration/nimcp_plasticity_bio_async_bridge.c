@@ -49,7 +49,7 @@ struct plasticity_bio_async_bridge_struct {
 
     /* Statistics */
     plasticity_bio_async_stats_t stats;
-
+};
 
 /* ============================================================================
  * Helper Functions
@@ -116,7 +116,10 @@ static void init_message_header(
  * ============================================================================ */
 
 int plasticity_bio_async_default_config(plasticity_bio_bridge_config_t* config) {
-    if (!config) return PLASTICITY_BIO_ERROR_NULL_PARAM;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_bio_async_default_config: config is NULL");
+        return PLASTICITY_BIO_ERROR_NULL_PARAM;
+    }
 
     config->state_broadcast_interval_ms = PLASTICITY_BIO_DEFAULT_BROADCAST_INTERVAL_MS;
     config->energy_report_interval_ms = 1000;  /* 1 second */
@@ -170,13 +173,20 @@ plasticity_bio_async_bridge_t* plasticity_bio_async_bridge_create(
         bridge->subscription_capacity,
         sizeof(plasticity_bio_subscription_t));
     if (!bridge->subscriptions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "plasticity_bio_async_bridge_create: failed to allocate subscriptions");
         nimcp_free(bridge);
         return NULL;
     }
 
     /* Create mutex */
-    if (bridge_base_init(&bridge->base, 0, "plasticity_bio_async") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "plasticity_bio_async") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "plasticity_bio_async_bridge_create: failed to initialize bridge base");
+        nimcp_free(bridge->subscriptions);
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "plasticity_bio_async_bridge_create: failed to create mutex");
         nimcp_free(bridge->subscriptions);
         nimcp_free(bridge);
         return NULL;
@@ -210,8 +220,14 @@ int plasticity_bio_async_connect(
     plasticity_coordinator_t* coordinator,
     bio_router_t router
 ) {
-    if (!bridge) return PLASTICITY_BIO_ERROR_NULL_PARAM;
-    if (bridge->connected) return PLASTICITY_BIO_ERROR_ALREADY_CONNECTED;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_bio_async_connect: bridge is NULL");
+        return PLASTICITY_BIO_ERROR_NULL_PARAM;
+    }
+    if (bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "plasticity_bio_async_connect: already connected");
+        return PLASTICITY_BIO_ERROR_ALREADY_CONNECTED;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -225,7 +241,10 @@ int plasticity_bio_async_connect(
 }
 
 int plasticity_bio_async_disconnect(plasticity_bio_async_bridge_t* bridge) {
-    if (!bridge) return PLASTICITY_BIO_ERROR_NULL_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_bio_async_disconnect: bridge is NULL");
+        return PLASTICITY_BIO_ERROR_NULL_PARAM;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -251,8 +270,14 @@ int plasticity_bio_async_register_module(
     const char* name,
     void* handle
 ) {
-    if (!bridge) return PLASTICITY_BIO_ERROR_NULL_PARAM;
-    if (type >= PLASTICITY_MODULE_COUNT) return PLASTICITY_BIO_ERROR_INVALID_TYPE;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_bio_async_register_module: bridge is NULL");
+        return PLASTICITY_BIO_ERROR_NULL_PARAM;
+    }
+    if (type >= PLASTICITY_MODULE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "plasticity_bio_async_register_module: invalid module type");
+        return PLASTICITY_BIO_ERROR_INVALID_TYPE;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -264,6 +289,7 @@ int plasticity_bio_async_register_module(
 
     /* Check capacity */
     if (bridge->module_count >= bridge->config.max_registered_modules) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "plasticity_bio_async_register_module: max modules reached");
         nimcp_mutex_unlock(bridge->base.mutex);
         return PLASTICITY_BIO_ERROR_NO_MEMORY;
     }
@@ -287,7 +313,10 @@ int plasticity_bio_async_unregister_module(
     plasticity_bio_async_bridge_t* bridge,
     plasticity_module_type_t type
 ) {
-    if (!bridge) return PLASTICITY_BIO_ERROR_NULL_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_bio_async_unregister_module: bridge is NULL");
+        return PLASTICITY_BIO_ERROR_NULL_PARAM;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -313,7 +342,10 @@ int plasticity_bio_async_set_module_enabled(
     plasticity_module_type_t type,
     bool enabled
 ) {
-    if (!bridge) return PLASTICITY_BIO_ERROR_NULL_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_bio_async_set_module_enabled: bridge is NULL");
+        return PLASTICITY_BIO_ERROR_NULL_PARAM;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -336,7 +368,14 @@ int plasticity_bio_async_process_inbox(
     plasticity_bio_async_bridge_t* bridge,
     uint32_t max_messages
 ) {
-    if (!bridge || !bridge->connected) return PLASTICITY_BIO_ERROR_NOT_CONNECTED;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_bio_async_process_inbox: bridge is NULL");
+        return PLASTICITY_BIO_ERROR_NOT_CONNECTED;
+    }
+    if (!bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "plasticity_bio_async_process_inbox: not connected");
+        return PLASTICITY_BIO_ERROR_NOT_CONNECTED;
+    }
 
     /* Process incoming modulation requests, spike timing events */
     uint32_t processed = 0;
@@ -350,7 +389,14 @@ int plasticity_bio_async_update(
     plasticity_bio_async_bridge_t* bridge,
     uint32_t delta_ms
 ) {
-    if (!bridge || !bridge->connected) return PLASTICITY_BIO_ERROR_NOT_CONNECTED;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_bio_async_update: bridge is NULL");
+        return PLASTICITY_BIO_ERROR_NOT_CONNECTED;
+    }
+    if (!bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "plasticity_bio_async_update: not connected");
+        return PLASTICITY_BIO_ERROR_NOT_CONNECTED;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -395,7 +441,14 @@ int plasticity_bio_async_broadcast_weight_update(
     float new_weight,
     plasticity_module_type_t source_module
 ) {
-    if (!bridge || !bridge->connected) return PLASTICITY_BIO_ERROR_NOT_CONNECTED;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_bio_async_broadcast_weight_update: bridge is NULL");
+        return PLASTICITY_BIO_ERROR_NOT_CONNECTED;
+    }
+    if (!bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "plasticity_bio_async_broadcast_weight_update: not connected");
+        return PLASTICITY_BIO_ERROR_NOT_CONNECTED;
+    }
 
     float change = new_weight - old_weight;
     if (fabsf(change) < bridge->config.weight_change_threshold) {
@@ -456,7 +509,14 @@ int plasticity_bio_async_broadcast_consolidation(
     float mean_change,
     bool triggered_by_sleep
 ) {
-    if (!bridge || !bridge->connected) return PLASTICITY_BIO_ERROR_NOT_CONNECTED;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_bio_async_broadcast_consolidation: bridge is NULL");
+        return PLASTICITY_BIO_ERROR_NOT_CONNECTED;
+    }
+    if (!bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "plasticity_bio_async_broadcast_consolidation: not connected");
+        return PLASTICITY_BIO_ERROR_NOT_CONNECTED;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -785,7 +845,10 @@ int plasticity_bio_async_subscribe_module(
     uint32_t module_id,
     uint32_t msg_types
 ) {
-    if (!bridge) return PLASTICITY_BIO_ERROR_NULL_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_bio_async_subscribe_module: bridge is NULL");
+        return PLASTICITY_BIO_ERROR_NULL_PARAM;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -799,6 +862,7 @@ int plasticity_bio_async_subscribe_module(
 
     /* Check capacity */
     if (bridge->subscription_count >= bridge->subscription_capacity) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "plasticity_bio_async_subscribe_module: subscription capacity exceeded");
         nimcp_mutex_unlock(bridge->base.mutex);
         return PLASTICITY_BIO_ERROR_SUBSCRIPTION_FULL;
     }
@@ -825,7 +889,10 @@ int plasticity_bio_async_unsubscribe_module(
     plasticity_bio_async_bridge_t* bridge,
     uint32_t module_id
 ) {
-    if (!bridge) return PLASTICITY_BIO_ERROR_NULL_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_bio_async_unsubscribe_module: bridge is NULL");
+        return PLASTICITY_BIO_ERROR_NULL_PARAM;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -847,7 +914,10 @@ int plasticity_bio_async_update_subscription(
     uint32_t module_id,
     uint32_t msg_types
 ) {
-    if (!bridge) return PLASTICITY_BIO_ERROR_NULL_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_bio_async_update_subscription: bridge is NULL");
+        return PLASTICITY_BIO_ERROR_NULL_PARAM;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -889,13 +959,23 @@ int plasticity_bio_async_get_stats(
     const plasticity_bio_async_bridge_t* bridge,
     plasticity_bio_async_stats_t* stats
 ) {
-    if (!bridge || !stats) return PLASTICITY_BIO_ERROR_NULL_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_bio_async_get_stats: bridge is NULL");
+        return PLASTICITY_BIO_ERROR_NULL_PARAM;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_bio_async_get_stats: stats is NULL");
+        return PLASTICITY_BIO_ERROR_NULL_PARAM;
+    }
     *stats = bridge->stats;
     return PLASTICITY_BIO_OK;
 }
 
 int plasticity_bio_async_reset_stats(plasticity_bio_async_bridge_t* bridge) {
-    if (!bridge) return PLASTICITY_BIO_ERROR_NULL_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "plasticity_bio_async_reset_stats: bridge is NULL");
+        return PLASTICITY_BIO_ERROR_NULL_PARAM;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memset(&bridge->stats, 0, sizeof(plasticity_bio_async_stats_t));

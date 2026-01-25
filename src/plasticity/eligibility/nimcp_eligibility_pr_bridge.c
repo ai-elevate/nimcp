@@ -11,6 +11,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "plasticity/eligibility/nimcp_eligibility_pr_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -114,10 +115,9 @@ elig_pr_bridge_t elig_pr_bridge_create(const elig_pr_bridge_config_t* config) {
         return NULL;
     }
 
-    elig_pr_bridge_t bridge = (elig_pr_bridge_t)calloc(1, sizeof(struct elig_pr_bridge_struct));
+    elig_pr_bridge_t bridge = (elig_pr_bridge_t)nimcp_calloc(1, sizeof(struct elig_pr_bridge_struct));
     if (!bridge) {
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "elig_pr_bridge_create: bridge allocation failed");
         return NULL;
     }
 
@@ -131,7 +131,7 @@ elig_pr_bridge_t elig_pr_bridge_create(const elig_pr_bridge_config_t* config) {
 
 void elig_pr_bridge_destroy(elig_pr_bridge_t bridge) {
     if (bridge) {
-        free(bridge);
+        nimcp_free(bridge);
     }
 }
 

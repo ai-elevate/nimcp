@@ -87,7 +87,10 @@ void snn_scaling_bridge_destroy(snn_scaling_bridge_t* bridge) {
 }
 
 int snn_scaling_bridge_connect_bio_async(snn_scaling_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_scaling_bridge_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -121,7 +124,10 @@ bool snn_scaling_bridge_is_bio_async_connected(const snn_scaling_bridge_t* bridg
 }
 
 int snn_scaling_bridge_compute_factors(snn_scaling_bridge_t* bridge, float dt) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_scaling_bridge_compute_factors: bridge is NULL");
+        return -1;
+    }
 
     if (bridge->base.mutex) nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -161,7 +167,10 @@ int snn_scaling_bridge_compute_factors(snn_scaling_bridge_t* bridge, float dt) {
 }
 
 int snn_scaling_bridge_apply_plasticity(snn_scaling_bridge_t* bridge, float dt) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_scaling_bridge_apply_plasticity: bridge is NULL");
+        return -1;
+    }
 
     if (bridge->base.mutex) nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -175,7 +184,10 @@ int snn_scaling_bridge_apply_plasticity(snn_scaling_bridge_t* bridge, float dt) 
 }
 
 int snn_scaling_bridge_update(snn_scaling_bridge_t* bridge, float dt) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_scaling_bridge_update: bridge is NULL");
+        return -1;
+    }
 
     int ret = snn_scaling_bridge_compute_factors(bridge, dt);
     if (ret != 0) return ret;
@@ -195,7 +207,20 @@ int snn_scaling_bridge_get_weight_changes(
     uint32_t max_changes,
     uint32_t* n_changes
 ) {
-    if (!bridge || !synapse_ids || !scaling_factors || !n_changes) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_scaling_bridge_get_weight_changes: bridge is NULL");
+        return -1;
+    }
+    if (!synapse_ids) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_scaling_bridge_get_weight_changes: synapse_ids is NULL");
+        return -1;
+    }
+    if (!scaling_factors) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_scaling_bridge_get_weight_changes: scaling_factors is NULL");
+        return -1;
+    }
+    if (!n_changes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_scaling_bridge_get_weight_changes: n_changes is NULL");
         return -1;
     }
 
@@ -207,7 +232,14 @@ int snn_scaling_bridge_get_effects(
     const snn_scaling_bridge_t* bridge,
     snn_scaling_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_scaling_bridge_get_effects: bridge is NULL");
+        return -1;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_scaling_bridge_get_effects: effects is NULL");
+        return -1;
+    }
 
     if (bridge->base.mutex) {
         nimcp_platform_mutex_lock((void*)bridge->base.mutex);
@@ -231,7 +263,10 @@ int snn_scaling_bridge_get_stats(
     uint32_t* scaling_events,
     uint32_t* updates
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_scaling_bridge_get_stats: bridge is NULL");
+        return -1;
+    }
 
     if (scaling_events) *scaling_events = bridge->scaling_events;
     if (updates) *updates = (uint32_t)(bridge->last_update_time_ms /

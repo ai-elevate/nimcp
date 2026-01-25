@@ -56,7 +56,10 @@ static float inflammation_to_clearance_factor(brain_inflammation_level_t level) 
  * ============================================================================ */
 
 int calcium_immune_default_config(calcium_immune_config_t* config) {
-    NIMCP_API_CHECK_NULL(config, -1, "Calcium-immune config is NULL");
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_default_config: config is NULL");
+        return -1;
+    }
 
     /* All features enabled by default */
     config->enable_cytokine_calcium_modulation = true;
@@ -89,13 +92,22 @@ calcium_immune_bridge_t* calcium_immune_bridge_create(
     calcium_dynamics_t calcium
 ) {
     /* Guard: require immune system and calcium */
-    NIMCP_API_CHECK_NULL_RET_NULL(immune_system, "Immune system is NULL");
-    NIMCP_API_CHECK_NULL_RET_NULL(calcium, "Calcium dynamics is NULL");
+    if (!immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_bridge_create: immune_system is NULL");
+        return NULL;
+    }
+    if (!calcium) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_bridge_create: calcium is NULL");
+        return NULL;
+    }
 
     /* Allocate bridge */
     calcium_immune_bridge_t* bridge = (calcium_immune_bridge_t*)
         nimcp_malloc(sizeof(calcium_immune_bridge_t));
-    NIMCP_API_CHECK_ALLOC(bridge, "Calcium-immune bridge allocation failed");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "calcium_immune_bridge_create: bridge allocation failed");
+        return NULL;
+    }
 
     /* Initialize to zero */
     memset(bridge, 0, sizeof(calcium_immune_bridge_t));
@@ -176,7 +188,10 @@ void calcium_immune_bridge_destroy(calcium_immune_bridge_t* bridge) {
  * ============================================================================ */
 
 int calcium_immune_apply_cytokine_effects(calcium_immune_bridge_t* bridge) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-immune bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_apply_cytokine_effects: bridge is NULL");
+        return -1;
+    }
 
     pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
@@ -212,7 +227,10 @@ int calcium_immune_apply_cytokine_effects(calcium_immune_bridge_t* bridge) {
 }
 
 int calcium_immune_apply_inflammation_effects(calcium_immune_bridge_t* bridge) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-immune bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_apply_inflammation_effects: bridge is NULL");
+        return -1;
+    }
 
     pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
@@ -247,7 +265,10 @@ int calcium_immune_apply_inflammation_effects(calcium_immune_bridge_t* bridge) {
 }
 
 float calcium_immune_get_effective_influx(const calcium_immune_bridge_t* bridge) {
-    if (!bridge) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_get_effective_influx: bridge is NULL");
+        return 1.0f;
+    }
 
     pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
@@ -263,8 +284,14 @@ int calcium_immune_get_modulation_state(
     const calcium_immune_bridge_t* bridge,
     calcium_modulation_state_t* modulation
 ) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-immune bridge is NULL");
-    NIMCP_API_CHECK_NULL(modulation, -1, "Modulation state output pointer is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_get_modulation_state: bridge is NULL");
+        return -1;
+    }
+    if (!modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_get_modulation_state: modulation is NULL");
+        return -1;
+    }
 
     pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
@@ -294,7 +321,13 @@ int calcium_immune_restore_dynamics(
     calcium_immune_bridge_t* bridge,
     float recovery_factor
 ) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-immune bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_restore_dynamics: bridge is NULL");
+        return -1;
+    }
+    if (recovery_factor < 0.0f || recovery_factor > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "calcium_immune_restore_dynamics: recovery_factor out of range [0,1]");
+    }
 
     recovery_factor = clamp_f(recovery_factor, 0.0f, 1.0f);
 
@@ -320,8 +353,14 @@ int calcium_immune_restore_dynamics(
  * ============================================================================ */
 
 int calcium_immune_detect_instability(calcium_immune_bridge_t* bridge) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-immune bridge is NULL");
-    NIMCP_API_CHECK_NULL(bridge->calcium, -1, "Calcium dynamics is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_detect_instability: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->calcium) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "calcium_immune_detect_instability: calcium dynamics not connected");
+        return -1;
+    }
 
     pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
@@ -381,8 +420,14 @@ int calcium_immune_alert_instability(
     calcium_immune_bridge_t* bridge,
     uint32_t* antigen_id
 ) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-immune bridge is NULL");
-    NIMCP_API_CHECK_NULL(antigen_id, -1, "Antigen ID output pointer is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_alert_instability: bridge is NULL");
+        return -1;
+    }
+    if (!antigen_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_alert_instability: antigen_id is NULL");
+        return -1;
+    }
 
     pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
@@ -409,7 +454,10 @@ int calcium_immune_alert_instability(
 }
 
 int calcium_immune_signal_healthy_dynamics(calcium_immune_bridge_t* bridge) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-immune bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_signal_healthy_dynamics: bridge is NULL");
+        return -1;
+    }
 
     pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
@@ -432,7 +480,10 @@ int calcium_immune_bridge_update(
     calcium_immune_bridge_t* bridge,
     uint64_t delta_ms
 ) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-immune bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_bridge_update: bridge is NULL");
+        return -1;
+    }
 
     pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
@@ -477,8 +528,14 @@ int calcium_immune_get_cytokine_effects(
     const calcium_immune_bridge_t* bridge,
     cytokine_calcium_effects_t* effects
 ) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-immune bridge is NULL");
-    NIMCP_API_CHECK_NULL(effects, -1, "Effects output pointer is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_get_cytokine_effects: bridge is NULL");
+        return -1;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_get_cytokine_effects: effects is NULL");
+        return -1;
+    }
 
     pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
@@ -492,8 +549,14 @@ int calcium_immune_get_inflammation_state(
     const calcium_immune_bridge_t* bridge,
     inflammation_calcium_state_t* state
 ) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-immune bridge is NULL");
-    NIMCP_API_CHECK_NULL(state, -1, "State output pointer is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_get_inflammation_state: bridge is NULL");
+        return -1;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_get_inflammation_state: state is NULL");
+        return -1;
+    }
 
     pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
@@ -507,8 +570,14 @@ int calcium_immune_get_instability_state(
     const calcium_immune_bridge_t* bridge,
     calcium_instability_state_t* state
 ) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-immune bridge is NULL");
-    NIMCP_API_CHECK_NULL(state, -1, "State output pointer is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_get_instability_state: bridge is NULL");
+        return -1;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_get_instability_state: state is NULL");
+        return -1;
+    }
 
     pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
@@ -519,7 +588,10 @@ int calcium_immune_get_instability_state(
 }
 
 bool calcium_immune_is_dynamics_impaired(const calcium_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_is_dynamics_impaired: bridge is NULL");
+        return false;
+    }
 
     pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
@@ -536,7 +608,10 @@ bool calcium_immune_is_dynamics_impaired(const calcium_immune_bridge_t* bridge) 
  * ============================================================================ */
 
 int calcium_immune_connect_bio_async(calcium_immune_bridge_t* bridge) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-immune bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_connect_bio_async: bridge is NULL");
+        return -1;
+    }
 
     pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
@@ -566,7 +641,10 @@ int calcium_immune_connect_bio_async(calcium_immune_bridge_t* bridge) {
 }
 
 int calcium_immune_disconnect_bio_async(calcium_immune_bridge_t* bridge) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-immune bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
 
     pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);
@@ -583,7 +661,10 @@ int calcium_immune_disconnect_bio_async(calcium_immune_bridge_t* bridge) {
 }
 
 bool calcium_immune_is_bio_async_connected(const calcium_immune_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_immune_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     pthread_mutex_t* mtx = (pthread_mutex_t*)bridge->base.mutex;
     pthread_mutex_lock(mtx);

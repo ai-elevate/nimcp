@@ -38,7 +38,10 @@ static inline float clamp_f(float value, float min, float max) {
  * ============================================================================ */
 
 int calcium_pink_noise_default_config(calcium_pink_noise_config_t* config) {
-    NIMCP_API_CHECK_NULL(config, -1, "Calcium-pink noise config is NULL");
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_pink_noise_default_config: config is NULL");
+        return -1;
+    }
 
     /* Pink noise defaults */
     config->pink_noise_alpha = CALCIUM_PINK_NOISE_ALPHA_DEFAULT;
@@ -77,14 +80,17 @@ calcium_pink_noise_bridge_t* calcium_pink_noise_bridge_create(
 
     /* Validate configuration */
     if (calcium_pink_noise_validate_config(config) != 0) {
-        NIMCP_LOGGING_ERROR("Invalid configuration");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "calcium_pink_noise_bridge_create: invalid configuration");
         return NULL;
     }
 
     /* Allocate bridge structure */
     calcium_pink_noise_bridge_t* bridge = (calcium_pink_noise_bridge_t*)
         nimcp_malloc(sizeof(calcium_pink_noise_bridge_t));
-    NIMCP_API_CHECK_ALLOC(bridge, "Calcium-pink noise bridge allocation failed");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "calcium_pink_noise_bridge_create: bridge allocation failed");
+        return NULL;
+    }
 
     /* Initialize to zero */
     memset(bridge, 0, sizeof(calcium_pink_noise_bridge_t));
@@ -168,8 +174,14 @@ int calcium_pink_noise_connect_calcium(
     calcium_pink_noise_bridge_t* bridge,
     calcium_dynamics_t calcium
 ) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-pink noise bridge is NULL");
-    NIMCP_API_CHECK_NULL(calcium, -1, "Calcium dynamics is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_pink_noise_connect_calcium: bridge is NULL");
+        return -1;
+    }
+    if (!calcium) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_pink_noise_connect_calcium: calcium is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -184,7 +196,10 @@ int calcium_pink_noise_connect_calcium(
 }
 
 int calcium_pink_noise_disconnect_calcium(calcium_pink_noise_bridge_t* bridge) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-pink noise bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_pink_noise_disconnect_calcium: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -202,7 +217,10 @@ int calcium_pink_noise_disconnect_calcium(calcium_pink_noise_bridge_t* bridge) {
  * ============================================================================ */
 
 int calcium_pink_noise_enable(calcium_pink_noise_bridge_t* bridge) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-pink noise bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_pink_noise_enable: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->noise_enabled = true;
@@ -213,7 +231,10 @@ int calcium_pink_noise_enable(calcium_pink_noise_bridge_t* bridge) {
 }
 
 int calcium_pink_noise_disable(calcium_pink_noise_bridge_t* bridge) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-pink noise bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_pink_noise_disable: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -231,7 +252,10 @@ int calcium_pink_noise_disable(calcium_pink_noise_bridge_t* bridge) {
 }
 
 bool calcium_pink_noise_is_enabled(const calcium_pink_noise_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_pink_noise_is_enabled: bridge is NULL");
+        return false;
+    }
     return bridge->noise_enabled;
 }
 
@@ -324,7 +348,10 @@ static void update_statistics(
 }
 
 int calcium_pink_noise_update(calcium_pink_noise_bridge_t* bridge) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-pink noise bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_pink_noise_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -363,7 +390,10 @@ float calcium_pink_noise_modulate_influx(
     float nmda_activation
 ) {
     /* Guard clauses */
-    if (!bridge) return nmda_activation;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_pink_noise_modulate_influx: bridge is NULL");
+        return nmda_activation;
+    }
     if (!bridge->noise_enabled) return nmda_activation;
 
     /* Apply influx modulation */
@@ -376,7 +406,10 @@ float calcium_pink_noise_modulate_transient(
     float ca_amplitude
 ) {
     /* Guard clauses */
-    if (!bridge) return ca_amplitude;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_pink_noise_modulate_transient: bridge is NULL");
+        return ca_amplitude;
+    }
     if (!bridge->noise_enabled) return ca_amplitude;
 
     /* Apply transient modulation */
@@ -388,7 +421,10 @@ float calcium_pink_noise_modulate_decay(
     float decay_rate
 ) {
     /* Guard clauses */
-    if (!bridge) return decay_rate;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_pink_noise_modulate_decay: bridge is NULL");
+        return decay_rate;
+    }
     if (!bridge->noise_enabled) return decay_rate;
 
     /* Apply decay modulation */
@@ -402,8 +438,14 @@ float calcium_pink_noise_modulate_decay(
 int calcium_pink_noise_update_ca_dependent_amplitude(
     calcium_pink_noise_bridge_t* bridge
 ) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-pink noise bridge is NULL");
-    NIMCP_API_CHECK(bridge->calcium_connected, -1, "Calcium not connected");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_pink_noise_update_ca_dependent_amplitude: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->calcium_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "calcium_pink_noise_update_ca_dependent_amplitude: calcium not connected");
+        return -1;
+    }
 
     /* Get current calcium concentration */
     float ca_concentration = calcium_get_concentration(bridge->calcium);
@@ -428,7 +470,10 @@ int calcium_pink_noise_update_ca_dependent_amplitude(
 float calcium_pink_noise_get_effective_amplitude(
     const calcium_pink_noise_bridge_t* bridge
 ) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_pink_noise_get_effective_amplitude: bridge is NULL");
+        return 0.0f;
+    }
     return bridge->effects.effective_amplitude;
 }
 
@@ -440,8 +485,14 @@ int calcium_pink_noise_get_effects(
     const calcium_pink_noise_bridge_t* bridge,
     calcium_pink_noise_effects_t* effects
 ) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-pink noise bridge is NULL");
-    NIMCP_API_CHECK_NULL(effects, -1, "Effects output pointer is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_pink_noise_get_effects: bridge is NULL");
+        return -1;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_pink_noise_get_effects: effects is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->effects, sizeof(calcium_pink_noise_effects_t));
@@ -454,8 +505,14 @@ int calcium_pink_noise_get_stats(
     const calcium_pink_noise_bridge_t* bridge,
     calcium_pink_noise_stats_t* stats
 ) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-pink noise bridge is NULL");
-    NIMCP_API_CHECK_NULL(stats, -1, "Stats output pointer is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_pink_noise_get_stats: bridge is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_pink_noise_get_stats: stats is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(calcium_pink_noise_stats_t));
@@ -467,7 +524,10 @@ int calcium_pink_noise_get_stats(
 float calcium_pink_noise_get_current_sample(
     const calcium_pink_noise_bridge_t* bridge
 ) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_pink_noise_get_current_sample: bridge is NULL");
+        return 0.0f;
+    }
     return bridge->effects.current_noise_sample;
 }
 
@@ -476,7 +536,10 @@ float calcium_pink_noise_get_current_sample(
  * ============================================================================ */
 
 int calcium_pink_noise_connect_bio_async(calcium_pink_noise_bridge_t* bridge) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-pink noise bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_pink_noise_connect_bio_async: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -507,7 +570,10 @@ int calcium_pink_noise_connect_bio_async(calcium_pink_noise_bridge_t* bridge) {
 }
 
 int calcium_pink_noise_disconnect_bio_async(calcium_pink_noise_bridge_t* bridge) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-pink noise bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_pink_noise_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -525,7 +591,10 @@ int calcium_pink_noise_disconnect_bio_async(calcium_pink_noise_bridge_t* bridge)
 bool calcium_pink_noise_is_bio_async_connected(
     const calcium_pink_noise_bridge_t* bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_pink_noise_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }
 
@@ -537,8 +606,14 @@ int calcium_pink_noise_reset(
     calcium_pink_noise_bridge_t* bridge,
     uint32_t new_seed
 ) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-pink noise bridge is NULL");
-    NIMCP_API_CHECK_NULL(bridge->noise_gen, -1, "Noise generator is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_pink_noise_reset: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->noise_gen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "calcium_pink_noise_reset: noise_gen is NULL");
+        return -1;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -560,7 +635,10 @@ int calcium_pink_noise_reset(
 }
 
 int calcium_pink_noise_validate_config(const calcium_pink_noise_config_t* config) {
-    NIMCP_API_CHECK_NULL(config, -1, "Config pointer is NULL");
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_pink_noise_validate_config: config is NULL");
+        return -1;
+    }
 
     /* Validate pink noise parameters */
     if (config->pink_noise_alpha < 0.0f || config->pink_noise_alpha > 3.0f) {

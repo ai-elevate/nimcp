@@ -71,3 +71,50 @@ set_tests_properties(test_medulla_cerebellum_bridge_regression
         TIMEOUT 300
         LABELS "regression;core;medulla;cerebellum;bridge;performance;stability"
 )
+
+# ============================================================================
+# Medulla Exception Regression Tests
+# ============================================================================
+#
+# WHAT: Comprehensive regression tests for medulla exception handling and behavioral stability
+# WHY:  Ensure medulla arousal, protection, circadian, immune, cerebellum, and brainstem
+#       coupling behaviors remain stable across code changes
+# HOW:  Test numerical stability, boundary conditions, API contracts, and biological
+#       accuracy of each medulla subsystem and bridge
+#
+# TEST CATEGORIES:
+# 1. AROUSAL    - Arousal state transitions, Yerkes-Dodson curve, persistence
+# 2. PROTECT    - Protection escalation, de-escalation, capability restrictions, hysteresis
+# 3. CIRCADIAN  - Phase transitions, learning rate modulation, consolidation
+# 4. IMMUNE     - Cytokine impact factors, inflammation thresholds, emergency triggers
+# 5. CEREBELLUM - IO oscillation, error queue FIFO, climbing fiber timing
+# 6. BRAINSTEM  - Signal latencies, priority ordering, buffer overflow
+# 7. NUMERICAL  - Stability tests for edge cases and long simulations
+# 8. API        - Contract verification and NULL handling
+
+add_executable(test_medulla_exception_regression
+    test_medulla_exception_regression.cpp
+)
+
+target_link_libraries(test_medulla_exception_regression
+    PRIVATE nimcp GTest::gtest GTest::gtest_main Threads::Threads m
+)
+
+target_include_directories(test_medulla_exception_regression
+    PRIVATE
+        ${PROJECT_SOURCE_DIR}/include
+        ${PROJECT_SOURCE_DIR}/src
+        ${PROJECT_SOURCE_DIR}/test
+)
+
+target_compile_features(test_medulla_exception_regression PRIVATE cxx_std_17)
+
+# Register test with CTest
+add_test(NAME test_medulla_exception_regression
+         COMMAND test_medulla_exception_regression --gtest_brief=1)
+
+set_tests_properties(test_medulla_exception_regression
+    PROPERTIES
+        TIMEOUT 300
+        LABELS "regression;core;medulla;exception;arousal;protection;circadian;immune;cerebellum;brainstem;stability"
+)

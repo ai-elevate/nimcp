@@ -14,7 +14,10 @@
 #include <math.h>
 
 int neuromod_fep_bridge_default_config(neuromod_fep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_fep_bridge_default_config: config is NULL");
+        return -1;
+    }
     config->da_pe_sensitivity = NEUROMOD_FEP_DA_PE_GAIN;
     config->ach_precision_sensitivity = NEUROMOD_FEP_ACH_PRECISION_GAIN;
     config->ne_uncertainty_sensitivity = NEUROMOD_FEP_NE_UNCERTAINTY_GAIN;
@@ -29,11 +32,8 @@ int neuromod_fep_bridge_default_config(neuromod_fep_config_t* config) {
 neuromod_fep_bridge_t* neuromod_fep_bridge_create(const neuromod_fep_config_t* config) {
     neuromod_fep_bridge_t* bridge = (neuromod_fep_bridge_t*)nimcp_malloc(sizeof(neuromod_fep_bridge_t));
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neuromod_fep_bridge_create: failed to allocate bridge");
         return NULL;
-
     }
 
     if (config) memcpy(&bridge->config, config, sizeof(neuromod_fep_config_t));
@@ -43,8 +43,13 @@ neuromod_fep_bridge_t* neuromod_fep_bridge_create(const neuromod_fep_config_t* c
     memset(&bridge->neuromod_effects, 0, sizeof(neuromod_fep_feedback_t));
     memset(&bridge->stats, 0, sizeof(neuromod_fep_stats_t));
 
-    if (bridge_base_init(&bridge->base, 0, "neuromodulators_fep") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "neuromodulators_fep") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neuromod_fep_bridge_create: bridge_base_init failed");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "neuromod_fep_bridge_create: mutex allocation failed");
         nimcp_free(bridge);
         return NULL;
     }
@@ -63,7 +68,14 @@ void neuromod_fep_bridge_destroy(neuromod_fep_bridge_t* bridge) {
 }
 
 int neuromod_fep_bridge_connect_fep(neuromod_fep_bridge_t* bridge, fep_system_t* fep) {
-    if (!bridge || !fep) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_fep_bridge_connect_fep: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!fep) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_fep_bridge_connect_fep: fep is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = fep;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -71,7 +83,14 @@ int neuromod_fep_bridge_connect_fep(neuromod_fep_bridge_t* bridge, fep_system_t*
 }
 
 int neuromod_fep_bridge_connect_neuromod(neuromod_fep_bridge_t* bridge, neuromodulator_system_t neuromod) {
-    if (!bridge || !neuromod) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_fep_bridge_connect_neuromod: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!neuromod) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_fep_bridge_connect_neuromod: neuromod is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->neuromod_system = neuromod;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -79,7 +98,10 @@ int neuromod_fep_bridge_connect_neuromod(neuromod_fep_bridge_t* bridge, neuromod
 }
 
 int neuromod_fep_bridge_disconnect(neuromod_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_fep_bridge_disconnect: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->fep_system = NULL;
     bridge->neuromod_system = NULL;
@@ -108,7 +130,10 @@ float neuromod_fep_get_learning_rate_modulation(const neuromod_fep_bridge_t* bri
 }
 
 int neuromod_fep_bridge_update(neuromod_fep_bridge_t* bridge, uint64_t delta_ms) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_fep_bridge_update: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     if (bridge->fep_system && bridge->neuromod_system) {
         float pe = fep_get_prediction_error(bridge->fep_system, 0);
@@ -138,7 +163,14 @@ int neuromod_fep_bridge_update(neuromod_fep_bridge_t* bridge, uint64_t delta_ms)
 }
 
 int neuromod_fep_bridge_get_stats(const neuromod_fep_bridge_t* bridge, neuromod_fep_stats_t* stats) {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_fep_bridge_get_stats: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_fep_bridge_get_stats: stats is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(stats, &bridge->stats, sizeof(neuromod_fep_stats_t));
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -146,13 +178,19 @@ int neuromod_fep_bridge_get_stats(const neuromod_fep_bridge_t* bridge, neuromod_
 }
 
 int neuromod_fep_bridge_connect_bio_async(neuromod_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_fep_bridge_connect_bio_async: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 int neuromod_fep_bridge_disconnect_bio_async(neuromod_fep_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuromod_fep_bridge_disconnect_bio_async: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     bridge->base.bio_async_enabled = false;
     return 0;
 }

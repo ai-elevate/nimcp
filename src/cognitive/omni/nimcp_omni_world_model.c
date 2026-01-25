@@ -1246,12 +1246,45 @@ uint32_t omni_wm_sample_experiences(omni_world_model_t* wm,
     if (!wm || !batch || batch_size == 0) return 0;
 
     omni_wm_replay_buffer_t* buf = wm->replay_buffer;
+    if (!buf || buf->size == 0) return 0;
+
     uint32_t actual_size = batch_size < buf->size ? batch_size : buf->size;
 
-    /* Simple uniform sampling */
+    /* Simple uniform sampling - return clones so caller can safely destroy */
     for (uint32_t i = 0; i < actual_size; i++) {
         uint32_t idx = rand_r(&wm->rand_seed) % buf->size;
-        batch[i] = buf->experiences[idx];
+        omni_wm_experience_t* src = buf->experiences[idx];
+        if (!src) {
+            batch[i] = NULL;
+            continue;
+        }
+
+        /* Clone the experience */
+        omni_wm_experience_t* clone = omni_wm_experience_create(
+            wm->config.state_dim,
+            src->action_dim,
+            src->obs_dim
+        );
+        if (!clone) {
+            /* Clean up already allocated clones */
+            for (uint32_t j = 0; j < i; j++) {
+                omni_wm_experience_destroy(batch[j]);
+                batch[j] = NULL;
+            }
+            return 0;
+        }
+
+        memcpy(clone->action, src->action, src->action_dim * sizeof(float));
+        clone->reward = src->reward;
+        clone->symlog_reward = src->symlog_reward;
+        clone->terminal = src->terminal;
+        clone->timestamp = src->timestamp;
+
+        if (src->observation && clone->observation) {
+            memcpy(clone->observation, src->observation, src->obs_dim * sizeof(float));
+        }
+
+        batch[i] = clone;
     }
 
     return actual_size;

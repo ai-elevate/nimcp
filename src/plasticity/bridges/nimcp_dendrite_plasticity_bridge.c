@@ -125,7 +125,10 @@ static int dendrite_plasticity_wiring_handler_callback(
 
 int dendrite_plasticity_default_config(dendrite_plasticity_config_t* config)
 {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_plasticity_default_config: config is NULL");
+        return -1;
+    }
 
     memset(config, 0, sizeof(*config));
 
@@ -164,6 +167,7 @@ dendrite_plasticity_bridge_t* dendrite_plasticity_create(
     dendrite_plasticity_bridge_t* bridge = nimcp_malloc(sizeof(dendrite_plasticity_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate dendrite plasticity bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendrite_plasticity_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -186,6 +190,7 @@ dendrite_plasticity_bridge_t* dendrite_plasticity_create(
         bridge->compartment_capacity * sizeof(compartment_plasticity_state_t));
     if (!bridge->compartments) {
         NIMCP_LOGGING_ERROR("Failed to allocate compartment array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendrite_plasticity_create: failed to allocate compartment array");
         nimcp_free(bridge);
         return NULL;
     }
@@ -196,12 +201,14 @@ dendrite_plasticity_bridge_t* dendrite_plasticity_create(
     bridge->base.mutex = nimcp_malloc(sizeof(nimcp_mutex_t));
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to allocate mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendrite_plasticity_create: failed to allocate mutex");
         nimcp_free(bridge->compartments);
         nimcp_free(bridge);
         return NULL;
     }
     if (nimcp_mutex_init(bridge->base.mutex, NULL) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "dendrite_plasticity_create: failed to initialize mutex");
         nimcp_free(bridge->compartments);
         nimcp_free(bridge);
         return NULL;
@@ -245,7 +252,10 @@ int dendrite_plasticity_connect_stdp(
     dendrite_plasticity_bridge_t* bridge,
     stdp_synapse_t* stdp)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_plasticity_connect_stdp: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->stdp_template = stdp;
@@ -257,7 +267,10 @@ int dendrite_plasticity_connect_stdp(
 
 int dendrite_plasticity_connect_bio_async(dendrite_plasticity_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_INVALID_PARAM;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_plasticity_connect_bio_async: bridge is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
     if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     bio_module_info_t info = {
@@ -295,7 +308,10 @@ int dendrite_plasticity_connect_bio_async(dendrite_plasticity_bridge_t* bridge)
 
 int dendrite_plasticity_disconnect_bio_async(dendrite_plasticity_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_plasticity_disconnect_bio_async: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {
@@ -323,12 +339,16 @@ int dendrite_plasticity_update_calcium(
     uint32_t compartment_id,
     float calcium_influx)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_plasticity_update_calcium: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     compartment_plasticity_state_t* comp = find_or_create_compartment(bridge, compartment_id);
     if (!comp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendrite_plasticity_update_calcium: failed to find or create compartment");
         nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_NO_MEMORY;
     }
@@ -380,7 +400,10 @@ int dendrite_plasticity_decay_calcium(
     dendrite_plasticity_bridge_t* bridge,
     float dt_ms)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_plasticity_decay_calcium: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (dt_ms <= 0.0f) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -458,12 +481,16 @@ int dendrite_plasticity_process_bpap(
     float bpap_time,
     float attenuation)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_plasticity_process_bpap: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     compartment_plasticity_state_t* comp = find_or_create_compartment(bridge, compartment_id);
     if (!comp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendrite_plasticity_process_bpap: failed to find or create compartment");
         nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_NO_MEMORY;
     }
@@ -488,13 +515,17 @@ int dendrite_plasticity_apply_structural(
     dendrite_plasticity_bridge_t* bridge,
     uint32_t compartment_id)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_plasticity_apply_structural: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->config.enable_structural_plasticity) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     compartment_plasticity_state_t* comp = find_or_create_compartment(bridge, compartment_id);
     if (!comp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendrite_plasticity_apply_structural: failed to find or create compartment");
         nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_NO_MEMORY;
     }
@@ -531,13 +562,17 @@ int dendrite_plasticity_update_bcm(
     uint32_t compartment_id,
     float activity)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_plasticity_update_bcm: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->config.enable_bcm) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
 
     compartment_plasticity_state_t* comp = find_or_create_compartment(bridge, compartment_id);
     if (!comp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "dendrite_plasticity_update_bcm: failed to find or create compartment");
         nimcp_mutex_unlock(bridge->base.mutex);
         return NIMCP_ERROR_NO_MEMORY;
     }
@@ -579,7 +614,10 @@ int dendrite_plasticity_update(
     dendrite_plasticity_bridge_t* bridge,
     float dt_ms)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_plasticity_update: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
 
@@ -629,7 +667,10 @@ float dendrite_plasticity_get_weight_delta(
 
 int dendrite_plasticity_apply_to_orchestrator(dendrite_plasticity_bridge_t* bridge)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_plasticity_apply_to_orchestrator: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->plasticity_orch) return 0;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -648,7 +689,14 @@ int dendrite_plasticity_get_stats(
     const dendrite_plasticity_bridge_t* bridge,
     dendrite_plasticity_stats_t* stats)
 {
-    if (!bridge || !stats) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_plasticity_get_stats: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dendrite_plasticity_get_stats: stats is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     *stats = bridge->stats;
     return 0;

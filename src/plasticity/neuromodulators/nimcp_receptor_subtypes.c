@@ -163,6 +163,15 @@ void receptor_update_binding(
     float free_concentration,
     float dt
 ) {
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "receptor_update_binding: null config pointer");
+        return;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "receptor_update_binding: null state pointer");
+        return;
+    }
+
     // Compute equilibrium occupancy
     float target_occupancy = hill_equation(
         free_concentration,
@@ -195,6 +204,10 @@ void receptor_update_binding(
 // ============================================================================
 
 void dopamine_receptor_system_init(dopamine_receptor_system_t* system) {
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dopamine_receptor_system_init: null system pointer");
+        return;
+    }
     memset(system, 0, sizeof(*system));
 
     // Initialize all receptor subtypes
@@ -208,6 +221,10 @@ float dopamine_receptor_compute_modulation(
     float free_concentration,
     float dt
 ) {
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dopamine_receptor_compute_modulation: null system pointer");
+        return 0.0f;
+    }
     system->free_concentration = free_concentration;
     system->total_excitation = 0.0F;
     system->total_inhibition = 0.0F;
@@ -240,6 +257,10 @@ void dopamine_receptor_apply_d2_blockade(
     dopamine_receptor_system_t* system,
     float blockade_fraction
 ) {
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "dopamine_receptor_apply_d2_blockade: null system pointer");
+        return;
+    }
     // Antipsychotic drugs block D2 receptors
     // Reduce effective expression level
     system->config[DOPAMINE_D2].expression_level *= (1.0F - blockade_fraction);
@@ -254,6 +275,10 @@ void dopamine_receptor_apply_d2_blockade(
 // ============================================================================
 
 void serotonin_receptor_system_init(serotonin_receptor_system_t* system) {
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "serotonin_receptor_system_init: null system pointer");
+        return;
+    }
     memset(system, 0, sizeof(*system));
 
     for (int i = 0; i < SEROTONIN_RECEPTOR_COUNT; i++) {
@@ -272,6 +297,10 @@ float serotonin_receptor_compute_modulation(
     float free_concentration,
     float dt
 ) {
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "serotonin_receptor_compute_modulation: null system pointer");
+        return 0.0f;
+    }
     system->free_concentration = free_concentration;
     system->total_excitation = 0.0F;
     system->total_inhibition = 0.0F;
@@ -302,6 +331,10 @@ float serotonin_receptor_apply_ssri(
     float reuptake_inhibition,
     float baseline_concentration
 ) {
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "serotonin_receptor_apply_ssri: null system pointer");
+        return 0.0f;
+    }
     // SSRIs block serotonin reuptake, increasing synaptic concentration
     // Model: new_conc = baseline / (1 - reuptake_inhibition)
     // Example: 0.9 inhibition → 10x increase
@@ -316,6 +349,10 @@ float serotonin_receptor_apply_ssri(
 // ============================================================================
 
 void acetylcholine_receptor_system_init(acetylcholine_receptor_system_t* system) {
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "acetylcholine_receptor_system_init: null system pointer");
+        return;
+    }
     memset(system, 0, sizeof(*system));
 
     // Simplified ACh receptor configurations
@@ -345,6 +382,10 @@ void acetylcholine_receptor_system_init(acetylcholine_receptor_system_t* system)
 // ============================================================================
 
 void norepinephrine_receptor_system_init(norepinephrine_receptor_system_t* system) {
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "norepinephrine_receptor_system_init: null system pointer");
+        return;
+    }
     memset(system, 0, sizeof(*system));
 
     // α1: excitatory
@@ -435,6 +476,10 @@ neuron_receptor_profile_t receptor_profile_striatal(void) {
 }
 
 void neuron_receptor_profile_init(neuron_receptor_profile_t* profile, brain_region_t region) {
+    if (!profile) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "neuron_receptor_profile_init: null profile pointer");
+        return;
+    }
     switch (region) {
         case BRAIN_REGION_CORTEX:
             *profile = receptor_profile_cortical();

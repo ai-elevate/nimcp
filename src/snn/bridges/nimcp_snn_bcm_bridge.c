@@ -27,7 +27,10 @@
 //=============================================================================
 
 void snn_bcm_bridge_config_default(snn_bcm_bridge_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_bcm_bridge_config_default: null config pointer");
+        return;
+    }
 
     /* Spike rate estimation */
     config->rate_window_ms = 100.0f;
@@ -133,7 +136,10 @@ snn_bcm_bridge_t* snn_bcm_bridge_create(
 }
 
 void snn_bcm_bridge_destroy(snn_bcm_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_bcm_bridge_destroy: null bridge pointer");
+        return;
+    }
 
     if (bridge->base.bio_async_enabled) {
         snn_bcm_bridge_disconnect_bio_async(bridge);
@@ -155,7 +161,10 @@ void snn_bcm_bridge_destroy(snn_bcm_bridge_t* bridge) {
 //=============================================================================
 
 int snn_bcm_bridge_connect_bio_async(snn_bcm_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_bcm_bridge_connect_bio_async: null bridge pointer");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -175,7 +184,11 @@ int snn_bcm_bridge_connect_bio_async(snn_bcm_bridge_t* bridge) {
 }
 
 int snn_bcm_bridge_disconnect_bio_async(snn_bcm_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_bcm_bridge_disconnect_bio_async: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->base.bio_async_enabled) return 0;
 
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_async_enabled = false;
@@ -185,7 +198,11 @@ int snn_bcm_bridge_disconnect_bio_async(snn_bcm_bridge_t* bridge) {
 }
 
 bool snn_bcm_bridge_is_bio_async_connected(const snn_bcm_bridge_t* bridge) {
-    return bridge ? bridge->base.bio_async_enabled : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_bcm_bridge_is_bio_async_connected: null bridge pointer");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }
 
 //=============================================================================
@@ -193,7 +210,14 @@ bool snn_bcm_bridge_is_bio_async_connected(const snn_bcm_bridge_t* bridge) {
 //=============================================================================
 
 int snn_bcm_bridge_update_rates(snn_bcm_bridge_t* bridge, float dt) {
-    if (!bridge || !bridge->network) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_bcm_bridge_update_rates: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_bcm_bridge_update_rates: null network");
+        return -1;
+    }
 
     if (bridge->base.mutex) {
         nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -224,7 +248,14 @@ int snn_bcm_bridge_update_rates(snn_bcm_bridge_t* bridge, float dt) {
 }
 
 int snn_bcm_bridge_update_thresholds(snn_bcm_bridge_t* bridge, float dt) {
-    if (!bridge || !bridge->bcm_synapses) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_bcm_bridge_update_thresholds: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->bcm_synapses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_bcm_bridge_update_thresholds: null bcm_synapses");
+        return -1;
+    }
 
     if (bridge->base.mutex) {
         nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -260,7 +291,14 @@ int snn_bcm_bridge_update_thresholds(snn_bcm_bridge_t* bridge, float dt) {
 }
 
 int snn_bcm_bridge_apply_plasticity(snn_bcm_bridge_t* bridge, float dt) {
-    if (!bridge || !bridge->network) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_bcm_bridge_apply_plasticity: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->network) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_bcm_bridge_apply_plasticity: null network");
+        return -1;
+    }
 
     if (bridge->base.mutex) {
         nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -277,7 +315,10 @@ int snn_bcm_bridge_apply_plasticity(snn_bcm_bridge_t* bridge, float dt) {
 }
 
 int snn_bcm_bridge_update(snn_bcm_bridge_t* bridge, float dt) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_bcm_bridge_update: null bridge pointer");
+        return -1;
+    }
 
     int ret = snn_bcm_bridge_update_rates(bridge, dt);
     if (ret != 0) return ret;
@@ -304,7 +345,20 @@ int snn_bcm_bridge_get_weight_changes(
     uint32_t max_changes,
     uint32_t* n_changes
 ) {
-    if (!bridge || !synapse_ids || !weight_deltas || !n_changes) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_bcm_bridge_get_weight_changes: null bridge pointer");
+        return -1;
+    }
+    if (!synapse_ids) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_bcm_bridge_get_weight_changes: null synapse_ids pointer");
+        return -1;
+    }
+    if (!weight_deltas) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_bcm_bridge_get_weight_changes: null weight_deltas pointer");
+        return -1;
+    }
+    if (!n_changes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_bcm_bridge_get_weight_changes: null n_changes pointer");
         return -1;
     }
 
@@ -320,7 +374,14 @@ int snn_bcm_bridge_get_effects(
     const snn_bcm_bridge_t* bridge,
     snn_bcm_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_bcm_bridge_get_effects: null bridge pointer");
+        return -1;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_bcm_bridge_get_effects: null effects pointer");
+        return -1;
+    }
 
     if (bridge->base.mutex) {
         nimcp_platform_mutex_lock((void*)bridge->base.mutex);
@@ -336,16 +397,31 @@ int snn_bcm_bridge_get_effects(
 }
 
 float snn_bcm_bridge_get_avg_threshold(const snn_bcm_bridge_t* bridge) {
-    return bridge ? bridge->effects.avg_threshold : 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_bcm_bridge_get_avg_threshold: null bridge pointer");
+        return 0.0f;
+    }
+    return bridge->effects.avg_threshold;
 }
 
 float snn_bcm_bridge_get_neuron_rate(const snn_bcm_bridge_t* bridge, uint32_t neuron_id) {
-    if (!bridge || neuron_id >= bridge->n_neurons) return -1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_bcm_bridge_get_neuron_rate: null bridge pointer");
+        return -1.0f;
+    }
+    if (neuron_id >= bridge->n_neurons) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_bcm_bridge_get_neuron_rate: neuron_id out of range");
+        return -1.0f;
+    }
     return bridge->rate_history[neuron_id].averaged_rate;
 }
 
 bool snn_bcm_bridge_is_ltp_dominant(const snn_bcm_bridge_t* bridge) {
-    return bridge ? bridge->effects.ltp_dominant : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_bcm_bridge_is_ltp_dominant: null bridge pointer");
+        return false;
+    }
+    return bridge->effects.ltp_dominant;
 }
 
 //=============================================================================
@@ -358,7 +434,10 @@ int snn_bcm_bridge_get_stats(
     uint32_t* threshold_updates,
     uint32_t* updates
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_bcm_bridge_get_stats: null bridge pointer");
+        return -1;
+    }
 
     if (plasticity_events) {
         *plasticity_events = bridge->plasticity_events;
@@ -375,7 +454,10 @@ int snn_bcm_bridge_get_stats(
 }
 
 void snn_bcm_bridge_reset_stats(snn_bcm_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_bcm_bridge_reset_stats: null bridge pointer");
+        return;
+    }
 
     if (bridge->base.mutex) {
         nimcp_platform_mutex_lock(bridge->base.mutex);

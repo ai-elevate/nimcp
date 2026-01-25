@@ -97,7 +97,10 @@ static void calcium_on_sleep_state_change(sleep_state_t new_state, void* user_da
  * ============================================================================ */
 
 int calcium_sleep_default_config(calcium_sleep_config_t* config) {
-    NIMCP_API_CHECK_NULL(config, -1, "Calcium-sleep config is NULL");
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_sleep_default_config: config is NULL");
+        return -1;
+    }
 
     config->enable_influx_modulation = true;
     config->enable_decay_modulation = true;
@@ -114,13 +117,22 @@ calcium_sleep_bridge_t calcium_sleep_bridge_create(
     sleep_system_t sleep_system,
     calcium_dynamics_t calcium
 ) {
-    NIMCP_API_CHECK_NULL_RET_NULL(sleep_system, "Sleep system is NULL");
-    NIMCP_API_CHECK_NULL_RET_NULL(calcium, "Calcium dynamics is NULL");
+    if (!sleep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_sleep_bridge_create: sleep_system is NULL");
+        return NULL;
+    }
+    if (!calcium) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_sleep_bridge_create: calcium is NULL");
+        return NULL;
+    }
 
     struct calcium_sleep_bridge_struct* bridge =
         (struct calcium_sleep_bridge_struct*)nimcp_malloc(
             sizeof(struct calcium_sleep_bridge_struct));
-    NIMCP_API_CHECK_ALLOC(bridge, "Calcium-sleep bridge allocation failed");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "calcium_sleep_bridge_create: bridge allocation failed");
+        return NULL;
+    }
 
     memset(bridge, 0, sizeof(struct calcium_sleep_bridge_struct));
 
@@ -195,7 +207,10 @@ void calcium_sleep_bridge_destroy(calcium_sleep_bridge_t bridge) {
  * ============================================================================ */
 
 int calcium_sleep_update(calcium_sleep_bridge_t bridge) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-sleep bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -234,8 +249,14 @@ int calcium_sleep_update(calcium_sleep_bridge_t bridge) {
 
 int calcium_sleep_get_effects(const calcium_sleep_bridge_t bridge,
                                calcium_sleep_effects_t* effects) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-sleep bridge is NULL");
-    NIMCP_API_CHECK_NULL(effects, -1, "Effects output pointer is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_sleep_get_effects: bridge is NULL");
+        return -1;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_sleep_get_effects: effects is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
@@ -245,7 +266,10 @@ int calcium_sleep_get_effects(const calcium_sleep_bridge_t bridge,
 }
 
 float calcium_sleep_get_influx_factor(const calcium_sleep_bridge_t bridge) {
-    if (!bridge) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_sleep_get_influx_factor: bridge is NULL");
+        return 1.0f;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     float factor = bridge->effects.influx_factor;
@@ -255,7 +279,10 @@ float calcium_sleep_get_influx_factor(const calcium_sleep_bridge_t bridge) {
 }
 
 float calcium_sleep_get_decay_tau(const calcium_sleep_bridge_t bridge) {
-    if (!bridge) return CALCIUM_SLEEP_DECAY_AWAKE;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_sleep_get_decay_tau: bridge is NULL");
+        return CALCIUM_SLEEP_DECAY_AWAKE;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     float tau = bridge->effects.decay_tau_ms;
@@ -266,7 +293,10 @@ float calcium_sleep_get_decay_tau(const calcium_sleep_bridge_t bridge) {
 
 float calcium_sleep_get_learning_rate(const calcium_sleep_bridge_t bridge,
                                        float base_lr) {
-    if (!bridge) return base_lr;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_sleep_get_learning_rate: bridge is NULL");
+        return base_lr;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     float modulated_lr = base_lr * bridge->effects.learning_rate_factor;
@@ -276,8 +306,14 @@ float calcium_sleep_get_learning_rate(const calcium_sleep_bridge_t bridge,
 }
 
 int calcium_sleep_apply_modulation(calcium_sleep_bridge_t bridge) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "Calcium-sleep bridge is NULL");
-    NIMCP_API_CHECK_NULL(bridge->calcium, -1, "Calcium dynamics is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "calcium_sleep_apply_modulation: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->calcium) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "calcium_sleep_apply_modulation: calcium dynamics not connected");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 

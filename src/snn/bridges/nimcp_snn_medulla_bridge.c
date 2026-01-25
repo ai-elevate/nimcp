@@ -133,7 +133,10 @@ void snn_medulla_bridge_destroy(snn_medulla_bridge_t* bridge) {
 //=============================================================================
 
 int snn_medulla_bridge_connect_bio_async(snn_medulla_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_medulla_bridge_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -155,7 +158,10 @@ int snn_medulla_bridge_connect_bio_async(snn_medulla_bridge_t* bridge) {
 }
 
 int snn_medulla_bridge_disconnect_bio_async(snn_medulla_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_medulla_bridge_disconnect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {
@@ -179,7 +185,10 @@ int snn_medulla_bridge_connect_medulla(
     snn_medulla_bridge_t* bridge,
     medulla_t medulla
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_medulla_bridge_connect_medulla: bridge is NULL");
+        return -1;
+    }
 
     if (bridge->base.mutex) nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->medulla = medulla;
@@ -246,7 +255,14 @@ float snn_medulla_compute_circadian_modulation(const snn_medulla_bridge_t* bridg
 }
 
 int snn_medulla_apply_modulation(snn_medulla_bridge_t* bridge) {
-    if (!bridge || !bridge->snn) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_medulla_apply_modulation: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->snn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_medulla_apply_modulation: bridge->snn is NULL");
+        return -1;
+    }
 
     /* Compute combined modulation */
     float arousal_mod = snn_medulla_compute_arousal_modulation(bridge);
@@ -281,7 +297,14 @@ int snn_medulla_apply_modulation(snn_medulla_bridge_t* bridge) {
 //=============================================================================
 
 int snn_medulla_check_activity_threat(snn_medulla_bridge_t* bridge) {
-    if (!bridge || !bridge->snn) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_medulla_check_activity_threat: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->snn) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_medulla_check_activity_threat: bridge->snn is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_activity_feedback) return 0;
     if (!bridge->medulla) return 0;
 
@@ -322,9 +345,15 @@ int snn_medulla_trigger_emergency(
     snn_medulla_bridge_t* bridge,
     const char* reason
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_medulla_trigger_emergency: bridge is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_emergency_shutdown) return 0;
-    if (!bridge->medulla) return -2;
+    if (!bridge->medulla) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_medulla_trigger_emergency: bridge->medulla is NULL");
+        return -2;
+    }
 
     NIMCP_LOGGING_WARN("SNN triggering medulla emergency: %s", reason ? reason : "unknown");
 
@@ -336,7 +365,10 @@ int snn_medulla_trigger_emergency(
 //=============================================================================
 
 int snn_medulla_bridge_update(snn_medulla_bridge_t* bridge, float dt) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_medulla_bridge_update: bridge is NULL");
+        return -1;
+    }
 
     bridge->last_update_time += dt;
 
@@ -393,7 +425,10 @@ int snn_medulla_bridge_get_state(
     const snn_medulla_bridge_t* bridge,
     snn_medulla_state_t* state
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_medulla_bridge_get_state: bridge is NULL");
+        return -1;
+    }
     if (state) {
         *state = bridge->state;
     }
@@ -435,7 +470,10 @@ int snn_medulla_get_stats(
     uint32_t* emergency_count,
     float* avg_modulation
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_medulla_get_stats: bridge is NULL");
+        return -1;
+    }
 
     if (sync_count) *sync_count = bridge->state.sync_count;
     if (emergency_count) *emergency_count = bridge->state.emergency_count;

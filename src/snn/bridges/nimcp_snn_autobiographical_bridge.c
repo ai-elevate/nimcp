@@ -32,7 +32,10 @@
  * HOW:  Memory neuroscience parameter values
  */
 void snn_autobiographical_config_default(snn_autobiographical_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_config_default: null config pointer");
+        return;
+    }
 
     /* Encoding parameters */
     config->encoding_threshold = 20.0f;      /* Min 20 Hz for encoding */
@@ -141,7 +144,10 @@ snn_autobiographical_bridge_t* snn_autobiographical_bridge_create(
  * HOW:  Free memories, disconnect, free
  */
 void snn_autobiographical_bridge_destroy(snn_autobiographical_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_bridge_destroy: null bridge pointer");
+        return;
+    }
 
     /* Disconnect bio-async if connected */
     if (bridge->base.bio_async_enabled) {
@@ -172,7 +178,10 @@ void snn_autobiographical_bridge_destroy(snn_autobiographical_bridge_t* bridge) 
  * HOW:  Register with router
  */
 int snn_autobiographical_bridge_connect_bio_async(snn_autobiographical_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_bridge_connect_bio_async: null bridge pointer");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -199,7 +208,11 @@ int snn_autobiographical_bridge_connect_bio_async(snn_autobiographical_bridge_t*
  * HOW:  Unregister from router
  */
 int snn_autobiographical_bridge_disconnect_bio_async(snn_autobiographical_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_bridge_disconnect_bio_async: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->base.bio_async_enabled) return 0;
 
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_async_enabled = false;
@@ -213,7 +226,11 @@ int snn_autobiographical_bridge_disconnect_bio_async(snn_autobiographical_bridge
  * HOW:  Return flag
  */
 bool snn_autobiographical_bridge_is_bio_async_connected(const snn_autobiographical_bridge_t* bridge) {
-    return bridge ? bridge->base.bio_async_enabled : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_bridge_is_bio_async_connected: null bridge pointer");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }
 
 //=============================================================================
@@ -228,7 +245,7 @@ bool snn_autobiographical_bridge_is_bio_async_connected(const snn_autobiographic
 int snn_autobiographical_bridge_update(snn_autobiographical_bridge_t* bridge, float dt) {
     /* Guard: Validate bridge */
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Null bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_bridge_update: null bridge pointer");
         return SNN_ERROR_NULL_POINTER;
     }
 
@@ -271,7 +288,12 @@ int snn_autobiographical_encode_episode(
     uint32_t* memory_id
 ) {
     /* Guard: Validate inputs */
-    if (!bridge || !memory_id) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_encode_episode: null bridge pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!memory_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_encode_episode: null memory_id pointer");
         return SNN_ERROR_NULL_POINTER;
     }
 
@@ -324,7 +346,11 @@ int snn_autobiographical_encode_episode(
 float snn_autobiographical_compute_encoding_strength(
     snn_autobiographical_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->hippocampal_pop) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_compute_encoding_strength: null bridge pointer");
+        return 0.0f;
+    }
+    if (!bridge->hippocampal_pop) return 0.0f;
 
     /* Get hippocampal activity */
     float rate = snn_network_get_population_rate(
@@ -370,7 +396,16 @@ int snn_autobiographical_retrieve_memory(
     uint32_t* memory_id
 ) {
     /* Guard: Validate inputs */
-    if (!bridge || !cue_pattern || !memory_id) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_retrieve_memory: null bridge pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!cue_pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_retrieve_memory: null cue_pattern pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!memory_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_retrieve_memory: null memory_id pointer");
         return SNN_ERROR_NULL_POINTER;
     }
 
@@ -424,7 +459,11 @@ int snn_autobiographical_retrieve_memory(
 float snn_autobiographical_get_retrieval_success_rate(
     const snn_autobiographical_bridge_t* bridge
 ) {
-    return bridge ? bridge->state.retrieval_success_rate : 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_get_retrieval_success_rate: null bridge pointer");
+        return 0.0f;
+    }
+    return bridge->state.retrieval_success_rate;
 }
 
 //=============================================================================
@@ -441,8 +480,12 @@ int snn_autobiographical_consolidate_memory(
     uint32_t memory_id
 ) {
     /* Guard: Validate inputs */
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_consolidate_memory: null bridge pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (memory_id >= bridge->state.memory_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_autobiographical_consolidate_memory: invalid memory_id");
         return SNN_ERROR_INVALID_CONFIG;
     }
 
@@ -479,7 +522,10 @@ int snn_autobiographical_consolidate_memory(
 int snn_autobiographical_replay_memories(
     snn_autobiographical_bridge_t* bridge
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_replay_memories: null bridge pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (bridge->state.memory_count == 0) return 0;
 
     /* Replay a random subset of memories */
@@ -505,7 +551,12 @@ snn_episodic_memory_t* snn_autobiographical_get_memory(
     snn_autobiographical_bridge_t* bridge,
     uint32_t memory_id
 ) {
-    if (!bridge || memory_id >= bridge->state.memory_count) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_get_memory: null bridge pointer");
+        return NULL;
+    }
+    if (memory_id >= bridge->state.memory_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_autobiographical_get_memory: invalid memory_id");
         return NULL;
     }
     return &bridge->memories[memory_id];
@@ -520,8 +571,12 @@ int snn_autobiographical_delete_memory(
     snn_autobiographical_bridge_t* bridge,
     uint32_t memory_id
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_delete_memory: null bridge pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (memory_id >= bridge->state.memory_count) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_autobiographical_delete_memory: invalid memory_id");
         return SNN_ERROR_INVALID_CONFIG;
     }
 
@@ -541,7 +596,10 @@ int snn_autobiographical_delete_memory(
  * HOW:  Free all, reset counters
  */
 void snn_autobiographical_clear_memories(snn_autobiographical_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_clear_memories: null bridge pointer");
+        return;
+    }
 
     for (uint32_t i = 0; i < bridge->state.memory_count; i++) {
         if (bridge->memories[i].spike_sequence) {
@@ -563,7 +621,11 @@ void snn_autobiographical_clear_memories(snn_autobiographical_bridge_t* bridge) 
  * HOW:  Return counter
  */
 uint32_t snn_autobiographical_get_memory_count(const snn_autobiographical_bridge_t* bridge) {
-    return bridge ? bridge->state.memory_count : 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_get_memory_count: null bridge pointer");
+        return 0;
+    }
+    return bridge->state.memory_count;
 }
 
 /**
@@ -572,7 +634,11 @@ uint32_t snn_autobiographical_get_memory_count(const snn_autobiographical_bridge
  * HOW:  Return cached value
  */
 float snn_autobiographical_get_encoding_strength(const snn_autobiographical_bridge_t* bridge) {
-    return bridge ? bridge->state.encoding_strength : 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_get_encoding_strength: null bridge pointer");
+        return 0.0f;
+    }
+    return bridge->state.encoding_strength;
 }
 
 /**
@@ -581,7 +647,11 @@ float snn_autobiographical_get_encoding_strength(const snn_autobiographical_brid
  * HOW:  Return cached value
  */
 float snn_autobiographical_get_consolidation_progress(const snn_autobiographical_bridge_t* bridge) {
-    return bridge ? bridge->state.consolidation_progress : 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_get_consolidation_progress: null bridge pointer");
+        return 0.0f;
+    }
+    return bridge->state.consolidation_progress;
 }
 
 /**
@@ -593,7 +663,14 @@ int snn_autobiographical_bridge_get_state(
     const snn_autobiographical_bridge_t* bridge,
     snn_autobiographical_state_t* state
 ) {
-    if (!bridge || !state) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_bridge_get_state: null bridge pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_bridge_get_state: null state pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -613,7 +690,10 @@ int snn_autobiographical_get_stats(
     uint32_t* encoding_count,
     float* retrieval_success_rate
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_get_stats: null bridge pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     if (memory_count) *memory_count = bridge->state.memory_count;
     if (encoding_count) *encoding_count = bridge->state.encoding_count;
@@ -628,7 +708,10 @@ int snn_autobiographical_get_stats(
  * HOW:  Zero counters
  */
 void snn_autobiographical_reset_stats(snn_autobiographical_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_autobiographical_reset_stats: null bridge pointer");
+        return;
+    }
 
     bridge->state.update_count = 0;
     bridge->state.encoding_count = 0;

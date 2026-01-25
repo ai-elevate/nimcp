@@ -83,7 +83,10 @@ void snn_grief_bridge_destroy(snn_grief_bridge_t* bridge) {
 }
 
 int snn_grief_bridge_connect_bio_async(snn_grief_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_grief_bridge_connect_bio_async: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -116,7 +119,10 @@ bool snn_grief_bridge_is_bio_async_connected(const snn_grief_bridge_t* bridge) {
 }
 
 int snn_grief_bridge_update(snn_grief_bridge_t* bridge, float dt) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_grief_bridge_update: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     bridge->last_update_time += dt;
     if (bridge->last_update_time < bridge->config.update_interval_ms) {
@@ -153,7 +159,10 @@ int snn_grief_decode_from_spikes(
     float* grief_intensity_out,
     float* recovery_progress_out
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_grief_decode_from_spikes: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     float grief_rate = 0.0f, recovery_rate = 0.0f;
 
@@ -180,7 +189,14 @@ int snn_grief_detect_slow_wave(
     snn_grief_bridge_t* bridge,
     snn_slow_wave_state_t* slow_wave_state
 ) {
-    if (!bridge || !slow_wave_state) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_grief_detect_slow_wave: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!slow_wave_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_grief_detect_slow_wave: slow_wave_state is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     float center_freq = (bridge->config.slow_wave_min_freq + bridge->config.slow_wave_max_freq) / 2.0f;
     slow_wave_state->frequency = center_freq;
@@ -196,7 +212,10 @@ int snn_grief_detect_rumination(
     snn_grief_bridge_t* bridge,
     float* rumination_level
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_grief_detect_rumination: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     float rumination = bridge->state.grief_intensity * (1.0f - bridge->state.recovery_progress);
     if (rumination_level) *rumination_level = rumination;
@@ -205,7 +224,10 @@ int snn_grief_detect_rumination(
 }
 
 int snn_grief_modulate_populations(snn_grief_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_grief_modulate_populations: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     float suppression = 1.0f - (bridge->state.grief_intensity *
                                 (1.0f - bridge->config.baseline_activity_level));
@@ -224,7 +246,10 @@ int snn_grief_encode_to_spikes(
     float grief_intensity,
     float recovery_progress
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_grief_encode_to_spikes: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     return 0;
 }
 
@@ -232,7 +257,14 @@ int snn_grief_bridge_get_state(
     const snn_grief_bridge_t* bridge,
     snn_grief_state_t* state
 ) {
-    if (!bridge || !state) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_grief_bridge_get_state: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_grief_bridge_get_state: state is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -255,7 +287,10 @@ int snn_grief_get_stats(
     float* avg_grief_intensity,
     float* avg_recovery_progress
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_grief_get_stats: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (sync_count) *sync_count = bridge->state.sync_count;
     if (avg_grief_intensity) *avg_grief_intensity = bridge->state.avg_grief_intensity;
     if (avg_recovery_progress) *avg_recovery_progress = bridge->state.avg_recovery_progress;

@@ -124,7 +124,10 @@ static uint32_t compute_grid_cell(
  * ============================================================================ */
 
 int hetero_default_config(hetero_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_default_config: config is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     config->neighbor_radius = HETERO_DEFAULT_NEIGHBOR_RADIUS;
     config->depression_factor = HETERO_DEFAULT_DEPRESSION_FACTOR;
@@ -199,6 +202,7 @@ hetero_system_t* hetero_create(const hetero_config_t* config, size_t initial_cap
     system->mutex = nimcp_platform_mutex_create();
     if (!system->mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hetero_create: failed to create mutex");
         destroy_spatial_index(system->spatial_index);
         nimcp_free(system->synapses);
         nimcp_free(system);
@@ -256,7 +260,14 @@ int hetero_add_synapse(
     uint32_t synapse_id,
     uint32_t neuron_id)
 {
-    if (!system || !position) return NIMCP_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_add_synapse: system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_add_synapse: position is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -272,6 +283,7 @@ int hetero_add_synapse(
             system->synapses = old_synapses;  /* Restore on failure */
             nimcp_platform_mutex_unlock(system->mutex);
             NIMCP_LOGGING_ERROR("Failed to resize synapse array");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hetero_add_synapse: failed to resize synapse array");
             return NIMCP_ERROR_NO_MEMORY;
         }
         system->synapses = new_synapses;
@@ -305,6 +317,7 @@ int hetero_add_synapse(
     if (!syn->lock) {
         nimcp_platform_mutex_unlock(system->mutex);
         NIMCP_LOGGING_ERROR("Failed to create synapse mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hetero_add_synapse: failed to create synapse mutex");
         return NIMCP_ERROR_NO_MEMORY;
     }
 
@@ -315,7 +328,10 @@ int hetero_add_synapse(
 }
 
 int hetero_remove_synapse(hetero_system_t* system, uint32_t synapse_id) {
-    if (!system) return NIMCP_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_remove_synapse: system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
 
@@ -329,6 +345,7 @@ int hetero_remove_synapse(hetero_system_t* system, uint32_t synapse_id) {
     }
 
     if (found_idx == (size_t)-1) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hetero_remove_synapse: synapse not found");
         nimcp_platform_mutex_unlock(system->mutex);
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -488,7 +505,20 @@ int hetero_find_neighbors(
     size_t max_neighbors,
     size_t* num_found)
 {
-    if (!system || !center_position || !neighbors || !num_found) {
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_find_neighbors: system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!center_position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_find_neighbors: center_position is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!neighbors) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_find_neighbors: neighbors is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_find_neighbors: num_found is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -530,7 +560,20 @@ int hetero_find_neighbors_copy(
     size_t max_neighbors,
     size_t* num_found)
 {
-    if (!system || !center_position || !neighbors_out || !num_found) {
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_find_neighbors_copy: system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!center_position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_find_neighbors_copy: center_position is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!neighbors_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_find_neighbors_copy: neighbors_out is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_find_neighbors_copy: num_found is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -624,13 +667,21 @@ int hetero_apply_depression(
     float ltp_amount,
     uint64_t current_time_ms)
 {
-    if (!system || ltp_amount <= 0.0f) return NIMCP_ERROR_INVALID_PARAM;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_apply_depression: system is NULL");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
+    if (ltp_amount <= 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hetero_apply_depression: ltp_amount must be positive");
+        return NIMCP_ERROR_INVALID_PARAM;
+    }
 
     /* Hold system mutex for entire operation to ensure pointer stability */
     nimcp_platform_mutex_lock(system->mutex);
 
     hetero_synapse_t* potentiated = hetero_get_synapse_unlocked(system, potentiated_id);
     if (!potentiated) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "hetero_apply_depression: potentiated synapse not found");
         nimcp_platform_mutex_unlock(system->mutex);
         return NIMCP_ERROR_INVALID_PARAM;
     }
@@ -715,7 +766,18 @@ int hetero_winner_take_all(
     float radius,
     hetero_competition_result_t* result)
 {
-    if (!system || !center_position || !result) return NIMCP_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_winner_take_all: system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!center_position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_winner_take_all: center_position is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_winner_take_all: result is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     /* Use config radius if not specified */
     if (radius <= 0.0f) {
@@ -855,7 +917,10 @@ float hetero_modulate_weight_change(
  * ============================================================================ */
 
 int hetero_set_sleep_state(hetero_system_t* system, sleep_state_t state) {
-    if (!system) return NIMCP_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_set_sleep_state: system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(system->mutex);
     for (size_t i = 0; i < system->num_synapses; i++) {
@@ -895,7 +960,10 @@ float hetero_get_sleep_modulated_factor(hetero_system_t* system, float base_fact
  * ============================================================================ */
 
 int hetero_connect_bio_async(hetero_system_t* system) {
-    if (!system) return NIMCP_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_connect_bio_async: system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (system->bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -943,7 +1011,10 @@ int hetero_get_statistics(
     uint64_t* total_depressions,
     float* avg_neighbors)
 {
-    if (!system) return NIMCP_ERROR_NULL_POINTER;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_get_statistics: system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     /* CRITICAL: Use atomic loads for thread-safe statistics access
      * WHY:  Statistics are updated outside lock in hot paths

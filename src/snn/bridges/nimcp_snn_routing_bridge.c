@@ -16,7 +16,10 @@
 //=============================================================================
 
 void snn_routing_config_default(snn_routing_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_routing_config_default: null config pointer");
+        return;
+    }
 
     memset(config, 0, sizeof(snn_routing_config_t));
 
@@ -142,7 +145,10 @@ snn_routing_bridge_t* snn_routing_bridge_create(
 }
 
 void snn_routing_bridge_destroy(snn_routing_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_routing_bridge_destroy: null bridge pointer");
+        return;
+    }
 
     /* Disconnect bio-async if connected */
     if (bridge->base.bio_async_enabled) {
@@ -160,7 +166,10 @@ void snn_routing_bridge_destroy(snn_routing_bridge_t* bridge) {
 }
 
 int snn_routing_bridge_connect_bio_async(snn_routing_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_routing_bridge_connect_bio_async: null bridge pointer");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     /* Bio-async integration would go here */
@@ -172,7 +181,10 @@ int snn_routing_bridge_connect_bio_async(snn_routing_bridge_t* bridge) {
 }
 
 int snn_routing_bridge_disconnect_bio_async(snn_routing_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_routing_bridge_disconnect_bio_async: null bridge pointer");
+        return -1;
+    }
     if (!bridge->base.bio_async_enabled) return 0;
 
     bridge->base.bio_async_enabled = false;
@@ -182,7 +194,11 @@ int snn_routing_bridge_disconnect_bio_async(snn_routing_bridge_t* bridge) {
 }
 
 bool snn_routing_bridge_is_bio_async_connected(const snn_routing_bridge_t* bridge) {
-    return bridge && bridge->base.bio_async_enabled;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_routing_bridge_is_bio_async_connected: null bridge pointer");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }
 
 //=============================================================================
@@ -198,7 +214,10 @@ int snn_routing_bridge_process(
     uint32_t* n_out_actual
 ) {
     /* Guard clauses */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_routing_bridge_process: null bridge pointer");
+        return -1;
+    }
     if (!spikes_in || n_spikes == 0) {
         if (n_out_actual) *n_out_actual = 0;
         return 0;
@@ -252,7 +271,10 @@ int snn_routing_bridge_process(
 }
 
 int snn_routing_bridge_update(snn_routing_bridge_t* bridge, float dt) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_routing_bridge_update: null bridge pointer");
+        return -1;
+    }
 
     bridge->last_update_time += dt;
 
@@ -272,9 +294,18 @@ int snn_routing_bridge_set_attention(
     uint32_t pop_id,
     float attention
 ) {
-    if (!bridge) return -1;
-    if (pop_id >= bridge->network->n_populations) return -1;
-    if (attention < 0.0f || attention > 1.0f) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_routing_bridge_set_attention: null bridge pointer");
+        return -1;
+    }
+    if (pop_id >= bridge->network->n_populations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_routing_bridge_set_attention: invalid pop_id");
+        return -1;
+    }
+    if (attention < 0.0f || attention > 1.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_routing_bridge_set_attention: attention out of range [0,1]");
+        return -1;
+    }
 
     bridge->attention_weights[pop_id] = attention;
     return 0;
@@ -285,8 +316,18 @@ int snn_routing_bridge_get_attention(
     uint32_t pop_id,
     float* attention
 ) {
-    if (!bridge || !attention) return -1;
-    if (pop_id >= bridge->network->n_populations) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_routing_bridge_get_attention: null bridge pointer");
+        return -1;
+    }
+    if (!attention) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_routing_bridge_get_attention: null attention pointer");
+        return -1;
+    }
+    if (pop_id >= bridge->network->n_populations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_routing_bridge_get_attention: invalid pop_id");
+        return -1;
+    }
 
     *attention = bridge->attention_weights[pop_id];
     return 0;
@@ -297,8 +338,14 @@ int snn_routing_bridge_add_route(
     uint32_t pop_id,
     uint32_t dest_id
 ) {
-    if (!bridge) return -1;
-    if (pop_id >= bridge->network->n_populations) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_routing_bridge_add_route: null bridge pointer");
+        return -1;
+    }
+    if (pop_id >= bridge->network->n_populations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_routing_bridge_add_route: invalid pop_id");
+        return -1;
+    }
 
     bridge->route_map[pop_id] = dest_id;
     bridge->stats.active_routes++;
@@ -310,8 +357,14 @@ int snn_routing_bridge_remove_route(
     uint32_t pop_id,
     uint32_t dest_id
 ) {
-    if (!bridge) return -1;
-    if (pop_id >= bridge->network->n_populations) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_routing_bridge_remove_route: null bridge pointer");
+        return -1;
+    }
+    if (pop_id >= bridge->network->n_populations) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_routing_bridge_remove_route: invalid pop_id");
+        return -1;
+    }
 
     if (bridge->route_map[pop_id] == dest_id) {
         bridge->route_map[pop_id] = 0xFFFFFFFF; /* No route */
@@ -322,7 +375,10 @@ int snn_routing_bridge_remove_route(
 }
 
 void snn_routing_bridge_clear_routes(snn_routing_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_routing_bridge_clear_routes: null bridge pointer");
+        return;
+    }
 
     memset(bridge->route_map, 0xFF,
            bridge->network->n_populations * sizeof(uint32_t));
@@ -339,7 +395,10 @@ bool snn_routing_bridge_detect_burst(
     uint32_t neuron_idx,
     uint64_t spike_time_us
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_routing_bridge_detect_burst: null bridge pointer");
+        return false;
+    }
 
     /* WHAT: Calculate ISI (inter-spike interval) */
     uint64_t last_time = bridge->last_spike_time_us[neuron_idx];
@@ -370,14 +429,24 @@ int snn_routing_bridge_get_stats(
     const snn_routing_bridge_t* bridge,
     snn_routing_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_routing_bridge_get_stats: null bridge pointer");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_routing_bridge_get_stats: null stats pointer");
+        return -1;
+    }
 
     *stats = bridge->stats;
     return 0;
 }
 
 void snn_routing_bridge_reset_stats(snn_routing_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_routing_bridge_reset_stats: null bridge pointer");
+        return;
+    }
 
     memset(&bridge->stats, 0, sizeof(snn_routing_stats_t));
     bridge->last_update_time = 0.0f;

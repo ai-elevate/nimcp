@@ -41,7 +41,8 @@ snn_global_workspace_bridge_t* snn_global_workspace_bridge_create(const snn_glob
 
     snn_global_workspace_bridge_t* bridge = nimcp_malloc(sizeof(snn_global_workspace_bridge_t));
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate SNN-global-workspace bridge");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(snn_global_workspace_bridge_t),
+                          "snn_global_workspace_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -72,7 +73,11 @@ void snn_global_workspace_bridge_destroy(snn_global_workspace_bridge_t* bridge) 
 }
 
 int snn_global_workspace_bridge_connect_bio_async(snn_global_workspace_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_global_workspace_bridge_connect_bio_async: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -93,7 +98,12 @@ int snn_global_workspace_bridge_connect_bio_async(snn_global_workspace_bridge_t*
 }
 
 int snn_global_workspace_bridge_disconnect_bio_async(snn_global_workspace_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_global_workspace_bridge_disconnect_bio_async: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!bridge->base.bio_async_enabled) return 0;
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_async_enabled = false;
     return 0;
@@ -104,7 +114,11 @@ bool snn_global_workspace_bridge_is_bio_async_connected(const snn_global_workspa
 }
 
 int snn_global_workspace_bridge_update(snn_global_workspace_bridge_t* bridge, float dt) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_global_workspace_bridge_update: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     bridge->last_update_time += dt;
     if (bridge->last_update_time < bridge->config.update_interval_ms) return 0;
@@ -127,12 +141,20 @@ int snn_global_workspace_bridge_update(snn_global_workspace_bridge_t* bridge, fl
 }
 
 int snn_global_workspace_bridge_process_broadcast(snn_global_workspace_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_global_workspace_bridge_process_broadcast: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     return 0;
 }
 
 int snn_global_workspace_bridge_submit_competition(snn_global_workspace_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_global_workspace_bridge_submit_competition: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     return 0;
 }
 
@@ -146,7 +168,16 @@ float snn_global_workspace_compute_competition_strength(const snn_global_workspa
 }
 
 int snn_global_workspace_bridge_get_state(const snn_global_workspace_bridge_t* bridge, snn_global_workspace_state_t* state) {
-    if (!bridge || !state) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_global_workspace_bridge_get_state: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_global_workspace_bridge_get_state: state is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -164,7 +195,11 @@ bool snn_global_workspace_is_broadcasting(const snn_global_workspace_bridge_t* b
 }
 
 int snn_global_workspace_get_stats(const snn_global_workspace_bridge_t* bridge, uint32_t* broadcast_count, uint32_t* wins, float* avg_strength) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_global_workspace_get_stats: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (broadcast_count) *broadcast_count = bridge->state.broadcast_count;
     if (wins) *wins = bridge->state.competition_wins;
     if (avg_strength) *avg_strength = bridge->state.competition_strength;

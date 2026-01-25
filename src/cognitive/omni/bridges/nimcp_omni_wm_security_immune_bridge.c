@@ -850,8 +850,8 @@ nimcp_error_t omni_wm_security_immune_bridge_reset(
     /* Reset statistics */
     memset(&bridge->stats, 0, sizeof(omni_wm_security_immune_stats_t));
 
-    /* Reset base bridge */
-    bridge_base_reset(&bridge->base);
+    /* Reset base bridge (unlocked since we already hold the mutex) */
+    bridge_base_reset_unlocked(&bridge->base);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -1592,8 +1592,7 @@ nimcp_error_t omni_wm_security_immune_bridge_disconnect_bio_async(
 bool omni_wm_security_immune_bridge_is_bio_async_connected(
     const omni_wm_security_immune_bridge_t* bridge) {
 
-    if (!bridge) return false;
-    return bridge->base.bio_async_enabled;
+    return bridge_base_is_bio_async_connected(bridge ? &bridge->base : NULL);
 }
 
 /* ============================================================================

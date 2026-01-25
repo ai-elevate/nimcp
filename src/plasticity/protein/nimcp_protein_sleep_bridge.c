@@ -83,6 +83,7 @@ static float get_delivery_enhancement(sleep_state_t state) {
 int protein_sleep_default_config(protein_sleep_config_t* config) {
     if (!config) {
         NIMCP_LOGGING_ERROR("NULL config pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_sleep_default_config: config is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -98,8 +99,14 @@ protein_sleep_bridge_t protein_sleep_bridge_create(
     sleep_system_t sleep_system,
     protein_synthesis_system_t protein_system
 ) {
-    if (!sleep_system || !protein_system) {
-        NIMCP_LOGGING_ERROR("NULL system pointers");
+    if (!sleep_system) {
+        NIMCP_LOGGING_ERROR("NULL sleep_system pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_sleep_bridge_create: sleep_system is NULL");
+        return NULL;
+    }
+    if (!protein_system) {
+        NIMCP_LOGGING_ERROR("NULL protein_system pointer");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_sleep_bridge_create: protein_system is NULL");
         return NULL;
     }
 
@@ -109,9 +116,7 @@ protein_sleep_bridge_t protein_sleep_bridge_create(
 
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate protein sleep bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "protein_sleep_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -133,9 +138,15 @@ protein_sleep_bridge_t protein_sleep_bridge_create(
     bridge->effects.current_state = SLEEP_STATE_AWAKE;
 
     /* Create mutex */
-    if (bridge_base_init(&bridge->base, 0, "protein_sleep") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "protein_sleep") != 0) {
+        NIMCP_LOGGING_ERROR("Failed to initialize bridge base");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "protein_sleep_bridge_create: bridge_base_init failed");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "protein_sleep_bridge_create: failed to create mutex");
         nimcp_free(bridge);
         return NULL;
     }
@@ -166,7 +177,10 @@ void protein_sleep_bridge_destroy(protein_sleep_bridge_t bridge) {
  * ============================================================================ */
 
 int protein_sleep_update(protein_sleep_bridge_t bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_sleep_update: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -216,7 +230,14 @@ int protein_sleep_get_effects(
     const protein_sleep_bridge_t bridge,
     protein_sleep_effects_t* effects
 ) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_sleep_get_effects: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "protein_sleep_get_effects: effects is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;

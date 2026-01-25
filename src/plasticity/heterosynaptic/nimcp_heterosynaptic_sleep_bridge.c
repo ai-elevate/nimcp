@@ -32,7 +32,10 @@ struct hetero_sleep_bridge_struct {
  * ============================================================================ */
 
 int hetero_sleep_default_config(hetero_sleep_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_sleep_default_config: config is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     config->enable_competition_modulation = true;
     config->enable_depression_modulation = true;
@@ -65,8 +68,7 @@ hetero_sleep_bridge_t hetero_sleep_bridge_create(
     hetero_sleep_bridge_t bridge = nimcp_malloc(sizeof(struct hetero_sleep_bridge_struct));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate hetero-sleep bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hetero_sleep_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -84,9 +86,14 @@ hetero_sleep_bridge_t hetero_sleep_bridge_create(
     bridge->effects.competition_enabled = true;
 
     /* Create mutex */
-    if (bridge_base_init(&bridge->base, 0, "heterosynaptic_sleep") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "heterosynaptic_sleep") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "hetero_sleep_bridge_create: failed to initialize bridge base");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hetero_sleep_bridge_create: failed to create mutex");
         nimcp_free(bridge);
         return NULL;
     }
@@ -164,7 +171,10 @@ float hetero_sleep_get_radius_factor_for_state(sleep_state_t state) {
  * ============================================================================ */
 
 int hetero_sleep_update(hetero_sleep_bridge_t bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_sleep_update: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -214,7 +224,14 @@ int hetero_sleep_update(hetero_sleep_bridge_t bridge) {
 }
 
 int hetero_sleep_get_effects(const hetero_sleep_bridge_t bridge, hetero_sleep_effects_t* effects) {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_sleep_get_effects: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_sleep_get_effects: effects is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->effects, sizeof(hetero_sleep_effects_t));

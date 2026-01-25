@@ -23,7 +23,10 @@
 //=============================================================================
 
 void snn_prefrontal_config_default(snn_prefrontal_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_config_default: null config pointer");
+        return;
+    }
 
     /* Persistent activity */
     config->persistent_baseline_rate = 2.0f;    /* 2 Hz baseline */
@@ -263,7 +266,10 @@ snn_prefrontal_bridge_t* snn_prefrontal_bridge_create(
 }
 
 void snn_prefrontal_bridge_destroy(snn_prefrontal_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_bridge_destroy: null bridge pointer");
+        return;
+    }
 
     /* Free WM items */
     if (bridge->wm_items) {
@@ -306,7 +312,10 @@ void snn_prefrontal_bridge_destroy(snn_prefrontal_bridge_t* bridge) {
 //=============================================================================
 
 int snn_prefrontal_bridge_connect_bio_async(snn_prefrontal_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_bridge_connect_bio_async: null bridge pointer");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -325,7 +334,11 @@ int snn_prefrontal_bridge_connect_bio_async(snn_prefrontal_bridge_t* bridge) {
 }
 
 int snn_prefrontal_bridge_disconnect_bio_async(snn_prefrontal_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_bridge_disconnect_bio_async: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->base.bio_async_enabled) return 0;
 
     if (bridge->base.bio_ctx) {
         bio_router_unregister_module(bridge->base.bio_ctx);
@@ -336,7 +349,11 @@ int snn_prefrontal_bridge_disconnect_bio_async(snn_prefrontal_bridge_t* bridge) 
 }
 
 bool snn_prefrontal_bridge_is_bio_async_connected(const snn_prefrontal_bridge_t* bridge) {
-    return bridge && bridge->base.bio_async_enabled;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_bridge_is_bio_async_connected: null bridge pointer");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }
 
 //=============================================================================
@@ -351,8 +368,22 @@ int snn_prefrontal_bridge_process(
     uint32_t output_size
 ) {
     /* Guard clauses */
-    if (!bridge || !input || !output) return -1;
-    if (!bridge->connected) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_bridge_process: null bridge pointer");
+        return -1;
+    }
+    if (!input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_bridge_process: null input pointer");
+        return -1;
+    }
+    if (!output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_bridge_process: null output pointer");
+        return -1;
+    }
+    if (!bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_prefrontal_bridge_process: bridge not connected");
+        return -1;
+    }
 
     /* Process input - would update populations */
     /* Placeholder: copy input to output */
@@ -368,8 +399,14 @@ int snn_prefrontal_bridge_process(
 }
 
 int snn_prefrontal_bridge_update(snn_prefrontal_bridge_t* bridge, float dt) {
-    if (!bridge) return -1;
-    if (!bridge->connected) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_bridge_update: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_prefrontal_bridge_update: bridge not connected");
+        return -1;
+    }
 
     /* Update time */
     bridge->last_update_time += dt;
@@ -413,8 +450,18 @@ uint32_t snn_prefrontal_add_wm_item(
     const float* features,
     uint32_t feature_dim
 ) {
-    if (!bridge || !features) return UINT32_MAX;
-    if (bridge->n_wm_items >= bridge->max_wm_items) return UINT32_MAX;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_add_wm_item: null bridge pointer");
+        return UINT32_MAX;
+    }
+    if (!features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_add_wm_item: null features pointer");
+        return UINT32_MAX;
+    }
+    if (bridge->n_wm_items >= bridge->max_wm_items) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_prefrontal_add_wm_item: WM capacity exceeded");
+        return UINT32_MAX;
+    }
 
     wm_item_t* item = create_wm_item(
         bridge->n_wm_items,
@@ -439,8 +486,14 @@ uint32_t snn_prefrontal_add_wm_item(
 }
 
 int snn_prefrontal_remove_wm_item(snn_prefrontal_bridge_t* bridge, uint32_t item_id) {
-    if (!bridge) return -1;
-    if (item_id >= bridge->n_wm_items) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_remove_wm_item: null bridge pointer");
+        return -1;
+    }
+    if (item_id >= bridge->n_wm_items) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_prefrontal_remove_wm_item: invalid item_id");
+        return -1;
+    }
 
     wm_item_t* item = bridge->wm_items[item_id];
     if (!item) return -1;
@@ -457,8 +510,14 @@ int snn_prefrontal_remove_wm_item(snn_prefrontal_bridge_t* bridge, uint32_t item
 }
 
 int snn_prefrontal_set_goal(snn_prefrontal_bridge_t* bridge, uint32_t goal_id) {
-    if (!bridge) return -1;
-    if (goal_id >= bridge->n_goals) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_set_goal: null bridge pointer");
+        return -1;
+    }
+    if (goal_id >= bridge->n_goals) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_prefrontal_set_goal: invalid goal_id");
+        return -1;
+    }
 
     /* Deactivate current goal */
     if (bridge->active_goal) {
@@ -482,8 +541,18 @@ int snn_prefrontal_accumulate_evidence(
     const float* evidence,
     uint32_t n_options
 ) {
-    if (!bridge || !evidence) return -1;
-    if (!bridge->accumulator) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_accumulate_evidence: null bridge pointer");
+        return -1;
+    }
+    if (!evidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_accumulate_evidence: null evidence pointer");
+        return -1;
+    }
+    if (!bridge->accumulator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_prefrontal_accumulate_evidence: null accumulator");
+        return -1;
+    }
     if (bridge->accumulator->decision_made) return 1;
 
     /* Resize if needed */
@@ -513,7 +582,14 @@ int snn_prefrontal_accumulate_evidence(
 }
 
 int snn_prefrontal_apply_inhibition(snn_prefrontal_bridge_t* bridge, float stop_signal) {
-    if (!bridge || !bridge->inhibition) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_apply_inhibition: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->inhibition) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_prefrontal_apply_inhibition: null inhibition state");
+        return -1;
+    }
 
     bridge->inhibition->stop_signal = stop_signal;
 
@@ -534,7 +610,10 @@ int snn_prefrontal_apply_inhibition(snn_prefrontal_bridge_t* bridge, float stop_
 //=============================================================================
 
 uint32_t snn_prefrontal_get_wm_count(const snn_prefrontal_bridge_t* bridge) {
-    if (!bridge) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_get_wm_count: null bridge pointer");
+        return 0;
+    }
 
     uint32_t count = 0;
     for (uint32_t i = 0; i < bridge->n_wm_items; i++) {
@@ -549,28 +628,55 @@ const wm_item_t* snn_prefrontal_get_wm_item(
     const snn_prefrontal_bridge_t* bridge,
     uint32_t item_id
 ) {
-    if (!bridge) return NULL;
-    if (item_id >= bridge->n_wm_items) return NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_get_wm_item: null bridge pointer");
+        return NULL;
+    }
+    if (item_id >= bridge->n_wm_items) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_prefrontal_get_wm_item: invalid item_id");
+        return NULL;
+    }
     return bridge->wm_items[item_id];
 }
 
 const goal_state_t* snn_prefrontal_get_active_goal(const snn_prefrontal_bridge_t* bridge) {
-    return bridge ? bridge->active_goal : NULL;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_get_active_goal: null bridge pointer");
+        return NULL;
+    }
+    return bridge->active_goal;
 }
 
 bool snn_prefrontal_is_decision_made(const snn_prefrontal_bridge_t* bridge) {
-    if (!bridge || !bridge->accumulator) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_is_decision_made: null bridge pointer");
+        return false;
+    }
+    if (!bridge->accumulator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_prefrontal_is_decision_made: null accumulator");
+        return false;
+    }
     return bridge->accumulator->decision_made;
 }
 
 uint32_t snn_prefrontal_get_decision(const snn_prefrontal_bridge_t* bridge) {
-    if (!bridge || !bridge->accumulator) return UINT32_MAX;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_get_decision: null bridge pointer");
+        return UINT32_MAX;
+    }
+    if (!bridge->accumulator) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "snn_prefrontal_get_decision: null accumulator");
+        return UINT32_MAX;
+    }
     if (!bridge->accumulator->decision_made) return UINT32_MAX;
     return bridge->accumulator->chosen_option;
 }
 
 float snn_prefrontal_bridge_get_activity(const snn_prefrontal_bridge_t* bridge) {
-    if (!bridge) return -1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_bridge_get_activity: null bridge pointer");
+        return -1.0f;
+    }
 
     /* Combine WM activity and goal activation */
     float wm_activity = 0.0f;
@@ -592,7 +698,10 @@ int snn_prefrontal_get_stats(
     uint32_t* inhibited_responses,
     uint32_t* updates
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_get_stats: null bridge pointer");
+        return -1;
+    }
 
     if (total_decisions) {
         *total_decisions = bridge->total_decisions;
@@ -610,7 +719,10 @@ int snn_prefrontal_get_stats(
 }
 
 void snn_prefrontal_reset_stats(snn_prefrontal_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_prefrontal_reset_stats: null bridge pointer");
+        return;
+    }
 
     bridge->update_count = 0;
     bridge->last_update_time = 0.0f;

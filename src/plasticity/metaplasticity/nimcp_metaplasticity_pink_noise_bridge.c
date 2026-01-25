@@ -19,11 +19,8 @@ static float clamp_value(float val, float min_val, float max_val) {
 meta_pink_noise_bridge_t* meta_pink_noise_create(const meta_pink_noise_config_t* config) {
     meta_pink_noise_bridge_t* bridge = nimcp_calloc(1, sizeof(meta_pink_noise_bridge_t));
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_pink_noise_create: failed to allocate bridge");
         return NULL;
-
     }
 
     if (config) {
@@ -40,6 +37,7 @@ meta_pink_noise_bridge_t* meta_pink_noise_create(const meta_pink_noise_config_t*
 
     bridge->noise_gen = pink_noise_create(&noise_config);
     if (!bridge->noise_gen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "meta_pink_noise_create: failed to create noise generator");
         nimcp_free(bridge);
         return NULL;
     }
@@ -61,21 +59,37 @@ void meta_pink_noise_destroy(meta_pink_noise_bridge_t* bridge) {
 }
 
 int meta_pink_noise_connect_meta(meta_pink_noise_bridge_t* bridge, void* meta_state) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_pink_noise_connect_meta: bridge is NULL");
+        return -1;
+    }
     bridge->metaplasticity_state = meta_state;
     bridge->meta_connected = (meta_state != NULL);
     return 0;
 }
 
 int meta_pink_noise_disconnect(meta_pink_noise_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_pink_noise_disconnect: bridge is NULL");
+        return -1;
+    }
     bridge->metaplasticity_state = NULL;
     bridge->meta_connected = false;
     return 0;
 }
 
 int meta_pink_noise_update(meta_pink_noise_bridge_t* bridge) {
-    if (!bridge || !bridge->is_enabled || !bridge->noise_gen) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_pink_noise_update: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->is_enabled) {
+        return -1;  /* Not an error, just disabled */
+    }
+    if (!bridge->noise_gen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "meta_pink_noise_update: noise_gen is NULL");
+        return -1;
+    }
 
     if (bridge->config.noise_targets & META_NOISE_TARGET_THETA_BASE) {
         bridge->theta_base_noise = pink_noise_sample(bridge->noise_gen) *
@@ -127,7 +141,14 @@ float meta_pink_noise_get_noisy_theta_effective(const meta_pink_noise_bridge_t* 
 }
 
 int meta_pink_noise_get_stats(const meta_pink_noise_bridge_t* bridge, meta_pink_noise_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_pink_noise_get_stats: bridge is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_pink_noise_get_stats: stats is NULL");
+        return -1;
+    }
     memset(stats, 0, sizeof(meta_pink_noise_stats_t));
     stats->samples_generated = bridge->samples_generated;
     stats->parameters_modulated = bridge->parameters_modulated;
@@ -139,14 +160,20 @@ int meta_pink_noise_get_stats(const meta_pink_noise_bridge_t* bridge, meta_pink_
 }
 
 int meta_pink_noise_set_enabled(meta_pink_noise_bridge_t* bridge, bool enabled) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_pink_noise_set_enabled: bridge is NULL");
+        return -1;
+    }
     bridge->is_enabled = enabled;
     bridge->config.enabled = enabled;
     return 0;
 }
 
 int meta_pink_noise_reset(meta_pink_noise_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "meta_pink_noise_reset: bridge is NULL");
+        return -1;
+    }
     bridge->theta_base_noise = 0.0f;
     bridge->theta_eff_noise = 0.0f;
     bridge->tau_noise = 0.0f;

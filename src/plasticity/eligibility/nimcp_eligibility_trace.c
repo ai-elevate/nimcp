@@ -90,6 +90,7 @@ eligibility_config_t eligibility_default_config(void) {
 void eligibility_trace_init(eligibility_trace_t* trace, uint64_t current_time) {
     // Guard: NULL trace
     if (!trace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_trace_init: trace is NULL");
         return;
     }
 
@@ -131,7 +132,12 @@ void eligibility_trace_update(
     float spike_contribution
 ) {
     // Guard: NULL trace or config
-    if (!trace || !config) {
+    if (!trace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_trace_update: trace is NULL");
+        return;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_trace_update: config is NULL");
         return;
     }
 
@@ -232,7 +238,12 @@ void eligibility_trace_decay(
     uint64_t current_time
 ) {
     // Guard: NULL trace or config
-    if (!trace || !config) {
+    if (!trace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_trace_decay: trace is NULL");
+        return;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_trace_decay: config is NULL");
         return;
     }
 
@@ -348,7 +359,16 @@ float eligibility_apply_reward(
     float dopamine_level
 ) {
     // Guard: NULL synapse, trace, or config
-    if (!synapse || !trace || !config) {
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_apply_reward: synapse is NULL");
+        return 0.0F;
+    }
+    if (!trace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_apply_reward: trace is NULL");
+        return 0.0F;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_apply_reward: config is NULL");
         return 0.0F;
     }
 
@@ -427,7 +447,16 @@ float eligibility_update_and_learn(
     float dopamine_level
 ) {
     // Guard: NULL checks
-    if (!synapse || !trace || !config) {
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_update_and_learn: synapse is NULL");
+        return 0.0F;
+    }
+    if (!trace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_update_and_learn: trace is NULL");
+        return 0.0F;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_update_and_learn: config is NULL");
         return 0.0F;
     }
 
@@ -519,7 +548,16 @@ float eligibility_consolidate_on_burst(
     float reward
 ) {
     // Guard: NULL checks
-    if (!synapse || !trace || !config) {
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_consolidate_on_burst: synapse is NULL");
+        return 0.0F;
+    }
+    if (!trace) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_consolidate_on_burst: trace is NULL");
+        return 0.0F;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "eligibility_consolidate_on_burst: config is NULL");
         return 0.0F;
     }
 

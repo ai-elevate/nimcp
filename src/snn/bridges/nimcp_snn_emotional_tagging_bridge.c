@@ -19,7 +19,10 @@
 #define DEFAULT_MAX_TAGS 1024
 
 void snn_emotional_tagging_config_default(snn_emotional_tagging_config_t* config) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotional_tagging_config_default: null config pointer");
+        return;
+    }
 
     config->tagging_threshold = 50.0f;
     config->emotional_decay_rate = 0.1f;
@@ -80,7 +83,10 @@ snn_emotional_tagging_bridge_t* snn_emotional_tagging_bridge_create(
 }
 
 void snn_emotional_tagging_bridge_destroy(snn_emotional_tagging_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotional_tagging_bridge_destroy: null bridge pointer");
+        return;
+    }
 
     if (bridge->base.bio_async_enabled) {
         snn_emotional_tagging_bridge_disconnect_bio_async(bridge);
@@ -94,7 +100,10 @@ void snn_emotional_tagging_bridge_destroy(snn_emotional_tagging_bridge_t* bridge
 }
 
 int snn_emotional_tagging_bridge_connect_bio_async(snn_emotional_tagging_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotional_tagging_bridge_connect_bio_async: null bridge pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -116,18 +125,29 @@ int snn_emotional_tagging_bridge_connect_bio_async(snn_emotional_tagging_bridge_
 }
 
 int snn_emotional_tagging_bridge_disconnect_bio_async(snn_emotional_tagging_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotional_tagging_bridge_disconnect_bio_async: null bridge pointer");
+        return -1;
+    }
+    if (!bridge->base.bio_async_enabled) return 0;
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_async_enabled = false;
     return 0;
 }
 
 bool snn_emotional_tagging_bridge_is_bio_async_connected(const snn_emotional_tagging_bridge_t* bridge) {
-    return bridge ? bridge->base.bio_async_enabled : false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotional_tagging_bridge_is_bio_async_connected: null bridge pointer");
+        return false;
+    }
+    return bridge->base.bio_async_enabled;
 }
 
 int snn_emotional_tagging_bridge_update(snn_emotional_tagging_bridge_t* bridge, float dt) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotional_tagging_bridge_update: null bridge pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     bridge->last_update_time += dt;
     if (bridge->last_update_time < bridge->config.update_interval_ms) {
@@ -173,7 +193,10 @@ int snn_emotional_tagging_detect_burst(
     float* burst_rate_out,
     float* synchrony_out
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotional_tagging_detect_burst: null bridge pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     float burst_rate = 0.0f;
     float synchrony = 0.0f;
@@ -196,7 +219,10 @@ int snn_emotional_tagging_create_tag(
     uint32_t event_id,
     float initial_intensity
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotional_tagging_create_tag: null bridge pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (bridge->tag_count >= bridge->max_tags) {
         NIMCP_LOGGING_WARN("Tag array full, cannot create new tag");
         return SNN_ERROR_OPERATION_FAILED;
@@ -231,7 +257,10 @@ int snn_emotional_tagging_decay_tags(
     snn_emotional_tagging_bridge_t* bridge,
     float dt
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotional_tagging_decay_tags: null bridge pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     float decay_factor = expf(-bridge->config.emotional_decay_rate * dt / 1000.0f);
 
@@ -249,7 +278,10 @@ int snn_emotional_tagging_consolidate_memory(
     snn_emotional_tagging_bridge_t* bridge,
     uint32_t event_id
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotional_tagging_consolidate_memory: null bridge pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     for (uint32_t i = 0; i < bridge->tag_count; i++) {
         if (bridge->tags[i].event_id == event_id) {
@@ -269,7 +301,14 @@ int snn_emotional_tagging_enhance_ltp(
     uint32_t event_id,
     float* enhancement_factor
 ) {
-    if (!bridge || !enhancement_factor) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotional_tagging_enhance_ltp: null bridge pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!enhancement_factor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotional_tagging_enhance_ltp: null enhancement_factor pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     for (uint32_t i = 0; i < bridge->tag_count; i++) {
         if (bridge->tags[i].event_id == event_id) {
@@ -288,21 +327,40 @@ int snn_emotional_tagging_bridge_get_state(
     const snn_emotional_tagging_bridge_t* bridge,
     snn_emotional_tagging_state_t* state
 ) {
-    if (!bridge || !state) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotional_tagging_bridge_get_state: null bridge pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotional_tagging_bridge_get_state: null state pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
     *state = bridge->state;
     return 0;
 }
 
 float snn_emotional_tagging_get_current_intensity(const snn_emotional_tagging_bridge_t* bridge) {
-    return bridge ? bridge->state.current_tag_intensity : 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotional_tagging_get_current_intensity: null bridge pointer");
+        return 0.0f;
+    }
+    return bridge->state.current_tag_intensity;
 }
 
 uint32_t snn_emotional_tagging_get_tagged_count(const snn_emotional_tagging_bridge_t* bridge) {
-    return bridge ? bridge->state.tagged_events_count : 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotional_tagging_get_tagged_count: null bridge pointer");
+        return 0;
+    }
+    return bridge->state.tagged_events_count;
 }
 
 uint32_t snn_emotional_tagging_get_active_tags(const snn_emotional_tagging_bridge_t* bridge) {
-    return bridge ? bridge->state.active_tags : 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotional_tagging_get_active_tags: null bridge pointer");
+        return 0;
+    }
+    return bridge->state.active_tags;
 }
 
 int snn_emotional_tagging_get_tag(
@@ -310,7 +368,14 @@ int snn_emotional_tagging_get_tag(
     uint32_t event_id,
     snn_emotional_tag_t* tag_out
 ) {
-    if (!bridge || !tag_out) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotional_tagging_get_tag: null bridge pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!tag_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotional_tagging_get_tag: null tag_out pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     for (uint32_t i = 0; i < bridge->tag_count; i++) {
         if (bridge->tags[i].event_id == event_id) {
@@ -328,7 +393,10 @@ int snn_emotional_tagging_get_stats(
     float* avg_intensity,
     uint32_t* consolidated_count
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotional_tagging_get_stats: null bridge pointer");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (tagged_count) *tagged_count = bridge->state.tagged_events_count;
     if (avg_intensity) *avg_intensity = bridge->state.avg_tag_intensity;
     if (consolidated_count) *consolidated_count = bridge->state.consolidated_tags;
@@ -336,7 +404,10 @@ int snn_emotional_tagging_get_stats(
 }
 
 void snn_emotional_tagging_reset_stats(snn_emotional_tagging_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_emotional_tagging_reset_stats: null bridge pointer");
+        return;
+    }
     bridge->state.tagged_events_count = 0;
     bridge->state.avg_tag_intensity = 0.0f;
     bridge->state.active_tags = 0;

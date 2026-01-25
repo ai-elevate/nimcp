@@ -49,7 +49,7 @@ snn_introspection_bridge_t* snn_introspection_bridge_create(
 
     snn_introspection_bridge_t* bridge = nimcp_malloc(sizeof(snn_introspection_bridge_t));
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate SNN-introspection bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_introspection_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -78,7 +78,10 @@ void snn_introspection_bridge_destroy(snn_introspection_bridge_t* bridge) {
 }
 
 int snn_introspection_bridge_connect_bio_async(snn_introspection_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_introspection_bridge_connect_bio_async: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -110,7 +113,10 @@ bool snn_introspection_bridge_is_bio_async_connected(const snn_introspection_bri
 }
 
 int snn_introspection_bridge_update(snn_introspection_bridge_t* bridge, float dt) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_introspection_bridge_update: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     bridge->last_update_time += dt;
     if (bridge->last_update_time < bridge->config.update_interval_ms) {
@@ -145,7 +151,18 @@ float snn_introspection_estimate_phi(snn_introspection_bridge_t* bridge, float s
 }
 
 int snn_introspection_detect_patterns(snn_introspection_bridge_t* bridge, const float* spike_train, uint32_t length, float* coherence) {
-    if (!bridge || !spike_train || length == 0) return SNN_ERROR_INVALID_CONFIG;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_introspection_detect_patterns: bridge is NULL");
+        return SNN_ERROR_INVALID_CONFIG;
+    }
+    if (!spike_train) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_introspection_detect_patterns: spike_train is NULL");
+        return SNN_ERROR_INVALID_CONFIG;
+    }
+    if (length == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_introspection_detect_patterns: length is 0");
+        return SNN_ERROR_INVALID_CONFIG;
+    }
 
     float mean = 0.0f;
     for (uint32_t i = 0; i < length; i++) mean += spike_train[i];
@@ -174,7 +191,14 @@ bool snn_introspection_check_consciousness(const snn_introspection_bridge_t* bri
 }
 
 int snn_introspection_bridge_get_state(const snn_introspection_bridge_t* bridge, snn_introspection_state_t* state) {
-    if (!bridge || !state) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_introspection_bridge_get_state: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_introspection_bridge_get_state: state is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -188,7 +212,10 @@ float snn_introspection_get_uncertainty(const snn_introspection_bridge_t* bridge
 }
 
 int snn_introspection_get_stats(const snn_introspection_bridge_t* bridge, uint32_t* pattern_matches, uint32_t* consciousness_detections, float* avg_phi) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_introspection_get_stats: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (pattern_matches) *pattern_matches = bridge->state.pattern_matches;
     if (consciousness_detections) *consciousness_detections = bridge->state.consciousness_detected ? 1 : 0;
     if (avg_phi) *avg_phi = bridge->state.phi_estimate;

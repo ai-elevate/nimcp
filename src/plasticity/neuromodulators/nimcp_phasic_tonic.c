@@ -54,7 +54,10 @@ phasic_tonic_state_t phasic_tonic_state_create(void) {
 }
 
 void phasic_tonic_state_destroy(phasic_tonic_state_t* state) {
-    if (!state) return;
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_state_destroy: null state");
+        return;
+    }
     if (!state->owns_tensors) return;
 
     if (state->tonic_params) {
@@ -84,37 +87,55 @@ void phasic_tonic_state_destroy(phasic_tonic_state_t* state) {
 // ============================================================================
 
 float phasic_tonic_get_tonic_level(const phasic_tonic_state_t* state) {
-    if (!state || !state->tonic_params) return 0.0f;
+    if (!state || !state->tonic_params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_get_tonic_level: null state or tensor");
+        return 0.0f;
+    }
     uint32_t idx[1] = {PHASIC_TONIC_IDX_TONIC_LEVEL};
     return (float)nimcp_tensor_get(state->tonic_params, idx);
 }
 
 float phasic_tonic_get_tonic_target(const phasic_tonic_state_t* state) {
-    if (!state || !state->tonic_params) return 0.0f;
+    if (!state || !state->tonic_params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_get_tonic_target: null state or tensor");
+        return 0.0f;
+    }
     uint32_t idx[1] = {PHASIC_TONIC_IDX_TONIC_TARGET};
     return (float)nimcp_tensor_get(state->tonic_params, idx);
 }
 
 float phasic_tonic_get_tonic_min(const phasic_tonic_state_t* state) {
-    if (!state || !state->tonic_params) return 0.0f;
+    if (!state || !state->tonic_params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_get_tonic_min: null state or tensor");
+        return 0.0f;
+    }
     uint32_t idx[1] = {PHASIC_TONIC_IDX_TONIC_MIN};
     return (float)nimcp_tensor_get(state->tonic_params, idx);
 }
 
 float phasic_tonic_get_tonic_max(const phasic_tonic_state_t* state) {
-    if (!state || !state->tonic_params) return 0.0f;
+    if (!state || !state->tonic_params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_get_tonic_max: null state or tensor");
+        return 0.0f;
+    }
     uint32_t idx[1] = {PHASIC_TONIC_IDX_TONIC_MAX};
     return (float)nimcp_tensor_get(state->tonic_params, idx);
 }
 
 float phasic_tonic_get_homeostatic_tau(const phasic_tonic_state_t* state) {
-    if (!state || !state->tonic_params) return 0.0f;
+    if (!state || !state->tonic_params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_get_homeostatic_tau: null state or tensor");
+        return 0.0f;
+    }
     uint32_t idx[1] = {PHASIC_TONIC_IDX_HOMEOSTATIC_TAU};
     return (float)nimcp_tensor_get(state->tonic_params, idx);
 }
 
 void phasic_tonic_set_tonic_level(phasic_tonic_state_t* state, float value) {
-    if (!state || !state->tonic_params) return;
+    if (!state || !state->tonic_params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_set_tonic_level: null state or tensor");
+        return;
+    }
     uint32_t idx[1] = {PHASIC_TONIC_IDX_TONIC_LEVEL};
     nimcp_tensor_set(state->tonic_params, idx, value);
 }
@@ -124,43 +145,64 @@ void phasic_tonic_set_tonic_level(phasic_tonic_state_t* state, float value) {
 // ============================================================================
 
 float phasic_tonic_get_phasic_burst(const phasic_tonic_state_t* state) {
-    if (!state || !state->phasic_params) return 0.0f;
+    if (!state || !state->phasic_params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_get_phasic_burst: null state or tensor");
+        return 0.0f;
+    }
     uint32_t idx[1] = {PHASIC_TONIC_IDX_PHASIC_BURST};
     return (float)nimcp_tensor_get(state->phasic_params, idx);
 }
 
 float phasic_tonic_get_burst_decay_tau(const phasic_tonic_state_t* state) {
-    if (!state || !state->phasic_params) return 0.0f;
+    if (!state || !state->phasic_params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_get_burst_decay_tau: null state or tensor");
+        return 0.0f;
+    }
     uint32_t idx[1] = {PHASIC_TONIC_IDX_BURST_DECAY_TAU};
     return (float)nimcp_tensor_get(state->phasic_params, idx);
 }
 
 float phasic_tonic_get_burst_amplitude_scale(const phasic_tonic_state_t* state) {
-    if (!state || !state->phasic_params) return 0.0f;
+    if (!state || !state->phasic_params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_get_burst_amplitude_scale: null state or tensor");
+        return 0.0f;
+    }
     uint32_t idx[1] = {PHASIC_TONIC_IDX_BURST_AMP_SCALE};
     return (float)nimcp_tensor_get(state->phasic_params, idx);
 }
 
 float phasic_tonic_get_burst_threshold(const phasic_tonic_state_t* state) {
-    if (!state || !state->phasic_params) return 0.0f;
+    if (!state || !state->phasic_params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_get_burst_threshold: null state or tensor");
+        return 0.0f;
+    }
     uint32_t idx[1] = {PHASIC_TONIC_IDX_BURST_THRESHOLD};
     return (float)nimcp_tensor_get(state->phasic_params, idx);
 }
 
 float phasic_tonic_get_max_burst_amplitude(const phasic_tonic_state_t* state) {
-    if (!state || !state->burst_limits) return 0.0f;
+    if (!state || !state->burst_limits) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_get_max_burst_amplitude: null state or tensor");
+        return 0.0f;
+    }
     uint32_t idx[1] = {PHASIC_TONIC_IDX_MAX_BURST_AMP};
     return (float)nimcp_tensor_get(state->burst_limits, idx);
 }
 
 float phasic_tonic_get_min_burst_amplitude(const phasic_tonic_state_t* state) {
-    if (!state || !state->burst_limits) return 0.0f;
+    if (!state || !state->burst_limits) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_get_min_burst_amplitude: null state or tensor");
+        return 0.0f;
+    }
     uint32_t idx[1] = {PHASIC_TONIC_IDX_MIN_BURST_AMP};
     return (float)nimcp_tensor_get(state->burst_limits, idx);
 }
 
 void phasic_tonic_set_phasic_burst(phasic_tonic_state_t* state, float value) {
-    if (!state || !state->phasic_params) return;
+    if (!state || !state->phasic_params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_set_phasic_burst: null state or tensor");
+        return;
+    }
     uint32_t idx[1] = {PHASIC_TONIC_IDX_PHASIC_BURST};
     nimcp_tensor_set(state->phasic_params, idx, value);
 }
@@ -170,13 +212,19 @@ void phasic_tonic_set_phasic_burst(phasic_tonic_state_t* state, float value) {
 // ============================================================================
 
 float phasic_tonic_get_autoreceptor_sensitivity(const phasic_tonic_state_t* state) {
-    if (!state || !state->autoreceptor_params) return 0.0f;
+    if (!state || !state->autoreceptor_params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_get_autoreceptor_sensitivity: null state or tensor");
+        return 0.0f;
+    }
     uint32_t idx[1] = {PHASIC_TONIC_IDX_AUTO_SENSITIVITY};
     return (float)nimcp_tensor_get(state->autoreceptor_params, idx);
 }
 
 float phasic_tonic_get_feedback_tau(const phasic_tonic_state_t* state) {
-    if (!state || !state->autoreceptor_params) return 0.0f;
+    if (!state || !state->autoreceptor_params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_get_feedback_tau: null state or tensor");
+        return 0.0f;
+    }
     uint32_t idx[1] = {PHASIC_TONIC_IDX_FEEDBACK_TAU};
     return (float)nimcp_tensor_get(state->autoreceptor_params, idx);
 }
@@ -186,25 +234,37 @@ float phasic_tonic_get_feedback_tau(const phasic_tonic_state_t* state) {
 // ============================================================================
 
 float phasic_tonic_get_total_concentration(const phasic_tonic_state_t* state) {
-    if (!state || !state->output) return 0.0f;
+    if (!state || !state->output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_get_total_concentration: null state or tensor");
+        return 0.0f;
+    }
     uint32_t idx[1] = {PHASIC_TONIC_IDX_TOTAL_CONC};
     return (float)nimcp_tensor_get(state->output, idx);
 }
 
 float phasic_tonic_get_release_rate_value(const phasic_tonic_state_t* state) {
-    if (!state || !state->output) return 0.0f;
+    if (!state || !state->output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_get_release_rate_value: null state or tensor");
+        return 0.0f;
+    }
     uint32_t idx[1] = {PHASIC_TONIC_IDX_RELEASE_RATE};
     return (float)nimcp_tensor_get(state->output, idx);
 }
 
 void phasic_tonic_set_total_concentration(phasic_tonic_state_t* state, float value) {
-    if (!state || !state->output) return;
+    if (!state || !state->output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_set_total_concentration: null state or tensor");
+        return;
+    }
     uint32_t idx[1] = {PHASIC_TONIC_IDX_TOTAL_CONC};
     nimcp_tensor_set(state->output, idx, value);
 }
 
 void phasic_tonic_set_release_rate_value(phasic_tonic_state_t* state, float value) {
-    if (!state || !state->output) return;
+    if (!state || !state->output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_set_release_rate_value: null state or tensor");
+        return;
+    }
     uint32_t idx[1] = {PHASIC_TONIC_IDX_RELEASE_RATE};
     nimcp_tensor_set(state->output, idx, value);
 }
@@ -276,6 +336,15 @@ void phasic_tonic_init(
     const phasic_tonic_config_t* config,
     uint64_t current_time_us
 ) {
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_init: null state");
+        return;
+    }
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_init: null config");
+        return;
+    }
+
     /* Create tensor storage if not already allocated */
     if (!state->tonic_params) {
         *state = phasic_tonic_state_create();
@@ -342,6 +411,11 @@ void phasic_tonic_update(
     float dt,
     uint64_t current_time_us
 ) {
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_update: null state");
+        return;
+    }
+
     /* Get current values from tensors using accessors */
     float tonic_level = phasic_tonic_get_tonic_level(state);
     float tonic_target = phasic_tonic_get_tonic_target(state);
@@ -406,6 +480,11 @@ bool phasic_tonic_trigger_burst(
     uint32_t duration_ms,
     uint64_t current_time_us
 ) {
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_trigger_burst: null state");
+        return false;
+    }
+
     float min_burst_amp = phasic_tonic_get_min_burst_amplitude(state);
     float max_burst_amp = phasic_tonic_get_max_burst_amplitude(state);
     float burst_amp_scale = phasic_tonic_get_burst_amplitude_scale(state);
@@ -465,6 +544,11 @@ void phasic_tonic_induce_dip(
     phasic_tonic_state_t* state,
     float magnitude
 ) {
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_induce_dip: null state");
+        return;
+    }
+
     /* Clamp magnitude */
     if (magnitude < 0.0F) magnitude = 0.0F;
     if (magnitude > 1.0F) magnitude = 1.0F;
@@ -496,6 +580,11 @@ bool phasic_tonic_encode_td_error(
     float td_error,
     uint64_t current_time_us
 ) {
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_encode_td_error: null state");
+        return false;
+    }
+
     float max_burst_amp = phasic_tonic_get_max_burst_amplitude(state);
 
     if (td_error > 0.0F) {
@@ -532,6 +621,11 @@ void phasic_tonic_set_tonic_target(
     phasic_tonic_state_t* state,
     float new_target
 ) {
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_set_tonic_target: null state");
+        return;
+    }
+
     float tonic_min = phasic_tonic_get_tonic_min(state);
     float tonic_max = phasic_tonic_get_tonic_max(state);
 
@@ -550,6 +644,11 @@ void phasic_tonic_apply_autoreceptor_modulation(
     phasic_tonic_state_t* state,
     float modulation
 ) {
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_apply_autoreceptor_modulation: null state");
+        return;
+    }
+
     /* Clamp modulation to reasonable range */
     if (modulation < 0.0F) modulation = 0.0F;
     if (modulation > 2.0F) modulation = 2.0F;
@@ -581,6 +680,11 @@ void phasic_tonic_get_burst_statistics(
     float* time_since_last,
     uint64_t current_time_us
 ) {
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_get_burst_statistics: null state");
+        return;
+    }
+
     if (burst_count) {
         *burst_count = state->burst_count;
     }
@@ -599,6 +703,11 @@ void phasic_tonic_reset(
     phasic_tonic_state_t* state,
     uint64_t current_time_us
 ) {
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "phasic_tonic_reset: null state");
+        return;
+    }
+
     float tonic_target = phasic_tonic_get_tonic_target(state);
 
     /* Reset to baseline */

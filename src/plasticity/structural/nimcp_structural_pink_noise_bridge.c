@@ -15,11 +15,8 @@ static float clamp(float v, float min, float max) { return v < min ? min : (v > 
 struct_pink_noise_bridge_t* struct_pink_noise_create(const struct_pink_noise_config_t* config) {
     struct_pink_noise_bridge_t* bridge = nimcp_calloc(1, sizeof(struct_pink_noise_bridge_t));
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "struct_pink_noise_create: bridge allocation failed");
         return NULL;
-
     }
 
     bridge->config = config ? *config : struct_pink_noise_default_config();
@@ -31,7 +28,11 @@ struct_pink_noise_bridge_t* struct_pink_noise_create(const struct_pink_noise_con
     nc.seed = bridge->config.seed;
 
     bridge->noise_gen = pink_noise_create(&nc);
-    if (!bridge->noise_gen) { nimcp_free(bridge); return NULL; }
+    if (!bridge->noise_gen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "struct_pink_noise_create: noise_gen allocation failed");
+        nimcp_free(bridge);
+        return NULL;
+    }
 
     bridge->noise_connected = true;
     bridge->is_enabled = bridge->config.enabled;
@@ -49,14 +50,25 @@ void struct_pink_noise_destroy(struct_pink_noise_bridge_t* bridge) {
 }
 
 int struct_pink_noise_connect(struct_pink_noise_bridge_t* bridge, void* state) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "struct_pink_noise_connect: bridge is NULL");
+        return -1;
+    }
     bridge->structural_state = state;
     bridge->struct_connected = (state != NULL);
     return 0;
 }
 
 int struct_pink_noise_update(struct_pink_noise_bridge_t* bridge) {
-    if (!bridge || !bridge->is_enabled || !bridge->noise_gen) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "struct_pink_noise_update: bridge is NULL");
+        return -1;
+    }
+    if (!bridge->is_enabled) return 0;  /* Not an error, just disabled */
+    if (!bridge->noise_gen) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "struct_pink_noise_update: noise_gen is NULL");
+        return -1;
+    }
 
     float amp = bridge->config.noise_amplitude;
 
@@ -74,15 +86,26 @@ int struct_pink_noise_update(struct_pink_noise_bridge_t* bridge) {
 }
 
 float struct_pink_noise_get_growth_rate(const struct_pink_noise_bridge_t* bridge) {
-    return bridge ? bridge->noisy_growth_rate : 0.01f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "struct_pink_noise_get_growth_rate: bridge is NULL");
+        return 0.01f;
+    }
+    return bridge->noisy_growth_rate;
 }
 
 float struct_pink_noise_get_prune_rate(const struct_pink_noise_bridge_t* bridge) {
-    return bridge ? bridge->noisy_prune_rate : 0.005f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "struct_pink_noise_get_prune_rate: bridge is NULL");
+        return 0.005f;
+    }
+    return bridge->noisy_prune_rate;
 }
 
 int struct_pink_noise_reset(struct_pink_noise_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "struct_pink_noise_reset: bridge is NULL");
+        return -1;
+    }
     bridge->growth_noise = bridge->prune_noise = 0.0f;
     bridge->noisy_growth_rate = 0.01f;
     bridge->noisy_prune_rate = 0.005f;

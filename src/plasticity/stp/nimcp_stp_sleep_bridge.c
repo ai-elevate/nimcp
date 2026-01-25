@@ -94,12 +94,18 @@ stp_sleep_bridge_t stp_sleep_bridge_create(
     const stp_sleep_config_t* config,
     sleep_system_t sleep_system)
 {
-    NIMCP_API_CHECK_NULL_RET_NULL(sleep_system, "Sleep system is NULL");
+    if (!sleep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_sleep_bridge_create: sleep_system is NULL");
+        return NULL;
+    }
 
     struct stp_sleep_bridge_struct* bridge =
         (struct stp_sleep_bridge_struct*)nimcp_malloc(
             sizeof(struct stp_sleep_bridge_struct));
-    NIMCP_API_CHECK_ALLOC(bridge, "STP-sleep bridge allocation failed");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stp_sleep_bridge_create: failed to allocate bridge");
+        return NULL;
+    }
 
     memset(bridge, 0, sizeof(struct stp_sleep_bridge_struct));
 
@@ -115,11 +121,15 @@ stp_sleep_bridge_t stp_sleep_bridge_create(
     bridge->effects.facilitation_decay_factor = 1.0f;
     bridge->effects.vesicle_restoration_active = false;
 
-    if (bridge_base_init(&bridge->base, 0, "stp_sleep") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "stp_sleep") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stp_sleep_bridge_create: failed to initialize bridge base");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         LOG_ERROR("STP-sleep bridge mutex creation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "STP-sleep bridge mutex creation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stp_sleep_bridge_create: failed to create mutex");
         return NULL;
     }
 
@@ -163,7 +173,10 @@ void stp_sleep_bridge_destroy(stp_sleep_bridge_t bridge) {
 }
 
 int stp_sleep_update(stp_sleep_bridge_t bridge) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "STP-sleep bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -199,8 +212,14 @@ int stp_sleep_update(stp_sleep_bridge_t bridge) {
 
 int stp_sleep_get_effects(const stp_sleep_bridge_t bridge,
                            stp_sleep_effects_t* effects) {
-    NIMCP_API_CHECK_NULL(bridge, -1, "STP-sleep bridge is NULL");
-    NIMCP_API_CHECK_NULL(effects, -1, "Effects output pointer is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_sleep_get_effects: bridge is NULL");
+        return -1;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stp_sleep_get_effects: effects is NULL");
+        return -1;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_platform_mutex_unlock(bridge->base.mutex);

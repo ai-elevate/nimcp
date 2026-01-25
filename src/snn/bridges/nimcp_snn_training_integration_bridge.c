@@ -191,7 +191,10 @@ static void aggregate_context_metrics(snn_training_integration_bridge_t* bridge)
 void snn_training_integration_config_default(
     snn_training_integration_config_t* config
 ) {
-    if (!config) return;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_config_default: null config pointer");
+        return;
+    }
 
     memset(config, 0, sizeof(snn_training_integration_config_t));
 
@@ -291,7 +294,10 @@ snn_training_integration_bridge_t* snn_training_integration_create(
 void snn_training_integration_destroy(
     snn_training_integration_bridge_t* bridge
 ) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_destroy: null bridge pointer");
+        return;
+    }
 
     /* Stop if running */
     if (bridge->started) {
@@ -310,7 +316,10 @@ void snn_training_integration_destroy(
 int snn_training_integration_start(
     snn_training_integration_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_start: null bridge pointer");
+        return -1;
+    }
     if (bridge->started) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -332,7 +341,10 @@ int snn_training_integration_start(
 int snn_training_integration_stop(
     snn_training_integration_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_stop: null bridge pointer");
+        return -1;
+    }
     if (!bridge->started) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -360,7 +372,14 @@ int snn_training_integration_connect_context(
     snn_network_t* network,
     const char* name
 ) {
-    if (!bridge || !ctx) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_connect_context: null bridge pointer");
+        return -1;
+    }
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_connect_context: null ctx pointer");
+        return -1;
+    }
     if (bridge->num_contexts >= SNN_TRAINING_INTEGRATION_MAX_CONTEXTS) return -2;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -410,7 +429,10 @@ int snn_training_integration_disconnect_context(
     snn_training_integration_bridge_t* bridge,
     int context_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_disconnect_context: null bridge pointer");
+        return -1;
+    }
     if (context_id < 0 || context_id >= SNN_TRAINING_INTEGRATION_MAX_CONTEXTS) return -1;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -440,7 +462,10 @@ int snn_training_integration_connect_brain_training(
     snn_training_integration_bridge_t* bridge,
     nimcp_brain_training_ctx_t* training_ctx
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_connect_brain_training: null bridge pointer");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->brain_training = training_ctx;
@@ -456,7 +481,10 @@ int snn_training_integration_connect_cognitive_training(
     snn_training_integration_bridge_t* bridge,
     cognitive_training_bridge_t* cognitive_training
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_connect_cognitive_training: null bridge pointer");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->cognitive_training = cognitive_training;
@@ -472,7 +500,10 @@ int snn_training_integration_connect_training_immune(
     snn_training_integration_bridge_t* bridge,
     training_immune_system_t* training_immune
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_connect_training_immune: null bridge pointer");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->training_immune = training_immune;
@@ -488,7 +519,10 @@ int snn_training_integration_connect_training_plasticity(
     snn_training_integration_bridge_t* bridge,
     training_plasticity_bridge_t* training_plasticity
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_connect_training_plasticity: null bridge pointer");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->training_plasticity = training_plasticity;
@@ -508,7 +542,14 @@ int snn_training_integration_get_metrics(
     const snn_training_integration_bridge_t* bridge,
     snn_training_metrics_t* metrics
 ) {
-    if (!bridge || !metrics) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_get_metrics: null bridge pointer");
+        return -1;
+    }
+    if (!metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_get_metrics: null metrics pointer");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(((snn_training_integration_bridge_t*)bridge)->mutex);
     memcpy(metrics, &bridge->metrics, sizeof(snn_training_metrics_t));
@@ -520,28 +561,40 @@ int snn_training_integration_get_metrics(
 float snn_training_integration_get_ltp_ltd_ratio(
     const snn_training_integration_bridge_t* bridge
 ) {
-    if (!bridge) return 0.5f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_get_ltp_ltd_ratio: null bridge pointer");
+        return 0.5f;
+    }
     return bridge->metrics.ltp_ltd_ratio;
 }
 
 float snn_training_integration_get_learning_stability(
     const snn_training_integration_bridge_t* bridge
 ) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_get_learning_stability: null bridge pointer");
+        return 0.0f;
+    }
     return bridge->metrics.learning_stability;
 }
 
 float snn_training_integration_get_cumulative_reward(
     const snn_training_integration_bridge_t* bridge
 ) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_get_cumulative_reward: null bridge pointer");
+        return 0.0f;
+    }
     return bridge->reward_cumulative;
 }
 
 float snn_training_integration_get_eligibility_mean(
     const snn_training_integration_bridge_t* bridge
 ) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_get_eligibility_mean: null bridge pointer");
+        return 0.0f;
+    }
     return bridge->metrics.eligibility_mean;
 }
 
@@ -553,7 +606,14 @@ int snn_training_integration_set_params(
     snn_training_integration_bridge_t* bridge,
     const snn_pipeline_params_t* params
 ) {
-    if (!bridge || !params) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_set_params: null bridge pointer");
+        return -1;
+    }
+    if (!params) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_set_params: null params pointer");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(&bridge->params, params, sizeof(snn_pipeline_params_t));
@@ -576,7 +636,10 @@ int snn_training_integration_apply_lr_modulation(
     snn_training_integration_bridge_t* bridge,
     float lr_factor
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_apply_lr_modulation: null bridge pointer");
+        return -1;
+    }
     if (lr_factor < 0.1f) lr_factor = 0.1f;
     if (lr_factor > 2.0f) lr_factor = 2.0f;
 
@@ -598,8 +661,14 @@ int snn_training_integration_set_reward(
     float reward,
     snn_reward_source_t source
 ) {
-    if (!bridge) return -1;
-    if (source < 0 || source >= SNN_REWARD_SOURCE_COUNT) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_set_reward: null bridge pointer");
+        return -1;
+    }
+    if (source < 0 || source >= SNN_REWARD_SOURCE_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_training_integration_set_reward: invalid reward source");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -625,7 +694,10 @@ int snn_training_integration_pause_learning(
     snn_training_integration_bridge_t* bridge,
     bool pause
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_pause_learning: null bridge pointer");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->learning_paused = pause;
@@ -646,7 +718,10 @@ int snn_training_integration_consolidation_mode(
     snn_training_integration_bridge_t* bridge,
     bool enable
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_consolidation_mode: null bridge pointer");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->consolidation_active = enable;
@@ -669,7 +744,10 @@ int snn_training_integration_exploration_mode(
     snn_training_integration_bridge_t* bridge,
     bool enable
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_exploration_mode: null bridge pointer");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bridge->exploration_active = enable;
@@ -696,7 +774,10 @@ int snn_training_integration_update(
     snn_training_integration_bridge_t* bridge,
     float dt_ms
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_update: null bridge pointer");
+        return -1;
+    }
     if (!bridge->started) return 0;
     if (bridge->config.op_mode == SNN_TRAINING_INTEGRATION_OP_DISABLED) return 0;
 
@@ -746,8 +827,14 @@ int snn_training_integration_report_event(
     snn_learning_event_t event,
     float magnitude
 ) {
-    if (!bridge) return -1;
-    if (event < 0 || event >= SNN_LEARNING_EVENT_COUNT) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_report_event: null bridge pointer");
+        return -1;
+    }
+    if (event < 0 || event >= SNN_LEARNING_EVENT_COUNT) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "snn_training_integration_report_event: invalid event type");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -798,7 +885,10 @@ int snn_training_integration_epoch_complete(
     snn_training_integration_bridge_t* bridge,
     uint64_t epoch
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_epoch_complete: null bridge pointer");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -850,7 +940,10 @@ int snn_training_integration_epoch_complete(
 int snn_training_integration_connect_bio_async(
     snn_training_integration_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_connect_bio_async: null bridge pointer");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     /* Bio-async router registration would happen here */
@@ -865,7 +958,10 @@ int snn_training_integration_connect_bio_async(
 int snn_training_integration_disconnect_bio_async(
     snn_training_integration_bridge_t* bridge
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_disconnect_bio_async: null bridge pointer");
+        return -1;
+    }
 
     bridge->base.bio_async_enabled = false;
     bridge->base.bio_ctx = NULL;
@@ -877,7 +973,10 @@ int snn_training_integration_disconnect_bio_async(
 bool snn_training_integration_is_bio_async_connected(
     const snn_training_integration_bridge_t* bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_is_bio_async_connected: null bridge pointer");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }
 
@@ -889,7 +988,14 @@ int snn_training_integration_get_state(
     const snn_training_integration_bridge_t* bridge,
     snn_training_integration_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_get_state: null bridge pointer");
+        return -1;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_get_state: null state pointer");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(((snn_training_integration_bridge_t*)bridge)->mutex);
     memcpy(state, &bridge->state, sizeof(snn_training_integration_state_t));
@@ -902,7 +1008,14 @@ int snn_training_integration_get_stats(
     const snn_training_integration_bridge_t* bridge,
     snn_training_integration_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_get_stats: null bridge pointer");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_get_stats: null stats pointer");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(((snn_training_integration_bridge_t*)bridge)->mutex);
     memcpy(stats, &bridge->stats, sizeof(snn_training_integration_stats_t));
@@ -914,7 +1027,10 @@ int snn_training_integration_get_stats(
 void snn_training_integration_reset_stats(
     snn_training_integration_bridge_t* bridge
 ) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_training_integration_reset_stats: null bridge pointer");
+        return;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 

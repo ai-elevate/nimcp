@@ -117,8 +117,14 @@ metabolic_sleep_bridge_t metabolic_sleep_bridge_create(
     metabolic_plasticity_t* metabolic
 ) {
     /* Guard: require sleep system and metabolic system */
-    if (!sleep_system || !metabolic) {
-        NIMCP_LOGGING_ERROR("metabolic_sleep_bridge_create: NULL sleep_system or metabolic");
+    if (!sleep_system) {
+        NIMCP_LOGGING_ERROR("metabolic_sleep_bridge_create: NULL sleep_system");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_sleep_bridge_create: sleep_system is NULL");
+        return NULL;
+    }
+    if (!metabolic) {
+        NIMCP_LOGGING_ERROR("metabolic_sleep_bridge_create: NULL metabolic");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_sleep_bridge_create: metabolic is NULL");
         return NULL;
     }
 
@@ -148,10 +154,16 @@ metabolic_sleep_bridge_t metabolic_sleep_bridge_create(
     }
 
     /* Create mutex */
-    if (bridge_base_init(&bridge->base, 0, "metabolic_sleep") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "metabolic_sleep") != 0) {
+        NIMCP_LOGGING_ERROR("Failed to initialize bridge base");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metabolic_sleep_bridge_create: failed to initialize bridge base");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         NIMCP_LOGGING_ERROR("Failed to create metabolic sleep bridge mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metabolic_sleep_bridge_create: failed to create mutex");
         return NULL;
     }
 
@@ -204,7 +216,10 @@ int metabolic_sleep_update(metabolic_sleep_bridge_t bridge) {
         return -1;
 
     }
-    if (!bridge->sleep_system) return -1;
+    if (!bridge->sleep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "metabolic_sleep_update: sleep_system is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -246,7 +261,14 @@ int metabolic_sleep_update(metabolic_sleep_bridge_t bridge) {
 
 int metabolic_sleep_get_effects(const metabolic_sleep_bridge_t bridge,
                                  metabolic_sleep_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_sleep_get_effects: bridge is NULL");
+        return -1;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metabolic_sleep_get_effects: effects is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
     memcpy(effects, &bridge->effects, sizeof(metabolic_sleep_effects_t));

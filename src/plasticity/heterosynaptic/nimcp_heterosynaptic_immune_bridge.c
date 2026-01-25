@@ -20,7 +20,10 @@
  * ============================================================================ */
 
 int hetero_immune_default_config(hetero_immune_config_t* config) {
-    if (!config) return NIMCP_ERROR_NULL_POINTER;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_immune_default_config: config is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     config->enable_cytokine_modulation = true;
     config->enable_inflammation_suppression = true;
@@ -64,8 +67,7 @@ hetero_immune_bridge_t* hetero_immune_bridge_create(
     hetero_immune_bridge_t* bridge = nimcp_malloc(sizeof(hetero_immune_bridge_t));
     if (!bridge) {
         NIMCP_LOGGING_ERROR("Failed to allocate hetero-immune bridge");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hetero_immune_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -99,9 +101,14 @@ hetero_immune_bridge_t* hetero_immune_bridge_create(
     bridge->inflammation_state.competition_deficit = 0.0f;
 
     /* Create mutex */
-    if (bridge_base_init(&bridge->base, 0, "heterosynaptic_immune") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "heterosynaptic_immune") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "hetero_immune_bridge_create: failed to initialize bridge base");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
         NIMCP_LOGGING_ERROR("Failed to create mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "hetero_immune_bridge_create: failed to create mutex");
         nimcp_free(bridge);
         return NULL;
     }
@@ -128,7 +135,14 @@ void hetero_immune_bridge_destroy(hetero_immune_bridge_t* bridge) {
  * ============================================================================ */
 
 int hetero_immune_apply_cytokine_effects(hetero_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->immune_system) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_immune_apply_cytokine_effects: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_immune_apply_cytokine_effects: immune_system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->enable_cytokine_modulation) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -166,7 +180,14 @@ int hetero_immune_apply_cytokine_effects(hetero_immune_bridge_t* bridge) {
 }
 
 int hetero_immune_apply_inflammation_effects(hetero_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->immune_system) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_immune_apply_inflammation_effects: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_immune_apply_inflammation_effects: immune_system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->enable_inflammation_suppression) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -222,7 +243,14 @@ int hetero_immune_get_modulation_state(
     const hetero_immune_bridge_t* bridge,
     hetero_modulation_state_t* modulation)
 {
-    if (!bridge || !modulation) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_immune_get_modulation_state: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_immune_get_modulation_state: modulation is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -245,7 +273,10 @@ int hetero_immune_restore_competition(
     hetero_immune_bridge_t* bridge,
     float recovery_factor)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_immune_restore_competition: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -268,7 +299,14 @@ int hetero_immune_restore_competition(
  * ============================================================================ */
 
 int hetero_immune_detect_instability(hetero_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->hetero_system) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_immune_detect_instability: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!bridge->hetero_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_immune_detect_instability: hetero_system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->enable_instability_detection) return 0;
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
@@ -323,7 +361,16 @@ int hetero_immune_alert_instability(
     hetero_immune_bridge_t* bridge,
     uint32_t* antigen_id)
 {
-    if (!bridge || !bridge->immune_system || !antigen_id) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_immune_alert_instability: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_immune_alert_instability: immune_system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!antigen_id) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_immune_alert_instability: antigen_id is NULL");
         return NIMCP_ERROR_NULL_POINTER;
     }
 
@@ -375,7 +422,14 @@ int hetero_immune_alert_instability(
 }
 
 int hetero_immune_signal_balanced_competition(hetero_immune_bridge_t* bridge) {
-    if (!bridge || !bridge->immune_system) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_immune_signal_balanced_competition: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!bridge->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_immune_signal_balanced_competition: immune_system is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->enable_homeostatic_feedback) return 0;
 
     if (bridge->instability_state.balanced_competition) {
@@ -396,7 +450,10 @@ int hetero_immune_bridge_update(
     hetero_immune_bridge_t* bridge,
     uint64_t delta_ms)
 {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_immune_bridge_update: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     /* Apply immune → heterosynaptic effects */
     hetero_immune_apply_cytokine_effects(bridge);
@@ -427,7 +484,14 @@ int hetero_immune_get_cytokine_effects(
     const hetero_immune_bridge_t* bridge,
     cytokine_hetero_effects_t* effects)
 {
-    if (!bridge || !effects) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_immune_get_cytokine_effects: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_immune_get_cytokine_effects: effects is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     memcpy(effects, &bridge->cytokine_effects, sizeof(cytokine_hetero_effects_t));
     return 0;
 }
@@ -436,7 +500,14 @@ int hetero_immune_get_inflammation_state(
     const hetero_immune_bridge_t* bridge,
     inflammation_hetero_state_t* state)
 {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_immune_get_inflammation_state: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_immune_get_inflammation_state: state is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     memcpy(state, &bridge->inflammation_state, sizeof(inflammation_hetero_state_t));
     return 0;
 }
@@ -445,7 +516,14 @@ int hetero_immune_get_instability_state(
     const hetero_immune_bridge_t* bridge,
     hetero_instability_state_t* state)
 {
-    if (!bridge || !state) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_immune_get_instability_state: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_immune_get_instability_state: state is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     memcpy(state, &bridge->instability_state, sizeof(hetero_instability_state_t));
     return 0;
 }
@@ -468,7 +546,10 @@ float hetero_immune_get_competition_reduction(const hetero_immune_bridge_t* brid
  * ============================================================================ */
 
 int hetero_immune_connect_bio_async(hetero_immune_bridge_t* bridge) {
-    if (!bridge) return NIMCP_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "hetero_immune_connect_bio_async: bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {

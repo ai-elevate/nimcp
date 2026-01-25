@@ -52,7 +52,7 @@ snn_empathetic_bridge_t* snn_empathetic_bridge_create(
 
     snn_empathetic_bridge_t* bridge = nimcp_malloc(sizeof(snn_empathetic_bridge_t));
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate SNN-empathetic bridge");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_empathetic_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -64,7 +64,7 @@ snn_empathetic_bridge_t* snn_empathetic_bridge_create(
 
     bridge->responses = nimcp_malloc(sizeof(snn_empathy_response_t) * bridge->max_responses);
     if (!bridge->responses) {
-        NIMCP_LOGGING_ERROR("Failed to allocate response array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "snn_empathetic_bridge_create: failed to allocate response array");
         nimcp_free(bridge);
         return NULL;
     }
@@ -102,7 +102,10 @@ void snn_empathetic_bridge_destroy(snn_empathetic_bridge_t* bridge) {
 }
 
 int snn_empathetic_bridge_connect_bio_async(snn_empathetic_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_empathetic_bridge_connect_bio_async: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -135,7 +138,10 @@ bool snn_empathetic_bridge_is_bio_async_connected(const snn_empathetic_bridge_t*
 }
 
 int snn_empathetic_bridge_update(snn_empathetic_bridge_t* bridge, float dt) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_empathetic_bridge_update: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     bridge->last_update_time += dt;
     if (bridge->last_update_time < bridge->config.update_interval_ms) {
@@ -170,7 +176,14 @@ int snn_empathetic_observe_action(
     uint32_t n_spikes,
     float* observation_rate_out
 ) {
-    if (!bridge || !action_spikes) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_empathetic_observe_action: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!action_spikes) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_empathetic_observe_action: action_spikes is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     /* Compute observation rate from spike train */
     float observation_rate = 0.0f;
@@ -192,7 +205,10 @@ int snn_empathetic_trigger_mirror_response(
     float observation_rate,
     snn_empathy_response_t* response_out
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_empathetic_trigger_mirror_response: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     /* Check if observation exceeds threshold */
     if (observation_rate < bridge->config.mirror_activation_threshold) {
@@ -250,7 +266,14 @@ int snn_empathetic_compute_resonance(
     float mirror_rate,
     float* coherence_out
 ) {
-    if (!bridge || !coherence_out) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_empathetic_compute_resonance: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!coherence_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_empathetic_compute_resonance: coherence_out is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     /* Compute coherence as normalized cross-correlation */
     float mean_rate = (observation_rate + mirror_rate) / 2.0f;
@@ -274,7 +297,18 @@ int snn_empathetic_recognize_action(
     uint32_t n_spikes,
     bool* recognized_out
 ) {
-    if (!bridge || !spike_pattern || !recognized_out) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_empathetic_recognize_action: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!spike_pattern) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_empathetic_recognize_action: spike_pattern is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!recognized_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_empathetic_recognize_action: recognized_out is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     /* Simple recognition: check if spike rate is above threshold */
     float total_rate = 0.0f;
@@ -293,7 +327,10 @@ int snn_empathetic_decay_activation(
     snn_empathetic_bridge_t* bridge,
     float dt
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_empathetic_decay_activation: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     float decay_factor = expf(-bridge->config.resonance_decay_rate * dt / 1000.0f);
     bridge->state.mirror_activation_level *= decay_factor;
@@ -306,7 +343,14 @@ int snn_empathetic_emotional_contagion(
     float observed_emotion_intensity,
     float* mirrored_emotion_out
 ) {
-    if (!bridge || !mirrored_emotion_out) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_empathetic_emotional_contagion: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!mirrored_emotion_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_empathetic_emotional_contagion: mirrored_emotion_out is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     if (!bridge->config.enable_emotional_contagion) {
         *mirrored_emotion_out = 0.0f;
@@ -326,7 +370,14 @@ int snn_empathetic_bridge_get_state(
     const snn_empathetic_bridge_t* bridge,
     snn_empathetic_state_t* state
 ) {
-    if (!bridge || !state) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_empathetic_bridge_get_state: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_empathetic_bridge_get_state: state is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -348,7 +399,14 @@ int snn_empathetic_get_response(
     uint32_t response_id,
     snn_empathy_response_t* response_out
 ) {
-    if (!bridge || !response_out) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_empathetic_get_response: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!response_out) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_empathetic_get_response: response_out is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     for (uint32_t i = 0; i < bridge->response_count; i++) {
         if (bridge->responses[i].response_id == response_id) {
@@ -366,7 +424,10 @@ int snn_empathetic_get_stats(
     float* avg_activation,
     float* avg_resonance
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "snn_empathetic_get_stats: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (response_count) *response_count = bridge->state.empathy_response_count;
     if (avg_activation) *avg_activation = bridge->state.avg_mirror_activation;
     if (avg_resonance) *avg_resonance = bridge->state.avg_emotional_resonance;

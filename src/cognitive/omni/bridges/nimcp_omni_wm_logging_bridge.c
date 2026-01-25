@@ -651,8 +651,8 @@ nimcp_error_t omni_wm_logging_bridge_reset(omni_wm_logging_bridge_t* bridge) {
     memset(&bridge->wm_to_logging, 0, sizeof(bridge->wm_to_logging));
     memset(&bridge->logging_to_wm, 0, sizeof(bridge->logging_to_wm));
 
-    /* Reset base */
-    bridge_base_reset(&bridge->base);
+    /* Reset base (unlocked since we already hold the mutex) */
+    bridge_base_reset_unlocked(&bridge->base);
 
     nimcp_mutex_unlock(bridge->base.mutex);
 
@@ -679,10 +679,10 @@ nimcp_error_t omni_wm_logging_bridge_connect(
     bridge->logger = logger;
     bridge->audit_log = audit_log;
 
-    /* Update base connection state */
-    bridge_base_connect_a(&bridge->base, world_model);
+    /* Update base connection state (unlocked since we already hold the mutex) */
+    bridge_base_connect_a_unlocked(&bridge->base, world_model);
     if (logger) {
-        bridge_base_connect_b(&bridge->base, logger);
+        bridge_base_connect_b_unlocked(&bridge->base, logger);
     }
 
     nimcp_mutex_unlock(bridge->base.mutex);
@@ -702,7 +702,7 @@ nimcp_error_t omni_wm_logging_bridge_connect_world_model(
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->world_model = world_model;
-    bridge_base_connect_a(&bridge->base, world_model);
+    bridge_base_connect_a_unlocked(&bridge->base, world_model);
     nimcp_mutex_unlock(bridge->base.mutex);
 
     return NIMCP_SUCCESS;
@@ -717,7 +717,7 @@ nimcp_error_t omni_wm_logging_bridge_connect_logger(
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->logger = logger;
     if (logger) {
-        bridge_base_connect_b(&bridge->base, logger);
+        bridge_base_connect_b_unlocked(&bridge->base, logger);
     }
     nimcp_mutex_unlock(bridge->base.mutex);
 

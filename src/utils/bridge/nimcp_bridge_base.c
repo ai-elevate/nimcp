@@ -84,6 +84,20 @@ int bridge_base_reset(bridge_base_t* base) {
     return 0;
 }
 
+int bridge_base_reset_unlocked(bridge_base_t* base) {
+    NIMCP_CHECK_THROW(base, NIMCP_ERROR_NULL_POINTER, "bridge base is NULL");
+
+    /* Reset statistics and timing, preserve connections */
+    /* NOTE: Caller must hold the mutex */
+    base->last_update_time_ms = 0;
+    base->total_updates = 0;
+
+    NIMCP_LOGGING_DEBUG("Reset bridge base (unlocked) for %s",
+                        base->module_name ? base->module_name : "bridge");
+
+    return 0;
+}
+
 /* ============================================================================
  * Connection Functions
  * ============================================================================ */
@@ -119,6 +133,36 @@ int bridge_base_connect_b(bridge_base_t* base, void* system_b) {
     nimcp_mutex_unlock(base->mutex);
 
     NIMCP_LOGGING_DEBUG("Connected system_b to %s",
+                        base->module_name ? base->module_name : "bridge");
+
+    return 0;
+}
+
+int bridge_base_connect_a_unlocked(bridge_base_t* base, void* system_a) {
+    NIMCP_CHECK_THROW(base, NIMCP_ERROR_NULL_POINTER, "bridge base is NULL");
+    NIMCP_CHECK_THROW(system_a, NIMCP_ERROR_NULL_POINTER, "system_a is NULL");
+
+    /* NOTE: Caller must hold the mutex */
+    base->system_a = system_a;
+    base->system_a_connected = true;
+    base->bridge_active = base->system_a_connected && base->system_b_connected;
+
+    NIMCP_LOGGING_DEBUG("Connected system_a (unlocked) to %s",
+                        base->module_name ? base->module_name : "bridge");
+
+    return 0;
+}
+
+int bridge_base_connect_b_unlocked(bridge_base_t* base, void* system_b) {
+    NIMCP_CHECK_THROW(base, NIMCP_ERROR_NULL_POINTER, "bridge base is NULL");
+    NIMCP_CHECK_THROW(system_b, NIMCP_ERROR_NULL_POINTER, "system_b is NULL");
+
+    /* NOTE: Caller must hold the mutex */
+    base->system_b = system_b;
+    base->system_b_connected = true;
+    base->bridge_active = base->system_a_connected && base->system_b_connected;
+
+    NIMCP_LOGGING_DEBUG("Connected system_b (unlocked) to %s",
                         base->module_name ? base->module_name : "bridge");
 
     return 0;

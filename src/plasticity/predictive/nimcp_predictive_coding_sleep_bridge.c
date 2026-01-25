@@ -81,7 +81,10 @@ static void predictive_on_sleep_state_change(sleep_state_t new_state, void* user
 }
 
 int predictive_sleep_default_config(predictive_sleep_config_t* config) {
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_sleep_default_config: config is NULL");
+        return -1;
+    }
     config->enable_prediction_modulation = true;
     config->enable_precision_modulation = true;
     config->enable_error_lr_modulation = true;
@@ -94,6 +97,7 @@ predictive_sleep_bridge_t predictive_sleep_bridge_create(
     sleep_system_t sleep_system)
 {
     if (!sleep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_sleep_bridge_create: sleep_system is NULL");
         NIMCP_LOGGING_ERROR("predictive_sleep_bridge_create: NULL sleep_system");
         return NULL;
     }
@@ -102,11 +106,8 @@ predictive_sleep_bridge_t predictive_sleep_bridge_create(
         (struct predictive_sleep_bridge_struct*)nimcp_malloc(
             sizeof(struct predictive_sleep_bridge_struct));
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictive_sleep_bridge_create: failed to allocate bridge");
         return NULL;
-
     }
 
     memset(bridge, 0, sizeof(struct predictive_sleep_bridge_struct));
@@ -123,8 +124,13 @@ predictive_sleep_bridge_t predictive_sleep_bridge_create(
     bridge->effects.error_learning_rate_factor = 1.0f;
     bridge->effects.offline_consolidation = false;
 
-    if (bridge_base_init(&bridge->base, 0, "predictive_coding_sleep") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "predictive_coding_sleep") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictive_sleep_bridge_create: bridge_base_init failed");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "predictive_sleep_bridge_create: mutex allocation failed");
         nimcp_free(bridge);
         return NULL;
     }
@@ -169,7 +175,10 @@ void predictive_sleep_bridge_destroy(predictive_sleep_bridge_t bridge) {
 }
 
 int predictive_sleep_update(predictive_sleep_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     nimcp_platform_mutex_lock(bridge->base.mutex);
 
@@ -205,7 +214,14 @@ int predictive_sleep_update(predictive_sleep_bridge_t bridge) {
 
 int predictive_sleep_get_effects(const predictive_sleep_bridge_t bridge,
                                   predictive_sleep_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_sleep_get_effects: bridge is NULL");
+        return -1;
+    }
+    if (!effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "predictive_sleep_get_effects: effects is NULL");
+        return -1;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     *effects = bridge->effects;
     nimcp_platform_mutex_unlock(bridge->base.mutex);

@@ -164,8 +164,7 @@ extended_metaplasticity_state_t* metaplasticity_state_create(
         (extended_metaplasticity_state_t*)nimcp_malloc(sizeof(extended_metaplasticity_state_t));
     if (!state) {
         NIMCP_LOGGING_ERROR("Failed to allocate metaplasticity state");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "state is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metaplasticity_state_create: failed to allocate state");
         return NULL;
     }
 
@@ -187,6 +186,7 @@ extended_metaplasticity_state_t* metaplasticity_state_create(
         );
         if (!state->history) {
             NIMCP_LOGGING_ERROR("Failed to allocate history buffer");
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metaplasticity_state_create: failed to allocate history buffer");
             nimcp_free(state);
             return NULL;
         }
@@ -203,6 +203,7 @@ extended_metaplasticity_state_t* metaplasticity_state_create(
     /* Initialize mutex */
     if (nimcp_platform_mutex_init(&state->lock, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "metaplasticity_state_create: mutex init failed");
         nimcp_free(state->history);
         nimcp_free(state);
         return NULL;
@@ -288,8 +289,14 @@ int metaplasticity_update_baseline(
     const extended_metaplasticity_config_t* config
 ) {
     /* Guard clauses */
-    if (!state || !config) {
-        NIMCP_LOGGING_ERROR("NULL parameters in baseline update");
+    if (!state) {
+        NIMCP_LOGGING_ERROR("NULL state in baseline update");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_update_baseline: state is NULL");
+        return -1;
+    }
+    if (!config) {
+        NIMCP_LOGGING_ERROR("NULL config in baseline update");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_update_baseline: config is NULL");
         return -1;
     }
 
@@ -340,8 +347,14 @@ int metaplasticity_update_history(
     const extended_metaplasticity_config_t* config
 ) {
     /* Guard clauses */
-    if (!state || !config) {
-        NIMCP_LOGGING_ERROR("NULL parameters in history update");
+    if (!state) {
+        NIMCP_LOGGING_ERROR("NULL state in history update");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_update_history: state is NULL");
+        return -1;
+    }
+    if (!config) {
+        NIMCP_LOGGING_ERROR("NULL config in history update");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_update_history: config is NULL");
         return -1;
     }
 
@@ -374,8 +387,14 @@ int metaplasticity_apply_neuromodulator_shifts(
     const extended_metaplasticity_config_t* config
 ) {
     /* Guard clauses */
-    if (!state || !config) {
-        NIMCP_LOGGING_ERROR("NULL parameters in neuromodulator shifts");
+    if (!state) {
+        NIMCP_LOGGING_ERROR("NULL state in neuromodulator shifts");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_apply_neuromodulator_shifts: state is NULL");
+        return -1;
+    }
+    if (!config) {
+        NIMCP_LOGGING_ERROR("NULL config in neuromodulator shifts");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_apply_neuromodulator_shifts: config is NULL");
         return -1;
     }
 
@@ -421,8 +440,14 @@ int metaplasticity_apply_sleep_reset(
     const extended_metaplasticity_config_t* config
 ) {
     /* Guard clauses */
-    if (!state || !config) {
-        NIMCP_LOGGING_ERROR("NULL parameters in sleep reset");
+    if (!state) {
+        NIMCP_LOGGING_ERROR("NULL state in sleep reset");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_apply_sleep_reset: state is NULL");
+        return -1;
+    }
+    if (!config) {
+        NIMCP_LOGGING_ERROR("NULL config in sleep reset");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_apply_sleep_reset: config is NULL");
         return -1;
     }
 
@@ -477,8 +502,14 @@ float metaplasticity_compute_effective_threshold(
     const extended_metaplasticity_config_t* config
 ) {
     /* Guard clauses */
-    if (!state || !config) {
-        NIMCP_LOGGING_ERROR("NULL parameters in compute effective threshold");
+    if (!state) {
+        NIMCP_LOGGING_ERROR("NULL state in compute effective threshold");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_compute_effective_threshold: state is NULL");
+        return METAPLASTICITY_DEFAULT_THETA_BASELINE;
+    }
+    if (!config) {
+        NIMCP_LOGGING_ERROR("NULL config in compute effective threshold");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_compute_effective_threshold: config is NULL");
         return METAPLASTICITY_DEFAULT_THETA_BASELINE;
     }
 
@@ -531,8 +562,14 @@ int metaplasticity_update(
     const extended_metaplasticity_config_t* config
 ) {
     /* Guard clauses */
-    if (!state || !config) {
-        NIMCP_LOGGING_ERROR("NULL parameters in metaplasticity update");
+    if (!state) {
+        NIMCP_LOGGING_ERROR("NULL state in metaplasticity update");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_update: state is NULL");
+        return -1;
+    }
+    if (!config) {
+        NIMCP_LOGGING_ERROR("NULL config in metaplasticity update");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_update: config is NULL");
         return -1;
     }
 
@@ -621,6 +658,7 @@ metaplasticity_controller_t metaplasticity_controller_create(
     /* Guard clauses */
     if (num_synapses == 0) {
         NIMCP_LOGGING_ERROR("Cannot create controller with 0 synapses");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "metaplasticity_controller_create: num_synapses is 0");
         return NULL;
     }
 
@@ -638,8 +676,7 @@ metaplasticity_controller_t metaplasticity_controller_create(
         );
     if (!controller) {
         NIMCP_LOGGING_ERROR("Failed to allocate controller");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "controller is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metaplasticity_controller_create: failed to allocate controller");
         return NULL;
     }
 
@@ -653,6 +690,7 @@ metaplasticity_controller_t metaplasticity_controller_create(
     );
     if (!controller->states) {
         NIMCP_LOGGING_ERROR("Failed to allocate state array");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "metaplasticity_controller_create: failed to allocate state array");
         nimcp_free(controller);
         return NULL;
     }
@@ -675,6 +713,7 @@ metaplasticity_controller_t metaplasticity_controller_create(
     /* Initialize mutex */
     if (nimcp_platform_mutex_init(&controller->mutex, false) != 0) {
         NIMCP_LOGGING_ERROR("Failed to initialize controller mutex");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "metaplasticity_controller_create: mutex init failed");
         for (uint32_t i = 0; i < num_synapses; i++) {
             metaplasticity_state_destroy(controller->states[i]);
         }
@@ -718,8 +757,14 @@ int metaplasticity_controller_update_all(
     float dt
 ) {
     /* Guard clauses */
-    if (!controller || !activities) {
-        NIMCP_LOGGING_ERROR("NULL parameters in controller update");
+    if (!controller) {
+        NIMCP_LOGGING_ERROR("NULL controller in controller update");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_controller_update_all: controller is NULL");
+        return -1;
+    }
+    if (!activities) {
+        NIMCP_LOGGING_ERROR("NULL activities in controller update");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_controller_update_all: activities is NULL");
         return -1;
     }
 
@@ -743,8 +788,14 @@ int metaplasticity_controller_get_stats(
     metaplasticity_stats_t* stats
 ) {
     /* Guard clauses */
-    if (!controller || !stats) {
-        NIMCP_LOGGING_ERROR("NULL parameters in get stats");
+    if (!controller) {
+        NIMCP_LOGGING_ERROR("NULL controller in get stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_controller_get_stats: controller is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_LOGGING_ERROR("NULL stats in get stats");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_controller_get_stats: stats is NULL");
         return -1;
     }
 
@@ -800,6 +851,7 @@ int metaplasticity_controller_set_sleep_state(
     /* Guard clauses */
     if (!controller) {
         NIMCP_LOGGING_ERROR("NULL controller in set sleep state");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_controller_set_sleep_state: controller is NULL");
         return -1;
     }
 
@@ -833,6 +885,7 @@ int metaplasticity_controller_set_callback(
     /* Guard clauses */
     if (!controller) {
         NIMCP_LOGGING_ERROR("NULL controller in set callback");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "metaplasticity_controller_set_callback: controller is NULL");
         return -1;
     }
 

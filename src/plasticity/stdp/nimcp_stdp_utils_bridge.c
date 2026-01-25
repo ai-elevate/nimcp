@@ -8,6 +8,7 @@
 #include "plasticity/stdp/nimcp_stdp_utils_bridge.h"
 #include "utils/containers/nimcp_ring_buffer.h"
 #include "utils/metrics/nimcp_metrics.h"
+#include "utils/memory/nimcp_memory.h"
 /* Memory pool API not available - using simple allocation */
 #include "utils/numerical/nimcp_integration.h"
 #include "utils/math/nimcp_complex_math.h"
@@ -96,13 +97,10 @@ stdp_utils_config_t stdp_utils_default_config(void) {
 }
 
 stdp_utils_ctx_t stdp_utils_create(const stdp_utils_config_t* config) {
-    struct stdp_utils_ctx_internal* ctx = calloc(1, sizeof(*ctx));
+    struct stdp_utils_ctx_internal* ctx = nimcp_calloc(1, sizeof(*ctx));
     if (!ctx) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "ctx is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_utils_create: failed to allocate context");
         return NULL;
-
     }
 
     /* Apply configuration */
@@ -119,7 +117,8 @@ stdp_utils_ctx_t stdp_utils_create(const stdp_utils_config_t* config) {
             ctx->config.spike_history_size
         );
         if (!ctx->spike_buffer) {
-            free(ctx);
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_utils_create: failed to create spike buffer");
+            nimcp_free(ctx);
             return NULL;
         }
     }
@@ -136,15 +135,34 @@ stdp_utils_ctx_t stdp_utils_create(const stdp_utils_config_t* config) {
 
     /* Create synapse memory pool */
     if (ctx->config.enable_synapse_pool) {
-        ctx->synapse_pool = calloc(1, sizeof(simple_synapse_pool_t));
-        if (ctx->synapse_pool) {
-            ctx->synapse_pool->capacity = ctx->config.synapse_pool_size;
-            ctx->synapse_pool->synapses = calloc(ctx->config.synapse_pool_size, sizeof(stdp_synapse_t));
-            ctx->synapse_pool->free_list = malloc(ctx->config.synapse_pool_size * sizeof(uint32_t));
-            ctx->synapse_pool->free_count = ctx->config.synapse_pool_size;
-            for (uint32_t i = 0; i < ctx->config.synapse_pool_size; i++) {
-                ctx->synapse_pool->free_list[i] = i;
-            }
+        ctx->synapse_pool = nimcp_calloc(1, sizeof(simple_synapse_pool_t));
+        if (!ctx->synapse_pool) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_utils_create: failed to allocate synapse pool");
+            if (ctx->spike_buffer) nimcp_ring_buffer_destroy(ctx->spike_buffer);
+            nimcp_free(ctx);
+            return NULL;
+        }
+        ctx->synapse_pool->capacity = ctx->config.synapse_pool_size;
+        ctx->synapse_pool->synapses = nimcp_calloc(ctx->config.synapse_pool_size, sizeof(stdp_synapse_t));
+        if (!ctx->synapse_pool->synapses) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_utils_create: failed to allocate synapses");
+            nimcp_free(ctx->synapse_pool);
+            if (ctx->spike_buffer) nimcp_ring_buffer_destroy(ctx->spike_buffer);
+            nimcp_free(ctx);
+            return NULL;
+        }
+        ctx->synapse_pool->free_list = nimcp_malloc(ctx->config.synapse_pool_size * sizeof(uint32_t));
+        if (!ctx->synapse_pool->free_list) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_utils_create: failed to allocate free list");
+            nimcp_free(ctx->synapse_pool->synapses);
+            nimcp_free(ctx->synapse_pool);
+            if (ctx->spike_buffer) nimcp_ring_buffer_destroy(ctx->spike_buffer);
+            nimcp_free(ctx);
+            return NULL;
+        }
+        ctx->synapse_pool->free_count = ctx->config.synapse_pool_size;
+        for (uint32_t i = 0; i < ctx->config.synapse_pool_size; i++) {
+            ctx->synapse_pool->free_list[i] = i;
         }
     }
 
@@ -177,12 +195,12 @@ void stdp_utils_destroy(stdp_utils_ctx_t ctx) {
 
     /* Destroy memory pool */
     if (ctx->synapse_pool) {
-        free(ctx->synapse_pool->synapses);
-        free(ctx->synapse_pool->free_list);
-        free(ctx->synapse_pool);
+        nimcp_free(ctx->synapse_pool->synapses);
+        nimcp_free(ctx->synapse_pool->free_list);
+        nimcp_free(ctx->synapse_pool);
     }
 
-    free(ctx);
+    nimcp_free(ctx);
 }
 
 void stdp_utils_reset(stdp_utils_ctx_t ctx) {
@@ -205,7 +223,18 @@ void stdp_utils_reset(stdp_utils_ctx_t ctx) {
  *===========================================================================*/
 
 bool stdp_utils_record_spike(stdp_utils_ctx_t ctx, const stdp_spike_event_t* event) {
-    if (!ctx || !event || !ctx->spike_buffer) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_record_spike: ctx is NULL");
+        return false;
+    }
+    if (!event) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_record_spike: event is NULL");
+        return false;
+    }
+    if (!ctx->spike_buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "stdp_utils_record_spike: spike buffer not initialized");
+        return false;
+    }
 
     return nimcp_ring_buffer_push(ctx->spike_buffer, event);
 }
@@ -218,8 +247,23 @@ bool stdp_utils_get_spikes_in_window(
     uint32_t max_events,
     uint32_t* num_found
 ) {
-    if (!ctx || !out_events || !num_found || !ctx->spike_buffer) {
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_get_spikes_in_window: ctx is NULL");
         if (num_found) *num_found = 0;
+        return false;
+    }
+    if (!out_events) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_get_spikes_in_window: out_events is NULL");
+        if (num_found) *num_found = 0;
+        return false;
+    }
+    if (!num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_get_spikes_in_window: num_found is NULL");
+        return false;
+    }
+    if (!ctx->spike_buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "stdp_utils_get_spikes_in_window: spike buffer not initialized");
+        *num_found = 0;
         return false;
     }
 
@@ -243,8 +287,23 @@ bool stdp_utils_get_recent_spikes(
     stdp_spike_event_t* out_events,
     uint32_t* num_found
 ) {
-    if (!ctx || !out_events || !num_found || !ctx->spike_buffer) {
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_get_recent_spikes: ctx is NULL");
         if (num_found) *num_found = 0;
+        return false;
+    }
+    if (!out_events) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_get_recent_spikes: out_events is NULL");
+        if (num_found) *num_found = 0;
+        return false;
+    }
+    if (!num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_get_recent_spikes: num_found is NULL");
+        return false;
+    }
+    if (!ctx->spike_buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "stdp_utils_get_recent_spikes: spike buffer not initialized");
+        *num_found = 0;
         return false;
     }
 
@@ -262,8 +321,23 @@ bool stdp_utils_find_spike_pairs(
     uint32_t max_events,
     uint32_t* num_found
 ) {
-    if (!ctx || !out_events || !num_found || !ctx->spike_buffer) {
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_find_spike_pairs: ctx is NULL");
         if (num_found) *num_found = 0;
+        return false;
+    }
+    if (!out_events) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_find_spike_pairs: out_events is NULL");
+        if (num_found) *num_found = 0;
+        return false;
+    }
+    if (!num_found) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_find_spike_pairs: num_found is NULL");
+        return false;
+    }
+    if (!ctx->spike_buffer) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "stdp_utils_find_spike_pairs: spike buffer not initialized");
+        *num_found = 0;
         return false;
     }
 
@@ -401,7 +475,14 @@ void stdp_utils_update_weight_stats(
 }
 
 bool stdp_utils_get_metrics(stdp_utils_ctx_t ctx, stdp_metrics_t* metrics) {
-    if (!ctx || !metrics) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_get_metrics: ctx is NULL");
+        return false;
+    }
+    if (!metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_get_metrics: metrics is NULL");
+        return false;
+    }
 
     ctx->current_metrics.last_update_ms = (uint64_t)time(NULL) * 1000;
     *metrics = ctx->current_metrics;
@@ -414,12 +495,34 @@ int32_t stdp_utils_flush_metrics(stdp_utils_ctx_t ctx) {
 }
 
 bool stdp_utils_export_csv(stdp_utils_ctx_t ctx, const char* filename) {
-    if (!ctx || !filename || !ctx->metrics_collector) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_export_csv: ctx is NULL");
+        return false;
+    }
+    if (!filename) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_export_csv: filename is NULL");
+        return false;
+    }
+    if (!ctx->metrics_collector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "stdp_utils_export_csv: metrics collector not initialized");
+        return false;
+    }
     return nimcp_metrics_export_tableau_csv(ctx->metrics_collector, filename);
 }
 
 bool stdp_utils_export_json(stdp_utils_ctx_t ctx, const char* filename) {
-    if (!ctx || !filename || !ctx->metrics_collector) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_export_json: ctx is NULL");
+        return false;
+    }
+    if (!filename) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_export_json: filename is NULL");
+        return false;
+    }
+    if (!ctx->metrics_collector) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "stdp_utils_export_json: metrics collector not initialized");
+        return false;
+    }
     return nimcp_metrics_export_powerbi_json(ctx->metrics_collector, filename);
 }
 
@@ -428,10 +531,20 @@ bool stdp_utils_export_json(stdp_utils_ctx_t ctx, const char* filename) {
  *===========================================================================*/
 
 stdp_synapse_t* stdp_utils_alloc_synapse(stdp_utils_ctx_t ctx) {
-    if (!ctx || !ctx->synapse_pool) return NULL;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_alloc_synapse: ctx is NULL");
+        return NULL;
+    }
+    if (!ctx->synapse_pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "stdp_utils_alloc_synapse: synapse pool not initialized");
+        return NULL;
+    }
 
     simple_synapse_pool_t* pool = ctx->synapse_pool;
-    if (pool->free_count == 0) return NULL;
+    if (pool->free_count == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "stdp_utils_alloc_synapse: pool exhausted");
+        return NULL;
+    }
 
     uint32_t idx = pool->free_list[--pool->free_count];
     stdp_synapse_t* synapse = &pool->synapses[idx];
@@ -457,7 +570,18 @@ uint32_t stdp_utils_alloc_synapse_batch(
     uint32_t count,
     stdp_synapse_t** out_synapses
 ) {
-    if (!ctx || !out_synapses || !ctx->synapse_pool) return 0;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_alloc_synapse_batch: ctx is NULL");
+        return 0;
+    }
+    if (!out_synapses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_alloc_synapse_batch: out_synapses is NULL");
+        return 0;
+    }
+    if (!ctx->synapse_pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE, "stdp_utils_alloc_synapse_batch: synapse pool not initialized");
+        return 0;
+    }
 
     uint32_t allocated = 0;
     for (uint32_t i = 0; i < count; i++) {
@@ -638,7 +762,14 @@ float stdp_utils_pre_spike_enhanced(
     float timestamp,
     float theta_phase
 ) {
-    if (!ctx || !synapse) return 0.0f;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_pre_spike_enhanced: ctx is NULL");
+        return 0.0f;
+    }
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_pre_spike_enhanced: synapse is NULL");
+        return 0.0f;
+    }
 
     /* Record spike to buffer */
     stdp_spike_event_t event = {
@@ -685,7 +816,14 @@ float stdp_utils_post_spike_enhanced(
     float timestamp,
     float theta_phase
 ) {
-    if (!ctx || !synapse) return 0.0f;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_post_spike_enhanced: ctx is NULL");
+        return 0.0f;
+    }
+    if (!synapse) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_post_spike_enhanced: synapse is NULL");
+        return 0.0f;
+    }
 
     /* Record spike to buffer */
     stdp_spike_event_t event = {
@@ -733,7 +871,22 @@ uint32_t stdp_utils_batch_process(
     float theta_phase,
     float* weight_changes
 ) {
-    if (!ctx || !synapses || !events || num_events == 0) return 0;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_batch_process: ctx is NULL");
+        return 0;
+    }
+    if (!synapses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_batch_process: synapses is NULL");
+        return 0;
+    }
+    if (!events) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "stdp_utils_batch_process: events is NULL");
+        return 0;
+    }
+    if (num_events == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "stdp_utils_batch_process: num_events is 0");
+        return 0;
+    }
 
     uint32_t processed = 0;
 

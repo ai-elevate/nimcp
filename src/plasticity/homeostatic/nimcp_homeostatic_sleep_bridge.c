@@ -46,6 +46,7 @@ static void homeostatic_on_sleep_state_change(sleep_state_t new_state, void* use
 
     if (!bridge) {
         NIMCP_LOGGING_ERROR("NULL bridge in sleep state callback");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_on_sleep_state_change: bridge is NULL");
         return;
     }
 
@@ -122,11 +123,15 @@ homeostatic_sleep_bridge_t homeostatic_sleep_bridge_create(
     bridge->effects.scaling_active = false;
     bridge->effects.is_deep_nrem = false;
 
-    if (bridge_base_init(&bridge->base, 0, "homeostatic_sleep") != 0) { nimcp_free(bridge); return NULL; }
+    if (bridge_base_init(&bridge->base, 0, "homeostatic_sleep") != 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "homeostatic_sleep_bridge_create: bridge_base_init failed");
+        nimcp_free(bridge);
+        return NULL;
+    }
     if (!bridge->base.mutex) {
         nimcp_free(bridge);
         LOG_ERROR("Homeostatic-sleep bridge mutex creation failed");
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "Homeostatic-sleep bridge mutex creation failed");
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "homeostatic_sleep_bridge_create: mutex creation failed");
         return NULL;
     }
 
@@ -226,7 +231,10 @@ int homeostatic_sleep_get_effects(
 }
 
 float homeostatic_sleep_get_scaling_rate(const homeostatic_sleep_bridge_t bridge) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_sleep_get_scaling_rate: bridge is NULL");
+        return 0.0f;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     float result = bridge->effects.scaling_rate_factor;
     nimcp_platform_mutex_unlock(bridge->base.mutex);
@@ -234,7 +242,10 @@ float homeostatic_sleep_get_scaling_rate(const homeostatic_sleep_bridge_t bridge
 }
 
 bool homeostatic_sleep_is_scaling_active(const homeostatic_sleep_bridge_t bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "homeostatic_sleep_is_scaling_active: bridge is NULL");
+        return false;
+    }
     nimcp_platform_mutex_lock(bridge->base.mutex);
     bool result = bridge->effects.scaling_active;
     nimcp_platform_mutex_unlock(bridge->base.mutex);

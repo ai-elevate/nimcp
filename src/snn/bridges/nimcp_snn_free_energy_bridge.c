@@ -40,7 +40,8 @@ snn_free_energy_bridge_t* snn_free_energy_bridge_create(const snn_free_energy_co
 
     snn_free_energy_bridge_t* bridge = nimcp_malloc(sizeof(snn_free_energy_bridge_t));
     if (!bridge) {
-        NIMCP_LOGGING_ERROR("Failed to allocate SNN-free-energy bridge");
+        NIMCP_THROW_MEMORY(NIMCP_ERROR_NO_MEMORY, sizeof(snn_free_energy_bridge_t),
+                          "snn_free_energy_bridge_create: failed to allocate bridge");
         return NULL;
     }
 
@@ -71,7 +72,11 @@ void snn_free_energy_bridge_destroy(snn_free_energy_bridge_t* bridge) {
 }
 
 int snn_free_energy_bridge_connect_bio_async(snn_free_energy_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_free_energy_bridge_connect_bio_async: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -92,7 +97,12 @@ int snn_free_energy_bridge_connect_bio_async(snn_free_energy_bridge_t* bridge) {
 }
 
 int snn_free_energy_bridge_disconnect_bio_async(snn_free_energy_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_free_energy_bridge_disconnect_bio_async: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!bridge->base.bio_async_enabled) return 0;
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_async_enabled = false;
     return 0;
@@ -103,7 +113,11 @@ bool snn_free_energy_bridge_is_bio_async_connected(const snn_free_energy_bridge_
 }
 
 int snn_free_energy_bridge_update(snn_free_energy_bridge_t* bridge, float dt) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_free_energy_bridge_update: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     bridge->last_update_time += dt;
     if (bridge->last_update_time < bridge->config.update_interval_ms) return 0;
@@ -137,16 +151,32 @@ int snn_free_energy_bridge_update(snn_free_energy_bridge_t* bridge, float dt) {
 }
 
 int snn_free_energy_bridge_encode_prediction_error(snn_free_energy_bridge_t* bridge, float error) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
-    if (!bridge->error_pop) return SNN_ERROR_INVALID_STATE;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_free_energy_bridge_encode_prediction_error: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!bridge->error_pop) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                             "snn_free_energy_bridge_encode_prediction_error: error population not configured");
+        return SNN_ERROR_INVALID_STATE;
+    }
 
     float spike_rate = error * bridge->config.prediction_error_gain;
     return 0;
 }
 
 int snn_free_energy_bridge_update_precision(snn_free_energy_bridge_t* bridge, float precision) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
-    if (precision < 0.0f) return SNN_ERROR_INVALID_CONFIG;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_free_energy_bridge_update_precision: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (precision < 0.0f) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM,
+                             "snn_free_energy_bridge_update_precision: precision must be non-negative");
+        return SNN_ERROR_INVALID_CONFIG;
+    }
 
     bridge->config.precision_weighting = precision;
     return 0;
@@ -162,7 +192,16 @@ float snn_free_energy_compute_free_energy(const snn_free_energy_bridge_t* bridge
 }
 
 int snn_free_energy_bridge_get_state(const snn_free_energy_bridge_t* bridge, snn_free_energy_state_t* state) {
-    if (!bridge || !state) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_free_energy_bridge_get_state: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_free_energy_bridge_get_state: state is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -184,7 +223,11 @@ bool snn_free_energy_is_surprised(const snn_free_energy_bridge_t* bridge) {
 }
 
 int snn_free_energy_get_stats(const snn_free_energy_bridge_t* bridge, uint32_t* error_count, uint32_t* surprise_events, float* avg_free_energy) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_free_energy_get_stats: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (error_count) *error_count = bridge->state.prediction_error_count;
     if (surprise_events) *surprise_events = bridge->state.surprise_events;
     if (avg_free_energy) {

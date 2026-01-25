@@ -143,7 +143,11 @@ void snn_sleep_bridge_destroy(snn_sleep_bridge_t* bridge) {
  * HOW:  Register with router
  */
 int snn_sleep_bridge_connect_bio_async(snn_sleep_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_sleep_bridge_connect_bio_async: bridge is NULL");
+        return -1;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     bio_module_info_t info = {
@@ -170,7 +174,12 @@ int snn_sleep_bridge_connect_bio_async(snn_sleep_bridge_t* bridge) {
  * HOW:  Unregister from router
  */
 int snn_sleep_bridge_disconnect_bio_async(snn_sleep_bridge_t* bridge) {
-    if (!bridge || !bridge->base.bio_async_enabled) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_sleep_bridge_disconnect_bio_async: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!bridge->base.bio_async_enabled) return 0;
 
     bio_router_unregister_module(bridge->base.bio_ctx);
     bridge->base.bio_async_enabled = false;
@@ -211,6 +220,8 @@ int snn_sleep_bridge_update(snn_sleep_bridge_t* bridge, float dt) {
     }
 
     if (!bridge->cortical_pop) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_STATE,
+                             "snn_sleep_bridge_update: cortical population not configured");
         return SNN_ERROR_INVALID_STATE;
     }
 
@@ -274,7 +285,16 @@ bool snn_sleep_detect_spindle(
     snn_sleep_bridge_t* bridge,
     snn_population_t* population
 ) {
-    if (!bridge || !population) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_sleep_detect_spindle: bridge is NULL");
+        return false;
+    }
+    if (!population) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_sleep_detect_spindle: population is NULL");
+        return false;
+    }
 
     /* Simplified: Check if population synchrony is high */
     float synchrony = population->population_synchrony;
@@ -295,7 +315,16 @@ bool snn_sleep_detect_slow_wave(
     snn_sleep_bridge_t* bridge,
     snn_population_t* population
 ) {
-    if (!bridge || !population) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_sleep_detect_slow_wave: bridge is NULL");
+        return false;
+    }
+    if (!population) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_sleep_detect_slow_wave: population is NULL");
+        return false;
+    }
 
     /* Simplified: Check if synchrony is very high (down state) */
     float synchrony = population->population_synchrony;
@@ -314,7 +343,16 @@ bool snn_sleep_detect_rem(
     snn_sleep_bridge_t* bridge,
     snn_population_t* population
 ) {
-    if (!bridge || !population) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_sleep_detect_rem: bridge is NULL");
+        return false;
+    }
+    if (!population) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_sleep_detect_rem: population is NULL");
+        return false;
+    }
 
     /* Compute spike variability (coefficient of variation) */
     float rate = snn_network_get_population_rate(
@@ -381,7 +419,11 @@ snn_sleep_stage_t snn_sleep_classify_stage(snn_sleep_bridge_t* bridge) {
  * HOW:  Strengthen recently active synapses
  */
 int snn_sleep_consolidate_memory(snn_sleep_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_sleep_consolidate_memory: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     /* Update consolidation progress */
     float increment = 0.01f;  /* 1% per update */
@@ -405,7 +447,11 @@ int snn_sleep_replay_sequence(
     snn_sleep_bridge_t* bridge,
     uint32_t sequence_id
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_sleep_replay_sequence: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     if (!bridge->config.enable_replay) {
         return 0;  /* Replay disabled */
@@ -478,7 +524,16 @@ int snn_sleep_bridge_get_state(
     const snn_sleep_bridge_t* bridge,
     snn_sleep_state_t* state
 ) {
-    if (!bridge || !state) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_sleep_bridge_get_state: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_sleep_bridge_get_state: state is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     *state = bridge->state;
     return 0;
 }
@@ -497,7 +552,11 @@ int snn_sleep_get_architecture(
     float* total_time,
     float* time_in_stage
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_sleep_get_architecture: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     if (total_time) {
         *total_time = bridge->total_time;

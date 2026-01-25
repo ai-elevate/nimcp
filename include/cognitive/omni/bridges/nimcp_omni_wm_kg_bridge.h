@@ -81,11 +81,19 @@ typedef struct kg_wiring_manager kg_wiring_manager_t;
 /* KG Module Registry - tracks module health and states */
 typedef struct kg_module_registry kg_module_registry_t;
 
-/* KG Exception (from nimcp_kg_wiring_exception.h) */
+/* KG Exception (from nimcp_kg_wiring_exception.h)
+ * Only forward declare if the actual header hasn't been included */
+#ifndef NIMCP_KG_WIRING_EXCEPTION_H
+struct nimcp_kg_wiring_exception;
 typedef struct nimcp_kg_wiring_exception nimcp_kg_wiring_exception_t;
+#endif
 
-/* KG Event - generic event from KG system */
+/* KG Event - generic event from KG system
+ * Only forward declare if the actual header hasn't been included */
+#ifndef NIMCP_KG_EVENTS_H
+struct kg_event;
 typedef struct kg_event kg_event_t;
+#endif
 
 /* ============================================================================
  * Constants

@@ -8,6 +8,7 @@
 #include "utils/bridge/nimcp_bridge_base.h"
 #include "plasticity/eligibility/nimcp_eligibility_utils_quantum_bridge.h"
 #include "utils/exception/nimcp_exception_macros.h"
+#include "utils/memory/nimcp_memory.h"
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
@@ -114,7 +115,10 @@ elig_uq_bridge_config_t elig_uq_bridge_default_config(void) {
 }
 
 bool elig_uq_bridge_validate_config(const elig_uq_bridge_config_t* config) {
-    if (!config) return false;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_bridge_validate_config: config is NULL");
+        return false;
+    }
 
     /* Validate ratio bounds */
     if (config->ltp_ltd_ratio_min < 0.0f) return false;
@@ -141,19 +145,16 @@ bool elig_uq_bridge_validate_config(const elig_uq_bridge_config_t* config) {
 
 elig_uq_bridge_t elig_uq_bridge_create(const elig_uq_bridge_config_t* config) {
     struct elig_uq_bridge_struct* bridge =
-        calloc(1, sizeof(struct elig_uq_bridge_struct));
+        nimcp_calloc(1, sizeof(struct elig_uq_bridge_struct));
     if (!bridge) {
-
-        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
-
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NO_MEMORY, "elig_uq_bridge_create: bridge allocation failed");
         return NULL;
-
     }
 
     bridge->config = config ? *config : elig_uq_bridge_default_config();
 
     if (!elig_uq_bridge_validate_config(&bridge->config)) {
-        free(bridge);
+        nimcp_free(bridge);
         return NULL;
     }
 
@@ -181,21 +182,37 @@ elig_uq_bridge_t elig_uq_bridge_create(const elig_uq_bridge_config_t* config) {
 }
 
 void elig_uq_bridge_destroy(elig_uq_bridge_t bridge) {
-    if (bridge) {
-        free(bridge);
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_bridge_destroy: bridge is NULL");
+        return;
     }
+    nimcp_free(bridge);
 }
 
 int elig_uq_bridge_attach_utils(elig_uq_bridge_t bridge,
                                 eligibility_utils_ctx_t utils_ctx) {
-    if (!bridge || !utils_ctx) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_bridge_attach_utils: bridge is NULL");
+        return -1;
+    }
+    if (!utils_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_bridge_attach_utils: utils_ctx is NULL");
+        return -1;
+    }
     bridge->utils_ctx = utils_ctx;
     return 0;
 }
 
 int elig_uq_bridge_attach_quantum(elig_uq_bridge_t bridge,
                                   eligibility_quantum_ctx_t quantum_ctx) {
-    if (!bridge || !quantum_ctx) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_bridge_attach_quantum: bridge is NULL");
+        return -1;
+    }
+    if (!quantum_ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_bridge_attach_quantum: quantum_ctx is NULL");
+        return -1;
+    }
     bridge->quantum_ctx = quantum_ctx;
     return 0;
 }
@@ -205,7 +222,10 @@ bool elig_uq_bridge_is_connected(const elig_uq_bridge_t bridge) {
 }
 
 void elig_uq_bridge_reset(elig_uq_bridge_t bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_bridge_reset: bridge is NULL");
+        return;
+    }
 
     /* Reset state */
     memset(&bridge->state, 0, sizeof(bridge->state));
@@ -236,7 +256,14 @@ void elig_uq_bridge_reset(elig_uq_bridge_t bridge) {
 
 int elig_uq_evaluate_metrics(elig_uq_bridge_t bridge,
                              elig_uq_forward_effect_t* effect) {
-    if (!bridge || !effect) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_evaluate_metrics: bridge is NULL");
+        return -1;
+    }
+    if (!effect) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_evaluate_metrics: effect is NULL");
+        return -1;
+    }
 
     memset(effect, 0, sizeof(*effect));
     effect->timestamp_ms = get_time_ms();
@@ -326,7 +353,14 @@ int elig_uq_notify_ltp_ltd_imbalance(elig_uq_bridge_t bridge,
                                      uint64_t ltp_count,
                                      uint64_t ltd_count,
                                      elig_uq_forward_effect_t* effect) {
-    if (!bridge || !effect) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_notify_ltp_ltd_imbalance: bridge is NULL");
+        return -1;
+    }
+    if (!effect) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_notify_ltp_ltd_imbalance: effect is NULL");
+        return -1;
+    }
 
     memset(effect, 0, sizeof(*effect));
     effect->timestamp_ms = get_time_ms();
@@ -354,7 +388,14 @@ int elig_uq_notify_pool_pressure(elig_uq_bridge_t bridge,
                                  float utilization,
                                  uint32_t free_count,
                                  elig_uq_forward_effect_t* effect) {
-    if (!bridge || !effect) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_notify_pool_pressure: bridge is NULL");
+        return -1;
+    }
+    if (!effect) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_notify_pool_pressure: effect is NULL");
+        return -1;
+    }
 
     memset(effect, 0, sizeof(*effect));
     effect->timestamp_ms = get_time_ms();
@@ -379,7 +420,14 @@ int elig_uq_escalate_bottleneck(elig_uq_bridge_t bridge,
                                 const eligibility_bottleneck_t* bottlenecks,
                                 uint32_t num_bottlenecks,
                                 elig_uq_forward_effect_t* effect) {
-    if (!bridge || !effect) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_escalate_bottleneck: bridge is NULL");
+        return -1;
+    }
+    if (!effect) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_escalate_bottleneck: effect is NULL");
+        return -1;
+    }
 
     memset(effect, 0, sizeof(*effect));
     effect->timestamp_ms = get_time_ms();
@@ -411,7 +459,14 @@ int elig_uq_provide_history(elig_uq_bridge_t bridge,
                             const eligibility_trace_t* traces,
                             uint32_t num_samples,
                             elig_uq_forward_effect_t* effect) {
-    if (!bridge || !effect) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_provide_history: bridge is NULL");
+        return -1;
+    }
+    if (!effect) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_provide_history: effect is NULL");
+        return -1;
+    }
 
     memset(effect, 0, sizeof(*effect));
     effect->timestamp_ms = get_time_ms();
@@ -450,7 +505,14 @@ int elig_uq_provide_history(elig_uq_bridge_t bridge,
 int elig_uq_request_optimization(elig_uq_bridge_t bridge,
                                  const elig_quantum_params_t* current_params,
                                  elig_uq_forward_effect_t* effect) {
-    if (!bridge || !effect) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_request_optimization: bridge is NULL");
+        return -1;
+    }
+    if (!effect) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_request_optimization: effect is NULL");
+        return -1;
+    }
 
     memset(effect, 0, sizeof(*effect));
     effect->timestamp_ms = get_time_ms();
@@ -472,7 +534,14 @@ int elig_uq_apply_credit_feedback(elig_uq_bridge_t bridge,
                                   const elig_quantum_credit_t* credits,
                                   uint32_t num_credits,
                                   elig_uq_backward_effect_t* effect) {
-    if (!bridge || !effect) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_apply_credit_feedback: bridge is NULL");
+        return -1;
+    }
+    if (!effect) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_apply_credit_feedback: effect is NULL");
+        return -1;
+    }
 
     uint64_t start_us = get_time_us();
     memset(effect, 0, sizeof(*effect));
@@ -521,7 +590,18 @@ int elig_uq_apply_credit_feedback(elig_uq_bridge_t bridge,
 int elig_uq_apply_param_feedback(elig_uq_bridge_t bridge,
                                  const elig_quantum_params_t* optimized,
                                  elig_uq_backward_effect_t* effect) {
-    if (!bridge || !optimized || !effect) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_apply_param_feedback: bridge is NULL");
+        return -1;
+    }
+    if (!optimized) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_apply_param_feedback: optimized is NULL");
+        return -1;
+    }
+    if (!effect) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_apply_param_feedback: effect is NULL");
+        return -1;
+    }
 
     uint64_t start_us = get_time_us();
     memset(effect, 0, sizeof(*effect));
@@ -583,7 +663,14 @@ int elig_uq_apply_diffusion_feedback(elig_uq_bridge_t bridge,
                                      const float* diffused_eligibility,
                                      uint32_t num_synapses,
                                      elig_uq_backward_effect_t* effect) {
-    if (!bridge || !effect) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_apply_diffusion_feedback: bridge is NULL");
+        return -1;
+    }
+    if (!effect) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_apply_diffusion_feedback: effect is NULL");
+        return -1;
+    }
 
     uint64_t start_us = get_time_us();
     memset(effect, 0, sizeof(*effect));
@@ -628,7 +715,18 @@ int elig_uq_apply_diffusion_feedback(elig_uq_bridge_t bridge,
 int elig_uq_apply_step_feedback(elig_uq_bridge_t bridge,
                                 const elig_quantum_anneal_state_t* anneal_state,
                                 elig_uq_backward_effect_t* effect) {
-    if (!bridge || !anneal_state || !effect) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_apply_step_feedback: bridge is NULL");
+        return -1;
+    }
+    if (!anneal_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_apply_step_feedback: anneal_state is NULL");
+        return -1;
+    }
+    if (!effect) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_apply_step_feedback: effect is NULL");
+        return -1;
+    }
 
     uint64_t start_us = get_time_us();
     memset(effect, 0, sizeof(*effect));
@@ -671,7 +769,10 @@ int elig_uq_apply_step_feedback(elig_uq_bridge_t bridge,
 int elig_uq_get_integration_params(elig_uq_bridge_t bridge,
                                    float* dt,
                                    float* tolerance) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_get_integration_params: bridge is NULL");
+        return -1;
+    }
 
     if (dt) *dt = bridge->state.current_optimized_dt;
     if (tolerance) *tolerance = bridge->state.current_optimized_tolerance;
@@ -689,7 +790,10 @@ int elig_uq_feedback_loop_tick(elig_uq_bridge_t bridge,
                                uint32_t num_synapses,
                                elig_uq_forward_effect_t* forward_effect,
                                elig_uq_backward_effect_t* backward_effect) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_feedback_loop_tick: bridge is NULL");
+        return -1;
+    }
 
     uint64_t start_us = get_time_us();
 
@@ -743,13 +847,13 @@ int elig_uq_feedback_loop_tick(elig_uq_bridge_t bridge,
 
         /* Execute quantum walk if requested */
         if (fwd.request_quantum_walk && num_synapses > 0) {
-            float* diffused = malloc(num_synapses * sizeof(float));
+            float* diffused = nimcp_malloc(num_synapses * sizeof(float));
             if (diffused) {
                 elig_quantum_diffuse(bridge->quantum_ctx,
                                     0, traces[0].trace,
                                     NULL, num_synapses, diffused);
                 elig_uq_apply_diffusion_feedback(bridge, diffused, num_synapses, &bwd);
-                free(diffused);
+                nimcp_free(diffused);
             }
         }
 
@@ -852,20 +956,37 @@ float elig_uq_get_stability(const elig_uq_bridge_t bridge) {
 
 int elig_uq_bridge_get_state(const elig_uq_bridge_t bridge,
                              elig_uq_bridge_state_t* state) {
-    if (!bridge || !state) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_bridge_get_state: bridge is NULL");
+        return -1;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_bridge_get_state: state is NULL");
+        return -1;
+    }
     *state = bridge->state;
     return 0;
 }
 
 int elig_uq_bridge_get_stats(const elig_uq_bridge_t bridge,
                              elig_uq_bridge_stats_t* stats) {
-    if (!bridge || !stats) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_bridge_get_stats: bridge is NULL");
+        return -1;
+    }
+    if (!stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_bridge_get_stats: stats is NULL");
+        return -1;
+    }
     *stats = bridge->stats;
     return 0;
 }
 
 int elig_uq_bridge_reset_stats(elig_uq_bridge_t bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_bridge_reset_stats: bridge is NULL");
+        return -1;
+    }
 
     memset(&bridge->stats, 0, sizeof(bridge->stats));
     bridge->stats.min_coherence = bridge->state.utils_quantum_coherence;
@@ -876,7 +997,10 @@ int elig_uq_bridge_reset_stats(elig_uq_bridge_t bridge) {
 }
 
 int elig_uq_bridge_update(elig_uq_bridge_t bridge, float dt_ms) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_bridge_update: bridge is NULL");
+        return -1;
+    }
 
     /* Decay coherence over time */
     float decay_factor = powf(ELIG_UQ_COHERENCE_DECAY, dt_ms);
@@ -932,7 +1056,10 @@ void elig_uq_bridge_print_summary(const elig_uq_bridge_t bridge) {
  *===========================================================================*/
 
 bool elig_uq_bridge_verify(const elig_uq_bridge_t bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_bridge_verify: bridge is NULL");
+        return false;
+    }
     if (!bridge->initialized) return false;
 
     /* Check coherence bounds */
@@ -957,7 +1084,14 @@ bool elig_uq_bridge_verify(const elig_uq_bridge_t bridge) {
 
 bool elig_uq_bridge_export_csv(const elig_uq_bridge_t bridge,
                                const char* filename) {
-    if (!bridge || !filename) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_bridge_export_csv: bridge is NULL");
+        return false;
+    }
+    if (!filename) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "elig_uq_bridge_export_csv: filename is NULL");
+        return false;
+    }
 
     FILE* f = fopen(filename, "w");
     if (!f) return false;

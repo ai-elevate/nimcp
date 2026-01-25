@@ -139,7 +139,11 @@ int snn_training_bridge_connect_immune(
     snn_training_bridge_t* bridge,
     struct training_immune_system_s* immune
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_training_bridge_connect_immune: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     bridge->immune_system = immune;
     bridge->state.immune_connected = (immune != NULL);
@@ -154,7 +158,11 @@ int snn_training_bridge_connect_plasticity(
     snn_training_bridge_t* bridge,
     struct training_plasticity_bridge_s* plasticity
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_training_bridge_connect_plasticity: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     bridge->plasticity_bridge = plasticity;
     bridge->state.plasticity_connected = (plasticity != NULL);
@@ -169,7 +177,11 @@ int snn_training_bridge_connect_cognitive(
     snn_training_bridge_t* bridge,
     struct cognitive_training_bridge_s* cognitive
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_training_bridge_connect_cognitive: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     bridge->cognitive_bridge = cognitive;
     bridge->state.cognitive_connected = (cognitive != NULL);
@@ -184,7 +196,11 @@ int snn_training_bridge_connect_sleep(
     snn_training_bridge_t* bridge,
     struct snn_sleep_bridge_s* sleep
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_training_bridge_connect_sleep: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     bridge->sleep_bridge = sleep;
     bridge->state.sleep_connected = (sleep != NULL);
@@ -200,7 +216,11 @@ int snn_training_bridge_connect_sleep(
 //=============================================================================
 
 int snn_training_bridge_connect_bio_async(snn_training_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_training_bridge_connect_bio_async: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (bridge->base.bio_async_enabled) return 0;
 
     /* Bio-async router not available in test environment */
@@ -210,7 +230,11 @@ int snn_training_bridge_connect_bio_async(snn_training_bridge_t* bridge) {
 }
 
 int snn_training_bridge_disconnect_bio_async(snn_training_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_training_bridge_disconnect_bio_async: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     bridge->base.bio_async_enabled = false;
     memset(&bridge->base.bio_ctx, 0, sizeof(bio_module_context_t));
@@ -227,7 +251,11 @@ bool snn_training_bridge_is_bio_async_connected(const snn_training_bridge_t* bri
 //=============================================================================
 
 int snn_training_bridge_update(snn_training_bridge_t* bridge, float dt) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_training_bridge_update: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
     if (dt <= 0.0f) return 0;
 
     bridge->total_time += dt;
@@ -359,7 +387,11 @@ int snn_training_bridge_handle_instability(
     snn_training_bridge_t* bridge,
     snn_training_instability_t instability
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_training_bridge_handle_instability: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     NIMCP_LOGGING_WARN("Training instability detected: %d", instability);
 
@@ -550,7 +582,11 @@ float snn_training_bridge_get_metaplasticity_level(
 //=============================================================================
 
 int snn_training_bridge_trigger_consolidation(snn_training_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_training_bridge_trigger_consolidation: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     if (!bridge->config.enable_offline_consolidation) {
         return 0;
@@ -564,7 +600,11 @@ int snn_training_bridge_trigger_consolidation(snn_training_bridge_t* bridge) {
 }
 
 int snn_training_bridge_trigger_replay(snn_training_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_training_bridge_trigger_replay: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     /* Check replay probability */
     float rand_val = (float)rand() / (float)RAND_MAX;
@@ -593,7 +633,11 @@ bool snn_training_bridge_is_consolidating(const snn_training_bridge_t* bridge) {
 //=============================================================================
 
 int snn_training_bridge_update_metrics(snn_training_bridge_t* bridge) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_training_bridge_update_metrics: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     snn_training_metrics_t* m = &bridge->state.metrics;
 
@@ -630,7 +674,16 @@ int snn_training_bridge_get_metrics(
     const snn_training_bridge_t* bridge,
     snn_training_metrics_t* metrics
 ) {
-    if (!bridge || !metrics) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_training_bridge_get_metrics: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!metrics) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_training_bridge_get_metrics: metrics is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     memcpy(metrics, &bridge->state.metrics, sizeof(snn_training_metrics_t));
     return 0;
@@ -640,7 +693,16 @@ int snn_training_bridge_get_state(
     const snn_training_bridge_t* bridge,
     snn_training_bridge_state_t* state
 ) {
-    if (!bridge || !state) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_training_bridge_get_state: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
+    if (!state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_training_bridge_get_state: state is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     memcpy(state, &bridge->state, sizeof(snn_training_bridge_state_t));
     return 0;
@@ -652,7 +714,11 @@ int snn_training_bridge_get_stats(
     uint32_t* weight_updates,
     float* avg_effective_lr
 ) {
-    if (!bridge) return SNN_ERROR_NULL_POINTER;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER,
+                             "snn_training_bridge_get_stats: bridge is NULL");
+        return SNN_ERROR_NULL_POINTER;
+    }
 
     if (update_count) *update_count = bridge->state.update_count;
     if (weight_updates) *weight_updates = bridge->state.weight_updates;
