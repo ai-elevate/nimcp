@@ -796,7 +796,10 @@ int tom_plasticity_register_calibration_callback(
 //=============================================================================
 
 int tom_plasticity_bio_async_connect(tom_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->config.enable_bio_async) return -1;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -807,7 +810,10 @@ int tom_plasticity_bio_async_connect(tom_plasticity_bridge_t* bridge) {
 }
 
 int tom_plasticity_bio_async_disconnect(tom_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
@@ -817,7 +823,10 @@ int tom_plasticity_bio_async_disconnect(tom_plasticity_bridge_t* bridge) {
 }
 
 bool tom_plasticity_is_bio_async_connected(tom_plasticity_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;

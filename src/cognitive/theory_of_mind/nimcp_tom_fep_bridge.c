@@ -377,7 +377,10 @@ uint32_t tom_fep_get_mentalizing_depth(const tom_fep_bridge_t* bridge) {
  * ============================================================================ */
 
 int tom_fep_bridge_connect_bio_async(tom_fep_bridge_t* bridge) {
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     bio_module_info_t info = {
@@ -400,7 +403,10 @@ int tom_fep_bridge_connect_bio_async(tom_fep_bridge_t* bridge) {
 }
 
 int tom_fep_bridge_disconnect_bio_async(tom_fep_bridge_t* bridge) {
-    NIMCP_CHECK_THROW(bridge, NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->base.bio_async_enabled) return NIMCP_SUCCESS;
 
     if (bridge->base.bio_ctx) {
@@ -414,7 +420,10 @@ int tom_fep_bridge_disconnect_bio_async(tom_fep_bridge_t* bridge) {
 }
 
 bool tom_fep_bridge_is_bio_async_connected(const tom_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return false;
+    }
     return bridge->base.bio_async_enabled;
 }
 

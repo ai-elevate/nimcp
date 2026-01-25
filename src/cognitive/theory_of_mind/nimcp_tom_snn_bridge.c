@@ -754,7 +754,10 @@ int tom_snn_register_perspective_callback(
 //=============================================================================
 
 int tom_snn_bio_async_connect(tom_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
     if (!bridge->config.enable_bio_async) return -1;
 
     nimcp_mutex_lock(bridge->base.mutex);
@@ -766,7 +769,10 @@ int tom_snn_bio_async_connect(tom_snn_bridge_t* bridge) {
 }
 
 int tom_snn_bio_async_disconnect(tom_snn_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return NIMCP_ERROR_NULL_POINTER;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bridge->bio_async_connected = false;
@@ -776,7 +782,10 @@ int tom_snn_bio_async_disconnect(tom_snn_bridge_t* bridge) {
 }
 
 bool tom_snn_is_bio_async_connected(tom_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_NULL_POINTER, "bridge is NULL");
+        return false;
+    }
 
     nimcp_mutex_lock(bridge->base.mutex);
     bool connected = bridge->bio_async_connected;
