@@ -217,7 +217,7 @@ typedef enum {
 /**
  * @brief Message from health agent to immune system
  */
-typedef struct {
+typedef struct health_agent_message {
     health_agent_msg_type_t type;      /**< Message type */
     health_agent_severity_t severity;  /**< Severity level */
     health_agent_source_t source;      /**< Where anomaly originated */
@@ -724,6 +724,35 @@ void nimcp_health_agent_get_stats(const nimcp_health_agent_t* agent,
  * @return Number of messages waiting to be sent to immune
  */
 uint32_t nimcp_health_agent_pending_messages(const nimcp_health_agent_t* agent);
+
+/**
+ * @brief Dequeue a message from the agent's message queue
+ *
+ * WHAT: Remove and return the oldest message from the agent's queue
+ * WHY:  Enables immune system tick orchestrator to process health messages
+ * HOW:  Pop from lock-free MPSC queue, copy to output buffer
+ *
+ * This function is used by brain_immune_tick() to drain the health agent's
+ * message queue and process each message as an immune system event.
+ *
+ * @param agent Health agent
+ * @param msg Output message buffer (must not be NULL)
+ * @return true if a message was dequeued, false if queue was empty
+ */
+bool nimcp_health_agent_dequeue_message(nimcp_health_agent_t* agent,
+                                         health_agent_message_t* msg);
+
+/**
+ * @brief Get current queue depth
+ *
+ * WHAT: Return number of messages currently in the queue
+ * WHY:  Enables monitoring of queue utilization and backpressure
+ * HOW:  Calculate difference between head and tail pointers
+ *
+ * @param agent Health agent
+ * @return Number of messages in queue, 0 if agent is NULL
+ */
+uint32_t nimcp_health_agent_get_queue_depth(const nimcp_health_agent_t* agent);
 
 /**
  * @brief Get current agent health status

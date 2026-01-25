@@ -617,6 +617,7 @@ set(NIMCP_CORE_SOURCES
 
     # Brain Immune System (Coordination Layer for FT/Security Integration)
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_brain_immune.c  # B/T cells, antibodies, cytokines coordination
+    ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_brain_immune_tick.c  # Brain immune tick processing
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_code_immune.c  # Code crash defense and hot-patching
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_brain_immune_plasticity.c  # Immune-plasticity integration
     ${CMAKE_CURRENT_SOURCE_DIR}/../cognitive/immune/nimcp_perception_immune.c  # Perception-immune integration
