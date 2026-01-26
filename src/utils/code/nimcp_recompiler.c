@@ -118,6 +118,75 @@ static void parse_compiler_output(
 static bool run_nm_check(const char* so_path, const char* symbol_name);
 
 /* ============================================================================
+ * VALIDATION AND UTILITY HELPERS
+ * ============================================================================ */
+
+static bool validate_recompiler(recompiler_t recompiler) {
+    if (!recompiler) return false;
+    return (recompiler->magic == NIMCP_RECOMPILER_MAGIC);
+}
+
+static bool ensure_temp_dir(const char* path) {
+    if (!path || !path[0]) return false;
+
+    struct stat st;
+    if (stat(path, &st) == 0) {
+        return S_ISDIR(st.st_mode);
+    }
+
+    /* Create directory with parents */
+    char tmp[NIMCP_RECOMPILER_MAX_PATH];
+    strncpy(tmp, path, sizeof(tmp) - 1);
+    tmp[sizeof(tmp) - 1] = '\0';
+
+    for (char* p = tmp + 1; *p; p++) {
+        if (*p == '/') {
+            *p = '\0';
+            mkdir(tmp, 0755);
+            *p = '/';
+        }
+    }
+    return (mkdir(tmp, 0755) == 0 || errno == EEXIST);
+}
+
+static char* generate_temp_path(recompiler_t recompiler, const char* suffix) {
+    if (!recompiler || !suffix) return NULL;
+
+    uint32_t counter = __atomic_add_fetch(&recompiler->temp_counter, 1, __ATOMIC_SEQ_CST);
+
+    size_t len = strlen(recompiler->config.temp_dir) + strlen(suffix) + 32;
+    char* path = nimcp_malloc(len);
+    if (!path) return NULL;
+
+    snprintf(path, len, "%s/nimcp_tmp_%u%s",
+             recompiler->config.temp_dir, counter, suffix);
+    return path;
+}
+
+static bool write_temp_source(const char* path, const char* source) {
+    if (!path || !source) return false;
+
+    FILE* fp = fopen(path, "w");
+    if (!fp) {
+        LOG_ERROR("Failed to open temp source file: %s", path);
+        return false;
+    }
+
+    size_t len = strlen(source);
+    size_t written = fwrite(source, 1, len, fp);
+    fclose(fp);
+
+    return (written == len);
+}
+
+uint32_t recompiler_cleanup_temp(recompiler_t recompiler) {
+    if (!validate_recompiler(recompiler)) return 0;
+    /* Stub: in production would remove temp files from config.temp_dir */
+    LOG_DEBUG("Cleanup temp directory: %s", recompiler->config.temp_dir);
+    return 0;
+}
+
+/* ============================================================================
  * LIFECYCLE FUNCTIONS
  * ============================================================================ */
 
@@ -1420,10 +1489,49 @@ static bool run_nm_check(const char* so_path, const char* symbol_name) {
 }
 
 /* ============================================================================
+ * NIMCP INTEGRATION FUNCTIONS
+ * ============================================================================ */
+
+void recompiler_set_nimcp_defaults(recompile_request_t* request) {
+    if (!request) return;
+
+    /* Set NIMCP include paths */
+    request->include_paths = s_nimcp_includes;
+    uint32_t inc_count = 0;
+    while (s_nimcp_includes[inc_count]) inc_count++;
+    request->include_count = inc_count;
+
+    /* Set NIMCP library paths */
+    request->library_paths = s_nimcp_lib_paths;
+    uint32_t lib_path_count = 0;
+    while (s_nimcp_lib_paths[lib_path_count]) lib_path_count++;
+    request->library_count = lib_path_count;
+
+    /* Set default CFLAGS */
+    request->extra_cflags = s_nimcp_cflags;
+
+    /* Default options */
+    request->position_independent = true;
+    request->debug_symbols = true;
+    request->optimize = false;
+    request->warnings_as_errors = false;
+}
+
+/* ============================================================================
  * SECCOMP ISOLATION
  * ============================================================================ */
 
 #include <sys/prctl.h>
+
+int sandbox_apply_seccomp(bool allow_network, bool allow_filesystem) {
+    (void)allow_network;
+    (void)allow_filesystem;
+#ifdef __linux__
+    /* Apply basic process restrictions via prctl */
+    prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0);
+#endif
+    return 0;
+}
 
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)

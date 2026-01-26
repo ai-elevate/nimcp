@@ -15,6 +15,24 @@
 #include "utils/exception/nimcp_exception_macros.h"
 
 #include <stddef.h>  /* for NULL */
+#include <string.h>  /* for memcpy */
+
+//=============================================================================
+// Opaque wrapper for neural_logic.c (avoids header dependency)
+//=============================================================================
+
+/**
+ * @brief Opaque wrapper for neural_logic_quantum_default_config()
+ * @param config_out Pointer to neural_logic_quantum_config_t buffer
+ *
+ * Called by nimcp_neural_logic.c which forward-declares this as
+ * extern void neural_logic_quantum_default_config_opaque(void* config_out);
+ */
+void neural_logic_quantum_default_config_opaque(void* config_out) {
+    if (!config_out) return;
+    neural_logic_quantum_config_t cfg = neural_logic_quantum_default_config();
+    *(neural_logic_quantum_config_t*)config_out = cfg;
+}
 
 //=============================================================================
 // Health Agent Integration (Phase 8: System-Wide Health Integration)

@@ -334,9 +334,13 @@ static void update_category_stats(brain_cycle_coordinator_t* coord) {
             coord->stats.total_cycles_degraded++;
             break;
         case BRAIN_CYCLE_HEALTH_STALLED:
-        case BRAIN_CYCLE_HEALTH_ERROR:
             cs->stalled_cycles++;
             coord->stats.total_cycles_stalled++;
+            break;
+        case BRAIN_CYCLE_HEALTH_ERROR:
+            /* ERROR is distinct from STALLED - count in stalled_cycles
+             * for category stats but not in total_cycles_stalled */
+            cs->stalled_cycles++;
             break;
         default:
             break;
@@ -694,6 +698,7 @@ int brain_cycle_coordinator_check_health(brain_cycle_coordinator_t* coord) {
     coord->stats.last_health_check_us = now;
     coord->health_checks_performed++;
 
+    /* Pass 1: Update all cycle health states */
     for (int i = 0; i < BRAIN_CYCLE_COUNT; i++) {
         cycle_entry_t* e = &coord->cycles[i];
         if (!e->registered || !e->enabled) continue;
@@ -729,11 +734,23 @@ int brain_cycle_coordinator_check_health(brain_cycle_coordinator_t* coord) {
             }
         }
 
+        /* Count non-healthy health_fn results as issues */
+        if (new_health == BRAIN_CYCLE_HEALTH_ERROR ||
+            new_health == BRAIN_CYCLE_HEALTH_DEGRADED) {
+            if (old_health != new_health) {
+                issues++;
+            }
+        }
+
         /* Apply new health */
         e->health = new_health;
 
-        /* Fire callbacks on health change */
-        if (old_health != new_health && old_health != BRAIN_CYCLE_HEALTH_UNKNOWN) {
+        /* Fire callbacks on health change.
+         * Suppress only UNKNOWN -> HEALTHY (benign initial activation).
+         * Allow UNKNOWN -> ERROR/DEGRADED/STALLED to fire callbacks. */
+        if (old_health != new_health &&
+            !(old_health == BRAIN_CYCLE_HEALTH_UNKNOWN &&
+              new_health == BRAIN_CYCLE_HEALTH_HEALTHY)) {
             fire_health_changed_callbacks(coord, e->type, old_health, new_health);
 
             if (coord->config.enable_logging) {
@@ -744,9 +761,14 @@ int brain_cycle_coordinator_check_health(brain_cycle_coordinator_t* coord) {
                     brain_cycle_health_name(new_health));
             }
         }
+    }
 
-        /* Check dependencies */
-        if (coord->config.enable_dependency_tracking) {
+    /* Pass 2: Check dependencies (after all health states are updated) */
+    if (coord->config.enable_dependency_tracking) {
+        for (int i = 0; i < BRAIN_CYCLE_COUNT; i++) {
+            cycle_entry_t* e = &coord->cycles[i];
+            if (!e->registered || !e->enabled) continue;
+
             for (uint32_t d = 0; d < coord->dependency_count; d++) {
                 if (coord->dependencies[d].dependent != e->type) continue;
 
