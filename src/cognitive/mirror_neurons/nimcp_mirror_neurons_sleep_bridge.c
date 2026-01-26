@@ -166,7 +166,10 @@ static void update_effects_for_state(mirror_neurons_sleep_bridge_t bridge, sleep
 int mirror_neurons_sleep_default_config(mirror_neurons_sleep_config_t* config)
 {
     /* Guard clause: Validate config */
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_sleep_default_config: config is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);
@@ -300,7 +303,10 @@ void mirror_neurons_sleep_bridge_destroy(mirror_neurons_sleep_bridge_t bridge)
 int mirror_neurons_sleep_update(mirror_neurons_sleep_bridge_t bridge)
 {
     /* Guard clause: Validate bridge */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_sleep_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);
@@ -334,7 +340,10 @@ int mirror_neurons_sleep_get_effects(
     mirror_neurons_sleep_effects_t* effects)
 {
     /* Guard clause: Validate inputs */
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_sleep_get_effects: required parameter is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);
@@ -350,7 +359,10 @@ int mirror_neurons_sleep_get_effects(
 float mirror_neurons_sleep_get_activity(const mirror_neurons_sleep_bridge_t bridge)
 {
     /* Guard clause: Handle NULL */
-    if (!bridge) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_sleep_get_activity: bridge is NULL");
+        return 1.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);
@@ -366,7 +378,10 @@ float mirror_neurons_sleep_get_activity(const mirror_neurons_sleep_bridge_t brid
 bool mirror_neurons_sleep_is_replay_active(const mirror_neurons_sleep_bridge_t bridge)
 {
     /* Guard clause: Handle NULL */
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_sleep_is_replay_active: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);
@@ -539,7 +554,10 @@ int mirror_neurons_sleep_disconnect_bio_async(mirror_neurons_sleep_bridge_t brid
 bool mirror_neurons_sleep_is_bio_async_connected(const mirror_neurons_sleep_bridge_t bridge)
 {
     /* Guard clause: Handle NULL */
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_sleep_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_sleep_bridge_heartbeat("mirror_neuro_mirror_neurons_sleep", 0.0f);

@@ -544,7 +544,10 @@ float jepa_plasticity_apply_stdp(
     float pre_time,
     float post_time
 ) {
-    if (!bridge) return NAN;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_plasticity_apply_stdp: bridge is NULL");
+        return NAN;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_appl", 0.0f);
@@ -1024,7 +1027,10 @@ int jepa_plasticity_bio_async_disconnect(jepa_plasticity_bridge_t* bridge) {
 }
 
 bool jepa_plasticity_is_bio_async_connected(jepa_plasticity_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_plasticity_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     jepa_plasticity_bridge_heartbeat("jepa_plastic_jepa_plasticity_is_b", 0.0f);

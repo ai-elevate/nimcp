@@ -513,7 +513,10 @@ bool mirror_emotion_process_observation(
     const mirror_emotion_observation_t* observation,
     mirror_emotion_resonance_t* result
 ) {
-    if (!bridge || !observation || !result) return false;
+    if (!bridge || !observation || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_emotion_process_observation: required parameter is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_proce", 0.0f);
@@ -649,7 +652,12 @@ uint32_t mirror_emotion_process_batch(
     mirror_emotion_resonance_t* results,
     uint32_t count
 ) {
-    if (!bridge || !observations || !results || count == 0) return 0;
+    if (!bridge || !observations || !results || count == 0) {
+        if (!bridge || !observations || !results) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_emotion_process_batch: required parameter is NULL");
+        }
+        return 0;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_proce", 0.0f);
@@ -683,7 +691,10 @@ float mirror_emotion_compute_contagion(
     uint32_t observed_emotion,
     float intensity
 ) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_emotion_compute_contagion: bridge is NULL");
+        return 0.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_compu", 0.0f);
@@ -703,7 +714,10 @@ bool mirror_emotion_trigger_empathy(
     mirror_emotion_bridge_t* bridge,
     const mirror_emotion_resonance_t* resonance
 ) {
-    if (!bridge || !resonance) return false;
+    if (!bridge || !resonance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_emotion_trigger_empathy: required parameter is NULL");
+        return false;
+    }
     if (resonance->empathy_level < 0.3f) return false;
 
     /* Phase 8: Heartbeat at operation start */
@@ -733,7 +747,10 @@ float mirror_emotion_regulate_contagion(
     uint32_t agent_id,
     float regulation_level
 ) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_emotion_regulate_contagion: bridge is NULL");
+        return 0.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_regul", 0.0f);
@@ -798,7 +815,10 @@ void mirror_emotion_update_familiarity(
     uint32_t agent_id,
     float delta
 ) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_emotion_update_familiarity: bridge is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_updat", 0.0f);
@@ -870,7 +890,10 @@ float mirror_emotion_modulate_sensitivity(
     float intensity,
     float valence
 ) {
-    if (!bridge) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_emotion_modulate_sensitivity: bridge is NULL");
+        return 1.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_modul", 0.0f);
@@ -907,7 +930,10 @@ void mirror_emotion_set_crisis_mode(
     mirror_emotion_bridge_t* bridge,
     bool crisis_active
 ) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_emotion_set_crisis_mode: bridge is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_set_c", 0.0f);
@@ -949,7 +975,10 @@ bool mirror_emotion_get_stats(
     const mirror_emotion_bridge_t* bridge,
     mirror_emotion_stats_t* stats
 ) {
-    if (!bridge || !stats) return false;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_emotion_get_stats: required parameter is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_emotion_bridge_heartbeat("mirror_emoti_mirror_emotion_get_s", 0.0f);

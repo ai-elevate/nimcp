@@ -337,7 +337,10 @@ bool habituation_process(
     float intensity,
     habituation_result_t* result
 ) {
-    if (!system || !stimulus || !result) return false;
+    if (!system || !stimulus || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "habituation_process: required parameter is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_habituation_heartbeat("mirror_habit_habituation_process", 0.0f);
@@ -466,7 +469,10 @@ float habituation_query(
     const habituation_system_t* system,
     const stimulus_encoding_t* stimulus
 ) {
-    if (!system || !stimulus) return 1.0f;
+    if (!system || !stimulus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "habituation_query: required parameter is NULL");
+        return 1.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_habituation_heartbeat("mirror_habit_habituation_query", 0.0f);
@@ -490,7 +496,12 @@ uint32_t habituation_process_batch(
     habituation_result_t* results,
     uint32_t count
 ) {
-    if (!system || !stimuli || !results || count == 0) return 0;
+    if (!system || !stimuli || !results || count == 0) {
+        if (!system || !stimuli || !results) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "habituation_process_batch: required parameter is NULL");
+        }
+        return 0;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_habituation_heartbeat("mirror_habit_habituation_process_", 0.0f);
@@ -529,7 +540,10 @@ void habituation_encode_action(
     uint32_t feature_count,
     stimulus_encoding_t* encoding
 ) {
-    if (!encoding) return;
+    if (!encoding) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "habituation_encode_action: encoding is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_habituation_heartbeat("mirror_habit_habituation_encode_a", 0.0f);
@@ -558,7 +572,10 @@ float habituation_stimulus_similarity(
     const stimulus_encoding_t* a,
     const stimulus_encoding_t* b
 ) {
-    if (!a || !b) return 0.0f;
+    if (!a || !b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "habituation_stimulus_similarity: required parameter is NULL");
+        return 0.0f;
+    }
 
     /* Category mismatch = no similarity */
     if (a->category != b->category) return 0.0f;
@@ -618,7 +635,10 @@ void habituation_trigger_dishabituation(
     habituation_system_t* system,
     float strength
 ) {
-    if (!system) return;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "habituation_trigger_dishabituation: system is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_habituation_heartbeat("mirror_habit_habituation_trigger_", 0.0f);
@@ -649,7 +669,10 @@ void habituation_dishabituate_category(
     stimulus_category_t category,
     float strength
 ) {
-    if (!system) return;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "habituation_dishabituate_category: system is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_habituation_heartbeat("mirror_habit_habituation_dishabit", 0.0f);
@@ -679,7 +702,10 @@ bool habituation_would_dishabituate(
     const stimulus_encoding_t* stimulus,
     float intensity
 ) {
-    if (!system || !stimulus) return false;
+    if (!system || !stimulus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "habituation_would_dishabituate: required parameter is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_habituation_heartbeat("mirror_habit_habituation_would_di", 0.0f);
@@ -696,7 +722,10 @@ void habituation_update_recovery(
     habituation_system_t* system,
     float dt_ms
 ) {
-    if (!system) return;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "habituation_update_recovery: system is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_habituation_heartbeat("mirror_habit_habituation_update_r", 0.0f);
@@ -773,7 +802,10 @@ void habituation_clear_pattern(
     habituation_system_t* system,
     uint32_t pattern_id
 ) {
-    if (!system) return;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "habituation_clear_pattern: system is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_habituation_heartbeat("mirror_habit_habituation_clear_pa", 0.0f);
@@ -885,7 +917,10 @@ bool habituation_get_stats(
     const habituation_system_t* system,
     habituation_stats_t* stats
 ) {
-    if (!system || !stats) return false;
+    if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "habituation_get_stats: required parameter is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_habituation_heartbeat("mirror_habit_habituation_get_stat", 0.0f);
@@ -899,7 +934,10 @@ bool habituation_get_stats(
 }
 
 void habituation_reset_stats(habituation_system_t* system) {
-    if (!system) return;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "habituation_reset_stats: system is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_habituation_heartbeat("mirror_habit_habituation_reset_st", 0.0f);

@@ -686,7 +686,10 @@ bool jepa_snn_check_prediction_error(
     jepa_snn_bridge_t* bridge,
     float* error_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_snn_check_prediction_error: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_check_predi", 0.0f);
@@ -707,7 +710,10 @@ bool jepa_snn_check_confidence(
     jepa_snn_bridge_t* bridge,
     float* confidence_level
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_snn_check_confidence: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_check_confi", 0.0f);
@@ -728,7 +734,10 @@ bool jepa_snn_check_state_change(
     jepa_snn_bridge_t* bridge,
     float* change_magnitude
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_snn_check_state_change: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_check_state", 0.0f);
@@ -847,7 +856,10 @@ int jepa_snn_reset_stats(jepa_snn_bridge_t* bridge) {
 }
 
 float jepa_snn_get_prediction_confidence(jepa_snn_bridge_t* bridge) {
-    if (!bridge) return -1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_snn_get_prediction_confidence: bridge is NULL");
+        return -1.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_get_predict", 0.0f);
@@ -861,7 +873,10 @@ float jepa_snn_get_prediction_confidence(jepa_snn_bridge_t* bridge) {
 }
 
 float jepa_snn_get_total_activity(jepa_snn_bridge_t* bridge) {
-    if (!bridge) return -1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_snn_get_total_activity: bridge is NULL");
+        return -1.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_get_total_a", 0.0f);
@@ -979,7 +994,10 @@ int jepa_snn_bio_async_disconnect(jepa_snn_bridge_t* bridge) {
 }
 
 bool jepa_snn_is_bio_async_connected(jepa_snn_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     jepa_snn_bridge_heartbeat("jepa_snn_bri_jepa_snn_is_bio_asyn", 0.0f);

@@ -105,7 +105,10 @@ int mirror_hypo_get_default_config(mirror_hypo_config_t* config) {
     /* WHAT: Populate with biological defaults
      * WHY:  Provide literature-based parameters
      * HOW:  Set struct fields */
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hypo_get_default_config: config is NULL");
+        return -1;
+    }
 
     /* Hypothalamus -> Mirror modulation */
     /* Phase 8: Heartbeat at operation start */
@@ -143,7 +146,10 @@ mirror_hypo_bridge_t* mirror_hypo_create(
     /* WHAT: Allocate and initialize bridge
      * WHY:  Set up bidirectional coupling
      * HOW:  Allocate, copy config, init state */
-    if (!mirror_system || !hypothalamus) return NULL;
+    if (!mirror_system || !hypothalamus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hypo_create: mirror_system or hypothalamus is NULL");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_create", 0.0f);
@@ -212,7 +218,10 @@ int mirror_hypo_enable(mirror_hypo_bridge_t* bridge) {
     /* WHAT: Activate bridge
      * WHY:  Begin bidirectional modulation
      * HOW:  Set flag, reset timers */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hypo_enable: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_enable", 0.0f);
@@ -234,7 +243,10 @@ int mirror_hypo_disable(mirror_hypo_bridge_t* bridge) {
     /* WHAT: Deactivate bridge
      * WHY:  Allow independent operation
      * HOW:  Clear flag, reset modulation */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hypo_disable: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_disable", 0.0f);
@@ -256,7 +268,10 @@ int mirror_hypo_reset(mirror_hypo_bridge_t* bridge) {
     /* WHAT: Reset bridge to initial state
      * WHY:  Prepare for new simulation
      * HOW:  Zero state, reset counters */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hypo_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_reset", 0.0f);
@@ -288,7 +303,10 @@ int mirror_hypo_apply_modulation(mirror_hypo_bridge_t* bridge) {
     /* WHAT: Update mirror parameters from hypothalamus state
      * WHY:  Stress, circadian, drives affect social cognition
      * HOW:  Sample hypothalamus, compute effects, apply */
-    if (!bridge || !bridge->enabled) return -1;
+    if (!bridge || !bridge->enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hypo_apply_modulation: bridge is NULL or not enabled");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_apply_mo", 0.0f);
@@ -361,7 +379,10 @@ float mirror_hypo_compute_stress_suppression(const mirror_hypo_bridge_t* bridge)
     /* WHAT: Calculate suppression from cortisol
      * WHY:  Stress reduces social mirroring sensitivity
      * HOW:  Scale cortisol by sensitivity */
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hypo_compute_stress_suppression: bridge is NULL");
+        return 0.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_compute_", 0.0f);
@@ -379,7 +400,10 @@ float mirror_hypo_compute_circadian_modifier(const mirror_hypo_bridge_t* bridge)
     /* WHAT: Calculate observation threshold modifier
      * WHY:  Circadian phase affects social receptivity
      * HOW:  Map circadian phase to modifier */
-    if (!bridge || !bridge->config.enable_circadian_gating) return 0.0f;
+    if (!bridge || !bridge->config.enable_circadian_gating) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hypo_compute_circadian_modifier: bridge is NULL or circadian gating disabled");
+        return 0.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_compute_", 0.0f);
@@ -415,7 +439,10 @@ float mirror_hypo_compute_drive_suppression(const mirror_hypo_bridge_t* bridge) 
     /* WHAT: Calculate suppression from drives
      * WHY:  Survival drives override social learning
      * HOW:  Check thresholds, compute weighted suppression */
-    if (!bridge || !bridge->config.enable_drive_suppression) return 0.0f;
+    if (!bridge || !bridge->config.enable_drive_suppression) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hypo_compute_drive_suppression: bridge is NULL or drive suppression disabled");
+        return 0.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_compute_", 0.0f);
@@ -448,7 +475,10 @@ circadian_social_phase_t mirror_hypo_get_social_phase(const mirror_hypo_bridge_t
     /* WHAT: Map hypothalamus circadian to social phase
      * WHY:  Simplify social receptivity assessment
      * HOW:  Query hypothalamus, map phases */
-    if (!bridge) return CIRCADIAN_SOCIAL_HIGH;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hypo_get_social_phase: bridge is NULL");
+        return CIRCADIAN_SOCIAL_HIGH;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_get_soci", 0.0f);
@@ -486,7 +516,10 @@ int mirror_hypo_trigger_isolation_stress(mirror_hypo_bridge_t* bridge) {
     /* WHAT: Activate HPA on isolation
      * WHY:  Social isolation triggers stress hormones
      * HOW:  Apply stress to hypothalamus */
-    if (!bridge || !bridge->config.enable_isolation_stress) return -1;
+    if (!bridge || !bridge->config.enable_isolation_stress) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hypo_trigger_isolation_stress: bridge is NULL or isolation stress disabled");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_trigger_", 0.0f);
@@ -509,7 +542,10 @@ int mirror_hypo_trigger_empathic_arousal(mirror_hypo_bridge_t* bridge, float aro
     /* WHAT: Activate sympathetic on empathy
      * WHY:  Observing distress activates autonomic
      * HOW:  Modulate autonomic balance */
-    if (!bridge || !bridge->config.enable_empathic_arousal) return -1;
+    if (!bridge || !bridge->config.enable_empathic_arousal) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hypo_trigger_empathic_arousal: bridge is NULL or empathic arousal disabled");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_trigger_", 0.0f);
@@ -535,7 +571,10 @@ int mirror_hypo_send_reward_signal(mirror_hypo_bridge_t* bridge) {
     /* WHAT: Send reward on successful imitation
      * WHY:  Social learning activates reward
      * HOW:  Reduce stress, signal positive outcome */
-    if (!bridge || !bridge->config.enable_imitation_reward) return -1;
+    if (!bridge || !bridge->config.enable_imitation_reward) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hypo_send_reward_signal: bridge is NULL or imitation reward disabled");
+        return -1;
+    }
 
     /* Negative stress = reward/relaxation effect */
     /* Phase 8: Heartbeat at operation start */
@@ -560,7 +599,10 @@ int mirror_hypo_trigger_rejection_stress(mirror_hypo_bridge_t* bridge) {
     /* WHAT: Trigger stress on repeated failures
      * WHY:  Social rejection activates HPA
      * HOW:  Check failure count, apply stress */
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hypo_trigger_rejection_stress: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_trigger_", 0.0f);
@@ -598,7 +640,10 @@ int mirror_hypo_update(mirror_hypo_bridge_t* bridge, uint64_t current_time) {
     /* WHAT: Process bidirectional integration
      * WHY:  Maintain coupling between systems
      * HOW:  Check interval, apply modulation, check triggers */
-    if (!bridge || !bridge->enabled) return -1;
+    if (!bridge || !bridge->enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hypo_update: bridge is NULL or not enabled");
+        return -1;
+    }
 
     /* Check if update interval elapsed */
     /* Phase 8: Heartbeat at operation start */
@@ -656,7 +701,10 @@ int mirror_hypo_get_stats(const mirror_hypo_bridge_t* bridge, mirror_hypo_stats_
     /* WHAT: Retrieve statistics
      * WHY:  Monitor bridge health
      * HOW:  Copy accumulated metrics */
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hypo_get_stats: bridge or stats is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_get_stat", 0.0f);
@@ -673,7 +721,10 @@ int mirror_hypo_get_state(const mirror_hypo_bridge_t* bridge, mirror_hypo_state_
     /* WHAT: Retrieve current state
      * WHY:  Query modulation effects
      * HOW:  Copy state struct */
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hypo_get_state: bridge or state is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_get_stat", 0.0f);
@@ -687,26 +738,39 @@ int mirror_hypo_get_state(const mirror_hypo_bridge_t* bridge, mirror_hypo_state_
 }
 
 mirror_hypo_effect_t mirror_hypo_get_effect(const mirror_hypo_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hypo_get_effect: bridge is NULL");
+        return HYPO_EFFECT_NONE;
+    }
+
     /* Phase 8: Heartbeat at operation start */
     mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_get_effe", 0.0f);
 
 
-    return bridge ? bridge->state.current_effect : HYPO_EFFECT_NONE;
+    return bridge->state.current_effect;
 }
 
 mirror_hypo_feedback_t mirror_hypo_get_last_feedback(const mirror_hypo_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hypo_get_last_feedback: bridge is NULL");
+        return MIRROR_FEEDBACK_NONE;
+    }
+
     /* Phase 8: Heartbeat at operation start */
     mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_get_last", 0.0f);
 
 
-    return bridge ? bridge->state.last_feedback : MIRROR_FEEDBACK_NONE;
+    return bridge->state.last_feedback;
 }
 
 float mirror_hypo_get_total_suppression(const mirror_hypo_bridge_t* bridge) {
     /* WHAT: Get combined suppression
      * WHY:  Single value for modulation
      * HOW:  Combine stress, circadian, drive effects */
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hypo_get_total_suppression: bridge is NULL");
+        return 0.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_get_tota", 0.0f);
@@ -735,7 +799,10 @@ void mirror_hypo_notify_observation(mirror_hypo_bridge_t* bridge, uint64_t times
     /* WHAT: Update observation timestamp
      * WHY:  Track social activity
      * HOW:  Set last observation time */
-    if (!bridge || !bridge->enabled) return;
+    if (!bridge || !bridge->enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hypo_notify_observation: bridge is NULL or not enabled");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_notify_o", 0.0f);
@@ -750,7 +817,10 @@ void mirror_hypo_notify_imitation_success(mirror_hypo_bridge_t* bridge, uint64_t
     /* WHAT: Record successful imitation
      * WHY:  Trigger reward signal
      * HOW:  Update timestamp, send reward */
-    if (!bridge || !bridge->enabled) return;
+    if (!bridge || !bridge->enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hypo_notify_imitation_success: bridge is NULL or not enabled");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_notify_i", 0.0f);
@@ -767,7 +837,10 @@ void mirror_hypo_notify_imitation_failure(mirror_hypo_bridge_t* bridge) {
     /* WHAT: Count imitation failure
      * WHY:  Track for rejection stress
      * HOW:  Increment counter */
-    if (!bridge || !bridge->enabled) return;
+    if (!bridge || !bridge->enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hypo_notify_imitation_failure: bridge is NULL or not enabled");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_notify_i", 0.0f);
@@ -782,7 +855,10 @@ void mirror_hypo_notify_empathic_resonance(mirror_hypo_bridge_t* bridge, float r
     /* WHAT: Update empathic resonance
      * WHY:  Trigger arousal if high
      * HOW:  Store level for update check */
-    if (!bridge || !bridge->enabled) return;
+    if (!bridge || !bridge->enabled) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hypo_notify_empathic_resonance: bridge is NULL or not enabled");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hypothalamus_bridge_heartbeat("mirror_hypot_mirror_hypo_notify_e", 0.0f);

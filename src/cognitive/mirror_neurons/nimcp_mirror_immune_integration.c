@@ -95,7 +95,10 @@ int mirror_immune_get_default_config(mirror_immune_config_t* config) {
     /* WHAT: Populate with biological defaults
      * WHY:  Provide literature-based parameters
      * HOW:  Set struct fields */
-    if (!config) return -1;
+    if (!config) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_immune_get_default_config: config is NULL");
+        return -1;
+    }
 
     /* Immune → Mirror modulation */
     /* Phase 8: Heartbeat at operation start */
@@ -138,7 +141,10 @@ mirror_immune_integration_t* mirror_immune_create(
     /* WHAT: Allocate and initialize integration
      * WHY:  Set up bidirectional coupling
      * HOW:  Allocate, copy config, init state */
-    if (!mirror_system || !immune_system) return NULL;
+    if (!mirror_system || !immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_immune_create: required parameter is NULL");
+        return NULL;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_create", 0.0f);
@@ -219,7 +225,10 @@ int mirror_immune_enable(mirror_immune_integration_t* integration) {
     /* WHAT: Activate integration
      * WHY:  Begin bidirectional modulation
      * HOW:  Set flag, reset timers */
-    if (!integration) return -1;
+    if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_immune_enable: integration is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_enable", 0.0f);
@@ -240,7 +249,10 @@ int mirror_immune_disable(mirror_immune_integration_t* integration) {
     /* WHAT: Deactivate integration
      * WHY:  Allow independent operation
      * HOW:  Clear flag, reset modulation */
-    if (!integration) return -1;
+    if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_immune_disable: integration is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_disabl", 0.0f);
@@ -264,7 +276,10 @@ int mirror_immune_apply_immune_modulation(mirror_immune_integration_t* integrati
     /* WHAT: Update mirror parameters from immune state
      * WHY:  Inflammation reduces resonance
      * HOW:  Sample cytokines, compute suppression, apply */
-    if (!integration || !integration->enabled) return -1;
+    if (!integration || !integration->enabled) {
+        if (!integration) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_immune_apply_immune_modulation: integration is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_apply_", 0.0f);
@@ -318,7 +333,10 @@ float mirror_immune_compute_resonance_suppression(
     /* WHAT: Calculate suppression from cytokines
      * WHY:  Pro-inflammatory reduces social motivation
      * HOW:  Weighted sum of cytokines */
-    if (!integration) return 0.0f;
+    if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_immune_compute_resonance_suppression: integration is NULL");
+        return 0.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_comput", 0.0f);
@@ -346,7 +364,10 @@ float mirror_immune_compute_empathy_threshold(
     /* WHAT: Calculate empathy threshold modifier
      * WHY:  Inflammation raises execution threshold
      * HOW:  Scale baseline by inflammation */
-    if (!integration) return 0.5f;
+    if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_immune_compute_empathy_threshold: integration is NULL");
+        return 0.5f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_comput", 0.0f);
@@ -365,7 +386,10 @@ int mirror_immune_apply_sickness_behavior(
     /* WHAT: Suppress social processing
      * WHY:  Conserve energy during illness
      * HOW:  Boost BG inhibition, raise thresholds */
-    if (!integration || !integration->mirror_system) return -1;
+    if (!integration || !integration->mirror_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_immune_apply_sickness_behavior: required parameter is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_apply_", 0.0f);
@@ -396,7 +420,10 @@ int mirror_immune_restore_social_function(
     /* WHAT: Restore normal resonance
      * WHY:  IL-10 resolution enables social function
      * HOW:  Reduce suppression, lower thresholds */
-    if (!integration || !integration->mirror_system) return -1;
+    if (!integration || !integration->mirror_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_immune_restore_social_function: required parameter is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_restor", 0.0f);
@@ -430,7 +457,10 @@ bool mirror_immune_detect_isolation(
     /* WHAT: Check if isolated
      * WHY:  Trigger inflammation on prolonged isolation
      * HOW:  Compare time since last observation */
-    if (!integration) return false;
+    if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_immune_detect_isolation: integration is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_detect", 0.0f);
@@ -448,7 +478,10 @@ int mirror_immune_trigger_isolation_response(
     /* WHAT: Release IL-6 on isolation
      * WHY:  Social isolation activates inflammation
      * HOW:  Call brain immune to release cytokine */
-    if (!integration || !integration->immune_system) return -1;
+    if (!integration || !integration->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_immune_trigger_isolation_response: required parameter is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_trigge", 0.0f);
@@ -479,7 +512,10 @@ int mirror_immune_trigger_rejection_response(
     /* WHAT: Release stress cytokines on rejection
      * WHY:  Failed imitation = social rejection
      * HOW:  Count failures, release IL-6 if threshold exceeded */
-    if (!integration || !integration->immune_system) return -1;
+    if (!integration || !integration->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_immune_trigger_rejection_response: required parameter is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_trigge", 0.0f);
@@ -517,7 +553,10 @@ int mirror_immune_release_social_success_il10(
     /* WHAT: Release IL-10 on success
      * WHY:  Positive social interaction reduces inflammation
      * HOW:  Call brain immune to release anti-inflammatory */
-    if (!integration || !integration->immune_system) return -1;
+    if (!integration || !integration->immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_immune_release_social_success_il10: required parameter is NULL");
+        return -1;
+    }
 
     if (!integration->config.enable_social_recovery) {
         return 0;
@@ -552,7 +591,10 @@ int mirror_immune_update_social_state(
     /* WHAT: Classify social engagement
      * WHY:  Determine immune feedback type
      * HOW:  Analyze activity patterns */
-    if (!integration) return -1;
+    if (!integration) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_immune_update_social_state: integration is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_update", 0.0f);
@@ -605,7 +647,10 @@ int mirror_immune_update(
     /* WHAT: Process bidirectional integration
      * WHY:  Maintain coupling between systems
      * HOW:  Update social state, apply modulation, check triggers */
-    if (!integration || !integration->enabled) return -1;
+    if (!integration || !integration->enabled) {
+        if (!integration) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_immune_update: integration is NULL");
+        return -1;
+    }
 
     /* Check if update interval elapsed */
     /* Phase 8: Heartbeat at operation start */
@@ -653,7 +698,10 @@ int mirror_immune_get_stats(
     /* WHAT: Retrieve statistics
      * WHY:  Monitor integration health
      * HOW:  Copy accumulated metrics */
-    if (!integration || !stats) return -1;
+    if (!integration || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_immune_get_stats: required parameter is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_get_st", 0.0f);
@@ -728,7 +776,10 @@ void mirror_immune_notify_observation(
     /* WHAT: Update observation timestamp
      * WHY:  Track social activity
      * HOW:  Set last observation time */
-    if (!integration || !integration->enabled) return;
+    if (!integration || !integration->enabled) {
+        if (!integration) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_immune_notify_observation: integration is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_notify", 0.0f);
@@ -752,7 +803,10 @@ void mirror_immune_notify_imitation_success(
     /* WHAT: Record successful imitation
      * WHY:  Trigger IL-10 release
      * HOW:  Update timestamp, release cytokine */
-    if (!integration || !integration->enabled) return;
+    if (!integration || !integration->enabled) {
+        if (!integration) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_immune_notify_imitation_success: integration is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_notify", 0.0f);
@@ -773,7 +827,10 @@ void mirror_immune_notify_imitation_failure(
     /* WHAT: Count imitation failure
      * WHY:  Trigger stress response on repeated failures
      * HOW:  Increment counter */
-    if (!integration || !integration->enabled) return;
+    if (!integration || !integration->enabled) {
+        if (!integration) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_immune_notify_imitation_failure: integration is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_immune_integration_heartbeat("mirror_immun_mirror_immune_notify", 0.0f);

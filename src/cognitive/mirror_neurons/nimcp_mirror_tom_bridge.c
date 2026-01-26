@@ -483,7 +483,10 @@ int mirror_tom_connect_tom(mirror_tom_bridge_t bridge, theory_of_mind_t tom) {
 int mirror_tom_process_observation(mirror_tom_bridge_t bridge,
                                     uint32_t agent_id,
                                     const mirror_tom_observation_t* observation) {
-    if (!bridge || !observation) return -1;
+    if (!bridge || !observation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_tom_process_observation: required parameter is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_process_o", 0.0f);
@@ -545,7 +548,10 @@ int mirror_tom_infer_intention(mirror_tom_bridge_t bridge,
                                 uint32_t action_dim,
                                 char* out_intention,
                                 float* out_confidence) {
-    if (!bridge || !action_features || action_dim == 0) return -1;
+    if (!bridge || !action_features || action_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_tom_infer_intention: required parameter is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_infer_int", 0.0f);
@@ -672,7 +678,10 @@ int mirror_tom_signal_false_belief(mirror_tom_bridge_t bridge,
 
 int mirror_tom_update_mental_state(mirror_tom_bridge_t bridge,
                                     const mirror_tom_mental_state_t* mental_state) {
-    if (!bridge || !mental_state) return -1;
+    if (!bridge || !mental_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_tom_update_mental_state: required parameter is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_update_me", 0.0f);
@@ -714,7 +723,10 @@ int mirror_tom_update_mental_state(mirror_tom_bridge_t bridge,
 
 float mirror_tom_compute_resonance_gain(mirror_tom_bridge_t bridge,
                                          uint32_t agent_id) {
-    if (!bridge) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_tom_compute_resonance_gain: bridge is NULL");
+        return 1.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_compute_r", 0.0f);
@@ -729,7 +741,10 @@ float mirror_tom_compute_resonance_gain(mirror_tom_bridge_t bridge,
 
 bool mirror_tom_should_suppress_imitation(mirror_tom_bridge_t bridge,
                                            uint32_t agent_id) {
-    if (!bridge || !bridge->config.enable_deception_suppression) return false;
+    if (!bridge || !bridge->config.enable_deception_suppression) {
+        if (!bridge) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_tom_should_suppress_imitation: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_should_su", 0.0f);
@@ -793,7 +808,12 @@ int mirror_tom_batch_belief_similarity(const float** belief_states,
                                         uint32_t num_agents,
                                         uint32_t belief_dim,
                                         float* out_similarity) {
-    if (!belief_states || !out_similarity || num_agents == 0) return -1;
+    if (!belief_states || !out_similarity || num_agents == 0) {
+        if (!belief_states || !out_similarity) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_tom_batch_belief_similarity: required parameter is NULL");
+        }
+        return -1;
+    }
 
     /* Compute pairwise similarities */
     /* Phase 8: Heartbeat at operation start */
@@ -833,7 +853,10 @@ int mirror_tom_batch_belief_similarity(const float** belief_states,
 
 int mirror_tom_get_mirror_effects(mirror_tom_bridge_t bridge,
                                    mirror_to_tom_effects_t* out_effects) {
-    if (!bridge || !out_effects) return -1;
+    if (!bridge || !out_effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_tom_get_mirror_effects: required parameter is NULL");
+        return -1;
+    }
     *out_effects = bridge->mirror_effects;
     /* Phase 8: Heartbeat at operation start */
     mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_get_mirro", 0.0f);
@@ -844,7 +867,10 @@ int mirror_tom_get_mirror_effects(mirror_tom_bridge_t bridge,
 
 int mirror_tom_get_tom_effects(mirror_tom_bridge_t bridge,
                                 tom_to_mirror_effects_t* out_effects) {
-    if (!bridge || !out_effects) return -1;
+    if (!bridge || !out_effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_tom_get_tom_effects: required parameter is NULL");
+        return -1;
+    }
     *out_effects = bridge->tom_effects;
     /* Phase 8: Heartbeat at operation start */
     mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_get_tom_e", 0.0f);
@@ -856,7 +882,10 @@ int mirror_tom_get_tom_effects(mirror_tom_bridge_t bridge,
 int mirror_tom_get_agent_state(mirror_tom_bridge_t bridge,
                                 uint32_t agent_id,
                                 mirror_tom_agent_state_t* out_state) {
-    if (!bridge || !out_state) return -1;
+    if (!bridge || !out_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_tom_get_agent_state: required parameter is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_get_agent", 0.0f);
@@ -871,7 +900,10 @@ int mirror_tom_get_agent_state(mirror_tom_bridge_t bridge,
 
 int mirror_tom_get_stats(mirror_tom_bridge_t bridge,
                           mirror_tom_stats_t* out_stats) {
-    if (!bridge || !out_stats) return -1;
+    if (!bridge || !out_stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_tom_get_stats: required parameter is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_tom_bridge_heartbeat("mirror_tom_b_mirror_tom_get_stats", 0.0f);

@@ -196,7 +196,10 @@ int mirror_neurons_fep_bridge_connect_mirror_neurons(
     mirror_neurons_fep_bridge_t* bridge,
     mirror_hierarchy_t mirror
 ) {
-    if (!bridge || !mirror) return -1;
+    if (!bridge || !mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_fep_bridge_connect_mirror_neurons: required parameter is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_fep_bridge_heartbeat("mirror_neuro_connect_mirror_neuro", 0.0f);
@@ -217,7 +220,10 @@ int mirror_neurons_fep_bridge_connect_mirror_neurons(
 int mirror_neurons_fep_apply_precision_modulation(
     mirror_neurons_fep_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->fep_system || !bridge->mirror_system) return -1;
+    if (!bridge || !bridge->fep_system || !bridge->mirror_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_fep_apply_precision_modulation: required parameter is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_precision_modulation) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -280,7 +286,10 @@ int mirror_neurons_fep_apply_precision_modulation(
 int mirror_neurons_fep_update_goals_from_beliefs(
     mirror_neurons_fep_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->fep_system || !bridge->mirror_system) return -1;
+    if (!bridge || !bridge->fep_system || !bridge->mirror_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_fep_update_goals_from_beliefs: required parameter is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_goal_belief_coupling) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -326,7 +335,10 @@ int mirror_neurons_fep_update_goals_from_beliefs(
 int mirror_neurons_fep_propagate_prediction_errors(
     mirror_neurons_fep_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->fep_system || !bridge->mirror_system) return -1;
+    if (!bridge || !bridge->fep_system || !bridge->mirror_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_fep_propagate_prediction_errors: required parameter is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_pe_propagation) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -376,7 +388,10 @@ int mirror_neurons_fep_propagate_prediction_errors(
 int mirror_neurons_fep_transfer_goals_to_beliefs(
     mirror_neurons_fep_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->fep_system || !bridge->mirror_system) return -1;
+    if (!bridge || !bridge->fep_system || !bridge->mirror_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_fep_transfer_goals_to_beliefs: required parameter is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_goal_belief_coupling) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -419,7 +434,10 @@ int mirror_neurons_fep_transfer_goals_to_beliefs(
 int mirror_neurons_fep_provide_motor_evidence(
     mirror_neurons_fep_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->fep_system || !bridge->mirror_system) return -1;
+    if (!bridge || !bridge->fep_system || !bridge->mirror_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_fep_provide_motor_evidence: required parameter is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_motor_evidence) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -450,7 +468,10 @@ int mirror_neurons_fep_provide_motor_evidence(
 int mirror_neurons_fep_set_precision_from_resonance(
     mirror_neurons_fep_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->fep_system || !bridge->mirror_system) return -1;
+    if (!bridge || !bridge->fep_system || !bridge->mirror_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_fep_set_precision_from_resonance: required parameter is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_fep_bridge_heartbeat("mirror_neuro_mirror_neurons_fep_s", 0.0f);
@@ -534,7 +555,10 @@ int mirror_neurons_fep_bridge_get_state(
     const mirror_neurons_fep_bridge_t* bridge,
     mirror_neurons_fep_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_fep_bridge_get_state: required parameter is NULL");
+        return -1;
+    }
     *state = bridge->state;
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_fep_bridge_heartbeat("mirror_neuro_get_state", 0.0f);
@@ -547,7 +571,10 @@ int mirror_neurons_fep_bridge_get_stats(
     const mirror_neurons_fep_bridge_t* bridge,
     mirror_neurons_fep_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_fep_bridge_get_stats: required parameter is NULL");
+        return -1;
+    }
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_fep_bridge_heartbeat("mirror_neuro_get_stats", 0.0f);

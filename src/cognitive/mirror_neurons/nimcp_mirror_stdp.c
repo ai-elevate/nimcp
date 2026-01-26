@@ -647,7 +647,10 @@ float mirror_stdp_get_weight(mirror_stdp_t stdp, uint32_t synapse_id) {
 }
 
 uint32_t mirror_stdp_find_synapse(mirror_stdp_t stdp, uint32_t action_id) {
-    if (!stdp) return UINT32_MAX;
+    if (!stdp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_stdp_find_synapse: stdp is NULL");
+        return UINT32_MAX;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_stdp_heartbeat("mirror_stdp_find_synapse", 0.0f);
@@ -675,7 +678,10 @@ uint32_t mirror_stdp_find_synapse(mirror_stdp_t stdp, uint32_t action_id) {
 
 float mirror_stdp_compute_delta_w(mirror_stdp_t stdp, float delta_t_ms, float current_weight,
                                    float dopamine_level, float ach_level) {
-    if (!stdp) return 0.0F;
+    if (!stdp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_stdp_compute_delta_w: stdp is NULL");
+        return 0.0F;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_stdp_heartbeat("mirror_stdp_compute_delta_w", 0.0f);
@@ -892,7 +898,10 @@ float mirror_stdp_execution_spike(mirror_stdp_t stdp, uint32_t synapse_id,
 //=============================================================================
 
 void mirror_stdp_update_traces(mirror_stdp_t stdp, float dt_ms) {
-    if (!stdp) return;
+    if (!stdp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_stdp_update_traces: stdp is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_stdp_heartbeat("mirror_stdp_update_traces", 0.0f);
@@ -953,7 +962,10 @@ float mirror_stdp_get_exec_trace(mirror_stdp_t stdp, uint32_t synapse_id) {
 //=============================================================================
 
 void mirror_stdp_apply_homeostasis(mirror_stdp_t stdp, float dt_ms) {
-    if (!stdp || !stdp->config.enable_homeostasis) return;
+    if (!stdp || !stdp->config.enable_homeostasis) {
+        if (!stdp) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_stdp_apply_homeostasis: stdp is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_stdp_heartbeat("mirror_stdp_apply_homeostasis", 0.0f);
@@ -1005,7 +1017,10 @@ void mirror_stdp_apply_homeostasis(mirror_stdp_t stdp, float dt_ms) {
 }
 
 void mirror_stdp_update_metaplasticity(mirror_stdp_t stdp, float dt_ms) {
-    if (!stdp || !stdp->config.enable_metaplasticity) return;
+    if (!stdp || !stdp->config.enable_metaplasticity) {
+        if (!stdp) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_stdp_update_metaplasticity: stdp is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_stdp_heartbeat("mirror_stdp_update_metaplasticit", 0.0f);
@@ -1039,7 +1054,10 @@ void mirror_stdp_update_metaplasticity(mirror_stdp_t stdp, float dt_ms) {
 //=============================================================================
 
 void mirror_stdp_set_dopamine(mirror_stdp_t stdp, float level) {
-    if (!stdp) return;
+    if (!stdp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_stdp_set_dopamine: stdp is NULL");
+        return;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_stdp_heartbeat("mirror_stdp_set_dopamine", 0.0f);
 
@@ -1048,7 +1066,10 @@ void mirror_stdp_set_dopamine(mirror_stdp_t stdp, float level) {
 }
 
 void mirror_stdp_set_acetylcholine(mirror_stdp_t stdp, float level) {
-    if (!stdp) return;
+    if (!stdp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_stdp_set_acetylcholine: stdp is NULL");
+        return;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_stdp_heartbeat("mirror_stdp_set_acetylcholine", 0.0f);
 
@@ -1061,7 +1082,10 @@ void mirror_stdp_set_acetylcholine(mirror_stdp_t stdp, float level) {
 //=============================================================================
 
 bool mirror_stdp_get_stats(mirror_stdp_t stdp, mirror_stdp_stats_t* stats) {
-    if (!stdp || !stats) return false;
+    if (!stdp || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_stdp_get_stats: required parameter is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_stdp_heartbeat("mirror_stdp_get_stats", 0.0f);
@@ -1140,7 +1164,10 @@ bool mirror_stdp_get_stats(mirror_stdp_t stdp, mirror_stdp_stats_t* stats) {
 }
 
 bool mirror_stdp_get_weight_histogram(mirror_stdp_t stdp, uint32_t* bins, uint32_t num_bins) {
-    if (!stdp || !bins || num_bins == 0) return false;
+    if (!stdp || !bins || num_bins == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_stdp_get_weight_histogram: required parameter is NULL");
+        return false;
+    }
 
     // Clear bins
     /* Phase 8: Heartbeat at operation start */
@@ -1180,7 +1207,10 @@ void mirror_stdp_step(mirror_stdp_t stdp, float dt_ms) {
         bio_router_process_inbox(stdp->bio_ctx, 5);
     }
 
-    if (!stdp) return;
+    if (!stdp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_stdp_step: stdp is NULL");
+        return;
+    }
 
     // Update eligibility traces
     mirror_stdp_update_traces(stdp, dt_ms);
@@ -1201,7 +1231,10 @@ void mirror_stdp_step(mirror_stdp_t stdp, float dt_ms) {
 }
 
 void mirror_stdp_reset_stats(mirror_stdp_t stdp) {
-    if (!stdp) return;
+    if (!stdp) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_stdp_reset_stats: stdp is NULL");
+        return;
+    }
 
     // Reset global statistics
     /* Phase 8: Heartbeat at operation start */

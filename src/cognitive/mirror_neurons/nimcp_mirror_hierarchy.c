@@ -340,7 +340,10 @@ bool mirror_hierarchy_get_goal(mirror_hierarchy_t hierarchy, uint32_t goal_id,
 
 void mirror_hierarchy_activate_goal(mirror_hierarchy_t hierarchy,
                                      uint32_t goal_id, float activation) {
-    if (!hierarchy || goal_id >= hierarchy->num_goals) return;
+    if (!hierarchy || goal_id >= hierarchy->num_goals) {
+        if (!hierarchy) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hierarchy_activate_goal: hierarchy is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hierarchy_heartbeat("mirror_hiera_activate_goal", 0.0f);
@@ -365,7 +368,10 @@ void mirror_hierarchy_activate_goal(mirror_hierarchy_t hierarchy,
 }
 
 void mirror_hierarchy_select_goal(mirror_hierarchy_t hierarchy, int32_t goal_id) {
-    if (!hierarchy) return;
+    if (!hierarchy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hierarchy_select_goal: hierarchy is NULL");
+        return;
+    }
 
     // Clear previous selection
     /* Phase 8: Heartbeat at operation start */
@@ -469,7 +475,10 @@ bool mirror_hierarchy_get_motor(mirror_hierarchy_t hierarchy, uint32_t motor_id,
 
 void mirror_hierarchy_activate_motor(mirror_hierarchy_t hierarchy,
                                       uint32_t motor_id, float activation) {
-    if (!hierarchy || motor_id >= hierarchy->num_motors) return;
+    if (!hierarchy || motor_id >= hierarchy->num_motors) {
+        if (!hierarchy) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hierarchy_activate_motor: hierarchy is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hierarchy_heartbeat("mirror_hiera_activate_motor", 0.0f);
@@ -582,7 +591,10 @@ void mirror_hierarchy_strengthen_binding(mirror_hierarchy_t hierarchy,
                                           uint32_t goal_id,
                                           uint32_t motor_id,
                                           float delta) {
-    if (!hierarchy || goal_id >= hierarchy->num_goals) return;
+    if (!hierarchy || goal_id >= hierarchy->num_goals) {
+        if (!hierarchy) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hierarchy_strengthen_binding: hierarchy is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hierarchy_heartbeat("mirror_hiera_strengthen_binding", 0.0f);
@@ -608,7 +620,10 @@ void mirror_hierarchy_strengthen_binding(mirror_hierarchy_t hierarchy,
 float mirror_hierarchy_get_binding(mirror_hierarchy_t hierarchy,
                                     uint32_t goal_id,
                                     uint32_t motor_id) {
-    if (!hierarchy || goal_id >= hierarchy->num_goals) return -1.0F;
+    if (!hierarchy || goal_id >= hierarchy->num_goals) {
+        if (!hierarchy) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hierarchy_get_binding: hierarchy is NULL");
+        return -1.0F;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hierarchy_heartbeat("mirror_hiera_get_binding", 0.0f);
@@ -868,7 +883,10 @@ uint32_t mirror_hierarchy_infer_goal_contextual(mirror_hierarchy_t hierarchy,
 //=============================================================================
 
 void mirror_hierarchy_step(mirror_hierarchy_t hierarchy, float dt_ms) {
-    if (!hierarchy) return;
+    if (!hierarchy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hierarchy_step: hierarchy is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hierarchy_heartbeat("mirror_hiera_step", 0.0f);
@@ -1009,7 +1027,10 @@ void mirror_hierarchy_step(mirror_hierarchy_t hierarchy, float dt_ms) {
 //=============================================================================
 
 bool mirror_hierarchy_get_stats(mirror_hierarchy_t hierarchy, mirror_hierarchy_stats_t* stats) {
-    if (!hierarchy || !stats) return false;
+    if (!hierarchy || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hierarchy_get_stats: required parameter is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hierarchy_heartbeat("mirror_hiera_get_stats", 0.0f);
@@ -1083,7 +1104,10 @@ bool mirror_hierarchy_get_stats(mirror_hierarchy_t hierarchy, mirror_hierarchy_s
 }
 
 void mirror_hierarchy_reset_stats(mirror_hierarchy_t hierarchy) {
-    if (!hierarchy) return;
+    if (!hierarchy) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hierarchy_reset_stats: hierarchy is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_hierarchy_heartbeat("mirror_hiera_reset_stats", 0.0f);

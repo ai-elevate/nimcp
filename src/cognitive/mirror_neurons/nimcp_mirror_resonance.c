@@ -343,6 +343,7 @@ void motor_resonance_destroy(motor_resonance_t resonance) {
 
 uint32_t motor_resonance_create_channel(motor_resonance_t resonance, uint32_t action_id) {
     if (!resonance || resonance->num_channels >= resonance->max_channels) {
+        if (!resonance) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_resonance_create_channel: resonance is NULL");
         return UINT32_MAX;
     }
 
@@ -400,6 +401,7 @@ uint32_t motor_resonance_create_channel(motor_resonance_t resonance, uint32_t ac
 bool motor_resonance_get_channel(motor_resonance_t resonance, uint32_t channel_id,
                                   motor_channel_t* out_channel) {
     if (!resonance || !out_channel || channel_id >= resonance->num_channels) {
+        if (!resonance || !out_channel) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_resonance_get_channel: required parameter is NULL");
         return false;
     }
 
@@ -412,7 +414,10 @@ bool motor_resonance_get_channel(motor_resonance_t resonance, uint32_t channel_i
 }
 
 uint32_t motor_resonance_find_channel(motor_resonance_t resonance, uint32_t action_id) {
-    if (!resonance) return UINT32_MAX;
+    if (!resonance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_resonance_find_channel: resonance is NULL");
+        return UINT32_MAX;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_resonance_heartbeat("mirror_reson_motor_resonance_find", 0.0f);
@@ -441,6 +446,7 @@ uint32_t motor_resonance_find_channel(motor_resonance_t resonance, uint32_t acti
 float motor_resonance_observe(motor_resonance_t resonance, uint32_t channel_id,
                                float observation_strength, uint64_t timestamp_us) {
     if (!resonance || channel_id >= resonance->num_channels) {
+        if (!resonance) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_resonance_observe: resonance is NULL");
         return 0.0F;
     }
 
@@ -494,7 +500,10 @@ void motor_resonance_observe_batch(motor_resonance_t resonance,
                                     const float* strengths,
                                     uint32_t count,
                                     uint64_t timestamp_us) {
-    if (!resonance || !channel_ids || !strengths) return;
+    if (!resonance || !channel_ids || !strengths) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_resonance_observe_batch: required parameter is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_resonance_heartbeat("mirror_reson_motor_resonance_obse", 0.0f);
@@ -516,7 +525,10 @@ void motor_resonance_observe_batch(motor_resonance_t resonance,
 //=============================================================================
 
 void motor_resonance_set_bg_inhibition(motor_resonance_t resonance, float level) {
-    if (!resonance) return;
+    if (!resonance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_resonance_set_bg_inhibition: resonance is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_resonance_heartbeat("mirror_reson_motor_resonance_set_", 0.0f);
@@ -545,7 +557,10 @@ void motor_resonance_set_bg_inhibition(motor_resonance_t resonance, float level)
 
 void motor_resonance_set_pfc_suppression(motor_resonance_t resonance,
                                           uint32_t channel_id, float level) {
-    if (!resonance || channel_id >= resonance->num_channels) return;
+    if (!resonance || channel_id >= resonance->num_channels) {
+        if (!resonance) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_resonance_set_pfc_suppression: resonance is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_resonance_heartbeat("mirror_reson_motor_resonance_set_", 0.0f);
@@ -566,7 +581,10 @@ void motor_resonance_set_pfc_suppression(motor_resonance_t resonance,
 
 void motor_resonance_release_for_learning(motor_resonance_t resonance,
                                            int32_t channel_id, float learning_context) {
-    if (!resonance) return;
+    if (!resonance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_resonance_release_for_learning: resonance is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_resonance_heartbeat("mirror_reson_motor_resonance_rele", 0.0f);
@@ -609,7 +627,10 @@ void motor_resonance_release_for_learning(motor_resonance_t resonance,
 
 void motor_resonance_release_for_social(motor_resonance_t resonance,
                                          int32_t channel_id, float social_strength) {
-    if (!resonance || !resonance->config.enable_social_context) return;
+    if (!resonance || !resonance->config.enable_social_context) {
+        if (!resonance) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_resonance_release_for_social: resonance is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_resonance_heartbeat("mirror_reson_motor_resonance_rele", 0.0f);
@@ -654,6 +675,7 @@ void motor_resonance_release_for_social(motor_resonance_t resonance,
 
 float motor_resonance_get_conflict(motor_resonance_t resonance, uint32_t channel_id) {
     if (!resonance || channel_id >= resonance->num_channels) {
+        if (!resonance) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_resonance_get_conflict: resonance is NULL");
         return 0.0F;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -668,6 +690,7 @@ void motor_resonance_set_conflict(motor_resonance_t resonance,
     if (!resonance || channel_a >= resonance->num_channels ||
         channel_b >= resonance->num_channels ||
         channel_a == channel_b) {
+        if (!resonance) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_resonance_set_conflict: resonance is NULL");
         return;
     }
 
@@ -693,6 +716,7 @@ void motor_resonance_set_conflict(motor_resonance_t resonance,
 
 float motor_resonance_get_output(motor_resonance_t resonance, uint32_t channel_id) {
     if (!resonance || channel_id >= resonance->num_channels) {
+        if (!resonance) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_resonance_get_output: resonance is NULL");
         return -1.0F;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -704,6 +728,7 @@ float motor_resonance_get_output(motor_resonance_t resonance, uint32_t channel_i
 
 bool motor_resonance_above_threshold(motor_resonance_t resonance, uint32_t channel_id) {
     if (!resonance || channel_id >= resonance->num_channels) {
+        if (!resonance) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_resonance_above_threshold: resonance is NULL");
         return false;
     }
     /* Phase 8: Heartbeat at operation start */
@@ -717,6 +742,7 @@ uint32_t motor_resonance_get_active_channels(motor_resonance_t resonance,
                                               uint32_t* out_channels,
                                               uint32_t max_channels) {
     if (!resonance || !out_channels || max_channels == 0) {
+        if (!resonance || !out_channels) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_resonance_get_active_channels: required parameter is NULL");
         return 0;
     }
 
@@ -738,7 +764,10 @@ uint32_t motor_resonance_get_active_channels(motor_resonance_t resonance,
 //=============================================================================
 
 void motor_resonance_step(motor_resonance_t resonance, float dt_ms) {
-    if (!resonance) return;
+    if (!resonance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_resonance_step: resonance is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_resonance_heartbeat("mirror_reson_motor_resonance_step", 0.0f);
@@ -837,7 +866,10 @@ void motor_resonance_step(motor_resonance_t resonance, float dt_ms) {
 //=============================================================================
 
 bool motor_resonance_get_stats(motor_resonance_t resonance, motor_resonance_stats_t* stats) {
-    if (!resonance || !stats) return false;
+    if (!resonance || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_resonance_get_stats: required parameter is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_resonance_heartbeat("mirror_reson_motor_resonance_get_", 0.0f);
@@ -910,7 +942,10 @@ bool motor_resonance_get_stats(motor_resonance_t resonance, motor_resonance_stat
 }
 
 void motor_resonance_reset_stats(motor_resonance_t resonance) {
-    if (!resonance) return;
+    if (!resonance) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "motor_resonance_reset_stats: resonance is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_resonance_heartbeat("mirror_reson_motor_resonance_rese", 0.0f);

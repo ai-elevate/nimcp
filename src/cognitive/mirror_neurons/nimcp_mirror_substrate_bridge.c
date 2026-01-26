@@ -120,7 +120,10 @@ void mirror_substrate_bridge_destroy(mirror_substrate_bridge_t* bridge) {
 }
 
 int mirror_substrate_bridge_update(mirror_substrate_bridge_t* bridge) {
-    if (!bridge || !bridge->substrate) return -1;
+    if (!bridge || !bridge->substrate) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_substrate_bridge_update: required parameter is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_substrate_bridge_heartbeat("mirror_subst_update", 0.0f);
@@ -153,7 +156,10 @@ int mirror_substrate_bridge_update(mirror_substrate_bridge_t* bridge) {
 }
 
 int mirror_substrate_bridge_get_effects(const mirror_substrate_bridge_t* bridge, mirror_substrate_effects_t* effects) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_substrate_bridge_get_effects: required parameter is NULL");
+        return -1;
+    }
     *effects = bridge->effects;
     /* Phase 8: Heartbeat at operation start */
     mirror_substrate_bridge_heartbeat("mirror_subst_get_effects", 0.0f);
@@ -163,7 +169,10 @@ int mirror_substrate_bridge_get_effects(const mirror_substrate_bridge_t* bridge,
 }
 
 int mirror_substrate_bridge_apply_effects(mirror_substrate_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_substrate_bridge_apply_effects: bridge is NULL");
+        return -1;
+    }
 
     if (!bridge->bio_async_connected || !bridge->ctx) {
         return 0;
@@ -232,7 +241,10 @@ int mirror_substrate_bridge_apply_effects(mirror_substrate_bridge_t* bridge) {
 }
 
 int mirror_substrate_bridge_register_bio_async(mirror_substrate_bridge_t* bridge, bio_router_t* router) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_substrate_bridge_register_bio_async: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_substrate_bridge_heartbeat("mirror_subst_register_bio_async", 0.0f);

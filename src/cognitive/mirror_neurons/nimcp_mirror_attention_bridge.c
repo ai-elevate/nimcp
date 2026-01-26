@@ -408,7 +408,10 @@ bool mirror_attention_process_gaze(
     const mirror_gaze_observation_t* observation,
     mirror_attention_cue_t* cue
 ) {
-    if (!bridge || !observation || !cue) return false;
+    if (!bridge || !observation || !cue) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_attention_process_gaze: required parameter is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_pro", 0.0f);
@@ -571,7 +574,12 @@ uint32_t mirror_attention_process_batch(
     mirror_attention_cue_t* cues,
     uint32_t count
 ) {
-    if (!bridge || !observations || !cues || count == 0) return 0;
+    if (!bridge || !observations || !cues || count == 0) {
+        if (!bridge || !observations || !cues) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_attention_process_batch: required parameter is NULL");
+        }
+        return 0;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_pro", 0.0f);
@@ -601,7 +609,10 @@ joint_attention_state_t mirror_attention_get_joint_state(
     mirror_attention_bridge_t* bridge,
     uint32_t agent_id
 ) {
-    if (!bridge) return JOINT_ATTENTION_NONE;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_attention_get_joint_state: bridge is NULL");
+        return JOINT_ATTENTION_NONE;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_get", 0.0f);
@@ -632,7 +643,10 @@ bool mirror_attention_initiate_joint(
     uint32_t agent_id,
     const mirror_attention_vec3_t* target
 ) {
-    if (!bridge || !target) return false;
+    if (!bridge || !target) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_attention_initiate_joint: required parameter is NULL");
+        return false;
+    }
     if (!bridge->config.enable_joint_attention_initiation) return false;
 
     /* Phase 8: Heartbeat at operation start */
@@ -670,7 +684,10 @@ bool mirror_attention_respond_to_joint(
     mirror_attention_bridge_t* bridge,
     uint32_t agent_id
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_attention_respond_to_joint: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_res", 0.0f);
@@ -714,7 +731,10 @@ void mirror_attention_break_joint(
     mirror_attention_bridge_t* bridge,
     uint32_t agent_id
 ) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_attention_break_joint: bridge is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_bre", 0.0f);
@@ -754,7 +774,10 @@ float mirror_attention_get_sensitivity_at(
     mirror_attention_bridge_t* bridge,
     const mirror_attention_vec3_t* position
 ) {
-    if (!bridge || !position) return 1.0f;
+    if (!bridge || !position) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_attention_get_sensitivity_at: required parameter is NULL");
+        return 1.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_get", 0.0f);
@@ -782,7 +805,10 @@ void mirror_attention_set_focus(
     float strength,
     float sigma
 ) {
-    if (!bridge || !focus) return;
+    if (!bridge || !focus) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_attention_set_focus: required parameter is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_set", 0.0f);
@@ -802,7 +828,10 @@ float mirror_attention_get_saliency_boost(
     float x,
     float y
 ) {
-    if (!bridge) return 1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_attention_get_saliency_boost: bridge is NULL");
+        return 1.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_get", 0.0f);
@@ -936,7 +965,10 @@ void mirror_attention_update_validity(
     uint32_t agent_id,
     bool valid
 ) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_attention_update_validity: bridge is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_upd", 0.0f);
@@ -998,7 +1030,10 @@ bool mirror_attention_get_stats(
     const mirror_attention_bridge_t* bridge,
     mirror_attention_stats_t* stats
 ) {
-    if (!bridge || !stats) return false;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_attention_get_stats: required parameter is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_attention_bridge_heartbeat("mirror_atten_mirror_attention_get", 0.0f);

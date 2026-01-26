@@ -514,7 +514,10 @@ int mirror_visual_bridge_connect_visual_cortex(
 }
 
 bool mirror_visual_bridge_is_connected(const mirror_visual_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_visual_bridge_is_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_visual_bridge_heartbeat("mirror_visua_is_connected", 0.0f);
 
@@ -532,7 +535,10 @@ int mirror_visual_process_agent_detection(
     uint32_t num_features,
     agent_detection_t* detection
 ) {
-    if (!bridge || !features || !detection) return -1;
+    if (!bridge || !features || !detection) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_visual_process_agent_detection: bridge, features, or detection is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_visual_bridge_heartbeat("mirror_visua_mirror_visual_proces", 0.0f);
@@ -578,7 +584,10 @@ int mirror_visual_process_bio_motion(
     uint32_t num_vectors,
     bio_motion_analysis_t* analysis
 ) {
-    if (!bridge || !motion_vectors || !analysis) return -1;
+    if (!bridge || !motion_vectors || !analysis) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_visual_process_bio_motion: bridge, motion_vectors, or analysis is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_visual_bridge_heartbeat("mirror_visua_mirror_visual_proces", 0.0f);
@@ -620,7 +629,10 @@ int mirror_visual_process_face(
     uint32_t num_features,
     face_expression_t* face
 ) {
-    if (!bridge || !features || !face) return -1;
+    if (!bridge || !features || !face) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_visual_process_face: bridge, features, or face is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_visual_bridge_heartbeat("mirror_visua_mirror_visual_proces", 0.0f);
@@ -661,7 +673,10 @@ int mirror_visual_trigger_observation_mode(
     mirror_visual_bridge_t* bridge,
     const agent_detection_t* detection
 ) {
-    if (!bridge || !detection) return -1;
+    if (!bridge || !detection) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_visual_trigger_observation_mode: bridge or detection is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_visual_bridge_heartbeat("mirror_visua_mirror_visual_trigge", 0.0f);
@@ -696,7 +711,10 @@ int mirror_visual_get_social_salience(
     mirror_visual_bridge_t* bridge,
     social_salience_t* salience
 ) {
-    if (!bridge || !salience) return -1;
+    if (!bridge || !salience) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_visual_get_social_salience: bridge or salience is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_visual_bridge_heartbeat("mirror_visua_mirror_visual_get_so", 0.0f);
@@ -714,7 +732,10 @@ int mirror_visual_apply_attention_modulation(
     mirror_visual_bridge_t* bridge,
     const social_salience_t* salience
 ) {
-    if (!bridge || !salience) return -1;
+    if (!bridge || !salience) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_visual_apply_attention_modulation: bridge or salience is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_visual_bridge_heartbeat("mirror_visua_mirror_visual_apply_", 0.0f);
@@ -846,7 +867,10 @@ int mirror_visual_get_sts_state(
     const mirror_visual_bridge_t* bridge,
     sts_state_t* sts_state
 ) {
-    if (!bridge || !sts_state) return -1;
+    if (!bridge || !sts_state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_visual_get_sts_state: bridge or sts_state is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_visual_bridge_heartbeat("mirror_visua_mirror_visual_get_st", 0.0f);
@@ -973,7 +997,10 @@ int mirror_visual_bridge_get_state(
     const mirror_visual_bridge_t* bridge,
     mirror_visual_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_visual_bridge_get_state: bridge or state is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_visual_bridge_heartbeat("mirror_visua_get_state", 0.0f);
@@ -990,7 +1017,10 @@ int mirror_visual_bridge_get_effects(
     const mirror_visual_bridge_t* bridge,
     mirror_visual_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_visual_bridge_get_effects: bridge or effects is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_visual_bridge_heartbeat("mirror_visua_get_effects", 0.0f);
@@ -1007,7 +1037,10 @@ int mirror_visual_bridge_get_stats(
     const mirror_visual_bridge_t* bridge,
     mirror_visual_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_visual_bridge_get_stats: bridge or stats is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_visual_bridge_heartbeat("mirror_visua_get_stats", 0.0f);
@@ -1057,7 +1090,10 @@ int mirror_visual_bridge_disconnect_bio_async(mirror_visual_bridge_t* bridge) {
 bool mirror_visual_bridge_is_bio_async_connected(
     const mirror_visual_bridge_t* bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_visual_bridge_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_visual_bridge_heartbeat("mirror_visua_is_bio_async_connect", 0.0f);
 
@@ -1069,7 +1105,10 @@ int mirror_visual_broadcast_agent_detection(
     mirror_visual_bridge_t* bridge,
     const agent_detection_t* detection
 ) {
-    if (!bridge || !detection) return -1;
+    if (!bridge || !detection) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_visual_broadcast_agent_detection: bridge or detection is NULL");
+        return -1;
+    }
 
     if (!bridge->base.bio_async_enabled) return 0;
 
@@ -1088,7 +1127,10 @@ int mirror_visual_broadcast_social_salience(
     mirror_visual_bridge_t* bridge,
     const social_salience_t* salience
 ) {
-    if (!bridge || !salience) return -1;
+    if (!bridge || !salience) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_visual_broadcast_social_salience: bridge or salience is NULL");
+        return -1;
+    }
 
     if (!bridge->base.bio_async_enabled) return 0;
 

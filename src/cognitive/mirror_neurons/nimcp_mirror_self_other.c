@@ -296,7 +296,10 @@ bool self_other_register_efference(
     const body_pose_t* intended_pose,
     float predicted_duration_ms
 ) {
-    if (!system || !intended_pose) return false;
+    if (!system || !intended_pose) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_other_register_efference: required parameter is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_self_other_heartbeat("mirror_self__self_other_register_", 0.0f);
@@ -398,7 +401,12 @@ void self_other_update_body_part(
     const body_pose_t* velocity,
     float confidence
 ) {
-    if (!system || !pose || part >= BODY_PART_COUNT) return;
+    if (!system || !pose || part >= BODY_PART_COUNT) {
+        if (!system || !pose) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_other_update_body_part: required parameter is NULL");
+        }
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_self_other_heartbeat("mirror_self__self_other_update_bo", 0.0f);
@@ -452,7 +460,10 @@ bool self_other_in_peripersonal_space(
     const self_other_system_t* system,
     float x, float y, float z
 ) {
-    if (!system) return false;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_other_in_peripersonal_space: system is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_self_other_heartbeat("mirror_self__self_other_in_peripe", 0.0f);
@@ -466,7 +477,10 @@ float self_other_distance_from_body(
     const self_other_system_t* system,
     float x, float y, float z
 ) {
-    if (!system) return 999.0f;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_other_distance_from_body: system is NULL");
+        return 999.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_self_other_heartbeat("mirror_self__self_other_distance_", 0.0f);
@@ -492,7 +506,10 @@ bool self_other_classify_agency(
     const sensory_feedback_t* sensory,
     agency_decision_t* decision
 ) {
-    if (!system || !observation || !decision) return false;
+    if (!system || !observation || !decision) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_other_classify_agency: required parameter is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_self_other_heartbeat("mirror_self__self_other_classify_", 0.0f);
@@ -685,7 +702,10 @@ bool self_other_classify_with_efference(
     const sensory_feedback_t* sensory,
     agency_decision_t* decision
 ) {
-    if (!system || !observation || !efference || !decision) return false;
+    if (!system || !observation || !efference || !decision) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_other_classify_with_efference: required parameter is NULL");
+        return false;
+    }
 
     /* Direct comparison with provided efference copy */
     /* Phase 8: Heartbeat at operation start */
@@ -718,7 +738,12 @@ uint32_t self_other_classify_batch(
     agency_decision_t* decisions,
     uint32_t count
 ) {
-    if (!system || !observations || !decisions || count == 0) return 0;
+    if (!system || !observations || !decisions || count == 0) {
+        if (!system || !observations || !decisions) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_other_classify_batch: required parameter is NULL");
+        }
+        return 0;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_self_other_heartbeat("mirror_self__self_other_classify_", 0.0f);
@@ -753,7 +778,10 @@ float self_other_get_mirror_suppression(
     const self_other_system_t* system,
     agency_type_t agency
 ) {
-    if (!system) return 1.0f;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_other_get_mirror_suppression: system is NULL");
+        return 1.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_self_other_heartbeat("mirror_self__self_other_get_mirro", 0.0f);
@@ -777,7 +805,10 @@ float self_other_compute_mirror_gain(
     const self_other_system_t* system,
     const agency_decision_t* decision
 ) {
-    if (!system || !decision) return 1.0f;
+    if (!system || !decision) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_other_compute_mirror_gain: required parameter is NULL");
+        return 1.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_self_other_heartbeat("mirror_self__self_other_compute_m", 0.0f);
@@ -912,7 +943,10 @@ bool self_other_get_stats(
     const self_other_system_t* system,
     self_other_stats_t* stats
 ) {
-    if (!system || !stats) return false;
+    if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "self_other_get_stats: required parameter is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_self_other_heartbeat("mirror_self__self_other_get_stats", 0.0f);

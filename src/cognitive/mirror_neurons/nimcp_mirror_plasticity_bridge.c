@@ -485,7 +485,10 @@ uint32_t mirror_plasticity_register_synapse(
     mirror_synapse_type_t type,
     float initial_weight
 ) {
-    if (!bridge || bridge->num_synapses >= bridge->max_synapses) return UINT32_MAX;
+    if (!bridge || bridge->num_synapses >= bridge->max_synapses) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_register_synapse: bridge is NULL or synapses full");
+        return UINT32_MAX;
+    }
     if (action_id >= MIRROR_PLASTICITY_MAX_ACTIONS) return UINT32_MAX;
 
     /* Phase 8: Heartbeat at operation start */
@@ -508,7 +511,10 @@ int mirror_plasticity_unregister_synapse(
     mirror_plasticity_bridge_t* bridge,
     uint32_t synapse_id
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_unregister_synapse: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_un", 0.0f);
@@ -546,7 +552,10 @@ int mirror_plasticity_get_synapse(
     uint32_t synapse_id,
     mirror_plasticity_synapse_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_get_synapse: bridge or state is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_ge", 0.0f);
@@ -567,7 +576,10 @@ float mirror_plasticity_get_weight(
     const mirror_plasticity_bridge_t* bridge,
     uint32_t synapse_id
 ) {
-    if (!bridge) return NAN;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_get_weight: bridge is NULL");
+        return NAN;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_ge", 0.0f);
@@ -586,7 +598,10 @@ int mirror_plasticity_get_action_weights(
     float* weights,
     uint32_t max_weights
 ) {
-    if (!bridge || !weights) return -1;
+    if (!bridge || !weights) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_get_action_weights: bridge or weights is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_ge", 0.0f);
@@ -728,7 +743,10 @@ float mirror_plasticity_pre_spike(
     uint32_t synapse_id,
     uint64_t timestamp_us
 ) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_pre_spike: bridge is NULL");
+        return 0.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_pr", 0.0f);
@@ -745,7 +763,10 @@ float mirror_plasticity_post_spike(
     uint32_t synapse_id,
     uint64_t timestamp_us
 ) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_post_spike: bridge is NULL");
+        return 0.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_po", 0.0f);
@@ -763,7 +784,10 @@ int mirror_plasticity_observation(
     float strength,
     uint64_t timestamp_us
 ) {
-    if (!bridge || action_id >= MIRROR_PLASTICITY_MAX_ACTIONS) return -1;
+    if (!bridge || action_id >= MIRROR_PLASTICITY_MAX_ACTIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_observation: bridge is NULL or action_id invalid");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_ob", 0.0f);
@@ -798,7 +822,10 @@ int mirror_plasticity_execution(
     float strength,
     uint64_t timestamp_us
 ) {
-    if (!bridge || action_id >= MIRROR_PLASTICITY_MAX_ACTIONS) return -1;
+    if (!bridge || action_id >= MIRROR_PLASTICITY_MAX_ACTIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_execution: bridge is NULL or action_id invalid");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_ex", 0.0f);
@@ -834,7 +861,10 @@ int mirror_plasticity_reward(
     float reward,
     uint64_t timestamp_us
 ) {
-    if (!bridge || bridge->learning_blocked) return 0;
+    if (!bridge || bridge->learning_blocked) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_reward: bridge is NULL or learning blocked");
+        return 0;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_re", 0.0f);
@@ -888,7 +918,10 @@ int mirror_plasticity_reward_action(
     uint32_t action_id,
     float reward
 ) {
-    if (!bridge || action_id >= MIRROR_PLASTICITY_MAX_ACTIONS) return 0;
+    if (!bridge || action_id >= MIRROR_PLASTICITY_MAX_ACTIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_reward_action: bridge is NULL or action_id invalid");
+        return 0;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_re", 0.0f);
@@ -922,7 +955,10 @@ int mirror_plasticity_reward_action(
 }
 
 int mirror_plasticity_consolidate(mirror_plasticity_bridge_t* bridge) {
-    if (!bridge) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_consolidate: bridge is NULL");
+        return 0;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_co", 0.0f);
@@ -969,7 +1005,10 @@ int mirror_plasticity_get_action_modulation(
     uint32_t action_id,
     float* modulation
 ) {
-    if (!bridge || !modulation || action_id >= MIRROR_PLASTICITY_MAX_ACTIONS) return -1;
+    if (!bridge || !modulation || action_id >= MIRROR_PLASTICITY_MAX_ACTIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_get_action_modulation: bridge or modulation is NULL or action_id invalid");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_ge", 0.0f);
@@ -1000,19 +1039,29 @@ int mirror_plasticity_get_action_modulation(
 }
 
 float mirror_plasticity_get_lr_modulation(const mirror_plasticity_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_get_lr_modulation: bridge is NULL");
+        return 1.0f;
+    }
+
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_ge", 0.0f);
 
 
-    return bridge ? bridge->current_lr_modulation : 1.0f;
+    return bridge->current_lr_modulation;
 }
 
 bool mirror_plasticity_is_learning_blocked(const mirror_plasticity_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_is_learning_blocked: bridge is NULL");
+        return true;
+    }
+
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_is", 0.0f);
 
 
-    return bridge ? bridge->learning_blocked : true;
+    return bridge->learning_blocked;
 }
 
 //=============================================================================
@@ -1023,7 +1072,10 @@ int mirror_plasticity_connect_immune(
     mirror_plasticity_bridge_t* bridge,
     void* immune_system
 ) {
-    if (!bridge || !immune_system) return -1;
+    if (!bridge || !immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_connect_immune: bridge or immune_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_co", 0.0f);
@@ -1040,7 +1092,10 @@ int mirror_plasticity_connect_sleep(
     mirror_plasticity_bridge_t* bridge,
     void* sleep_system
 ) {
-    if (!bridge || !sleep_system) return -1;
+    if (!bridge || !sleep_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_connect_sleep: bridge or sleep_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_co", 0.0f);
@@ -1054,7 +1109,11 @@ int mirror_plasticity_connect_sleep(
 }
 
 int mirror_plasticity_connect_bio_async(mirror_plasticity_bridge_t* bridge) {
-    if (!bridge || bridge->bio_async_connected) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_connect_bio_async: bridge is NULL");
+        return 0;
+    }
+    if (bridge->bio_async_connected) return 0;
 
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_co", 0.0f);
@@ -1068,7 +1127,11 @@ int mirror_plasticity_connect_bio_async(mirror_plasticity_bridge_t* bridge) {
 }
 
 int mirror_plasticity_disconnect_bio_async(mirror_plasticity_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_connected) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_disconnect_bio_async: bridge is NULL");
+        return 0;
+    }
+    if (!bridge->bio_async_connected) return 0;
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_di", 0.0f);
 
@@ -1078,11 +1141,16 @@ int mirror_plasticity_disconnect_bio_async(mirror_plasticity_bridge_t* bridge) {
 }
 
 bool mirror_plasticity_is_bio_async_connected(const mirror_plasticity_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
+
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_is", 0.0f);
 
 
-    return bridge && bridge->bio_async_connected;
+    return bridge->bio_async_connected;
 }
 
 //=============================================================================
@@ -1094,7 +1162,10 @@ int mirror_plasticity_register_weight_callback(
     mirror_plasticity_weight_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_register_weight_callback: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_re", 0.0f);
 
@@ -1111,7 +1182,10 @@ int mirror_plasticity_register_consolidation_callback(
     mirror_plasticity_consolidation_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_register_consolidation_callback: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_re", 0.0f);
 
@@ -1128,7 +1202,10 @@ int mirror_plasticity_register_homeostatic_callback(
     mirror_plasticity_homeostatic_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_register_homeostatic_callback: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_re", 0.0f);
 
@@ -1145,7 +1222,10 @@ int mirror_plasticity_register_energy_callback(
     mirror_plasticity_energy_callback_t callback,
     void* user_data
 ) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_register_energy_callback: bridge is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_re", 0.0f);
 
@@ -1165,7 +1245,10 @@ int mirror_plasticity_get_state(
     const mirror_plasticity_bridge_t* bridge,
     mirror_plasticity_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_get_state: bridge or state is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_ge", 0.0f);
@@ -1228,7 +1311,10 @@ int mirror_plasticity_get_stats(
     const mirror_plasticity_bridge_t* bridge,
     mirror_plasticity_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_get_stats: bridge or stats is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_ge", 0.0f);
 
@@ -1240,7 +1326,10 @@ int mirror_plasticity_get_stats(
 }
 
 void mirror_plasticity_reset_stats(mirror_plasticity_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_reset_stats: bridge is NULL");
+        return;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_re", 0.0f);
 
@@ -1251,7 +1340,10 @@ void mirror_plasticity_reset_stats(mirror_plasticity_bridge_t* bridge) {
 }
 
 float mirror_plasticity_get_atp_level(const mirror_plasticity_bridge_t* bridge) {
-    if (!bridge) return 0.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_get_atp_level: bridge is NULL");
+        return 0.0f;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_ge", 0.0f);
 
@@ -1264,7 +1356,10 @@ float mirror_plasticity_get_atp_level(const mirror_plasticity_bridge_t* bridge) 
 //=============================================================================
 
 int mirror_plasticity_update(mirror_plasticity_bridge_t* bridge, float dt_ms) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_update: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_up", 0.0f);
@@ -1317,7 +1412,10 @@ int mirror_plasticity_update(mirror_plasticity_bridge_t* bridge, float dt_ms) {
 }
 
 int mirror_plasticity_reset(mirror_plasticity_bridge_t* bridge) {
-    if (!bridge) return -1;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_reset: bridge is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_re", 0.0f);
@@ -1357,18 +1455,26 @@ int mirror_plasticity_reset(mirror_plasticity_bridge_t* bridge) {
 plasticity_orchestrator_t* mirror_plasticity_get_orchestrator(
     mirror_plasticity_bridge_t* bridge
 ) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_get_orchestrator: bridge is NULL");
+        return NULL;
+    }
+
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_ge", 0.0f);
 
 
-    return bridge ? bridge->orchestrator : NULL;
+    return bridge->orchestrator;
 }
 
 int mirror_plasticity_get_orchestrator_stats(
     const mirror_plasticity_bridge_t* bridge,
     plasticity_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_plasticity_get_orchestrator_stats: bridge or stats is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_plasticity_bridge_heartbeat("mirror_plast_mirror_plasticity_ge", 0.0f);
 

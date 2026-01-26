@@ -478,7 +478,10 @@ int mirror_prefrontal_request_imitation(
     const imitation_request_t* request,
     imitation_decision_t* decision
 ) {
-    if (!bridge || !request || !decision) return -1;
+    if (!bridge || !request || !decision) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_prefrontal_request_imitation: required parameter is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_re", 0.0f);
@@ -551,7 +554,10 @@ int mirror_prefrontal_set_inhibition(
 }
 
 float mirror_prefrontal_get_inhibition(const mirror_prefrontal_bridge_t bridge) {
-    if (!bridge) return -1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_prefrontal_get_inhibition: bridge is NULL");
+        return -1.0f;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_ge", 0.0f);
 
@@ -589,7 +595,10 @@ int mirror_prefrontal_set_imitation_mode(
 imitation_mode_t mirror_prefrontal_get_imitation_mode(
     const mirror_prefrontal_bridge_t bridge
 ) {
-    if (!bridge) return IMITATION_MODE_BLOCKED;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_prefrontal_get_imitation_mode: bridge is NULL");
+        return IMITATION_MODE_BLOCKED;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_ge", 0.0f);
 
@@ -648,7 +657,10 @@ int mirror_prefrontal_set_social_context(
 social_context_type_t mirror_prefrontal_get_social_context(
     const mirror_prefrontal_bridge_t bridge
 ) {
-    if (!bridge) return SOCIAL_CONTEXT_NONE;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_prefrontal_get_social_context: bridge is NULL");
+        return SOCIAL_CONTEXT_NONE;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_ge", 0.0f);
 
@@ -664,7 +676,10 @@ uint32_t mirror_prefrontal_store_sequence(
     mirror_prefrontal_bridge_t bridge,
     const action_sequence_t* sequence
 ) {
-    if (!bridge || !sequence) return 0;
+    if (!bridge || !sequence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_prefrontal_store_sequence: required parameter is NULL");
+        return 0;
+    }
     if (!bridge->config.enable_wm_integration || !bridge->sequences) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -736,7 +751,10 @@ int mirror_prefrontal_recall_sequence(
     uint32_t sequence_id,
     action_sequence_t* sequence
 ) {
-    if (!bridge || !sequence || sequence_id == 0) return -1;
+    if (!bridge || !sequence || sequence_id == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_prefrontal_recall_sequence: required parameter is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_wm_integration || !bridge->sequences) return -1;
 
     /* Phase 8: Heartbeat at operation start */
@@ -773,7 +791,10 @@ int mirror_prefrontal_recall_sequence(
 uint32_t mirror_prefrontal_get_sequence_count(
     const mirror_prefrontal_bridge_t bridge
 ) {
-    if (!bridge) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_prefrontal_get_sequence_count: bridge is NULL");
+        return 0;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_ge", 0.0f);
 
@@ -840,7 +861,10 @@ float mirror_prefrontal_get_goal_relevance(
     mirror_prefrontal_bridge_t bridge,
     uint32_t action_id
 ) {
-    if (!bridge) return -1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_prefrontal_get_goal_relevance: bridge is NULL");
+        return -1.0f;
+    }
 
     /* If no active goal, all actions have neutral relevance */
     /* Phase 8: Heartbeat at operation start */
@@ -969,7 +993,10 @@ int mirror_prefrontal_get_effects(
     const mirror_prefrontal_bridge_t bridge,
     mirror_prefrontal_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_prefrontal_get_effects: required parameter is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_ge", 0.0f);
@@ -1073,7 +1100,10 @@ int mirror_prefrontal_disconnect_bio_async(mirror_prefrontal_bridge_t bridge) {
 bool mirror_prefrontal_is_bio_async_connected(
     const mirror_prefrontal_bridge_t bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_prefrontal_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_is", 0.0f);
 
@@ -1086,6 +1116,7 @@ uint32_t mirror_prefrontal_process_messages(
     uint32_t max_messages
 ) {
     if (!bridge || !bridge->bio_async_enabled || !bridge->bio_context) {
+        if (!bridge) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_prefrontal_process_messages: bridge is NULL");
         return 0;
     }
 
@@ -1107,7 +1138,10 @@ int mirror_prefrontal_get_stats(
     const mirror_prefrontal_bridge_t bridge,
     mirror_prefrontal_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_prefrontal_get_stats: required parameter is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_prefrontal_bridge_heartbeat("mirror_prefr_mirror_prefrontal_ge", 0.0f);

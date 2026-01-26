@@ -377,7 +377,10 @@ bool vicarious_reward_process(
     const vicarious_observation_t* observation,
     vicarious_response_result_t* result
 ) {
-    if (!system || !observation || !result) return false;
+    if (!system || !observation || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vicarious_reward_process: required parameter is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_pro", 0.0f);
@@ -564,7 +567,12 @@ uint32_t vicarious_reward_process_batch(
     vicarious_response_result_t* results,
     uint32_t count
 ) {
-    if (!system || !observations || !results || count == 0) return 0;
+    if (!system || !observations || !results || count == 0) {
+        if (!system || !observations || !results) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vicarious_reward_process_batch: required parameter is NULL");
+        }
+        return 0;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_pro", 0.0f);
@@ -595,7 +603,10 @@ float vicarious_reward_predict(
     uint32_t agent_id,
     uint32_t action_id
 ) {
-    if (!system) return 0.0f;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vicarious_reward_predict: system is NULL");
+        return 0.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_pre", 0.0f);
@@ -676,7 +687,10 @@ void vicarious_reward_set_relation(
     uint32_t agent_id,
     social_relation_t relation
 ) {
-    if (!system) return;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vicarious_reward_set_relation: system is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_set", 0.0f);
@@ -695,7 +709,10 @@ void vicarious_reward_update_familiarity(
     uint32_t agent_id,
     float delta
 ) {
-    if (!system) return;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vicarious_reward_update_familiarity: system is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_upd", 0.0f);
@@ -714,7 +731,10 @@ void vicarious_reward_set_competitive(
     uint32_t agent_id,
     bool is_competitor
 ) {
-    if (!system) return;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vicarious_reward_set_competitive: system is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_set", 0.0f);
@@ -736,7 +756,10 @@ float vicarious_reward_get_action_value(
     const vicarious_reward_system_t* system,
     uint32_t action_id
 ) {
-    if (!system) return 0.0f;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vicarious_reward_get_action_value: system is NULL");
+        return 0.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_get", 0.0f);
@@ -790,7 +813,10 @@ void vicarious_reward_decay_predictions(
     vicarious_reward_system_t* system,
     float dt_sec
 ) {
-    if (!system) return;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vicarious_reward_decay_predictions: system is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_dec", 0.0f);
@@ -830,7 +856,10 @@ void vicarious_reward_inject_direct(
     vicarious_reward_system_t* system,
     float direct_reward
 ) {
-    if (!system) return;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vicarious_reward_inject_direct: system is NULL");
+        return;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_inj", 0.0f);
@@ -856,7 +885,10 @@ float vicarious_reward_social_modulation(
     const vicarious_reward_system_t* system,
     uint32_t agent_id
 ) {
-    if (!system) return 1.0f;
+    if (!system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vicarious_reward_social_modulation: system is NULL");
+        return 1.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_soc", 0.0f);
@@ -884,7 +916,12 @@ bool vicarious_reward_is_schadenfreude(
     uint32_t agent_id,
     float observed_negative_reward
 ) {
-    if (!system || !system->config.enable_schadenfreude) return false;
+    if (!system || !system->config.enable_schadenfreude) {
+        if (!system) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vicarious_reward_is_schadenfreude: system is NULL");
+        }
+        return false;
+    }
     if (observed_negative_reward >= 0.0f) return false;
 
     /* Phase 8: Heartbeat at operation start */
@@ -916,7 +953,12 @@ bool vicarious_reward_is_envy(
     uint32_t agent_id,
     float observed_positive_reward
 ) {
-    if (!system || !system->config.enable_envy) return false;
+    if (!system || !system->config.enable_envy) {
+        if (!system) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vicarious_reward_is_envy: system is NULL");
+        }
+        return false;
+    }
     if (observed_positive_reward <= 0.0f) return false;
 
     /* Phase 8: Heartbeat at operation start */
@@ -1031,7 +1073,10 @@ bool vicarious_reward_get_stats(
     const vicarious_reward_system_t* system,
     vicarious_reward_stats_t* stats
 ) {
-    if (!system || !stats) return false;
+    if (!system || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "vicarious_reward_get_stats: required parameter is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_vicarious_reward_heartbeat("mirror_vicar_vicarious_reward_get", 0.0f);

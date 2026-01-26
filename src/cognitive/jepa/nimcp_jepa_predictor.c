@@ -1094,7 +1094,10 @@ int jepa_predictor_to_fep_error(jepa_predictor_t* predictor,
  * ============================================================================ */
 
 uint32_t jepa_predictor_num_params(const jepa_predictor_t* predictor) {
-    if (!predictor) return 0;
+    if (!predictor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_predictor_num_params: predictor is NULL");
+        return 0;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     jepa_predictor_heartbeat("jepa_predict_num_params", 0.0f);

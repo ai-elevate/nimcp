@@ -376,7 +376,10 @@ int mirror_omni_bridge_connect_active_inference(
 bool mirror_omni_bridge_is_fully_connected(
     const mirror_omni_bridge_t* bridge
 ) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_omni_bridge_is_fully_connected: bridge is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_omni_bridge_heartbeat("mirror_omni__is_fully_connected", 0.0f);
 
@@ -394,7 +397,10 @@ int mirror_omni_feed_agent_state(
     mirror_omni_bridge_t* bridge,
     uint32_t agent_id
 ) {
-    if (!bridge || !bridge->mirror_system || !bridge->world_model) return -1;
+    if (!bridge || !bridge->mirror_system || !bridge->world_model) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_omni_feed_agent_state: bridge, mirror_system, or world_model is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_feed_age", 0.0f);
@@ -490,7 +496,10 @@ int mirror_omni_feed_agent_state(
 int mirror_omni_update_state_transitions(
     mirror_omni_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->mirror_system || !bridge->world_model) return -1;
+    if (!bridge || !bridge->mirror_system || !bridge->world_model) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_omni_update_state_transitions: bridge, mirror_system, or world_model is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_update_s", 0.0f);
@@ -532,7 +541,10 @@ int mirror_omni_get_agent_state(
     uint32_t agent_id,
     mirror_omni_agent_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_omni_get_agent_state: bridge or state is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_get_agen", 0.0f);
@@ -561,7 +573,10 @@ int mirror_omni_get_agent_state(
 int mirror_omni_provide_action_priors(
     mirror_omni_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->mirror_system || !bridge->active_inference) return -1;
+    if (!bridge || !bridge->mirror_system || !bridge->active_inference) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_omni_provide_action_priors: bridge, mirror_system, or active_inference is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_provide_", 0.0f);
@@ -641,7 +656,10 @@ int mirror_omni_provide_action_priors(
 int mirror_omni_modulate_precision(
     mirror_omni_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->mirror_system || !bridge->active_inference) return -1;
+    if (!bridge || !bridge->mirror_system || !bridge->active_inference) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_omni_modulate_precision: bridge, mirror_system, or active_inference is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_confidence_precision) return 0;
 
     /* Phase 8: Heartbeat at operation start */
@@ -678,7 +696,10 @@ int mirror_omni_get_action_prior(
     uint32_t action_id,
     mirror_omni_action_prior_t* prior
 ) {
-    if (!bridge || !prior) return -1;
+    if (!bridge || !prior) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_omni_get_action_prior: bridge or prior is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_get_acti", 0.0f);
@@ -713,7 +734,10 @@ int mirror_omni_evaluate_imitation_cost(
     uint32_t action_id,
     mirror_omni_imitation_cost_t* cost
 ) {
-    if (!bridge || !cost) return -1;
+    if (!bridge || !cost) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_omni_evaluate_imitation_cost: bridge or cost is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_imitation_queries) return -1;
 
     /* Phase 8: Heartbeat at operation start */
@@ -790,7 +814,10 @@ int mirror_omni_query_goal_actions(
     uint32_t max_actions,
     uint32_t* num_actions
 ) {
-    if (!bridge || !actions || !num_actions) return -1;
+    if (!bridge || !actions || !num_actions) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_omni_query_goal_actions: bridge, actions, or num_actions is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_query_go", 0.0f);
@@ -830,7 +857,10 @@ int mirror_omni_simulate_counterfactual(
     uint32_t horizon,
     mirror_omni_cf_result_t* result
 ) {
-    if (!bridge || !result) return -1;
+    if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_omni_simulate_counterfactual: bridge or result is NULL");
+        return -1;
+    }
     if (!bridge->config.enable_counterfactual) return -1;
 
     /* Phase 8: Heartbeat at operation start */
@@ -919,7 +949,10 @@ int mirror_omni_simulate_counterfactual(
 int mirror_omni_update_action_expectations(
     mirror_omni_bridge_t* bridge
 ) {
-    if (!bridge || !bridge->mirror_system || !bridge->world_model) return -1;
+    if (!bridge || !bridge->mirror_system || !bridge->world_model) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_omni_update_action_expectations: bridge, mirror_system, or world_model is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_update_a", 0.0f);
@@ -952,7 +985,10 @@ int mirror_omni_validate_motor_sequence(
     bool* feasible,
     float* expected_reward
 ) {
-    if (!bridge || !action_ids || !feasible) return -1;
+    if (!bridge || !action_ids || !feasible) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_omni_validate_motor_sequence: bridge, action_ids, or feasible is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_omni_bridge_heartbeat("mirror_omni__mirror_omni_validate", 0.0f);
@@ -1282,7 +1318,10 @@ int mirror_omni_bridge_get_state(
     const mirror_omni_bridge_t* bridge,
     mirror_omni_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_omni_bridge_get_state: bridge or state is NULL");
+        return -1;
+    }
     *state = bridge->state;
     /* Phase 8: Heartbeat at operation start */
     mirror_omni_bridge_heartbeat("mirror_omni__get_state", 0.0f);
@@ -1295,7 +1334,10 @@ int mirror_omni_bridge_get_effects(
     const mirror_omni_bridge_t* bridge,
     mirror_omni_effects_t* effects
 ) {
-    if (!bridge || !effects) return -1;
+    if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_omni_bridge_get_effects: bridge or effects is NULL");
+        return -1;
+    }
     *effects = bridge->effects;
     /* Phase 8: Heartbeat at operation start */
     mirror_omni_bridge_heartbeat("mirror_omni__get_effects", 0.0f);
@@ -1308,7 +1350,10 @@ int mirror_omni_bridge_get_stats(
     const mirror_omni_bridge_t* bridge,
     mirror_omni_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_omni_bridge_get_stats: bridge or stats is NULL");
+        return -1;
+    }
     *stats = bridge->stats;
     /* Phase 8: Heartbeat at operation start */
     mirror_omni_bridge_heartbeat("mirror_omni__get_stats", 0.0f);

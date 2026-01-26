@@ -364,6 +364,7 @@ void mirror_substrate_pool_stats(const mirror_substrate_pool_t* pool,
                                   uint32_t* high_water)
 {
     if (!pool) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_substrate_pool_stats: pool is NULL");
         if (allocated) *allocated = 0;
         if (capacity) *capacity = 0;
         if (high_water) *high_water = 0;
@@ -618,7 +619,10 @@ void mirror_substrate_cow_release(mirror_substrate_backing_t* backing,
 
 bool mirror_substrate_is_cow_copy(const mirror_substrate_backing_t* backing)
 {
-    if (!backing) return false;
+    if (!backing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_substrate_is_cow_copy: backing is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_substrate_heartbeat("mirror_subst_is_cow_copy", 0.0f);
 
@@ -681,7 +685,10 @@ nimcp_result_t mirror_substrate_bind_execution_axon(
 
 float mirror_substrate_get_observation_delay(const mirror_substrate_backing_t* backing)
 {
-    if (!backing) return NIMCP_MIRROR_BASE_DELAY_MS;
+    if (!backing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_substrate_get_observation_delay: backing is NULL");
+        return NIMCP_MIRROR_BASE_DELAY_MS;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_substrate_heartbeat("mirror_subst_get_observation_dela", 0.0f);
@@ -701,7 +708,10 @@ float mirror_substrate_get_observation_delay(const mirror_substrate_backing_t* b
 
 float mirror_substrate_get_execution_delay(const mirror_substrate_backing_t* backing)
 {
-    if (!backing) return NIMCP_MIRROR_BASE_DELAY_MS;
+    if (!backing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_substrate_get_execution_delay: backing is NULL");
+        return NIMCP_MIRROR_BASE_DELAY_MS;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_substrate_heartbeat("mirror_subst_get_execution_delay", 0.0f);
@@ -748,7 +758,10 @@ nimcp_result_t mirror_substrate_bind_myelin_sheath(
 
 float mirror_substrate_update_myelination(mirror_substrate_backing_t* backing)
 {
-    if (!backing) return 0.0F;
+    if (!backing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_substrate_update_myelination: backing is NULL");
+        return 0.0F;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_substrate_heartbeat("mirror_subst_update_myelination", 0.0f);
@@ -768,7 +781,12 @@ void mirror_substrate_apply_activity_to_myelin(
     float activity_level,
     float dt_seconds)
 {
-    if (!backing || !backing->myelin_sheath) return;
+    if (!backing || !backing->myelin_sheath) {
+        if (!backing) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_substrate_apply_activity_to_myelin: backing is NULL");
+        }
+        return;
+    }
 
     /* Forward activity to myelin sheath for activity-dependent plasticity */
     /* Phase 8: Heartbeat at operation start */
@@ -817,7 +835,10 @@ int32_t mirror_substrate_add_spine(
     void* spine_ptr,
     float initial_weight)
 {
-    if (!backing) return -1;
+    if (!backing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_substrate_add_spine: backing is NULL");
+        return -1;
+    }
 
     /* Check capacity */
     /* Phase 8: Heartbeat at operation start */
@@ -850,7 +871,12 @@ void mirror_substrate_update_spine_plasticity(
     bool execution_active,
     float dt_seconds)
 {
-    if (!backing || backing->num_spines == 0) return;
+    if (!backing || backing->num_spines == 0) {
+        if (!backing) {
+            NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_substrate_update_spine_plasticity: backing is NULL");
+        }
+        return;
+    }
 
     /* Get astrocyte modulation factor */
     /* Phase 8: Heartbeat at operation start */
@@ -909,7 +935,10 @@ void mirror_substrate_update_spine_plasticity(
 
 float mirror_substrate_get_total_spine_weight(const mirror_substrate_backing_t* backing)
 {
-    if (!backing) return 0.0F;
+    if (!backing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_substrate_get_total_spine_weight: backing is NULL");
+        return 0.0F;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_substrate_heartbeat("mirror_subst_get_total_spine_weig", 0.0f);
@@ -989,7 +1018,10 @@ nimcp_result_t mirror_substrate_bind_microglia(
 
 float mirror_substrate_get_astrocyte_modulation(const mirror_substrate_backing_t* backing)
 {
-    if (!backing) return 1.0F;
+    if (!backing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_substrate_get_astrocyte_modulation: backing is NULL");
+        return 1.0F;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_substrate_heartbeat("mirror_subst_get_astrocyte_modula", 0.0f);
 
@@ -1002,7 +1034,10 @@ void mirror_substrate_update_glial(
     float activity_level,
     float dt_seconds)
 {
-    if (!backing) return;
+    if (!backing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_substrate_update_glial: backing is NULL");
+        return;
+    }
 
     /* Update astrocyte modulation based on activity */
     /* Phase 8: Heartbeat at operation start */
@@ -1048,7 +1083,10 @@ void mirror_substrate_update_glial(
 
 bool mirror_substrate_is_marked_for_pruning(const mirror_substrate_backing_t* backing)
 {
-    if (!backing) return false;
+    if (!backing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_substrate_is_marked_for_pruning: backing is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_substrate_heartbeat("mirror_subst_is_marked_for_prunin", 0.0f);
 
@@ -1065,7 +1103,10 @@ void mirror_substrate_step(
     uint64_t current_time,
     float dt_seconds)
 {
-    if (!backing) return;
+    if (!backing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_substrate_step: backing is NULL");
+        return;
+    }
 
     /* Calculate combined activity level */
     /* Phase 8: Heartbeat at operation start */
@@ -1107,7 +1148,10 @@ void mirror_substrate_record_observation(
     float strength,
     uint64_t timestamp)
 {
-    if (!backing) return;
+    if (!backing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_substrate_record_observation: backing is NULL");
+        return;
+    }
 
     /* Update EMA */
     /* Phase 8: Heartbeat at operation start */
@@ -1125,7 +1169,10 @@ void mirror_substrate_record_execution(
     float strength,
     uint64_t timestamp)
 {
-    if (!backing) return;
+    if (!backing) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_substrate_record_execution: backing is NULL");
+        return;
+    }
 
     /* Update EMA */
     /* Phase 8: Heartbeat at operation start */

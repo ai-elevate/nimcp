@@ -452,6 +452,7 @@ int mirror_hippocampus_store_action(
     const action_t* action
 ) {
     if (!bridge || !action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hippocampus_store_action: required parameter is NULL");
         return -1;
     }
 
@@ -515,6 +516,7 @@ uint32_t mirror_hippocampus_complete_sequence(
     mirror_hippocampus_bridge_t* bridge
 ) {
     if (!bridge || bridge->current_sequence_length == 0) {
+        if (!bridge) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hippocampus_complete_sequence: bridge is NULL");
         return UINT32_MAX;
     }
 
@@ -630,6 +632,7 @@ uint32_t mirror_hippocampus_store_demonstration(
     uint32_t demonstrator_id
 ) {
     if (!bridge || !actions || num_actions == 0) {
+        if (!bridge || !actions) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hippocampus_store_demonstration: required parameter is NULL");
         return UINT32_MAX;
     }
 
@@ -672,6 +675,7 @@ int mirror_hippocampus_retrieve_by_action(
     episode_retrieval_result_t* result
 ) {
     if (!bridge || !cue || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hippocampus_retrieve_by_action: required parameter is NULL");
         return -1;
     }
 
@@ -770,6 +774,7 @@ int mirror_hippocampus_retrieve_by_demonstrator(
     episode_retrieval_result_t* result
 ) {
     if (!bridge || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hippocampus_retrieve_by_demonstrator: required parameter is NULL");
         return -1;
     }
 
@@ -814,6 +819,7 @@ int mirror_hippocampus_retrieve_by_sequence(
     episode_retrieval_result_t* result
 ) {
     if (!bridge || !actions || num_actions == 0 || !result) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hippocampus_retrieve_by_sequence: required parameter is NULL");
         return -1;
     }
 
@@ -891,6 +897,7 @@ int mirror_hippocampus_get_episode(
     action_episode_t** episode
 ) {
     if (!bridge || !episode) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hippocampus_get_episode: required parameter is NULL");
         return -1;
     }
 
@@ -917,6 +924,7 @@ int mirror_hippocampus_request_replay(
     const replay_request_t* request
 ) {
     if (!bridge || !request) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hippocampus_request_replay: required parameter is NULL");
         return -1;
     }
 
@@ -978,6 +986,7 @@ int mirror_hippocampus_step_replay(
     action_t* out_action
 ) {
     if (!bridge || !bridge->replay_active) {
+        if (!bridge) NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hippocampus_step_replay: bridge is NULL");
         return -1;
     }
 
@@ -1084,6 +1093,7 @@ uint32_t mirror_hippocampus_consolidate(
     float strength_threshold
 ) {
     if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hippocampus_consolidate: bridge is NULL");
         return 0;
     }
 
@@ -1246,6 +1256,7 @@ int mirror_hippocampus_bridge_get_state(
     mirror_hippocampus_state_t* state
 ) {
     if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hippocampus_bridge_get_state: required parameter is NULL");
         return -1;
     }
 
@@ -1262,6 +1273,7 @@ int mirror_hippocampus_bridge_get_effects(
     mirror_hippocampus_effects_t* effects
 ) {
     if (!bridge || !effects) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hippocampus_bridge_get_effects: required parameter is NULL");
         return -1;
     }
 
@@ -1278,6 +1290,7 @@ int mirror_hippocampus_bridge_get_stats(
     mirror_hippocampus_stats_t* stats
 ) {
     if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_hippocampus_bridge_get_stats: required parameter is NULL");
         return -1;
     }
 

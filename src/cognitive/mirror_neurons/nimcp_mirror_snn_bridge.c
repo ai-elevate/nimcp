@@ -464,7 +464,11 @@ int mirror_snn_connect_bio_async(mirror_snn_bridge_t* bridge) {
 }
 
 int mirror_snn_disconnect_bio_async(mirror_snn_bridge_t* bridge) {
-    if (!bridge || !bridge->bio_async_connected) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_disconnect_bio_async: bridge is NULL");
+        return 0;
+    }
+    if (!bridge->bio_async_connected) return 0;
 
     /* Phase 8: Heartbeat at operation start */
     mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_disconnec", 0.0f);
@@ -480,15 +484,24 @@ int mirror_snn_disconnect_bio_async(mirror_snn_bridge_t* bridge) {
 }
 
 bool mirror_snn_is_bio_async_connected(const mirror_snn_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_is_bio_async_connected: bridge is NULL");
+        return false;
+    }
+
     /* Phase 8: Heartbeat at operation start */
     mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_is_bio_as", 0.0f);
 
 
-    return bridge && bridge->bio_async_connected;
+    return bridge->bio_async_connected;
 }
 
 int mirror_snn_process_messages(mirror_snn_bridge_t* bridge, int timeout_ms) {
-    if (!bridge || !bridge->bio_async_connected) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_process_messages: bridge is NULL");
+        return 0;
+    }
+    if (!bridge->bio_async_connected) return 0;
     /* Phase 8: Heartbeat at operation start */
     mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_process_m", 0.0f);
 
@@ -501,7 +514,10 @@ int mirror_snn_process_messages(mirror_snn_bridge_t* bridge, int timeout_ms) {
 //=============================================================================
 
 int mirror_snn_connect_immune(mirror_snn_bridge_t* bridge, void* immune_system) {
-    if (!bridge || !immune_system) return -1;
+    if (!bridge || !immune_system) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_connect_immune: bridge or immune_system is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_connect_i", 0.0f);
@@ -520,7 +536,11 @@ int mirror_snn_connect_immune(mirror_snn_bridge_t* bridge, void* immune_system) 
 }
 
 int mirror_snn_disconnect_immune(mirror_snn_bridge_t* bridge) {
-    if (!bridge || !bridge->immune_connected) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_disconnect_immune: bridge is NULL");
+        return 0;
+    }
+    if (!bridge->immune_connected) return 0;
 
     /* Phase 8: Heartbeat at operation start */
     mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_disconnec", 0.0f);
@@ -535,7 +555,10 @@ int mirror_snn_disconnect_immune(mirror_snn_bridge_t* bridge) {
 }
 
 int mirror_snn_apply_immune_modulation(mirror_snn_bridge_t* bridge) {
-    if (!bridge || !bridge->immune_connected) return -1;
+    if (!bridge || !bridge->immune_connected) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_apply_immune_modulation: bridge is NULL or immune not connected");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_apply_imm", 0.0f);
 
@@ -554,7 +577,10 @@ int mirror_snn_encode_observation(
     uint32_t feature_dim,
     float observation_strength
 ) {
-    if (!bridge || !features || feature_dim == 0) return -1;
+    if (!bridge || !features || feature_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_encode_observation: bridge or features is NULL or feature_dim is 0");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_encode_ob", 0.0f);
@@ -608,7 +634,10 @@ int mirror_snn_encode_execution(
     uint32_t command_dim,
     float execution_strength
 ) {
-    if (!bridge || !motor_command || command_dim == 0) return -1;
+    if (!bridge || !motor_command || command_dim == 0) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_encode_execution: bridge or motor_command is NULL or command_dim is 0");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_encode_ex", 0.0f);
@@ -650,7 +679,10 @@ int mirror_snn_set_input_tensor(
     mirror_snn_bridge_t* bridge,
     const nimcp_tensor_t* input
 ) {
-    if (!bridge || !input) return -1;
+    if (!bridge || !input) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_set_input_tensor: bridge or input is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_set_input", 0.0f);
 
@@ -699,7 +731,10 @@ int mirror_snn_get_recognized_action(
     uint32_t* action_id,
     float* confidence
 ) {
-    if (!bridge || !action_id || !confidence) return -1;
+    if (!bridge || !action_id || !confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_get_recognized_action: bridge, action_id, or confidence is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_get_recog", 0.0f);
@@ -761,7 +796,10 @@ int mirror_snn_get_action_confidences(
     float* confidences,
     uint32_t num_actions
 ) {
-    if (!bridge || !confidences) return -1;
+    if (!bridge || !confidences) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_get_action_confidences: bridge or confidences is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_get_actio", 0.0f);
@@ -802,7 +840,10 @@ float mirror_snn_get_population_rate(
     uint32_t action_id,
     float window_ms
 ) {
-    if (!bridge) return -1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_get_population_rate: bridge is NULL");
+        return -1.0f;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_get_popul", 0.0f);
 
@@ -814,7 +855,10 @@ int mirror_snn_get_output_tensor(
     mirror_snn_bridge_t* bridge,
     nimcp_tensor_t* output
 ) {
-    if (!bridge || !output) return -1;
+    if (!bridge || !output) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_get_output_tensor: bridge or output is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_get_outpu", 0.0f);
 
@@ -835,7 +879,10 @@ int mirror_snn_forward(
     uint32_t* recognized_action,
     float* recognition_confidence
 ) {
-    if (!bridge || !features) return -1;
+    if (!bridge || !features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_forward: bridge or features is NULL");
+        return -1;
+    }
 
     /* Encode observation */
     /* Phase 8: Heartbeat at operation start */
@@ -930,7 +977,10 @@ float mirror_snn_train_step(
     uint32_t feature_dim,
     uint32_t target_action
 ) {
-    if (!bridge || !features) return -1.0f;
+    if (!bridge || !features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_train_step: bridge or features is NULL");
+        return -1.0f;
+    }
 
     /* Create target tensor */
     /* Phase 8: Heartbeat at operation start */
@@ -1054,7 +1104,10 @@ int mirror_snn_get_state(
     const mirror_snn_bridge_t* bridge,
     mirror_snn_bridge_state_t* state
 ) {
-    if (!bridge || !state) return -1;
+    if (!bridge || !state) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_get_state: bridge or state is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_get_state", 0.0f);
@@ -1100,7 +1153,10 @@ int mirror_snn_get_action_state(
     uint32_t action_id,
     mirror_snn_action_state_t* state
 ) {
-    if (!bridge || !state || action_id >= MIRROR_SNN_MAX_ACTIONS) return -1;
+    if (!bridge || !state || action_id >= MIRROR_SNN_MAX_ACTIONS) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_get_action_state: bridge or state is NULL or action_id invalid");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_get_actio", 0.0f);
@@ -1117,7 +1173,10 @@ int mirror_snn_get_stats(
     const mirror_snn_bridge_t* bridge,
     mirror_snn_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_get_stats: bridge or stats is NULL");
+        return -1;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_get_stats", 0.0f);
@@ -1141,7 +1200,10 @@ int mirror_snn_get_stats(
 }
 
 void mirror_snn_reset_stats(mirror_snn_bridge_t* bridge) {
-    if (!bridge) return;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_reset_stats: bridge is NULL");
+        return;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_reset_sta", 0.0f);
 
@@ -1152,7 +1214,10 @@ void mirror_snn_reset_stats(mirror_snn_bridge_t* bridge) {
 }
 
 snn_state_health_t mirror_snn_check_health(const mirror_snn_bridge_t* bridge) {
-    if (!bridge) return SNN_STATE_NAN_DETECTED;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_check_health: bridge is NULL");
+        return SNN_STATE_NAN_DETECTED;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_check_hea", 0.0f);
 
@@ -1264,18 +1329,26 @@ int mirror_snn_reset(mirror_snn_bridge_t* bridge) {
 //=============================================================================
 
 snn_network_t* mirror_snn_get_network(mirror_snn_bridge_t* bridge) {
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_get_network: bridge is NULL");
+        return NULL;
+    }
+
     /* Phase 8: Heartbeat at operation start */
     mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_get_netwo", 0.0f);
 
 
-    return bridge ? bridge->snn : NULL;
+    return bridge->snn;
 }
 
 int mirror_snn_get_snn_stats(
     const mirror_snn_bridge_t* bridge,
     snn_stats_t* stats
 ) {
-    if (!bridge || !stats) return -1;
+    if (!bridge || !stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_snn_get_snn_stats: bridge or stats is NULL");
+        return -1;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_snn_bridge_heartbeat("mirror_snn_b_mirror_snn_get_snn_s", 0.0f);
 

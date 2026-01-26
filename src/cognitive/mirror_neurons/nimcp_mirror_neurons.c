@@ -2274,7 +2274,10 @@ cleanup:
  */
 bool mirror_neurons_enable_substrate(mirror_neurons_t mirror)
 {
-    if (!mirror) return false;
+    if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_enable_substrate: mirror is NULL");
+        return false;
+    }
 
     /* Already enabled? */
     /* Phase 8: Heartbeat at operation start */
@@ -2342,7 +2345,10 @@ bool mirror_neurons_connect_axon_network(
     mirror_neurons_t mirror,
     void* axon_network)
 {
-    if (!mirror) return false;
+    if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_connect_axon_network: mirror is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_heartbeat("mirror_neuro_connect_axon_network", 0.0f);
@@ -2366,7 +2372,10 @@ bool mirror_neurons_connect_dendrite_network(
     mirror_neurons_t mirror,
     void* dendrite_network)
 {
-    if (!mirror) return false;
+    if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_connect_dendrite_network: mirror is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_heartbeat("mirror_neuro_connect_dendrite_net", 0.0f);
@@ -2390,7 +2399,10 @@ bool mirror_neurons_connect_myelin_network(
     mirror_neurons_t mirror,
     void* myelin_network)
 {
-    if (!mirror) return false;
+    if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_connect_myelin_network: mirror is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_heartbeat("mirror_neuro_connect_myelin_netwo", 0.0f);
@@ -2416,7 +2428,10 @@ bool mirror_neurons_connect_myelin_network(
  */
 float mirror_neurons_get_recognition_delay(mirror_neurons_t mirror, uint32_t action_id)
 {
-    if (!mirror) return NIMCP_MIRROR_BASE_DELAY_MS;
+    if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_get_recognition_delay: mirror is NULL");
+        return NIMCP_MIRROR_BASE_DELAY_MS;
+    }
 
     /* Find action mapping */
     /* Phase 8: Heartbeat at operation start */
@@ -2465,7 +2480,11 @@ float mirror_neurons_get_recognition_delay(mirror_neurons_t mirror, uint32_t act
  */
 float mirror_neurons_get_spine_association(mirror_neurons_t mirror, uint32_t action_id)
 {
-    if (!mirror || !mirror->substrate_enabled) return 0.0F;
+    if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_get_spine_association: mirror is NULL");
+        return 0.0F;
+    }
+    if (!mirror->substrate_enabled) return 0.0F;
 
     /* Find action mapping */
     /* Phase 8: Heartbeat at operation start */
@@ -2509,7 +2528,11 @@ float mirror_neurons_get_spine_association(mirror_neurons_t mirror, uint32_t act
  */
 bool mirror_neurons_step_substrate(mirror_neurons_t mirror, float dt_ms)
 {
-    if (!mirror || !mirror->substrate_enabled) return false;
+    if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_step_substrate: mirror is NULL");
+        return false;
+    }
+    if (!mirror->substrate_enabled) return false;
 
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_heartbeat("mirror_neuro_step_substrate", 0.0f);
@@ -2541,7 +2564,10 @@ bool mirror_neurons_step_substrate(mirror_neurons_t mirror, float dt_ms)
  */
 bool mirror_neurons_has_substrate(mirror_neurons_t mirror)
 {
-    if (!mirror) return false;
+    if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_has_substrate: mirror is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_heartbeat("mirror_neuro_has_substrate", 0.0f);
 
@@ -2558,7 +2584,10 @@ bool mirror_neurons_has_substrate(mirror_neurons_t mirror)
  */
 bool mirror_neurons_enable_stdp(mirror_neurons_t mirror, uint32_t max_synapses)
 {
-    if (!mirror) return false;
+    if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_enable_stdp: mirror is NULL");
+        return false;
+    }
 
     // Already enabled?
     /* Phase 8: Heartbeat at operation start */
@@ -2605,7 +2634,11 @@ bool mirror_neurons_enable_stdp(mirror_neurons_t mirror, uint32_t max_synapses)
  */
 mirror_stdp_t mirror_neurons_get_stdp(mirror_neurons_t mirror)
 {
-    if (!mirror || !mirror->stdp_enabled) return NULL;
+    if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_get_stdp: mirror is NULL");
+        return NULL;
+    }
+    if (!mirror->stdp_enabled) return NULL;
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_heartbeat("mirror_neuro_get_stdp", 0.0f);
 
@@ -2618,7 +2651,11 @@ mirror_stdp_t mirror_neurons_get_stdp(mirror_neurons_t mirror)
  */
 void mirror_neurons_set_stdp_dopamine(mirror_neurons_t mirror, float level)
 {
-    if (!mirror || !mirror->stdp_enabled || !mirror->stdp_system) return;
+    if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_set_stdp_dopamine: mirror is NULL");
+        return;
+    }
+    if (!mirror->stdp_enabled || !mirror->stdp_system) return;
 
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_heartbeat("mirror_neuro_set_stdp_dopamine", 0.0f);
@@ -2632,7 +2669,10 @@ void mirror_neurons_set_stdp_dopamine(mirror_neurons_t mirror, float level)
  */
 bool mirror_neurons_enable_resonance(mirror_neurons_t mirror, uint32_t max_channels)
 {
-    if (!mirror) return false;
+    if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_enable_resonance: mirror is NULL");
+        return false;
+    }
 
     // Already enabled?
     /* Phase 8: Heartbeat at operation start */
@@ -2679,7 +2719,11 @@ bool mirror_neurons_enable_resonance(mirror_neurons_t mirror, uint32_t max_chann
  */
 motor_resonance_t mirror_neurons_get_resonance(mirror_neurons_t mirror)
 {
-    if (!mirror || !mirror->resonance_enabled) return NULL;
+    if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_get_resonance: mirror is NULL");
+        return NULL;
+    }
+    if (!mirror->resonance_enabled) return NULL;
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_heartbeat("mirror_neuro_get_resonance", 0.0f);
 
@@ -2692,7 +2736,11 @@ motor_resonance_t mirror_neurons_get_resonance(mirror_neurons_t mirror)
  */
 void mirror_neurons_set_learning_context(mirror_neurons_t mirror, float learning_strength)
 {
-    if (!mirror || !mirror->resonance_enabled || !mirror->resonance_system) return;
+    if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_set_learning_context: mirror is NULL");
+        return;
+    }
+    if (!mirror->resonance_enabled || !mirror->resonance_system) return;
 
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_heartbeat("mirror_neuro_set_learning_context", 0.0f);
@@ -2707,7 +2755,11 @@ void mirror_neurons_set_learning_context(mirror_neurons_t mirror, float learning
  */
 void mirror_neurons_set_social_context(mirror_neurons_t mirror, float social_strength)
 {
-    if (!mirror || !mirror->resonance_enabled || !mirror->resonance_system) return;
+    if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_set_social_context: mirror is NULL");
+        return;
+    }
+    if (!mirror->resonance_enabled || !mirror->resonance_system) return;
 
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_heartbeat("mirror_neuro_set_social_context", 0.0f);
@@ -2722,7 +2774,11 @@ void mirror_neurons_set_social_context(mirror_neurons_t mirror, float social_str
  */
 bool mirror_neurons_should_imitate(mirror_neurons_t mirror, uint32_t action_id)
 {
-    if (!mirror || !mirror->resonance_enabled || !mirror->resonance_system) return false;
+    if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_should_imitate: mirror is NULL");
+        return false;
+    }
+    if (!mirror->resonance_enabled || !mirror->resonance_system) return false;
 
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_heartbeat("mirror_neuro_should_imitate", 0.0f);
@@ -2741,7 +2797,10 @@ bool mirror_neurons_should_imitate(mirror_neurons_t mirror, uint32_t action_id)
  */
 bool mirror_neurons_enable_hierarchy(mirror_neurons_t mirror)
 {
-    if (!mirror) return false;
+    if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_enable_hierarchy: mirror is NULL");
+        return false;
+    }
 
     // Already enabled?
     /* Phase 8: Heartbeat at operation start */
@@ -2783,7 +2842,11 @@ bool mirror_neurons_enable_hierarchy(mirror_neurons_t mirror)
  */
 mirror_hierarchy_t mirror_neurons_get_hierarchy(mirror_neurons_t mirror)
 {
-    if (!mirror || !mirror->hierarchy_enabled) return NULL;
+    if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_get_hierarchy: mirror is NULL");
+        return NULL;
+    }
+    if (!mirror->hierarchy_enabled) return NULL;
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_heartbeat("mirror_neuro_get_hierarchy", 0.0f);
 
@@ -2797,8 +2860,15 @@ mirror_hierarchy_t mirror_neurons_get_hierarchy(mirror_neurons_t mirror)
 bool mirror_neurons_infer_goal(mirror_neurons_t mirror, uint32_t action_id,
                                 uint32_t* out_goal, float* out_confidence)
 {
-    if (!mirror || !mirror->hierarchy_enabled || !mirror->hierarchy_system) return false;
-    if (!out_goal || !out_confidence) return false;
+    if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_infer_goal: mirror is NULL");
+        return false;
+    }
+    if (!mirror->hierarchy_enabled || !mirror->hierarchy_system) return false;
+    if (!out_goal || !out_confidence) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_infer_goal: out_goal or out_confidence is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_heartbeat("mirror_neuro_infer_goal", 0.0f);
@@ -2842,7 +2912,11 @@ bool mirror_neurons_infer_goal(mirror_neurons_t mirror, uint32_t action_id,
  */
 void mirror_neurons_select_goal(mirror_neurons_t mirror, int32_t goal_id)
 {
-    if (!mirror || !mirror->hierarchy_enabled || !mirror->hierarchy_system) return;
+    if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_select_goal: mirror is NULL");
+        return;
+    }
+    if (!mirror->hierarchy_enabled || !mirror->hierarchy_system) return;
 
     /* Phase 8: Heartbeat at operation start */
     mirror_neurons_heartbeat("mirror_neuro_select_goal", 0.0f);
@@ -2856,7 +2930,10 @@ void mirror_neurons_select_goal(mirror_neurons_t mirror, int32_t goal_id)
  */
 bool mirror_neurons_step_enhancements(mirror_neurons_t mirror, float dt_ms)
 {
-    if (!mirror) return false;
+    if (!mirror) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "mirror_neurons_step_enhancements: mirror is NULL");
+        return false;
+    }
 
     // Step STDP system
     /* Phase 8: Heartbeat at operation start */

@@ -466,7 +466,10 @@ int jepa_fep_bridge_unregister(jepa_fep_bridge_t* bridge) {
 }
 
 bool jepa_fep_bridge_is_registered(const jepa_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_fep_bridge_is_registered: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     jepa_fep_bridge_heartbeat("jepa_fep_bri_is_registered", 0.0f);
@@ -480,7 +483,10 @@ bool jepa_fep_bridge_is_registered(const jepa_fep_bridge_t* bridge) {
 }
 
 uint32_t jepa_fep_bridge_get_id(const jepa_fep_bridge_t* bridge) {
-    if (!bridge) return 0;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_fep_bridge_get_id: bridge is NULL");
+        return 0;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     jepa_fep_bridge_heartbeat("jepa_fep_bri_get_id", 0.0f);
@@ -646,7 +652,10 @@ int jepa_fep_bridge_reset_stats(jepa_fep_bridge_t* bridge) {
 }
 
 float jepa_fep_bridge_get_free_energy_contribution(const jepa_fep_bridge_t* bridge) {
-    if (!bridge) return -1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_fep_bridge_get_free_energy_contribution: bridge is NULL");
+        return -1.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     jepa_fep_bridge_heartbeat("jepa_fep_bri_get_free_energy_cont", 0.0f);
@@ -660,7 +669,10 @@ float jepa_fep_bridge_get_free_energy_contribution(const jepa_fep_bridge_t* brid
 }
 
 float jepa_fep_bridge_get_embedding_prediction_error(const jepa_fep_bridge_t* bridge) {
-    if (!bridge) return -1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_fep_bridge_get_embedding_prediction_error: bridge is NULL");
+        return -1.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     jepa_fep_bridge_heartbeat("jepa_fep_bri_get_embedding_predic", 0.0f);
@@ -674,7 +686,10 @@ float jepa_fep_bridge_get_embedding_prediction_error(const jepa_fep_bridge_t* br
 }
 
 float jepa_fep_bridge_get_representation_quality(const jepa_fep_bridge_t* bridge) {
-    if (!bridge) return -1.0f;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_fep_bridge_get_representation_quality: bridge is NULL");
+        return -1.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     jepa_fep_bridge_heartbeat("jepa_fep_bri_get_representation_q", 0.0f);
@@ -702,7 +717,10 @@ jepa_fep_state_t jepa_fep_bridge_get_state(const jepa_fep_bridge_t* bridge) {
 }
 
 bool jepa_fep_bridge_is_degraded(const jepa_fep_bridge_t* bridge) {
-    if (!bridge) return false;
+    if (!bridge) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "jepa_fep_bridge_is_degraded: bridge is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     jepa_fep_bridge_heartbeat("jepa_fep_bri_is_degraded", 0.0f);

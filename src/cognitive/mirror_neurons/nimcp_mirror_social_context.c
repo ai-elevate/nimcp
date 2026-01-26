@@ -366,7 +366,10 @@ bool social_context_set_affinity(social_context_t ctx,
                                   uint32_t agent_id,
                                   float affinity,
                                   float confidence) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_set_affinity: ctx is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_social_context_heartbeat("mirror_socia_social_context_set_a", 0.0f);
@@ -387,7 +390,10 @@ bool social_context_set_hierarchy(social_context_t ctx,
                                    uint32_t agent_id,
                                    float hierarchy,
                                    float confidence) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_set_hierarchy: ctx is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_social_context_heartbeat("mirror_socia_social_context_set_h", 0.0f);
@@ -408,7 +414,10 @@ bool social_context_set_cultural(social_context_t ctx,
                                   uint32_t agent_id,
                                   float familiarity,
                                   float confidence) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_set_cultural: ctx is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_social_context_heartbeat("mirror_socia_social_context_set_c", 0.0f);
@@ -429,7 +438,10 @@ bool social_context_set_emotional(social_context_t ctx,
                                    uint32_t agent_id,
                                    float valence,
                                    float confidence) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_set_emotional: ctx is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_social_context_heartbeat("mirror_socia_social_context_set_e", 0.0f);
@@ -449,7 +461,10 @@ bool social_context_set_emotional(social_context_t ctx,
 bool social_context_set_modulation(social_context_t ctx,
                                     uint32_t agent_id,
                                     const social_modulation_t* modulation) {
-    if (!ctx || !modulation) return false;
+    if (!ctx || !modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_set_modulation: required parameter is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_social_context_heartbeat("mirror_socia_social_context_set_m", 0.0f);
@@ -471,7 +486,10 @@ bool social_context_set_modulation(social_context_t ctx,
 bool social_context_get_modulation(social_context_t ctx,
                                     uint32_t agent_id,
                                     social_modulation_t* out_modulation) {
-    if (!ctx || !out_modulation) return false;
+    if (!ctx || !out_modulation) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_get_modulation: required parameter is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_social_context_heartbeat("mirror_socia_social_context_get_m", 0.0f);
@@ -492,7 +510,10 @@ bool social_context_get_modulation(social_context_t ctx,
 }
 
 float social_context_compute_gain(social_context_t ctx, uint32_t agent_id) {
-    if (!ctx) return 1.0f;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_compute_gain: ctx is NULL");
+        return 1.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_social_context_heartbeat("mirror_socia_social_context_compu", 0.0f);
@@ -537,7 +558,10 @@ bool social_context_learn_interaction(social_context_t ctx,
                                        uint32_t agent_id,
                                        float outcome,
                                        uint32_t interaction_type) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_learn_interaction: ctx is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_social_context_heartbeat("mirror_socia_social_context_learn", 0.0f);
@@ -575,7 +599,10 @@ bool social_context_learn_interaction(social_context_t ctx,
 bool social_context_update_competence(social_context_t ctx,
                                        uint32_t agent_id,
                                        float demonstrated_skill) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_update_competence: ctx is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_social_context_heartbeat("mirror_socia_social_context_updat", 0.0f);
@@ -605,7 +632,10 @@ bool social_context_update_competence(social_context_t ctx,
 }
 
 bool social_context_decay(social_context_t ctx, uint32_t delta_time_ms) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_decay: ctx is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_social_context_heartbeat("mirror_socia_social_context_decay", 0.0f);
@@ -659,7 +689,10 @@ bool social_context_decay(social_context_t ctx, uint32_t delta_time_ms) {
 bool social_context_get_agent(social_context_t ctx,
                                uint32_t agent_id,
                                agent_social_context_t* out_context) {
-    if (!ctx || !out_context) return false;
+    if (!ctx || !out_context) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_get_agent: required parameter is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_social_context_heartbeat("mirror_socia_social_context_get_a", 0.0f);
@@ -674,7 +707,10 @@ bool social_context_get_agent(social_context_t ctx,
 
 bool social_context_get_stats(social_context_t ctx,
                                social_context_stats_t* out_stats) {
-    if (!ctx || !out_stats) return false;
+    if (!ctx || !out_stats) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_get_stats: required parameter is NULL");
+        return false;
+    }
 
     /* Update computed stats */
     /* Phase 8: Heartbeat at operation start */
@@ -714,7 +750,10 @@ bool social_context_get_stats(social_context_t ctx,
 }
 
 bool social_context_has_agent(social_context_t ctx, uint32_t agent_id) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_has_agent: ctx is NULL");
+        return false;
+    }
     /* Phase 8: Heartbeat at operation start */
     mirror_social_context_heartbeat("mirror_socia_social_context_has_a", 0.0f);
 
@@ -728,7 +767,10 @@ bool social_context_has_agent(social_context_t ctx, uint32_t agent_id) {
 
 bool social_context_connect_mirror(social_context_t ctx,
                                     mirror_neurons_t mirror) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_connect_mirror: ctx is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_social_context_heartbeat("mirror_socia_social_context_conne", 0.0f);
@@ -742,7 +784,10 @@ bool social_context_connect_mirror(social_context_t ctx,
 bool social_context_observe_agent(social_context_t ctx,
                                    uint32_t agent_id,
                                    uint64_t timestamp) {
-    if (!ctx) return false;
+    if (!ctx) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "social_context_observe_agent: ctx is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_social_context_heartbeat("mirror_socia_social_context_obser", 0.0f);

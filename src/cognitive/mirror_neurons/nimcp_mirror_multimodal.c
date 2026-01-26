@@ -240,7 +240,10 @@ fusion_config_t multimodal_get_default_fusion_config(void) {
 
 bool multimodal_from_action(const action_t* action,
                             multimodal_action_features_t* out_features) {
-    if (!action || !out_features) return false;
+    if (!action || !out_features) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multimodal_from_action: required parameter is NULL");
+        return false;
+    }
 
     *out_features = multimodal_features_init();
 
@@ -334,7 +337,10 @@ bool multimodal_from_action(const action_t* action,
 
 bool multimodal_to_action(const multimodal_action_features_t* features,
                           action_t* out_action) {
-    if (!features || !out_action) return false;
+    if (!features || !out_action) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multimodal_to_action: required parameter is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_multimodal_heartbeat("mirror_multi_multimodal_to_action", 0.0f);
@@ -421,7 +427,10 @@ bool multimodal_to_action(const multimodal_action_features_t* features,
 
 bool multimodal_set_visual(multimodal_action_features_t* features,
                            const visual_features_t* visual) {
-    if (!features || !visual) return false;
+    if (!features || !visual) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multimodal_set_visual: required parameter is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_multimodal_heartbeat("mirror_multi_multimodal_set_visua", 0.0f);
@@ -434,7 +443,10 @@ bool multimodal_set_visual(multimodal_action_features_t* features,
 
 bool multimodal_set_motor(multimodal_action_features_t* features,
                           const motor_features_t* motor) {
-    if (!features || !motor) return false;
+    if (!features || !motor) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multimodal_set_motor: required parameter is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_multimodal_heartbeat("mirror_multi_multimodal_set_motor", 0.0f);
@@ -447,7 +459,10 @@ bool multimodal_set_motor(multimodal_action_features_t* features,
 
 bool multimodal_set_auditory(multimodal_action_features_t* features,
                              const auditory_features_t* auditory) {
-    if (!features || !auditory) return false;
+    if (!features || !auditory) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multimodal_set_auditory: required parameter is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_multimodal_heartbeat("mirror_multi_multimodal_set_audit", 0.0f);
@@ -460,7 +475,10 @@ bool multimodal_set_auditory(multimodal_action_features_t* features,
 
 bool multimodal_set_semantic(multimodal_action_features_t* features,
                              const semantic_features_t* semantic) {
-    if (!features || !semantic) return false;
+    if (!features || !semantic) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multimodal_set_semantic: required parameter is NULL");
+        return false;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_multimodal_heartbeat("mirror_multi_multimodal_set_seman", 0.0f);
@@ -611,7 +629,10 @@ bool multimodal_set_weights(multimodal_action_features_t* features,
 
 float multimodal_compare(const multimodal_action_features_t* features_a,
                          const multimodal_action_features_t* features_b) {
-    if (!features_a || !features_b) return -1.0f;
+    if (!features_a || !features_b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multimodal_compare: required parameter is NULL");
+        return -1.0f;
+    }
 
     /* Use fused vectors if available for both */
     /* Phase 8: Heartbeat at operation start */
@@ -649,7 +670,10 @@ float multimodal_compare(const multimodal_action_features_t* features_a,
 
 float multimodal_compare_visual(const multimodal_action_features_t* features_a,
                                 const multimodal_action_features_t* features_b) {
-    if (!features_a || !features_b) return -1.0f;
+    if (!features_a || !features_b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multimodal_compare_visual: required parameter is NULL");
+        return -1.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_multimodal_heartbeat("mirror_multi_multimodal_compare_v", 0.0f);
@@ -671,7 +695,10 @@ float multimodal_compare_visual(const multimodal_action_features_t* features_a,
 
 float multimodal_compare_motor(const multimodal_action_features_t* features_a,
                                const multimodal_action_features_t* features_b) {
-    if (!features_a || !features_b) return -1.0f;
+    if (!features_a || !features_b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multimodal_compare_motor: required parameter is NULL");
+        return -1.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_multimodal_heartbeat("mirror_multi_multimodal_compare_m", 0.0f);
@@ -693,7 +720,10 @@ float multimodal_compare_motor(const multimodal_action_features_t* features_a,
 
 float multimodal_compare_auditory(const multimodal_action_features_t* features_a,
                                   const multimodal_action_features_t* features_b) {
-    if (!features_a || !features_b) return -1.0f;
+    if (!features_a || !features_b) {
+        NIMCP_THROW_TO_IMMUNE(NIMCP_ERROR_INVALID_PARAM, "multimodal_compare_auditory: required parameter is NULL");
+        return -1.0f;
+    }
 
     /* Phase 8: Heartbeat at operation start */
     mirror_multimodal_heartbeat("mirror_multi_multimodal_compare_a", 0.0f);
