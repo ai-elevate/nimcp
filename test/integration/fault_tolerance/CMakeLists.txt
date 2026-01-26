@@ -184,3 +184,26 @@ set_tests_properties(integration_heartbeat_B04_parietal PROPERTIES
     LABELS "integration;fault_tolerance;heartbeat;B04;parietal"
     TIMEOUT 180
 )
+
+# Heartbeat B05 Mirror Neurons Integration Tests (Phase 8: Per-Batch Heartbeat Testing)
+add_executable(integration_heartbeat_B05_mirror_neurons
+    test_heartbeat_B05_mirror_neurons_integration.cpp
+)
+target_link_libraries(integration_heartbeat_B05_mirror_neurons
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+)
+target_include_directories(integration_heartbeat_B05_mirror_neurons
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME integration_heartbeat_B05_mirror_neurons
+         COMMAND integration_heartbeat_B05_mirror_neurons)
+set_tests_properties(integration_heartbeat_B05_mirror_neurons PROPERTIES
+    LABELS "integration;fault_tolerance;heartbeat;B05;mirror_neurons"
+    TIMEOUT 180
+)
