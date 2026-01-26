@@ -253,3 +253,26 @@ set_tests_properties(integration_heartbeat_B07_game_theory PROPERTIES
     LABELS "integration;fault_tolerance;heartbeat;B07;game_theory"
     TIMEOUT 180
 )
+
+# Heartbeat B08 Ethics/Reasoning Integration Tests (Phase 8: Per-Batch Heartbeat Testing)
+add_executable(integration_heartbeat_B08_ethics_reasoning
+    test_heartbeat_B08_ethics_reasoning_integration.cpp
+)
+target_link_libraries(integration_heartbeat_B08_ethics_reasoning
+    PRIVATE
+        GTest::GTest
+        GTest::Main
+        nimcp
+        Threads::Threads
+)
+target_include_directories(integration_heartbeat_B08_ethics_reasoning
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_SOURCE_DIR}/src
+)
+add_test(NAME integration_heartbeat_B08_ethics_reasoning
+         COMMAND integration_heartbeat_B08_ethics_reasoning)
+set_tests_properties(integration_heartbeat_B08_ethics_reasoning PROPERTIES
+    LABELS "integration;fault_tolerance;heartbeat;B08;ethics_reasoning"
+    TIMEOUT 180
+)

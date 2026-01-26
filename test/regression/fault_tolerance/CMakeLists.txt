@@ -267,4 +267,33 @@ gtest_discover_tests(regression_heartbeat_B07_game_theory
         TIMEOUT 180
 )
 
+# Heartbeat B08 Ethics/Reasoning Regression Tests (Phase 8: Per-Batch Heartbeat Testing)
+add_executable(regression_heartbeat_B08_ethics_reasoning
+    test_heartbeat_B08_ethics_reasoning_regression.cpp
+)
+
+target_include_directories(regression_heartbeat_B08_ethics_reasoning PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+    ${PROJECT_SOURCE_DIR}/src
+)
+
+target_link_libraries(regression_heartbeat_B08_ethics_reasoning
+    PRIVATE
+        nimcp
+        GTest::gtest
+        GTest::gtest_main
+        Threads::Threads
+        m
+)
+
+target_compile_features(regression_heartbeat_B08_ethics_reasoning PRIVATE cxx_std_17)
+target_compile_definitions(regression_heartbeat_B08_ethics_reasoning PRIVATE NIMCP_TESTING)
+
+gtest_discover_tests(regression_heartbeat_B08_ethics_reasoning
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    PROPERTIES
+        LABELS "regression;fault_tolerance;heartbeat;B08;ethics_reasoning"
+        TIMEOUT 180
+)
+
 message(STATUS "Added fault tolerance regression tests")
